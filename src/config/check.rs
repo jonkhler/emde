@@ -1,9 +1,11 @@
-//! Checks of colour names and code themes across all layers.
+//! Checks of colour names, code themes and `[code.aliases]` targets across
+//! all layers.
 //!
 //! Colour names in styles and palettes can only be resolved once every
 //! layer is known (a user style may use a colour from the theme's palette,
 //! and the other way round), so these checks run after all documents are
-//! read. Each problem is reported at the line that caused it.
+//! read. Each problem is reported at the line that caused it, at most
+//! [`MAX_REPORTED`](super::de::MAX_REPORTED) per document.
 
 use std::collections::{BTreeMap, BTreeSet};
 

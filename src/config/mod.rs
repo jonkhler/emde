@@ -14,7 +14,7 @@
 //! [`load`] never fails: unknown keys, bad values and unreadable files
 //! become [`Diagnostic`]s and the affected settings keep their lower-layer
 //! values, so a bad config never stops a document from being shown.
-//! [`check`] reports the same diagnostics for `--check-config`.
+//! [`check()`] reports the same diagnostics for `--check-config`.
 //!
 //! The result is a [`Config`]: [`RenderOptions`], [`PagerOptions`],
 //! [`TerminalOptions`] and [`ThemeOptions`], plus the theme data that
