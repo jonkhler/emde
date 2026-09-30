@@ -4,12 +4,17 @@
 //!   MSRV check and the binary size budget (`--full` adds a feature powerset check).
 //! * `deps` – fail if a banned crate (e.g. the C Oniguruma binding) is in the tree.
 //! * `size` – build the release binary and enforce the size budget.
+//! * `gen [--check]` – regenerate checked-in data tables (math symbols,
+//!   kitty diacritics, block glyphs) from pinned Unicode data.
 
 #![allow(clippy::print_stdout, clippy::print_stderr)]
 
 use std::env;
 use std::path::PathBuf;
 use std::process::{Command, ExitCode};
+
+mod gen_gfx;
+mod gen_math;
 
 /// Soft target for the stripped release binary (default features).
 const SIZE_TARGET: u64 = 6 * 1024 * 1024 + 512 * 1024;
@@ -41,8 +46,12 @@ fn main() -> ExitCode {
         "ci" => ci(args.iter().any(|a| a == "--full")),
         "deps" => deps(),
         "size" => size(),
+        "gen" => {
+            let check = args.iter().any(|a| a == "--check");
+            gen_math::run(check).and_then(|()| gen_gfx::run(check))
+        }
         _ => {
-            println!("usage: cargo xtask <ci [--full] | deps | size>");
+            println!("usage: cargo xtask <ci [--full] | deps | size | gen [--check]>");
             Ok(())
         }
     };
