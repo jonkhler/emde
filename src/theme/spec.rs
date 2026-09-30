@@ -259,13 +259,16 @@ pub(crate) enum CodeThemeSpec {
 }
 
 impl CodeThemeSpec {
-    /// The code theme for a variant.
+    /// The code theme for a variant; `None` when the file names none, or
+    /// says `auto` (as the config file does), which leaves the choice to the
+    /// inherited theme or emde's default.
     pub(crate) fn get(&self, v: Variant) -> Option<&str> {
-        match (self, v) {
-            (CodeThemeSpec::Both(s), _) => Some(s),
+        let name = match (self, v) {
+            (CodeThemeSpec::Both(s), _) => Some(s.as_str()),
             (CodeThemeSpec::PerVariant { dark, .. }, Variant::Dark) => dark.as_deref(),
             (CodeThemeSpec::PerVariant { light, .. }, Variant::Light) => light.as_deref(),
-        }
+        };
+        name.filter(|n| !n.eq_ignore_ascii_case("auto"))
     }
 }
 
@@ -505,6 +508,16 @@ mod tests {
         assert_eq!(spec.get(Variant::Light), Some("OneHalfLight"));
         let half = file("code = { light = \"GitHub\" }").code.unwrap();
         assert_eq!(half.get(Variant::Dark), None);
+        // `auto` leaves the choice to the parent theme or the default.
+        let auto = file("code = \"Auto\"").code.unwrap();
+        assert_eq!(auto.get(Variant::Dark), None);
+        let auto = file("code = { dark = \"auto\", light = \"GitHub\" }")
+            .code
+            .unwrap();
+        assert_eq!(auto.get(Variant::Dark), None);
+        assert_eq!(auto.get(Variant::Light), Some("GitHub"));
+        let p = ThemePatch::from_theme_file(&file("code = \"auto\""));
+        assert_eq!(p.code, [None, None]);
         assert!(toml::from_str::<ThemeFile>("code = \"\"").is_err());
         assert!(toml::from_str::<ThemeFile>("code = 3").is_err());
     }

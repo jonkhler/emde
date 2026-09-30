@@ -7,7 +7,8 @@
 # file (`emde --print-default-config` documents the colour syntax), plus:
 #   name      display name
 #   inherits  a theme to start from (built-in name, themes/NAME.toml, or path)
-#   code      code theme: one name, or { dark = "...", light = "..." }
+#   code      code theme: one name, or { dark = "...", light = "..." };
+#             "auto" keeps the inherited theme's (else OneHalfDark/Light)
 #
 # In styles, `base` is the page background (the terminal's own when emde can
 # detect it, else the palette's `base`) and `surface` is a panel colour

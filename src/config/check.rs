@@ -7,13 +7,14 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use super::de::Parsed;
+use super::de::{Deferred, Parsed};
 use super::layer::ConfigLayer;
 use super::suggest::did_you_mean;
 use super::{Diagnostic, Severity};
 use crate::theme::Variant;
 use crate::theme::color::{
-    ColorSpec, PaletteProblem, ansi_index, ansi_names, known_names, name_resolves, resolve_palette,
+    ColorSpec, PaletteProblem, SURFACE, ansi_index, ansi_names, known_names, name_resolves,
+    resolve_palette,
 };
 use crate::theme::spec::{PaletteTable, StyleTable, ThemeFile, ThemePatch};
 
@@ -50,8 +51,9 @@ fn variants(only: Option<Variant>) -> Vec<Variant> {
     only.map_or_else(|| Variant::ALL.to_vec(), |v| vec![v])
 }
 
-/// Warn about colour names that resolve in no palette they apply to, and
-/// about palette entries that refer to each other in a loop.
+/// Warn about colour names that resolve in no palette they apply to, about
+/// palette entries that refer to each other in a loop, and about user
+/// palette entries no style can use.
 pub(super) fn check_colours(
     theme_docs: &[Parsed<ThemeFile>],
     user_docs: &[Parsed<ConfigLayer>],
@@ -75,18 +77,39 @@ pub(super) fn check_colours(
         doc.report(Severity::Warning, items, diags);
     }
     for doc in user_docs {
-        let items = check_tables(&Tables::of_config(&doc.value), &known);
+        let mut items = check_tables(&Tables::of_config(&doc.value), &known);
+        items.extend(unreachable_entries(&doc.value.palette));
         doc.report(Severity::Warning, items, diags);
     }
     check_palette_loops(&palettes, theme_docs, user_docs, diags);
 }
 
+/// Palette entries that change no style: in styles, `surface` always means
+/// the panel colour derived from the page background, so an entry of that
+/// name (which the built-in themes keep for their own use) cannot be reached.
+fn unreachable_entries(palette: &PaletteTable) -> Vec<Deferred<'_>> {
+    palette
+        .entries()
+        .filter(|(_, key, _)| key.as_str() == SURFACE)
+        .map(|(only, key, _)| {
+            let path = palette_path(variant_prefix(only), key);
+            let dotted = path.join(".");
+            let message = move || {
+                format!(
+                    "{dotted}: has no effect: `surface` in styles is the panel colour emde \
+                     derives from the page background (set `bg` in [style.<element>] tables \
+                     instead)"
+                )
+            };
+            (path, Box::new(message) as Box<dyn FnOnce() -> String>)
+        })
+        .collect()
+}
+
 /// Unresolvable colour names in one document's tables, with their paths.
-fn check_tables<'a>(
-    tables: &Tables<'a>,
-    known: &[BTreeSet<String>; 2],
-) -> Vec<(Vec<&'a str>, String)> {
-    let mut out = Vec::new();
+/// Messages (and their suggestions) are only built for problems shown.
+fn check_tables<'a>(tables: &Tables<'a>, known: &'a [BTreeSet<String>; 2]) -> Vec<Deferred<'a>> {
+    let mut out: Vec<Deferred<'a>> = Vec::new();
     let styles = [
         (None, tables.style),
         (Some(Variant::Dark), tables.dark),
@@ -100,33 +123,41 @@ fn check_tables<'a>(
                     .into_iter()
                     .filter(|v| known.get(v.index()).is_none_or(|k| !name_resolves(name, k)))
                     .collect();
-                let Some(first) = missing.first() else {
+                let Some(&first) = missing.first() else {
                     continue;
                 };
                 let mut path: Vec<&str> = variant_prefix(only);
                 path.extend(["style", element.name(), field]);
-                let pool = known
-                    .get(first.index())
-                    .map(known_names)
-                    .unwrap_or_default();
-                let message = format!(
-                    "{}: {}",
-                    path.join("."),
-                    unknown_colour(name, &missing, only, &pool)
-                );
-                out.push((path, message));
+                let dotted = path.join(".");
+                let message = move || {
+                    let pool = known
+                        .get(first.index())
+                        .map(known_names)
+                        .unwrap_or_default();
+                    format!("{dotted}: {}", unknown_colour(name, &missing, only, &pool))
+                };
+                out.push((path, Box::new(message)));
             }
         }
     }
     for (only, key, spec) in tables.palette.entries() {
-        let mut path = vec!["palette"];
-        path.extend(variant_prefix(only));
-        path.push(key);
-        let message = match spec {
-            ColorSpec::Tint { .. } => Some("tints can only be used in styles".to_owned()),
-            ColorSpec::Name(name) if name == key => ansi_index(name).is_none().then(|| {
-                format!("unknown colour `{name}` (a name equal to its key must be an ANSI colour)")
-            }),
+        let path = palette_path(variant_prefix(only), key);
+        let dotted = path.join(".");
+        let message: Box<dyn FnOnce() -> String + 'a> = match spec {
+            ColorSpec::Tint { .. } => {
+                Box::new(move || format!("{dotted}: tints can only be used in styles"))
+            }
+            ColorSpec::Name(name) if name == key => {
+                if ansi_index(name).is_some() {
+                    continue;
+                }
+                Box::new(move || {
+                    format!(
+                        "{dotted}: unknown colour `{name}` (a name equal to its key must be an \
+                         ANSI colour)"
+                    )
+                })
+            }
             ColorSpec::Name(name) => {
                 let missing: Vec<Variant> = variants(only)
                     .into_iter()
@@ -137,20 +168,20 @@ fn check_tables<'a>(
                             && ansi_index(name).is_none()
                     })
                     .collect();
-                missing.first().map(|first| {
+                let Some(&first) = missing.first() else {
+                    continue;
+                };
+                Box::new(move || {
                     let pool: Vec<String> = known
                         .get(first.index())
                         .map(|k| k.iter().cloned().chain(ansi_names()).collect())
                         .unwrap_or_default();
-                    unknown_colour(name, &missing, only, &pool)
+                    format!("{dotted}: {}", unknown_colour(name, &missing, only, &pool))
                 })
             }
-            _ => None,
+            _ => continue,
         };
-        if let Some(message) = message {
-            let message = format!("{}: {message}", path.join("."));
-            out.push((path, message));
-        }
+        out.push((path, message));
     }
     out
 }
@@ -192,6 +223,10 @@ fn check_palette_loops(
     user_docs: &[Parsed<ConfigLayer>],
     diags: &mut Vec<Diagnostic>,
 ) {
+    // Each loop goes to the document defining its first entry, so that
+    // every document is read for line numbers once.
+    let mut user_items: Vec<Vec<Deferred<'_>>> = user_docs.iter().map(|_| Vec::new()).collect();
+    let mut theme_items: Vec<Vec<Deferred<'_>>> = theme_docs.iter().map(|_| Vec::new()).collect();
     let mut seen = BTreeSet::new();
     for pal in palettes {
         for problem in resolve_palette(pal).1 {
@@ -204,34 +239,42 @@ fn check_palette_loops(
             if !seen.insert(message.clone()) {
                 continue;
             }
-            let defines = |p: &PaletteTable| -> Option<Vec<&'static str>> {
-                if p.both.contains_key(&key) {
-                    Some(vec![])
-                } else if p.dark.contains_key(&key) {
-                    Some(vec!["dark"])
-                } else if p.light.contains_key(&key) {
-                    Some(vec!["light"])
-                } else {
-                    None
-                }
-            };
-            let located = user_docs
+            let in_user = user_docs
                 .iter()
+                .enumerate()
                 .rev()
-                .find_map(|d| Some(d.location(&palette_path(defines(&d.value.palette)?, &key))))
-                .or_else(|| {
-                    theme_docs.iter().find_map(|d| {
-                        Some(d.location(&palette_path(defines(&d.value.palette)?, &key)))
-                    })
-                })
-                .unwrap_or_else(|| "palette".to_owned());
-            diags.push(Diagnostic {
-                severity: Severity::Warning,
-                location: located,
-                message,
-            });
+                .find_map(|(i, d)| Some((i, defining_path(&d.value.palette, &key)?)));
+            let target = match in_user {
+                Some((i, path)) => user_items.get_mut(i).map(|items| (items, path)),
+                None => theme_docs
+                    .iter()
+                    .enumerate()
+                    .find_map(|(i, d)| Some((i, defining_path(&d.value.palette, &key)?)))
+                    .and_then(|(i, path)| theme_items.get_mut(i).map(|items| (items, path))),
+            };
+            if let Some((items, path)) = target {
+                items.push((path, Box::new(move || message)));
+            }
         }
     }
+    for (doc, items) in user_docs.iter().zip(user_items) {
+        doc.report(Severity::Warning, items, diags);
+    }
+    for (doc, items) in theme_docs.iter().zip(theme_items) {
+        doc.report(Severity::Warning, items, diags);
+    }
+}
+
+/// The path of the entry `key` in a document's palette, if it has one.
+fn defining_path<'a>(p: &'a PaletteTable, key: &str) -> Option<Vec<&'a str>> {
+    let (prefix, own_key) = if let Some((k, _)) = p.both.get_key_value(key) {
+        (vec![], k)
+    } else if let Some((k, _)) = p.dark.get_key_value(key) {
+        (vec!["dark"], k)
+    } else {
+        (vec!["light"], p.light.get_key_value(key)?.0)
+    };
+    Some(palette_path(prefix, own_key))
 }
 
 fn palette_path<'a>(prefix: Vec<&'static str>, key: &'a str) -> Vec<&'a str> {
@@ -241,18 +284,33 @@ fn palette_path<'a>(prefix: Vec<&'static str>, key: &'a str) -> Vec<&'a str> {
     path
 }
 
+/// How far [`check_code_themes`] goes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum CodeThemeCheck {
+    /// Names must exist and files must be there (cheap enough for every run;
+    /// the highlighter itself reports a file that does not load).
+    Quick,
+    /// `.tmTheme` files are loaded too (`--check-config`).
+    Thorough,
+}
+
 /// Check that the configured code themes exist.
 pub(super) fn check_code_themes(
     theme_docs: &[Parsed<ThemeFile>],
     user_docs: &[Parsed<ConfigLayer>],
+    how: CodeThemeCheck,
     diags: &mut Vec<Diagnostic>,
 ) {
+    let check = |spec: &str| match how {
+        CodeThemeCheck::Quick => crate::highlight::check_code_theme(spec),
+        CodeThemeCheck::Thorough => crate::highlight::validate_code_theme(spec),
+    };
     for doc in user_docs {
         let code = doc.value.theme.code.as_deref();
         let Some(code) = code.filter(|c| !c.trim().eq_ignore_ascii_case("auto")) else {
             continue;
         };
-        if let Err(message) = crate::highlight::check_code_theme(code) {
+        if let Err(message) = check(code) {
             let text = format!("theme.code: {message}");
             diags.push(doc.diagnostic(Severity::Warning, &["theme", "code"], text));
         }
@@ -264,7 +322,7 @@ pub(super) fn check_code_themes(
         let mut names: Vec<&str> = Variant::ALL.iter().filter_map(|&v| code.get(v)).collect();
         names.dedup();
         for name in names {
-            if let Err(message) = crate::highlight::check_code_theme(name) {
+            if let Err(message) = check(name) {
                 let text = format!("code: {message}");
                 diags.push(doc.diagnostic(Severity::Warning, &["code"], text));
             }

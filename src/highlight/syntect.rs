@@ -13,8 +13,10 @@
 //!   `.tmTheme` files with the `tmtheme` feature.
 
 use std::borrow::Cow;
+use std::collections::VecDeque;
 use std::fmt::{self, Write as _};
-use std::sync::OnceLock;
+use std::num::NonZeroUsize;
+use std::sync::{Arc, Mutex, OnceLock};
 use std::thread::JoinHandle;
 
 use ::syntect::easy::HighlightLines;
@@ -120,7 +122,8 @@ fn unknown_theme(spec: &str) -> CodeThemeError {
     CodeThemeError(format!("unknown code theme `{spec}`{hint}"))
 }
 
-/// Check that a code theme name or `.tmTheme` path can be used.
+/// Check cheaply that a code theme name or `.tmTheme` path can be used: the
+/// name exists, or the file does. [`load_code_theme`] also reads the file.
 pub fn check_code_theme(spec: &str) -> Result<(), CodeThemeError> {
     if find_code_theme(spec).is_some() {
         return Ok(());
@@ -155,14 +158,19 @@ pub fn load_code_theme(spec: &str) -> Result<Cow<'static, SynTheme>, CodeThemeEr
     Err(unknown_theme(spec))
 }
 
+/// Load a `.tmTheme` file. It is read with emde's size cap first, because
+/// syntect reads a file to its end (`/dev/zero` would never return).
 #[cfg(feature = "tmtheme")]
 fn load_tmtheme(path: &str) -> Result<Cow<'static, SynTheme>, CodeThemeError> {
-    match guarded(|| ::syntect::highlighting::ThemeSet::get_theme(path)) {
+    let cannot =
+        |why: &dyn fmt::Display| CodeThemeError(format!("cannot load code theme `{path}`: {why}"));
+    let bytes =
+        crate::config::paths::read_bytes(std::path::Path::new(path)).map_err(|e| cannot(&e))?;
+    let mut reader = std::io::Cursor::new(bytes);
+    match guarded(|| ::syntect::highlighting::ThemeSet::load_from_reader(&mut reader)) {
         Some(Ok(theme)) => Ok(Cow::Owned(theme)),
-        Some(Err(e)) => Err(CodeThemeError(format!(
-            "cannot load code theme `{path}`: {e}"
-        ))),
-        None => Err(CodeThemeError(format!("cannot load code theme `{path}`"))),
+        Some(Err(e)) => Err(cannot(&e)),
+        None => Err(cannot(&"the file is not a valid theme")),
     }
 }
 
@@ -310,23 +318,32 @@ impl SyntectHighlighter {
         }
     }
 
-    /// Compile the grammars of `langs` on background threads (one per
-    /// language), so that highlighting them later is fast. The threads only
-    /// warm shared caches; joining them is optional.
+    /// Compile the grammars of `langs` on background threads, so that
+    /// highlighting them later is fast. Languages are taken in the order
+    /// given (put the first blocks' first), by at most one thread per CPU.
+    /// The threads only warm shared caches; joining them is optional.
     pub fn warm_up(&self, langs: &[LangId]) -> Vec<JoinHandle<()>> {
-        let mut unique: Vec<LangId> = langs.to_vec();
-        unique.sort_by_key(|l| l.0);
-        unique.dedup();
-        unique
-            .into_iter()
-            .filter_map(|lang| {
+        let mut unique: VecDeque<LangId> = VecDeque::new();
+        for &lang in langs {
+            if !unique.contains(&lang) {
+                unique.push_back(lang);
+            }
+        }
+        let cpus = std::thread::available_parallelism().map_or(1, NonZeroUsize::get);
+        let threads = cpus.min(unique.len());
+        let queue = Arc::new(Mutex::new(unique));
+        (0..threads)
+            .filter_map(|_| {
+                let queue = Arc::clone(&queue);
                 std::thread::Builder::new()
                     .name("emde-warm-up".into())
                     .spawn(move || {
-                        let _ = guarded(|| {
-                            let theme = themes().get(EmbeddedThemeName::Ansi);
-                            highlight_block(syntax(lang)?, theme, WARM_UP_SAMPLE)
-                        });
+                        while let Some(lang) = queue.lock().ok().and_then(|mut q| q.pop_front()) {
+                            let _ = guarded(|| {
+                                let theme = themes().get(EmbeddedThemeName::Ansi);
+                                highlight_block(syntax(lang)?, theme, WARM_UP_SAMPLE)
+                            });
+                        }
                     })
                     .ok()
             })
@@ -721,10 +738,23 @@ mod tests {
         );
 
         let broken = dir.write("Broken.tmTheme", "<plist>not really</plist>");
+        let broken = broken.display().to_string();
+        assert!(SyntectHighlighter::new(&broken, &CodeOptions::default()).is_err());
         assert!(
-            SyntectHighlighter::new(&broken.display().to_string(), &CodeOptions::default())
-                .is_err()
+            check_code_theme(&broken).is_ok(),
+            "the quick check only sees the file"
         );
+        assert!(load_code_theme(&broken).is_err());
+    }
+
+    #[cfg(all(unix, feature = "tmtheme"))]
+    #[test]
+    fn endless_theme_files_are_refused() {
+        // syntect alone would read /dev/zero forever.
+        if std::path::Path::new("/dev/zero").exists() {
+            let err = load_code_theme("/dev/zero").unwrap_err();
+            assert!(err.to_string().contains("larger than"), "{err}");
+        }
     }
 
     #[test]
@@ -777,7 +807,29 @@ mod tests {
             .filter_map(|t| h.resolve(t))
             .collect();
         let handles = h.warm_up(&langs);
-        assert_eq!(handles.len(), 2, "one thread per distinct language");
+        let cpus = std::thread::available_parallelism().map_or(1, NonZeroUsize::get);
+        assert_eq!(
+            handles.len(),
+            cpus.min(2),
+            "at most one per distinct language"
+        );
+        for handle in handles {
+            handle.join().unwrap();
+        }
+        assert!(h.warm_up(&[]).is_empty());
+    }
+
+    #[test]
+    fn warm_up_threads_are_bounded_by_the_cpus() {
+        let h = highlighter("Nord");
+        let cpus = std::thread::available_parallelism().map_or(1, NonZeroUsize::get);
+        // More distinct languages than CPUs (ids that name no syntax, so
+        // nothing is compiled).
+        let many: Vec<LangId> = (0..u32::try_from(cpus + 3).unwrap())
+            .map(|i| LangId(u32::MAX - i))
+            .collect();
+        let handles = h.warm_up(&many);
+        assert_eq!(handles.len(), cpus);
         for handle in handles {
             handle.join().unwrap();
         }

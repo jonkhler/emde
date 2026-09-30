@@ -96,8 +96,9 @@ pub(crate) fn find_config(explicit: Option<&Path>, env: &ConfigEnv) -> Option<Co
         })
 }
 
-/// Read a UTF-8 text file of at most [`MAX_FILE_BYTES`].
-pub(crate) fn read_text(path: &Path) -> Result<String, String> {
+/// Read a file of at most [`MAX_FILE_BYTES`] (so `/dev/zero` or a huge
+/// file named by mistake cannot stall emde).
+pub(crate) fn read_bytes(path: &Path) -> Result<Vec<u8>, String> {
     let file = std::fs::File::open(path).map_err(|e| format!("cannot read the file: {e}"))?;
     let mut buf = Vec::new();
     file.take(MAX_FILE_BYTES + 1)
@@ -109,7 +110,12 @@ pub(crate) fn read_text(path: &Path) -> Result<String, String> {
             MAX_FILE_BYTES / 1024
         ));
     }
-    String::from_utf8(buf).map_err(|_| "the file is not valid UTF-8".to_owned())
+    Ok(buf)
+}
+
+/// Read a UTF-8 text file of at most [`MAX_FILE_BYTES`].
+pub(crate) fn read_text(path: &Path) -> Result<String, String> {
+    String::from_utf8(read_bytes(path)?).map_err(|_| "the file is not valid UTF-8".to_owned())
 }
 
 /// Whether a theme or code-theme reference is a path rather than a name.
@@ -264,6 +270,16 @@ mod tests {
         let big = d.write("big.toml", &"#".repeat(MAX_FILE_BYTES as usize + 1));
         assert!(read_text(&big).unwrap_err().contains("larger than"));
         assert!(read_text(d.path()).is_err(), "a directory");
+        assert_eq!(read_bytes(&bad).unwrap(), [0xff, 0xfe]);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn endless_files_are_cut_off() {
+        let zero = Path::new("/dev/zero");
+        if zero.exists() {
+            assert!(read_bytes(zero).unwrap_err().contains("larger than"));
+        }
     }
 
     #[test]

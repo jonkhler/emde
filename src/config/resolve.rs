@@ -11,9 +11,12 @@ use super::layer::ConfigLayer;
 use super::value::{AmbiguousWidth, TmuxPassthrough, has_control};
 use super::{PagerOptions, TerminalOptions, ThemeOptions};
 use crate::options::{
-    CodeOptions, Glyphs, HeadingOptions, ImageOptions, MarkdownOptions, MathMode, RenderOptions,
-    TableOptions,
+    CodeOptions, Glyphs, H1Style, HeadingOptions, ImageOptions, MarkdownOptions, MathMode,
+    RenderOptions, TableOptions,
 };
+use crate::theme::color::ColorSpec;
+use crate::theme::spec::{StyleSpec, ThemePatch};
+use crate::theme::{Element, Variant};
 
 /// Longest accepted probe timeout.
 pub(crate) const MAX_PROBE_TIMEOUT_MS: u32 = 10_000;
@@ -177,6 +180,43 @@ fn heading_options(l: &ConfigLayer, d: HeadingOptions) -> HeadingOptions {
         h2: h.h2.unwrap_or(d.h2),
         markers: h.markers.clone().unwrap_or(d.markers),
         numbers: h.numbers.unwrap_or(d.numbers),
+    }
+}
+
+/// How `h1` is drawn when no layer above the defaults sets `heading.h1`.
+///
+/// A bar needs a background. When the user's own `[style.h1]` replaces the
+/// theme's h1 without one (in both variants, and inheriting none from
+/// `heading` or `text`), the bar would be empty, so the heading is drawn as
+/// styled text with its underline: `[style.h1] fg = "accent"`,
+/// `underline = "curly"` gives accent text with a curly underline.
+pub(crate) fn default_h1_style(
+    configured: H1Style,
+    theme: Option<&ThemePatch>,
+    user: &ThemePatch,
+) -> H1Style {
+    let draws_a_bar = |spec: &StyleSpec| {
+        spec.bg.as_ref().is_some_and(|c| *c != ColorSpec::Default)
+            || spec.bg_to.is_some()
+            || spec.reverse == Some(true)
+    };
+    let text_only = Variant::ALL.iter().all(|v| {
+        let i = v.index();
+        let spec = |e: Element| {
+            let own = user.styles.get(i).and_then(|s| s.get(&e));
+            own.or_else(|| theme?.styles.get(i)?.get(&e))
+        };
+        let Some(h1) = user.styles.get(i).and_then(|s| s.get(&Element::H1)) else {
+            return false;
+        };
+        !draws_a_bar(h1)
+            && [Element::Heading, Element::Text]
+                .into_iter()
+                .all(|e| spec(e).is_none_or(|s| !draws_a_bar(s)))
+    });
+    match configured {
+        H1Style::Bar if text_only => H1Style::Underline,
+        other => other,
     }
 }
 

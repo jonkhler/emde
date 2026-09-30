@@ -2,7 +2,7 @@
 source: src/config/tests.rs
 expression: setup.report(&loaded)
 ---
-error: ~/.config/emde/config.toml: invalid TOML, ignoring the whole file
+error: ~/.config/emde/config.toml:3: invalid TOML, ignoring the whole file
 TOML parse error at line 3, column 10
   |
 3 | margin = = 2

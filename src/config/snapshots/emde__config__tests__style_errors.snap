@@ -1,0 +1,16 @@
+---
+source: src/config/tests.rs
+expression: setup.report(&loaded)
+---
+error: ~/.config/emde/config.toml:2: invalid value, ignoring [style.h1]
+TOML parse error at line 2, column 6
+  |
+2 | fg = "#12"
+  |      ^^^^^
+invalid colour `#12`, expected `#rgb` or `#rrggbb`
+error: ~/.config/emde/config.toml:9: invalid value, ignoring [dark.style.h3]
+TOML parse error at line 9, column 13
+  |
+9 | underline = "wavy"
+  |             ^^^^^^
+invalid value `wavy`, expected `none`, `single`, `double`, `curly`, `dotted` or `dashed`

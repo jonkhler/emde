@@ -182,6 +182,11 @@ math = "unicode"
     let c = &loaded.config;
     assert_eq!(c.theme.code.as_deref(), Some("OneHalfDark"));
     assert!(!c.theme.explicit, "the theme itself was not chosen");
+    assert_eq!(
+        c.render.heading.h1,
+        H1Style::Underline,
+        "text with a curly underline, not an empty bar"
+    );
     for bg in [None, Some(Rgb(0, 0, 0)), Some(Rgb(0xff, 0xff, 0xff))] {
         let theme = build_theme(c, bg, ColorDepth::TrueColor);
         let h1 = theme.style(Element::H1);
@@ -195,6 +200,67 @@ math = "unicode"
         assert_eq!(theme.style(Element::H2).attrs, Attrs::BOLD);
         assert_eq!(theme.color("muted"), Some(Rgb(0x6c, 0x70, 0x86)));
     }
+}
+
+#[test]
+fn an_h1_without_a_background_is_not_a_bar() {
+    let setup = Setup::new("h1-bar");
+    let h1 = |config: &str, set: &[&str]| {
+        setup.write("config.toml", config);
+        let loaded = setup.load(set);
+        no_diagnostics(&loaded);
+        loaded.config.render.heading.h1
+    };
+    assert_eq!(h1("", &[]), H1Style::Bar, "the theme's bar");
+    let plain_h1 = "[style.h1]\nfg = \"red\"\nunderline = \"curly\"\n";
+    assert_eq!(h1(plain_h1, &[]), H1Style::Underline);
+    assert_eq!(
+        h1("[style.h1]\nbg = \"default\"\n", &[]),
+        H1Style::Underline,
+        "`default` is no background"
+    );
+    // A background, a gradient or reverse video draws a bar.
+    for bar in ["bg = \"accent\"", "bg_to = \"mauve\"", "reverse = true"] {
+        assert_eq!(
+            h1(&format!("[style.h1]\n{bar}\n"), &[]),
+            H1Style::Bar,
+            "{bar}"
+        );
+    }
+    // So does a background inherited from `heading` or `text`.
+    let inherited = format!("{plain_h1}[style.heading]\nbg = \"surface\"\n");
+    assert_eq!(h1(&inherited, &[]), H1Style::Bar);
+    let inherited = format!("{plain_h1}[style.text]\nreverse = true\n");
+    assert_eq!(h1(&inherited, &[]), H1Style::Bar);
+    // Only one variant restyled: the other still has the theme's bar.
+    assert_eq!(h1("[dark.style.h1]\nfg = \"red\"\n", &[]), H1Style::Bar);
+    let both = "[dark.style.h1]\nfg = \"red\"\n[light.style.h1]\nfg = \"blue\"\n";
+    assert_eq!(h1(both, &[]), H1Style::Underline);
+    // A chosen presentation is kept.
+    let chosen = format!("{plain_h1}[heading]\nh1 = \"bar\"\n");
+    assert_eq!(h1(&chosen, &[]), H1Style::Bar);
+    assert_eq!(h1(plain_h1, &["heading.h1=plain"]), H1Style::Plain);
+    assert_eq!(
+        h1("", &["style.h1.fg=red"]),
+        H1Style::Underline,
+        "--set counts too"
+    );
+}
+
+#[test]
+fn an_h1_inherits_a_themes_heading_background() {
+    let setup = Setup::new("h1-theme");
+    setup.write(
+        "themes/banner.toml",
+        "inherits = \"emde\"\n[style.heading]\nbg = \"surface\"\n",
+    );
+    setup.write(
+        "config.toml",
+        "[theme]\nname = \"banner\"\n[style.h1]\nfg = \"red\"\n",
+    );
+    let loaded = setup.load(&[]);
+    no_diagnostics(&loaded);
+    assert_eq!(loaded.config.render.heading.h1, H1Style::Bar);
 }
 
 #[test]
@@ -385,6 +451,14 @@ fn probe_timeouts() {
 }
 
 #[test]
+fn load_options_for_the_process_use_its_environment() {
+    let opts = LoadOptions::from_process();
+    assert_eq!(opts.env, ConfigEnv::from_process());
+    assert!(opts.set.is_empty() && !opts.no_config && opts.config.is_none());
+    assert_eq!(LoadOptions::default().env, ConfigEnv::default());
+}
+
+#[test]
 fn unknown_keys_warn_with_suggestions() {
     let (setup, loaded) = load_config(
         "unknown",
@@ -432,6 +506,41 @@ display = "3d"
     assert_eq!(c.render.margin, 2, "[render] is dropped as a whole");
     assert!(!c.pager.mouse, "[pager] survives");
     assert_eq!(c.render.math.display, DisplayMath::TwoD);
+}
+
+#[test]
+fn a_bad_style_table_drops_only_itself() {
+    let (setup, loaded) = load_config(
+        "style-errors",
+        r##"[style.h1]
+fg = "#12"
+bold = true
+
+[style.h2]
+italic = true
+
+[dark.style.h3]
+underline = "wavy"
+
+[light.style.h3]
+underline = "dotted"
+"##,
+    );
+    insta::assert_snapshot!("style_errors", setup.report(&loaded));
+    let t = build_theme(&loaded.config, None, ColorDepth::TrueColor);
+    assert_eq!(
+        t.style(Element::H1),
+        Theme::fallback(Variant::Dark, None).style(Element::H1),
+        "the theme's h1 stays"
+    );
+    assert!(t.style(Element::H2).attrs.contains(Attrs::ITALIC));
+    assert_eq!(t.style(Element::H3).underline, Underline::None);
+    let light = build_theme(
+        &loaded.config,
+        Some(Rgb(255, 255, 255)),
+        ColorDepth::TrueColor,
+    );
+    assert_eq!(light.style(Element::H3).underline, Underline::Dotted);
 }
 
 #[test]
@@ -491,6 +600,52 @@ bg = "surfce/20%"
 "##,
     );
     insta::assert_snapshot!("unknown_colours", setup.report(&loaded));
+}
+
+#[test]
+fn many_colour_problems_are_summarised() {
+    let mut src = String::from("[palette]\n");
+    for i in 0..30 {
+        src.push_str(&format!("a{i:02} = \"b{i:02}\"\nb{i:02} = \"a{i:02}\"\n"));
+        src.push_str(&format!("c{i:02} = \"nope{i:02}\"\n"));
+    }
+    let (_setup, loaded) = load_config("many-colours", &src);
+    let d = &loaded.diagnostics;
+    let summaries: Vec<&str> = d
+        .iter()
+        .map(|d| d.message.as_str())
+        .filter(|m| m.ends_with("not shown"))
+        .collect();
+    // 30 unknown colours and 30 loops: the first 20 of each, then counts.
+    assert_eq!(
+        summaries, ["10 more warnings like these not shown"; 2],
+        "{d:#?}"
+    );
+    assert_eq!(d.len(), 2 * (de::MAX_REPORTED + 1));
+}
+
+#[test]
+fn a_palette_surface_entry_is_reported() {
+    let (setup, loaded) = load_config(
+        "surface",
+        "[palette]\nsurface = \"#000000\"\n[palette.light]\nsurface = \"#ffffff\"\n",
+    );
+    let text = setup.report(&loaded);
+    assert_eq!(loaded.diagnostics.len(), 2, "{text}");
+    assert!(
+        text.contains("config.toml:2: palette.surface: has no effect"),
+        "{text}"
+    );
+    assert!(
+        text.contains("config.toml:4: palette.light.surface: has no effect"),
+        "{text}"
+    );
+    // Styles keep the panel colour derived from the page.
+    let bg = Rgb(0x10, 0x10, 0x10);
+    let t = build_theme(&loaded.config, Some(bg), ColorDepth::TrueColor);
+    let surface = crate::theme::surface_for(bg, Variant::Dark);
+    assert_eq!(t.surface, surface);
+    assert_eq!(t.style(Element::CodeBlock).bg, Color::Rgb(surface));
 }
 
 #[test]
@@ -708,6 +863,56 @@ fn check_reports() {
     let report = check(&setup.opts());
     assert_eq!(report.exit_code(), 1, "warnings fail the check too");
     assert!(report.to_string().ends_with(": 0 errors, 1 warning"));
+}
+
+#[cfg(feature = "tmtheme")]
+#[test]
+fn check_reads_tmtheme_files() {
+    let setup = Setup::new("check-tm");
+    setup.write("Broken.tmTheme", "<plist>not a theme</plist>");
+    setup.write("config.toml", "[theme]\ncode = \"Broken.tmTheme\"\n");
+    // Showing a document only checks that the file is there (the
+    // highlighter reports what is wrong with it) ...
+    no_diagnostics(&setup.load(&[]));
+    // ... but --check-config loads it.
+    let report = check(&setup.opts());
+    assert_eq!(report.exit_code(), 1);
+    let text = report.to_string();
+    assert!(
+        text.contains("config.toml:2: theme.code: cannot load code theme"),
+        "{text}"
+    );
+}
+
+#[test]
+fn theme_files_may_leave_the_code_theme_to_emde() {
+    let setup = Setup::new("code-auto");
+    setup.write(
+        "themes/plain.toml",
+        "code = \"auto\"\n[style.h1]\nbold = true\n",
+    );
+    setup.write(
+        "themes/child.toml",
+        "inherits = \"night\"\ncode = { dark = \"auto\" }\n",
+    );
+    setup.write("themes/night.toml", "code = \"Nord\"\n");
+    let loaded = setup.load(&["theme.name=plain"]);
+    no_diagnostics(&loaded);
+    let t = build_theme(&loaded.config, None, ColorDepth::TrueColor);
+    assert_eq!(t.code_theme, "OneHalfDark");
+    let light = build_theme(
+        &loaded.config,
+        Some(Rgb(255, 255, 255)),
+        ColorDepth::TrueColor,
+    );
+    assert_eq!(light.code_theme, "OneHalfLight");
+    // `auto` keeps the inherited choice.
+    let loaded = setup.load(&["theme.name=child"]);
+    no_diagnostics(&loaded);
+    assert_eq!(
+        build_theme(&loaded.config, None, ColorDepth::TrueColor).code_theme,
+        "Nord"
+    );
 }
 
 #[test]

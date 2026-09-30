@@ -35,9 +35,14 @@ pub(crate) fn did_you_mean<'a>(
     candidates: impl IntoIterator<Item = &'a str>,
 ) -> Option<&'a str> {
     let len = word.chars().count();
+    // Lengths as `distance` compares the words (lowercased).
+    let lower_len = |s: &str| s.chars().flat_map(char::to_lowercase).count();
+    let word_len = lower_len(word);
     let mut best: Option<(usize, &'a str)> = None;
     for cand in candidates {
-        if cand == word {
+        // Words whose lengths differ by more than the limit are further
+        // apart than it: skip them without the quadratic distance.
+        if cand == word || lower_len(cand).abs_diff(word_len) > MAX_DISTANCE {
             continue;
         }
         let d = distance(word, cand);
@@ -84,5 +89,24 @@ mod tests {
         assert_eq!(did_you_mean("gb", ["bg"]), Some("bg"));
         // An exact match is not a suggestion.
         assert_eq!(did_you_mean("align", ["align"]), None);
+        // The length filter compares lowercased lengths, as `distance` does.
+        assert_eq!(did_you_mean("MAX_WIDHT", keys), Some("max_width"));
+        assert_eq!(did_you_mean("abc", ["abcdef", "abcde"]), Some("abcde"));
+    }
+
+    /// The length filter never hides a candidate `distance` would accept.
+    #[test]
+    fn length_filter_agrees_with_distance() {
+        let words = [
+            "", "a", "ab", "abc", "abcd", "abcde", "İi", "ǅx", "straße", "STRASSE",
+        ];
+        for w in words {
+            for c in words {
+                let expected = w != c
+                    && distance(w, c) <= MAX_DISTANCE
+                    && distance(w, c) < w.chars().count().max(1);
+                assert_eq!(did_you_mean(w, [c]).is_some(), expected, "{w:?} {c:?}");
+            }
+        }
     }
 }

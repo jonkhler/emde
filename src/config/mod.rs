@@ -42,7 +42,7 @@ use crate::style::Rgb;
 use crate::term::ColorDepth;
 use crate::theme::spec::ThemePatch;
 use crate::theme::{Theme, Variant, builtin, chain};
-use check::{check_code_themes, check_colours};
+use check::{CodeThemeCheck, check_code_themes, check_colours};
 use de::{Origin, Parsed};
 use layer::{ConfigLayer, Merge as _};
 
@@ -274,6 +274,10 @@ impl Overrides {
 }
 
 /// What to load.
+///
+/// The `Default` has an empty [`ConfigEnv`], which finds no config file or
+/// installed theme (what tests want); the program fills `env` with
+/// [`ConfigEnv::from_process`], as [`LoadOptions::from_process`] does.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct LoadOptions {
     /// `--config PATH`.
@@ -286,6 +290,17 @@ pub struct LoadOptions {
     pub overrides: Overrides,
     /// Where to look for files.
     pub env: ConfigEnv,
+}
+
+impl LoadOptions {
+    /// Options that look for files where the running process would
+    /// (`$EMDE_CONFIG`, `$XDG_CONFIG_HOME`, `$HOME`), with no flags yet.
+    pub fn from_process() -> LoadOptions {
+        LoadOptions {
+            env: ConfigEnv::from_process(),
+            ..LoadOptions::default()
+        }
+    }
 }
 
 /// The resolved configuration.
@@ -336,6 +351,11 @@ impl Loaded {
 
 /// Load the configuration. Never fails; see [`Loaded::diagnostics`].
 pub fn load(opts: &LoadOptions) -> Loaded {
+    load_with(opts, CodeThemeCheck::Quick)
+}
+
+/// [`load`], checking code themes as far as `code_themes` says.
+fn load_with(opts: &LoadOptions, code_themes: CodeThemeCheck) -> Loaded {
     let mut diags = Vec::new();
 
     let mut defaults =
@@ -352,9 +372,10 @@ pub fn load(opts: &LoadOptions) -> Loaded {
     if let Some(t) = &theme {
         check_colours(theme_docs, &user_docs, &t.patch, &mut diags);
     }
-    check_code_themes(theme_docs, &user_docs, &mut diags);
+    check_code_themes(theme_docs, &user_docs, code_themes, &mut diags);
 
     // Merge the settings, and separately the user's theme tables.
+    let h1_chosen = user_docs.iter().any(|d| d.value.heading.h1.is_some());
     let mut merged = defaults.value;
     merged.take_theme_tables();
     let mut user_patch = ThemePatch::default();
@@ -367,8 +388,13 @@ pub fn load(opts: &LoadOptions) -> Loaded {
         merged.merge(layer);
     }
 
+    let mut render = resolve::render_options(&merged);
+    if !h1_chosen {
+        let theme_patch = theme.as_ref().map(|t| &t.patch);
+        render.heading.h1 = resolve::default_h1_style(render.heading.h1, theme_patch, &user_patch);
+    }
     let config = Config {
-        render: resolve::render_options(&merged),
+        render,
         pager: resolve::pager_options(&merged),
         terminal: resolve::terminal_options(&merged),
         theme: resolve::theme_options(&merged, explicit),
@@ -519,8 +545,10 @@ impl fmt::Display for CheckReport {
 }
 
 /// Load the configuration for `--check-config` (exit code 1 on any problem).
+/// Unlike [`load`], this also reads `.tmTheme` files, so a broken one is
+/// reported here rather than only when a document is shown.
 pub fn check(opts: &LoadOptions) -> CheckReport {
-    let loaded = load(opts);
+    let loaded = load_with(opts, CodeThemeCheck::Thorough);
     CheckReport {
         path: loaded.path,
         diagnostics: loaded.diagnostics,

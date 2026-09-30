@@ -49,8 +49,9 @@ code = "auto"
 # green, yellow, blue, magenta, cyan, white, bright-black ... bright-white),
 # 0-255, "default" (the terminal's colour), "base" (the page background:
 # the terminal's own when emde can detect it, else the palette's `base`),
-# "surface" (a panel colour derived from `base`), or a tint "NAME/NN%" (NAME
-# mixed NN% over the page background, e.g. "yellow/30%").
+# "surface" (a panel colour derived from `base`, whatever the palette says),
+# or a tint "NAME/NN%" (NAME mixed NN% over the page background, e.g.
+# "yellow/30%").
 #
 # Elements:
 #   text heading h1 h2 h3 h4 h5 h6 heading_rule
@@ -108,7 +109,9 @@ front_matter = "card"
 html = "subset"
 
 [heading]
-# h1: bar (a full-width bar), underline (styled text) or plain.
+# h1: bar (a full-width bar in h1's background colour), underline (styled
+# text with its underline) or plain. When your [style.h1] sets no
+# background, and this key is not set, h1 is drawn as underline.
 h1 = "bar"
 # h2: rule (text over a heavy rule) or plain.
 h2 = "rule"

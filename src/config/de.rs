@@ -1,19 +1,21 @@
 //! Reading TOML documents into layers, with diagnostics.
 //!
 //! [`parse`] never fails. A syntax error drops the whole document; a type
-//! error drops only the top-level table (or key) it occurs in, recovered by
-//! re-reading the document as a spanned table and deserialising it one
-//! top-level entry at a time. Unknown keys are collected with
-//! `serde_ignored` and reported with a did-you-mean suggestion; errors keep
-//! toml's caret snippet.
+//! error drops only the section it occurs in: a top-level key, or the
+//! innermost table (`[render]`, `[style.h1]`) holding the bad value. That is
+//! recovered by re-reading the document as a spanned table and deserialising
+//! it one piece at a time. Unknown keys are collected with `serde_ignored`
+//! and reported with a did-you-mean suggestion; errors keep toml's caret
+//! snippet.
 
 use std::borrow::Cow;
 use std::fmt;
+use std::ops::Range;
 use std::path::PathBuf;
 
 use serde::de::DeserializeOwned;
 use toml::Spanned;
-use toml::de::{DeTable, DeValue};
+use toml::de::{DeString, DeTable, DeValue};
 
 use super::layer::{ConfigLayer, Merge, section_keys, settings_sections};
 use super::suggest::did_you_mean;
@@ -48,6 +50,69 @@ impl fmt::Display for Origin {
     }
 }
 
+impl Origin {
+    /// Whether locations in this document are worth a line number (files,
+    /// not one-line `--set` documents or the flags).
+    fn has_lines(&self) -> bool {
+        !matches!(self, Origin::Set(_) | Origin::Flags)
+    }
+
+    /// `origin:line` for a byte offset into the document, or just the origin.
+    fn at_offset(&self, src: &str, offset: Option<usize>) -> String {
+        match offset {
+            Some(at) if self.has_lines() => format!("{self}:{}", line_number(src, at)),
+            _ => self.to_string(),
+        }
+    }
+}
+
+/// The 1-based line of a byte offset (offsets past the end count as the end).
+fn line_number(src: &str, offset: usize) -> usize {
+    let before = src
+        .as_bytes()
+        .get(..offset.min(src.len()))
+        .unwrap_or_default();
+    before.iter().filter(|&&b| b == b'\n').count() + 1
+}
+
+/// The newlines of a document, for line numbers of many offsets in
+/// O(log n) each ([`line_number`] scans the document every time).
+struct LineIndex(Vec<usize>);
+
+impl LineIndex {
+    fn new(src: &str) -> LineIndex {
+        LineIndex(memchr::memchr_iter(b'\n', src.as_bytes()).collect())
+    }
+
+    /// The 1-based line of a byte offset, as [`line_number`] counts it.
+    fn line(&self, offset: usize) -> usize {
+        self.0.partition_point(|&newline| newline < offset) + 1
+    }
+}
+
+/// Most diagnostics of one kind shown per document; the rest are counted.
+/// A pathological file must not bury the terminal in messages, nor spend
+/// seconds on did-you-mean suggestions nobody reads.
+pub(crate) const MAX_REPORTED: usize = 20;
+
+/// A problem at a key path whose message is built only if it is shown.
+pub(crate) type Deferred<'a> = (Vec<&'a str>, Box<dyn FnOnce() -> String + 'a>);
+
+/// The diagnostic that stands for `hidden` problems not shown.
+pub(crate) fn more_not_shown(severity: Severity, location: String, hidden: usize) -> Diagnostic {
+    let kind = match (severity, hidden) {
+        (Severity::Warning, 1) => "warning",
+        (Severity::Warning, _) => "warnings",
+        (Severity::Error, 1) => "error",
+        (Severity::Error, _) => "errors",
+    };
+    Diagnostic {
+        severity,
+        location,
+        message: format!("{hidden} more {kind} like these not shown"),
+    }
+}
+
 /// Which kind of document is being read (decides key suggestions).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Schema {
@@ -68,9 +133,10 @@ pub(crate) struct Parsed<T> {
 impl<T> Parsed<T> {
     /// Line numbers of keys, when the document is a file.
     fn key_lines(&self) -> Option<KeyLines<'_>> {
-        match self.origin {
-            Origin::Set(_) | Origin::Flags => None,
-            _ => KeyLines::new(&self.src),
+        if self.origin.has_lines() {
+            KeyLines::new(&self.src)
+        } else {
+            None
         }
     }
 
@@ -101,34 +167,34 @@ impl<T> Parsed<T> {
         }
     }
 
-    /// Report diagnostics about key paths, in source order.
+    /// Report problems at key paths in source order: the first
+    /// [`MAX_REPORTED`], then how many more there are.
     pub(crate) fn report(
         &self,
         severity: Severity,
-        items: Vec<(Vec<&str>, String)>,
+        items: Vec<Deferred<'_>>,
         diags: &mut Vec<Diagnostic>,
     ) {
         if items.is_empty() {
             return;
         }
         let lines = self.key_lines();
-        let mut located: Vec<(Option<usize>, Diagnostic)> = items
+        let mut located: Vec<_> = items
             .into_iter()
-            .map(|(path, message)| {
-                let line = lines.as_ref().and_then(|k| k.line(&path));
-                let location = self.location_at(line);
-                (
-                    line,
-                    Diagnostic {
-                        severity,
-                        location,
-                        message,
-                    },
-                )
-            })
+            .map(|(path, message)| (lines.as_ref().and_then(|k| k.line(&path)), message))
             .collect();
         located.sort_by_key(|(line, _)| *line);
-        diags.extend(located.into_iter().map(|(_, d)| d));
+        let hidden = located.len().saturating_sub(MAX_REPORTED);
+        for (line, message) in located.into_iter().take(MAX_REPORTED) {
+            diags.push(Diagnostic {
+                severity,
+                location: self.location_at(line),
+                message: message(),
+            });
+        }
+        if hidden > 0 {
+            diags.push(more_not_shown(severity, self.origin.to_string(), hidden));
+        }
     }
 }
 
@@ -144,12 +210,13 @@ where
 {
     let (value, unknown) = read::<T>(&src, &origin, diags);
     let parsed = Parsed { value, origin, src };
-    let items = unknown
+    let items: Vec<Deferred<'_>> = unknown
         .iter()
         .map(|path| {
             let refs: Vec<&str> = path.iter().map(String::as_str).collect();
-            let message = unknown_key_message(&refs, schema);
-            (refs, message)
+            let for_message = refs.clone();
+            let message = move || unknown_key_message(&for_message, schema);
+            (refs, Box::new(message) as Box<dyn FnOnce() -> String>)
         })
         .collect();
     parsed.report(Severity::Warning, items, diags);
@@ -175,7 +242,7 @@ where
         Err(e) => {
             diags.push(Diagnostic {
                 severity: Severity::Error,
-                location: origin.to_string(),
+                location: origin.at_offset(src, e.span().map(|s| s.start)),
                 message: format!(
                     "invalid TOML, {}\n{}",
                     ignoring(origin, None),
@@ -192,8 +259,14 @@ where
     }
 }
 
-/// Deserialise the document one top-level entry at a time, dropping the
-/// entries that fail.
+/// Deserialise a document with a type error piece by piece, keeping every
+/// piece that is usable on its own.
+///
+/// The pieces are the top-level entries. A table that fails is split
+/// further, into its own values (one piece: the TOML section) and each of
+/// its sub-tables, so an error drops only the innermost table holding it: a
+/// bad colour in `[style.h1]` loses `[style.h1]` and keeps `[style.h2]`, a
+/// bad `[render]` value loses `[render]`.
 fn recover<T>(
     src: &str,
     origin: &Origin,
@@ -203,60 +276,216 @@ fn recover<T>(
 where
     T: DeserializeOwned + Default + Merge,
 {
-    let mut acc = T::default();
-    let mut unknown = Vec::new();
-    let mut errors: Vec<(usize, Diagnostic)> = Vec::new();
+    let mut r = Recovery {
+        root_span: 0..src.len(),
+        acc: T::default(),
+        unknown: Vec::new(),
+        errors: Vec::new(),
+    };
     if let Ok(root) = DeTable::parse(src) {
-        let span = root.span();
+        r.root_span = root.span();
         for (key, value) in root.into_inner() {
-            let name = key.get_ref().to_string();
-            let what = match value.get_ref() {
-                DeValue::Table(_) => format!("[{name}]"),
-                _ => format!("`{name}`"),
+            r.root_entry(key, value);
+        }
+    }
+    if r.errors.is_empty() {
+        // Every piece works on its own, so the pieces cannot be trusted
+        // together: report the document's own error and use none of it.
+        first.set_input(Some(src));
+        diags.push(Diagnostic {
+            severity: Severity::Error,
+            location: origin.at_offset(src, first.span().map(|s| s.start)),
+            message: format!(
+                "invalid value, {}\n{}",
+                ignoring(origin, None),
+                first.to_string().trim_end()
+            ),
+        });
+        return (T::default(), Vec::new());
+    }
+    // Rendering an error scans the document, so only the shown ones are.
+    r.errors
+        .sort_by_key(|(e, _)| e.span().map_or(usize::MAX, |s| s.start));
+    let hidden = r.errors.len().saturating_sub(MAX_REPORTED);
+    for (mut e, what) in r.errors.into_iter().take(MAX_REPORTED) {
+        e.set_input(Some(src));
+        diags.push(Diagnostic {
+            severity: Severity::Error,
+            location: origin.at_offset(src, e.span().map(|s| s.start)),
+            message: format!(
+                "invalid value, {}\n{}",
+                ignoring(origin, Some(&what)),
+                e.to_string().trim_end()
+            ),
+        });
+    }
+    if hidden > 0 {
+        diags.push(more_not_shown(Severity::Error, origin.to_string(), hidden));
+    }
+    // Pieces that were retried after a failure report their unknown keys
+    // again.
+    r.unknown.sort();
+    r.unknown.dedup();
+    (r.acc, r.unknown)
+}
+
+/// A key of a spanned TOML table.
+type Key<'i> = Spanned<DeString<'i>>;
+
+/// A table on the way down to a piece: its key and the span of its value.
+type PathSeg<'i> = (Key<'i>, Range<usize>);
+
+/// How deep [`Recovery`] splits failing tables (`dark.style.h1` is 3).
+const MAX_SPLIT_DEPTH: usize = 4;
+
+/// The state of [`recover`].
+struct Recovery<T> {
+    /// Span of the whole document (for the tables built around pieces).
+    root_span: Range<usize>,
+    /// The pieces merged so far.
+    acc: T,
+    unknown: Vec<Vec<String>>,
+    /// Each dropped piece's error, and what the piece is (`[style.h1]`).
+    errors: Vec<(toml::de::Error, String)>,
+}
+
+impl<T: DeserializeOwned + Merge> Recovery<T> {
+    /// One top-level entry: kept whole if it works, else split if it is a
+    /// table of tables, else dropped.
+    fn root_entry<'i>(&mut self, key: Key<'i>, value: Spanned<DeValue<'i>>) {
+        let name = key.get_ref().to_string();
+        let path = [(key.clone(), value.span())];
+        let mut single = DeTable::new();
+        single.insert(key, value.clone());
+        let Err(e) = self.attempt(&[], single) else {
+            return;
+        };
+        match value.into_inner() {
+            DeValue::Table(table) if self.can_split(&path, &table) => self.split(&path, table),
+            DeValue::Table(_) => self.errors.push((e, format!("[{name}]"))),
+            _ => self.errors.push((e, format!("`{name}`"))),
+        }
+    }
+
+    /// Recover the table at `path` from its pieces: its own values together,
+    /// and each sub-table on its own (split further when it fails too).
+    fn split<'i>(&mut self, path: &[PathSeg<'i>], table: DeTable<'i>) {
+        let (subs, own): (Vec<_>, Vec<_>) = table
+            .into_iter()
+            .partition(|(_, v)| matches!(v.get_ref(), DeValue::Table(_)));
+        if !own.is_empty() {
+            let own: DeTable<'i> = own.into_iter().collect();
+            if let Err(e) = self.attempt(path, own) {
+                self.errors.push((e, section(path)));
+            }
+        }
+        for (key, value) in subs {
+            let span = value.span();
+            let DeValue::Table(sub) = value.into_inner() else {
+                continue;
             };
-            let mut table = DeTable::new();
-            table.insert(key, value);
-            let de = toml::Deserializer::from(Spanned::new(span.clone(), table));
-            let part: Result<T, _> =
-                serde_ignored::deserialize(de, |path| unknown.push(segments(&path)));
-            match part {
-                Ok(part) => acc.merge(part),
-                Err(mut e) => {
-                    e.set_input(Some(src));
-                    let at = e.span().map_or(usize::MAX, |s| s.start);
-                    let message = format!(
-                        "invalid value, {}\n{}",
-                        ignoring(origin, Some(&what)),
-                        e.to_string().trim_end()
-                    );
-                    errors.push((
-                        at,
-                        Diagnostic {
-                            severity: Severity::Error,
-                            location: origin.to_string(),
-                            message,
-                        },
-                    ));
-                }
+            let mut sub_path = path.to_vec();
+            sub_path.push((key, span));
+            let Err(e) = self.attempt(&sub_path, sub.clone()) else {
+                continue;
+            };
+            if self.can_split(&sub_path, &sub) {
+                self.split(&sub_path, sub);
+            } else {
+                self.errors.push((e, section(&sub_path)));
             }
         }
     }
-    if errors.is_empty() {
-        first.set_input(Some(src));
-        let message = format!(
-            "invalid value, {}\n{}",
-            ignoring(origin, None),
-            first.to_string().trim_end()
-        );
-        diags.push(Diagnostic {
-            severity: Severity::Error,
-            location: origin.to_string(),
-            message,
-        });
+
+    /// Whether a failing table at `path` is worth splitting: it holds tables,
+    /// is not nested too deep, and a table is allowed there at all (else
+    /// every piece would fail for the same reason).
+    fn can_split<'i>(&self, path: &[PathSeg<'i>], table: &DeTable<'i>) -> bool {
+        path.len() < MAX_SPLIT_DEPTH
+            && has_sub_tables(table)
+            && self
+                .deserialize(path, DeTable::new(), &mut Vec::new())
+                .is_ok()
     }
-    errors.sort_by_key(|(at, _)| *at);
-    diags.extend(errors.into_iter().map(|(_, d)| d));
-    (acc, unknown)
+
+    /// Deserialise a document holding only `leaf` at `path`, and keep it if
+    /// that works.
+    fn attempt<'i>(
+        &mut self,
+        path: &[PathSeg<'i>],
+        leaf: DeTable<'i>,
+    ) -> Result<(), toml::de::Error> {
+        let mut unknown = Vec::new();
+        let part = self.deserialize(path, leaf, &mut unknown);
+        // Unknown keys count even in a piece that fails: it may be
+        // dropped as a whole.
+        self.unknown.append(&mut unknown);
+        self.acc.merge(part?);
+        Ok(())
+    }
+
+    /// Deserialise a document holding only `leaf` at `path`.
+    fn deserialize<'i>(
+        &self,
+        path: &[PathSeg<'i>],
+        leaf: DeTable<'i>,
+        unknown: &mut Vec<Vec<String>>,
+    ) -> Result<T, toml::de::Error> {
+        let mut table = leaf;
+        for (key, span) in path.iter().rev() {
+            let mut outer = DeTable::new();
+            outer.insert(
+                key.clone(),
+                Spanned::new(span.clone(), DeValue::Table(table)),
+            );
+            table = outer;
+        }
+        let de = toml::Deserializer::from(Spanned::new(self.root_span.clone(), table));
+        serde_ignored::deserialize(de, |p| unknown.push(segments(&p)))
+    }
+}
+
+/// Whether a table holds tables (and so can be split into sections).
+fn has_sub_tables(table: &DeTable<'_>) -> bool {
+    table
+        .values()
+        .any(|v| matches!(v.get_ref(), DeValue::Table(_)))
+}
+
+/// `[a.b]` for a table path, quoting keys that are not bare TOML keys.
+fn section(path: &[PathSeg<'_>]) -> String {
+    let keys: Vec<String> = path.iter().map(|(k, _)| toml_key(k.get_ref())).collect();
+    format!("[{}]", keys.join("."))
+}
+
+/// A key as written in TOML: bare when possible, else a basic string.
+pub(crate) fn toml_key(key: &str) -> String {
+    let bare = !key.is_empty()
+        && key
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-');
+    if bare {
+        key.to_owned()
+    } else {
+        basic_string(key)
+    }
+}
+
+/// `s` as a TOML basic string: quoted, with `"`, `\` and control
+/// characters escaped.
+pub(crate) fn basic_string(s: &str) -> String {
+    let mut out = String::with_capacity(s.len() + 2);
+    out.push('"');
+    for c in s.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            c if c.is_control() => out.push_str(&format!("\\u{:04X}", u32::from(c))),
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+    out
 }
 
 /// The key segments of a `serde_ignored` path.
@@ -285,15 +514,15 @@ fn segments(path: &serde_ignored::Path<'_>) -> Vec<String> {
 
 /// Finds the lines of keys in a document (parsed once, spans kept).
 struct KeyLines<'a> {
-    src: &'a str,
     root: Spanned<DeTable<'a>>,
+    lines: LineIndex,
 }
 
 impl<'a> KeyLines<'a> {
     fn new(src: &'a str) -> Option<KeyLines<'a>> {
         Some(KeyLines {
-            src,
             root: DeTable::parse(src).ok()?,
+            lines: LineIndex::new(src),
         })
     }
 
@@ -311,8 +540,7 @@ impl<'a> KeyLines<'a> {
                 _ => break,
             }
         }
-        let before = self.src.get(..offset?)?;
-        Some(before.bytes().filter(|&b| b == b'\n').count() + 1)
+        Some(self.lines.line(offset?))
     }
 }
 
@@ -481,6 +709,207 @@ mod tests {
             config("[render]\nmargin = -1\n[pager]\nmouse = 3\n[tables]\nzebra = false\n");
         assert_eq!(diags.len(), 2, "{diags:?}");
         assert_eq!(layer.tables.zebra, Some(false));
+    }
+
+    /// The `ignoring …` part of each error message.
+    fn dropped(diags: &[Diagnostic]) -> Vec<String> {
+        diags
+            .iter()
+            .filter(|d| d.severity == Severity::Error)
+            .filter_map(|d| {
+                let first = d.message.lines().next()?;
+                Some(first.split_once("ignoring ")?.1.to_owned())
+            })
+            .collect()
+    }
+
+    #[test]
+    fn a_bad_style_drops_only_its_own_table() {
+        let (layer, diags) = config(
+            "[style.h1]\nfg = \"#12\"\nbold = true\n[style.h2]\nitalic = true\n\
+             [dark.style.h3]\nfg = \"nope nope\"\n[dark.style.h4]\nbold = true\n\
+             [light.style.h5]\nitalic = true\n[render]\nmargin = 3\n",
+        );
+        assert_eq!(
+            dropped(&diags),
+            ["[style.h1]", "[dark.style.h3]"],
+            "{diags:?}"
+        );
+        assert!(!layer.style.0.contains_key(&Element::H1));
+        assert_eq!(layer.style.0[&Element::H2].italic, Some(true));
+        assert!(!layer.dark.style.0.contains_key(&Element::H3));
+        assert_eq!(layer.dark.style.0[&Element::H4].bold, Some(true));
+        assert_eq!(layer.light.style.0[&Element::H5].italic, Some(true));
+        assert_eq!(layer.render.margin, Some(3));
+        // The location points at the bad value.
+        assert_eq!(diags[0].location, "test.toml:2");
+        assert!(diags[0].message.contains("^^^^^"), "{}", diags[0].message);
+    }
+
+    #[test]
+    fn sections_and_their_sub_tables_are_separate() {
+        // A bad value in [code] keeps [code.aliases], and the other way round.
+        let (layer, diags) =
+            config("[code]\ntab_width = \"x\"\n[code.aliases]\nsage = \"python\"\n");
+        assert_eq!(dropped(&diags), ["[code]"]);
+        assert_eq!(layer.code.tab_width, None);
+        assert_eq!(layer.code.aliases.0.len(), 1);
+        let (layer, diags) = config("[code]\ntab_width = 3\n[code.aliases]\nsage = 5\n");
+        assert_eq!(dropped(&diags), ["[code.aliases]"]);
+        assert_eq!(layer.code.tab_width, Some(3));
+        assert!(layer.code.aliases.0.is_empty());
+        // Flat palette entries and [palette.dark] are separate sections.
+        let (layer, diags) = config(
+            "[palette]\naccent = \"#12\"\nmuted = \"#fff\"\n[palette.dark]\ntext = \"#000\"\n",
+        );
+        assert_eq!(dropped(&diags), ["[palette]"]);
+        assert!(layer.palette.both.is_empty());
+        assert_eq!(layer.palette.dark.len(), 1);
+        // Inline tables count as sections too.
+        let (layer, diags) = config("[style]\nh1 = { fg = 300 }\nh2 = { bold = true }\n");
+        assert_eq!(dropped(&diags), ["[style.h1]"]);
+        assert_eq!(layer.style.0.len(), 1);
+    }
+
+    #[test]
+    fn a_table_where_a_value_belongs_is_dropped_whole() {
+        let (layer, diags) = config(
+            "[render]\nmargin = 1\n[render.max_width]\na = 1\n[render.max_width.b.c.d]\ne = 2\n",
+        );
+        assert_eq!(dropped(&diags), ["[render.max_width]"], "{diags:?}");
+        assert!(
+            diags[0].message.contains("expected u16"),
+            "{}",
+            diags[0].message
+        );
+        assert_eq!(layer.render.margin, Some(1));
+        // Keys that are not bare are quoted in the message.
+        let (_, diags) = config("[palette.\"my colours\"]\na = \"#fff\"\n");
+        assert_eq!(dropped(&diags), ["[palette.\"my colours\"]"]);
+    }
+
+    #[test]
+    fn retried_tables_report_unknown_keys_once() {
+        let (layer, diags) = config("[style.h1]\nbolt = true\n[style.h2]\nfg = \"#12\"\n");
+        let unknown: Vec<&Diagnostic> = diags
+            .iter()
+            .filter(|d| d.severity == Severity::Warning)
+            .collect();
+        assert_eq!(unknown.len(), 1, "{diags:?}");
+        assert!(unknown[0].message.contains("`style.h1.bolt`"));
+        assert!(
+            layer.style.0.contains_key(&Element::H1),
+            "an empty but valid table"
+        );
+        assert!(!layer.style.0.contains_key(&Element::H2));
+    }
+
+    #[test]
+    fn theme_file_keys_are_dropped_one_by_one() {
+        let mut diags = Vec::new();
+        let parsed = parse::<ThemeFile>(
+            Cow::Borrowed(
+                "name = 3\ninherits = \"emde\"\n[style.h1]\nbold = \"yes\"\n[style.h2]\nbold = true\n",
+            ),
+            Origin::File("t.toml".into()),
+            Schema::Theme,
+            &mut diags,
+        );
+        assert_eq!(dropped(&diags), ["`name`", "[style.h1]"]);
+        assert_eq!(diags[0].location, "t.toml:1");
+        assert_eq!(diags[1].location, "t.toml:4");
+        let theme = parsed.value;
+        assert_eq!(theme.name, None);
+        assert_eq!(theme.inherits.as_deref(), Some("emde"));
+        assert_eq!(theme.style.0.len(), 1);
+    }
+
+    #[test]
+    fn set_documents_have_no_line_numbers() {
+        let mut diags = Vec::new();
+        parse_config(
+            Cow::Borrowed("render.margin = \"x\""),
+            Origin::Set("render.margin=x".into()),
+            &mut diags,
+        );
+        assert_eq!(diags[0].location, "--set render.margin=x");
+        assert!(
+            diags[0]
+                .message
+                .starts_with("invalid value, ignoring this setting")
+        );
+    }
+
+    #[test]
+    fn many_unknown_keys_are_summarised() {
+        let mut src = String::from("[render]\nmargin = 1\n");
+        for i in (0..50).rev() {
+            src.push_str(&format!("zz{i} = 1\n"));
+        }
+        let (layer, diags) = config(&src);
+        assert_eq!(layer.render.margin, Some(1));
+        assert_eq!(diags.len(), MAX_REPORTED + 1);
+        assert_eq!(
+            diags[0].location, "test.toml:3",
+            "the first ones in the file"
+        );
+        assert!(diags[0].message.contains("`render.zz49`"));
+        let last = &diags[MAX_REPORTED];
+        assert_eq!(last.severity, Severity::Warning);
+        assert_eq!(last.location, "test.toml");
+        assert_eq!(last.message, "30 more warnings like these not shown");
+    }
+
+    #[test]
+    fn many_bad_sections_are_summarised() {
+        let mut src = String::from("[render]\nmargin = 1\n");
+        for i in 0..(MAX_REPORTED + 1) {
+            src.push_str(&format!("[palette.t{i}]\na = 1\n"));
+        }
+        let (layer, diags) = config(&src);
+        assert_eq!(layer.render.margin, Some(1));
+        assert_eq!(diags.len(), MAX_REPORTED + 1);
+        assert!(diags[0].message.contains("ignoring [palette.t0]"));
+        assert_eq!(
+            diags[0].location, "test.toml:3",
+            "the table is the bad value"
+        );
+        assert_eq!(
+            diags[MAX_REPORTED].message,
+            "1 more error like these not shown"
+        );
+    }
+
+    #[test]
+    fn line_index_matches_line_number() {
+        for src in ["", "a", "a\n", "a\nb", "\n\n\nx\n", "é\nü\n"] {
+            let index = LineIndex::new(src);
+            for offset in 0..src.len() + 3 {
+                assert_eq!(
+                    index.line(offset),
+                    line_number(src, offset),
+                    "{src:?} {offset}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn line_numbers_of_offsets() {
+        assert_eq!(line_number("a\nb\nc", 0), 1);
+        assert_eq!(line_number("a\nb\nc", 2), 2);
+        assert_eq!(line_number("a\nb\nc", 4), 3);
+        assert_eq!(line_number("a\nb\nc", 999), 3, "past the end");
+        assert_eq!(line_number("é\nx", 1), 1, "inside a character");
+    }
+
+    #[test]
+    fn keys_and_strings_are_quoted_for_toml() {
+        assert_eq!(toml_key("tab_width"), "tab_width");
+        assert_eq!(toml_key("c++"), "\"c++\"");
+        assert_eq!(toml_key(""), "\"\"");
+        assert_eq!(basic_string("a\"b\\c"), "\"a\\\"b\\\\c\"");
+        assert_eq!(basic_string("x\ty"), "\"x\\u0009y\"");
     }
 
     #[test]

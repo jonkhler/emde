@@ -8,7 +8,7 @@
 
 use std::borrow::Cow;
 
-use super::de::{Origin, Parsed, parse_config};
+use super::de::{Origin, Parsed, basic_string as quote, parse_config, toml_key as key_segment};
 use super::layer::ConfigLayer;
 use super::{Diagnostic, Severity};
 
@@ -89,28 +89,9 @@ fn toml_key(key: &str) -> Result<String, String> {
         if seg.is_empty() {
             return Err(format!("empty segment in key `{key}`"));
         }
-        let bare = seg
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-');
-        out.push(if bare { seg.to_owned() } else { quote(seg) });
+        out.push(key_segment(seg));
     }
     Ok(out.join("."))
-}
-
-/// A TOML basic string.
-fn quote(s: &str) -> String {
-    let mut out = String::with_capacity(s.len() + 2);
-    out.push('"');
-    for c in s.chars() {
-        match c {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            c if c.is_control() => out.push_str(&format!("\\u{:04X}", u32::from(c))),
-            c => out.push(c),
-        }
-    }
-    out.push('"');
-    out
 }
 
 #[cfg(test)]

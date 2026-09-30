@@ -125,12 +125,29 @@ pub fn prewarm() {
     }
 }
 
-/// Check that a code theme name or path can be used (always fine without
-/// the `highlight` feature, which ignores code themes).
+/// Check cheaply that a code theme name or path can be used: the name
+/// exists, or the file does (always fine without the `highlight` feature,
+/// which ignores code themes).
 pub fn check_code_theme(spec: &str) -> Result<(), String> {
     #[cfg(feature = "highlight")]
     {
         syntect::check_code_theme(spec).map_err(|e| e.to_string())
+    }
+    #[cfg(not(feature = "highlight"))]
+    {
+        let _ = spec;
+        Ok(())
+    }
+}
+
+/// Check that a code theme can be loaded, reading a `.tmTheme` file the way
+/// [`create`] will (for `--check-config`).
+pub fn validate_code_theme(spec: &str) -> Result<(), String> {
+    #[cfg(feature = "highlight")]
+    {
+        syntect::load_code_theme(spec)
+            .map(drop)
+            .map_err(|e| e.to_string())
     }
     #[cfg(not(feature = "highlight"))]
     {
@@ -204,10 +221,13 @@ mod tests {
             assert!(!list_languages().is_empty());
             assert!(check_code_theme("nord").is_ok());
             assert!(check_code_theme("nrod").is_err());
+            assert!(validate_code_theme("nord").is_ok());
+            assert!(validate_code_theme("nrod").is_err());
         } else {
             assert!(warning.is_none());
             assert!(list_languages().is_empty());
             assert!(check_code_theme("anything").is_ok());
+            assert!(validate_code_theme("anything").is_ok());
         }
         prewarm();
     }
