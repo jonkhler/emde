@@ -72,16 +72,19 @@ pub(super) fn check_colours(
         }
     }
     let known: [BTreeSet<String>; 2] = palettes.clone().map(|p| p.into_keys().collect());
-    for doc in theme_docs {
-        let items = check_tables(&Tables::of_theme(&doc.value), &known);
+    // Everything about one document is reported together, in line order.
+    let (user_loops, theme_loops) = palette_loops(&palettes, theme_docs, user_docs);
+    for (doc, loops) in theme_docs.iter().zip(theme_loops) {
+        let mut items = check_tables(&Tables::of_theme(&doc.value), &known);
+        items.extend(loops);
         doc.report(Severity::Warning, items, diags);
     }
-    for doc in user_docs {
+    for (doc, loops) in user_docs.iter().zip(user_loops) {
         let mut items = check_tables(&Tables::of_config(&doc.value), &known);
         items.extend(unreachable_entries(&doc.value.palette));
+        items.extend(loops);
         doc.report(Severity::Warning, items, diags);
     }
-    check_palette_loops(&palettes, theme_docs, user_docs, diags);
 }
 
 /// Palette entries that change no style: in styles, `surface` always means
@@ -215,18 +218,19 @@ fn unknown_colour(
     msg
 }
 
-/// Report palette entries that refer to each other in a loop, at the entry
-/// that starts it (in the highest layer that defines it).
-fn check_palette_loops(
+/// Problems to report, one list per document.
+type PerDocument<'a> = Vec<Vec<Deferred<'a>>>;
+
+/// Palette entries that refer to each other in a loop, each at the entry
+/// starting it, in the highest layer that defines it: one list of problems
+/// per user document, and one per theme document.
+fn palette_loops<'a>(
     palettes: &[BTreeMap<String, ColorSpec>; 2],
-    theme_docs: &[Parsed<ThemeFile>],
-    user_docs: &[Parsed<ConfigLayer>],
-    diags: &mut Vec<Diagnostic>,
-) {
-    // Each loop goes to the document defining its first entry, so that
-    // every document is read for line numbers once.
-    let mut user_items: Vec<Vec<Deferred<'_>>> = user_docs.iter().map(|_| Vec::new()).collect();
-    let mut theme_items: Vec<Vec<Deferred<'_>>> = theme_docs.iter().map(|_| Vec::new()).collect();
+    theme_docs: &'a [Parsed<ThemeFile>],
+    user_docs: &'a [Parsed<ConfigLayer>],
+) -> (PerDocument<'a>, PerDocument<'a>) {
+    let mut user_items: PerDocument<'a> = user_docs.iter().map(|_| Vec::new()).collect();
+    let mut theme_items: PerDocument<'a> = theme_docs.iter().map(|_| Vec::new()).collect();
     let mut seen = BTreeSet::new();
     for pal in palettes {
         for problem in resolve_palette(pal).1 {
@@ -257,12 +261,7 @@ fn check_palette_loops(
             }
         }
     }
-    for (doc, items) in user_docs.iter().zip(user_items) {
-        doc.report(Severity::Warning, items, diags);
-    }
-    for (doc, items) in theme_docs.iter().zip(theme_items) {
-        doc.report(Severity::Warning, items, diags);
-    }
+    (user_items, theme_items)
 }
 
 /// The path of the entry `key` in a document's palette, if it has one.
@@ -284,13 +283,15 @@ fn palette_path<'a>(prefix: Vec<&'static str>, key: &'a str) -> Vec<&'a str> {
     path
 }
 
-/// How far [`check_code_themes`] goes.
+/// How far the checks of code themes and languages go.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) enum CodeThemeCheck {
-    /// Names must exist and files must be there (cheap enough for every run;
-    /// the highlighter itself reports a file that does not load).
+pub(super) enum Checks {
+    /// Cheap enough for every run: code theme names must exist and files
+    /// must be there (the highlighter itself reports a file that does not
+    /// load).
     Quick,
-    /// `.tmTheme` files are loaded too (`--check-config`).
+    /// For `--check-config`: `.tmTheme` files are loaded, and
+    /// `[code.aliases]` targets are looked up in the syntax set.
     Thorough,
 }
 
@@ -298,12 +299,12 @@ pub(super) enum CodeThemeCheck {
 pub(super) fn check_code_themes(
     theme_docs: &[Parsed<ThemeFile>],
     user_docs: &[Parsed<ConfigLayer>],
-    how: CodeThemeCheck,
+    how: Checks,
     diags: &mut Vec<Diagnostic>,
 ) {
     let check = |spec: &str| match how {
-        CodeThemeCheck::Quick => crate::highlight::check_code_theme(spec),
-        CodeThemeCheck::Thorough => crate::highlight::validate_code_theme(spec),
+        Checks::Quick => crate::highlight::check_code_theme(spec),
+        Checks::Thorough => crate::highlight::validate_code_theme(spec),
     };
     for doc in user_docs {
         let code = doc.value.theme.code.as_deref();
@@ -327,5 +328,26 @@ pub(super) fn check_code_themes(
                 diags.push(doc.diagnostic(Severity::Warning, &["code"], text));
             }
         }
+    }
+}
+
+/// Check that `[code.aliases]` targets name languages (loads the syntax
+/// set, so only for [`Checks::Thorough`]).
+pub(super) fn check_aliases(user_docs: &[Parsed<ConfigLayer>], diags: &mut Vec<Diagnostic>) {
+    for doc in user_docs {
+        let items: Vec<Deferred<'_>> = doc
+            .value
+            .code
+            .aliases
+            .0
+            .iter()
+            .filter_map(|(from, to)| {
+                let message = crate::highlight::validate_language(to).err()?;
+                let path = vec!["code", "aliases", from.as_str()];
+                let message = move || format!("code.aliases.{from}: {message}");
+                Some((path, Box::new(message) as Box<dyn FnOnce() -> String>))
+            })
+            .collect();
+        doc.report(Severity::Warning, items, diags);
     }
 }

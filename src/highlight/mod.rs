@@ -156,6 +156,21 @@ pub fn validate_code_theme(spec: &str) -> Result<(), String> {
     }
 }
 
+/// Check that a fence token (a `[code.aliases]` target) names a language or
+/// plain text, for `--check-config`. This loads the syntax set, so it is not
+/// done on every run. Always fine without the `highlight` feature.
+pub fn validate_language(token: &str) -> Result<(), String> {
+    #[cfg(feature = "highlight")]
+    {
+        syntect::check_language(token)
+    }
+    #[cfg(not(feature = "highlight"))]
+    {
+        let _ = token;
+        Ok(())
+    }
+}
+
 /// `--list-languages`: `(language, fence tokens)` pairs, sorted by name.
 pub fn list_languages() -> Vec<(String, Vec<String>)> {
     #[cfg(feature = "highlight")]
@@ -223,11 +238,18 @@ mod tests {
             assert!(check_code_theme("nrod").is_err());
             assert!(validate_code_theme("nord").is_ok());
             assert!(validate_code_theme("nrod").is_err());
+            assert!(validate_language("python").is_ok());
+            assert!(validate_language("text").is_ok());
+            assert_eq!(
+                validate_language("pyhton"),
+                Err("unknown language `pyhton` (did you mean `python`?)".into())
+            );
         } else {
             assert!(warning.is_none());
             assert!(list_languages().is_empty());
             assert!(check_code_theme("anything").is_ok());
             assert!(validate_code_theme("anything").is_ok());
+            assert!(validate_language("anything").is_ok());
         }
         prewarm();
     }

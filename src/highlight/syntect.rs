@@ -256,6 +256,38 @@ fn syntax(lang: LangId) -> Option<&'static SyntaxReference> {
     syntaxes().syntaxes().get(usize::try_from(lang.0).ok()?)
 }
 
+/// Check that a fence token (a `[code.aliases]` target) selects a language,
+/// or plain text by name (`text`). Loads the syntax set.
+pub fn check_language(token: &str) -> Result<(), String> {
+    if alias::resolve(token, &[]) == PLAIN {
+        return Ok(());
+    }
+    if guarded(|| resolve_token(token, &[])).flatten().is_some() {
+        return Ok(());
+    }
+    let words: Vec<String> = guarded(|| {
+        syntaxes()
+            .syntaxes()
+            .iter()
+            .filter(|s| !s.hidden)
+            .flat_map(|s| {
+                s.file_extensions
+                    .iter()
+                    .cloned()
+                    .chain([s.name.to_lowercase()])
+            })
+            .chain(alias::BUILTIN.iter().map(|(from, _)| (*from).to_owned()))
+            .collect()
+    })
+    .unwrap_or_default();
+    let key = alias::normalize(token);
+    let hint = did_you_mean(&key, words.iter().map(String::as_str)).map_or_else(
+        || " (see `emde --list-languages`)".to_owned(),
+        |s| format!(" (did you mean `{s}`?)"),
+    );
+    Err(format!("unknown language `{token}`{hint}"))
+}
+
 /// Code that exercises the common contexts of most grammars (comments,
 /// strings, numbers, calls, blocks, markup), used to compile regexes early.
 const WARM_UP_SAMPLE: &str = "#!/bin/sh\n// line comment\n/* block */ # hash comment\n\

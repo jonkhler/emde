@@ -616,12 +616,16 @@ fn many_colour_problems_are_summarised() {
         .map(|d| d.message.as_str())
         .filter(|m| m.ends_with("not shown"))
         .collect();
-    // 30 unknown colours and 30 loops: the first 20 of each, then counts.
+    // 30 unknown colours and 30 loops: the first 20 by line, then a count.
     assert_eq!(
-        summaries, ["10 more warnings like these not shown"; 2],
+        summaries,
+        ["40 more warnings like these not shown"],
         "{d:#?}"
     );
-    assert_eq!(d.len(), 2 * (de::MAX_REPORTED + 1));
+    assert_eq!(d.len(), de::MAX_REPORTED + 1);
+    let locations: Vec<&str> = d.iter().map(|d| d.location.as_str()).collect();
+    assert!(locations[0].ends_with("config.toml:2"), "{locations:?}");
+    assert!(locations[1].ends_with("config.toml:4"), "{locations:?}");
 }
 
 #[test]
@@ -863,6 +867,27 @@ fn check_reports() {
     let report = check(&setup.opts());
     assert_eq!(report.exit_code(), 1, "warnings fail the check too");
     assert!(report.to_string().ends_with(": 0 errors, 1 warning"));
+}
+
+#[cfg(feature = "highlight")]
+#[test]
+fn check_looks_up_alias_targets() {
+    let setup = Setup::new("check-alias");
+    setup.write(
+        "config.toml",
+        "[code.aliases]\nsage = \"pyhton\"\nnu = \"bash\"\nnotes = \"text\"\n",
+    );
+    // Showing a document does not load the syntax set for this ...
+    no_diagnostics(&setup.load(&[]));
+    // ... --check-config does.
+    let report = check(&setup.opts());
+    let dir = setup.dir.path().display().to_string();
+    let text = report.to_string().replace(&dir, "~");
+    assert_eq!(
+        text,
+        "warning: ~/.config/emde/config.toml:2: code.aliases.sage: unknown language `pyhton` \
+         (did you mean `python`?)\n~/.config/emde/config.toml: 0 errors, 1 warning"
+    );
 }
 
 #[cfg(feature = "tmtheme")]
