@@ -1,0 +1,56 @@
+---
+source: crates/emde-math/tests/corpus.rs
+expression: "render_all(formulas, & MathOptions :: default(), WIDTH)"
+---
+── \hat{x} \hat{a}
+inline  x̂â
+▸ │x̂â│
+
+── \bar{x} \bar{a}
+inline  x̄ā
+▸ │x̄ā│
+
+── \vec{v}
+inline  v⃗
+▸ │v⃗│
+
+── \dot{x} \ddot{x}
+inline  ẋẍ
+▸ │ẋẍ│
+
+── \tilde{n} \check{c} \breve{u}
+inline  ñčŭ
+▸ │ñčŭ│
+
+── \acute{e} \grave{a} \mathring{A}
+inline  éàÅ
+▸ │éàÅ│
+
+── \overline{AB}
+inline  A̅B̅
+  │▁▁│
+▸ │AB│
+
+── \underline{x}
+inline  x̲
+▸ │x̲│
+
+── \widehat{xy} \widetilde{abc}
+inline  x̂ŷãb̃c̃
+▸ │x̂ŷãb̃c̃│
+
+── \overrightarrow{AB}
+inline  A⃗B⃗
+  │─→│
+▸ │AB│
+
+── \hat{\mathbf{n}}
+inline  n̂
+▸ │n̂│
+
+── \overline{\frac{a}{b}}
+inline  a̅/̅b̅
+  │▁│
+  │a│
+▸ │─│
+  │b│

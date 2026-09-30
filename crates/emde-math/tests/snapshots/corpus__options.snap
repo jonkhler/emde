@@ -1,0 +1,104 @@
+---
+source: crates/emde-math/tests/corpus.rs
+expression: "out.join(\"\\n\")"
+---
+@ unicode italic
+── h(x) = x^q + \frac{1}{2}
+inline  ℎ(𝑥) = 𝑥^𝑞 + ½
+  │        𝑞   1│
+▸ │ℎ(𝑥) = 𝑥  + ─│
+  │            2│
+
+── \mathbf{F} = m\mathbf{a}
+inline  F = 𝑚a
+▸ │F = 𝑚a│
+
+── \sum_{i=1}^n x_i
+inline  ∑ᵢ₌₁ⁿ 𝑥ᵢ
+  │ 𝑛    │
+▸ │ ∑  𝑥ᵢ│
+  │𝑖=1   │
+
+@ plain letters
+── h(x) = x^q + \frac{1}{2}
+inline  h(x) = x^q + ½
+  │        q   1│
+▸ │h(x) = x  + ─│
+  │            2│
+
+── \mathbf{F} = m\mathbf{a}
+inline  F = ma
+▸ │F = ma│
+
+── \sum_{i=1}^n x_i
+inline  ∑ᵢ₌₁ⁿ xᵢ
+  │ n    │
+▸ │ ∑  xᵢ│
+  │i=1   │
+
+@ full scripts
+── h(x) = x^q + \frac{1}{2}
+inline  h(x) = x𐞥 + ½
+  │            1│
+▸ │h(x) = x𐞥 + ─│
+  │            2│
+
+── \mathbf{F} = m\mathbf{a}
+inline  F = ma
+▸ │F = ma│
+
+── \sum_{i=1}^n x_i
+inline  ∑ᵢ₌₁ⁿ xᵢ
+  │ n    │
+▸ │ ∑  xᵢ│
+  │i=1   │
+
+@ slash fractions
+── h(x) = x^q + \frac{1}{2}
+inline  h(x) = x^q + 1/2
+  │        q   1│
+▸ │h(x) = x  + ─│
+  │            2│
+
+── \mathbf{F} = m\mathbf{a}
+inline  F = ma
+▸ │F = ma│
+
+── \sum_{i=1}^n x_i
+inline  ∑ᵢ₌₁ⁿ xᵢ
+  │ n    │
+▸ │ ∑  xᵢ│
+  │i=1   │
+
+@ unicode bold
+── h(x) = x^q + \frac{1}{2}
+inline  h(x) = x^q + ½
+  │        q   1│
+▸ │h(x) = x  + ─│
+  │            2│
+
+── \mathbf{F} = m\mathbf{a}
+inline  𝐅 = m𝐚
+▸ │𝐅 = m𝐚│
+
+── \sum_{i=1}^n x_i
+inline  ∑ᵢ₌₁ⁿ xᵢ
+  │ n    │
+▸ │ ∑  xᵢ│
+  │i=1   │
+
+@ ambiguous wide
+── h(x) = x^q + \frac{1}{2}
+inline  h(x) = x^q + ½
+lines
+  │h(x) = x^q + ½│
+
+── \mathbf{F} = m\mathbf{a}
+inline  F = ma
+lines
+  │F = ma│
+
+── \sum_{i=1}^n x_i
+inline  ∑ᵢ₌₁ⁿ xᵢ
+lines
+  │∑ᵢ₌₁ⁿ xᵢ│

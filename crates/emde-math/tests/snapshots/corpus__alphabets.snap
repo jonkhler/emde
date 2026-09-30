@@ -1,0 +1,51 @@
+---
+source: crates/emde-math/tests/corpus.rs
+expression: "render_all(formulas, & MathOptions :: default(), WIDTH)"
+---
+── \mathbb{R}
+inline  ℝ
+▸ │ℝ│
+
+── \mathbb{N} \subset \mathbb{Z} \subset \mathbb{Q} \subset \mathbb{R} \subset \mathbb{C}
+inline  ℕ ⊂ ℤ ⊂ ℚ ⊂ ℝ ⊂ ℂ
+▸ │ℕ ⊂ ℤ ⊂ ℚ ⊂ ℝ ⊂ ℂ│
+
+── \mathcal{L}(\theta)
+inline  ℒ(θ)
+▸ │ℒ(θ)│
+
+── \mathcal{O}(n \log n)
+inline  𝒪(n log n)
+▸ │𝒪(n log n)│
+
+── \mathscr{H}
+inline  ℋ
+▸ │ℋ│
+
+── \mathfrak{g}
+inline  𝔤
+▸ │𝔤│
+
+── \mathbf{x} \cdot \mathbf{y}
+inline  x ⋅ y
+▸ │x ⋅ y│
+
+── \boldsymbol{\alpha}
+inline  α
+▸ │α│
+
+── \mathrm{d}x
+inline  dx
+▸ │dx│
+
+── \text{if } x > 0
+inline  if x > 0
+▸ │if x > 0│
+
+── \mathbb{1}
+inline  𝟙
+▸ │𝟙│
+
+── \mathit{AB}
+inline  AB
+▸ │AB│

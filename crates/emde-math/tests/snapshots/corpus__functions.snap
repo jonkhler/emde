@@ -1,0 +1,49 @@
+---
+source: crates/emde-math/tests/corpus.rs
+expression: "render_all(formulas, & MathOptions :: default(), WIDTH)"
+---
+── \sin x
+inline  sin x
+▸ │sin x│
+
+── \sin^2 x + \cos^2 x = 1
+inline  sin² x + cos² x = 1
+▸ │sin² x + cos² x = 1│
+
+── \log_2 n
+inline  log₂ n
+▸ │log₂ n│
+
+── \ln(1+x)
+inline  ln(1 + x)
+▸ │ln(1 + x)│
+
+── \exp(x) = e^x
+inline  exp(x) = eˣ
+▸ │exp(x) = eˣ│
+
+── \det(A) \ne 0
+inline  det(A) ≠ 0
+▸ │det(A) ≠ 0│
+
+── \gcd(a, b)
+inline  gcd(a, b)
+▸ │gcd(a, b)│
+
+── \operatorname{sgn}(x)
+inline  sgn(x)
+▸ │sgn(x)│
+
+── \tan\theta = \frac{\sin\theta}{\cos\theta}
+inline  tan θ = (sin θ)/(cos θ)
+  │        sin θ│
+▸ │tan θ = ─────│
+  │        cos θ│
+
+── a \bmod b
+inline  a mod b
+▸ │a mod b│
+
+── a \equiv b \pmod{n}
+inline  a ≡ b (mod n)
+▸ │a ≡ b (mod n)│

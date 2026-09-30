@@ -1,0 +1,43 @@
+---
+source: crates/emde-math/tests/corpus.rs
+expression: "render_all(formulas, & MathOptions :: default(), WIDTH)"
+---
+── a\,b
+inline  a b
+▸ │a b│
+
+── a\:b
+inline  a b
+▸ │a b│
+
+── a\;b
+inline  a b
+▸ │a b│
+
+── a~b
+inline  a b
+▸ │a b│
+
+── a\ b
+inline  a b
+▸ │a b│
+
+── a\quad b
+inline  a  b
+▸ │a  b│
+
+── a\qquad b
+inline  a    b
+▸ │a    b│
+
+── a\!b
+inline  ab
+▸ │ab│
+
+── f(x)\,dx
+inline  f(x) dx
+▸ │f(x) dx│
+
+── a\hspace{1em}b
+inline  a  b
+▸ │a  b│

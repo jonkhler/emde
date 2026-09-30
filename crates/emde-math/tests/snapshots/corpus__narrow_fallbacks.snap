@@ -1,0 +1,72 @@
+---
+source: crates/emde-math/tests/corpus.rs
+expression: "out.join(\"\\n\")"
+---
+@ width 13
+── a + b = c + d = e + f
+inline  a + b = c + d = e + f
+▸ │a + b = c + d│
+  │      = e + f│
+
+@ width 12
+── a + b = c + d = e + f
+inline  a + b = c + d = e + f
+▸ │a + b    │
+  │  = c + d│
+  │  = e + f│
+
+@ width 12
+── x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}
+inline  x = (−b±√(b²−4ac))/2a
+▸ │x           │
+  │            │
+  │      ▁▁▁▁▁▁│
+  │  −b±√b²−4ac│
+  │= ──────────│
+  │      2a    │
+
+@ width 16
+── \sum_{i=1}^{n} i^2 = \frac{n(n+1)(2n+1)}{6}
+inline  ∑ᵢ₌₁ⁿ i² = n(n+1)(2n+1)/6
+  │ n              │
+▸ │ ∑  i²          │
+  │i=1             │
+  │                │
+  │    n(n+1)(2n+1)│
+  │  = ────────────│
+  │         6      │
+
+@ width 20
+── f(x) = a_0 + a_1 x + a_2 x^2 + a_3 x^3 + a_4 x^4
+inline  f(x) = a₀ + a₁x + a₂x² + a₃x³ + a₄x⁴
+lines
+  │f(x) = a₀ + a₁x +│
+  │a₂x² + a₃x³ + a₄x⁴│
+
+@ width 6
+── \frac{aaaa+bbbb}{c} + d
+inline  (aaaa+bbbb)/c + d
+lines
+  │(aaaa+bbbb)/c +│
+  │d│
+
+@ width 9
+── E = mc^2 \tag{1}
+inline  E = mc²  (1)
+▸ │ E = mc² │
+  │      (1)│
+
+@ width 12
+── \begin{aligned} f(x) &= a+b+c+d \\ &= e+f+g+h \end{aligned}
+inline  f(x) = a + b + c + d = e + f + g + h
+lines
+  │f(x) = a +│
+  │b + c + d│
+  │= e + f +│
+  │g + h│
+
+@ width 3
+── aaaa+\char"A0
+inline  aaaa +  
+lines
+  │aaaa +│

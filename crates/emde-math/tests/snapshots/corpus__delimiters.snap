@@ -1,0 +1,72 @@
+---
+source: crates/emde-math/tests/corpus.rs
+expression: "render_all(formulas, & MathOptions :: default(), WIDTH)"
+---
+── \left( \frac{a}{b} \right)
+inline  (a/b)
+  │⎛a⎞│
+▸ │⎜─⎟│
+  │⎝b⎠│
+
+── \left[ x \right]
+inline  [x]
+▸ │[x]│
+
+── \left\{ \frac{1}{2} \right\}
+inline  {½}
+  │⎧1⎫│
+▸ │⎨─⎬│
+  │⎩2⎭│
+
+── \left| x \right|
+inline  |x|
+▸ │|x|│
+
+── \left\| v \right\|
+inline  ‖v‖
+▸ │‖v‖│
+
+── \left\lfloor x \right\rfloor
+inline  ⌊x⌋
+▸ │⌊x⌋│
+
+── \left\lceil \frac{n}{2} \right\rceil
+inline  ⌈n/2⌉
+  │⎡n⎤│
+▸ │⎢─⎥│
+  │⎢2⎥│
+
+── \left\langle \frac{a}{b} \right\rangle
+inline  ⟨a/b⟩
+  │╱a╲│
+▸ │⟨─⟩│
+  │╲b╱│
+
+── \left. \frac{df}{dx} \right|_{x=0}
+inline  df/dx|ₓ₌₀
+  │df│   │
+▸ │──│   │
+  │dx│ₓ₌₀│
+
+── \Big( \frac{a}{b} \Big)
+inline  (a/b)
+  │⎛a⎞│
+▸ │⎜─⎟│
+  │⎝b⎠│
+
+── \bigl[ x \bigr]
+inline  [x]
+▸ │[x]│
+
+── |x|
+inline  |x|
+▸ │|x|│
+
+── \{x \mid x > 0\}
+inline  {x ∣ x > 0}
+▸ │{x ∣ x > 0}│
+
+── \left( \begin{matrix} a \\ b \end{matrix} \right)
+inline  (a; b)
+▸ │⎛a⎞│
+  │⎝b⎠│

@@ -1,0 +1,111 @@
+---
+source: crates/emde-math/tests/corpus.rs
+expression: "render_all(formulas, & MathOptions :: default(), WIDTH)"
+---
+── x^2 + y^2 = z^2
+inline  x² + y² = z²
+▸ │x² + y² = z²│
+
+── x_i^2
+inline  xᵢ²
+▸ │xᵢ²│
+
+── x^{2n}
+inline  x²ⁿ
+▸ │x²ⁿ│
+
+── A^{-1} A = I
+inline  A⁻¹A = I
+▸ │A⁻¹A = I│
+
+── A^T = A^\dagger
+inline  Aᵀ = A†
+▸ │Aᵀ = A†│
+
+── e^{i\pi} + 1 = 0
+inline  e^(iπ) + 1 = 0
+  │ iπ        │
+▸ │e   + 1 = 0│
+
+── e^{-x^2}
+inline  e^(−x²)
+  │ −x²│
+▸ │e   │
+
+── 2^{2^n}
+inline  2^(2ⁿ)
+  │ 2ⁿ│
+▸ │2  │
+
+── x_{i,j}
+inline  x_(i,j)
+▸ │x   │
+  │ i,j│
+
+── a_{n+1} = a_n + a_{n-1}
+inline  aₙ₊₁ = aₙ + aₙ₋₁
+▸ │aₙ₊₁ = aₙ + aₙ₋₁│
+
+── f'(x) + f''(x)
+inline  f′(x) + f′′(x)
+▸ │f′(x) + f′′(x)│
+
+── f^{(n)}(x)
+inline  f⁽ⁿ⁾(x)
+▸ │f⁽ⁿ⁾(x)│
+
+── 90^\circ
+inline  90°
+▸ │90°│
+
+── \mathbb{R}^{n \times n}
+inline  ℝ^(n×n)
+  │ n×n│
+▸ │ℝ   │
+
+── T_{\mu\nu} = g_{\mu\nu}
+inline  T_(μν) = g_(μν)
+▸ │T   = g  │
+  │ μν    μν│
+
+── \Gamma^\lambda_{\mu\nu}
+inline  Γ_(μν)^λ
+  │ λ │
+▸ │Γ  │
+  │ μν│
+
+── x_N + y_{\max}
+inline  x_N + yₘₐₓ
+▸ │x  + yₘₐₓ│
+  │ N       │
+
+── x^{1/2}
+inline  x^(1/2)
+  │ 1/2│
+▸ │x   │
+
+── \nabla_\theta J(\theta)
+inline  ∇_(θ)J(θ)
+▸ │∇ J(θ)│
+  │ θ    │
+
+── x_\alpha y_\beta
+inline  x_(α)yᵦ
+▸ │x yᵦ│
+  │ α  │
+
+── x_N^2
+inline  x_(N)²
+▸ │x²│
+  │ N│
+
+── \frac{a}{b}^2
+inline  (a/b)²
+  │a²│
+▸ │─ │
+  │b │
+
+── \sqrt{x}^2
+inline  (√x)²
+  │ ▁²│
+▸ │√x │

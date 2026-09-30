@@ -1,0 +1,48 @@
+---
+source: crates/emde-math/tests/corpus.rs
+expression: "render_all(formulas, & MathOptions :: default(), WIDTH)"
+---
+── \overbrace{a+b+c}^{n}
+inline  a + b + c⏞ⁿ
+  │    n    │
+  │╭───┴───╮│
+▸ │a + b + c│
+
+── \underbrace{1+\cdots+1}_{n\text{ times}}
+inline  1 + ⋯ + 1⏟_(n times)
+▸ │1 + ⋯ + 1│
+  │╰───┬───╯│
+  │ n times │
+
+── \overset{\text{def}}{=}
+inline  ≝
+▸ │≝│
+
+── \stackrel{?}{=}
+inline  ≟
+▸ │≟│
+
+── \overset{\triangle}{=}
+inline  ≜
+▸ │≜│
+
+── \underset{x}{\arg\min}
+inline  arg minₓ
+▸ │arg min│
+  │   x   │
+
+── \xrightarrow{f}
+inline  →ᶠ
+  │ f │
+▸ │──→│
+
+── \xleftarrow[g]{f}
+inline  ←_(g)ᶠ
+  │ f │
+▸ │←──│
+  │ g │
+
+── \overset{a}{b}
+inline  bᵃ
+  │a│
+▸ │b│

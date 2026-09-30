@@ -1,0 +1,55 @@
+---
+source: crates/emde-math/tests/corpus.rs
+expression: "render_all(formulas, & MathOptions :: default(), WIDTH)"
+---
+── \not\in
+inline  ∉
+▸ │∉│
+
+── a \not= b
+inline  a ≠ b
+▸ │a ≠ b│
+
+── a \neq b
+inline  a ≠ b
+▸ │a ≠ b│
+
+── a \not< b
+inline  a ≮ b
+▸ │a ≮ b│
+
+── A \not\subset B
+inline  A ⊄ B
+▸ │A ⊄ B│
+
+── a \not\equiv b
+inline  a ≢ b
+▸ │a ≢ b│
+
+── a \not\preceq b
+inline  a ⪯̸ b
+▸ │a ⪯̸ b│
+
+── x \notin A
+inline  x ∉ A
+▸ │x ∉ A│
+
+── a \le b \ge c
+inline  a ≤ b ≥ c
+▸ │a ≤ b ≥ c│
+
+── a \approx b \sim c \simeq d \cong e \equiv f
+inline  a ≈ b ∼ c ≃ d ≅ e ≡ f
+▸ │a ≈ b ∼ c ≃ d ≅ e ≡ f│
+
+── A \subseteq B
+inline  A ⊆ B
+▸ │A ⊆ B│
+
+── p \implies q \iff r
+inline  p ⟹ q ⟺ r
+▸ │p ⟹ q ⟺ r│
+
+── \forall x \exists y
+inline  ∀x∃y
+▸ │∀x∃y│
