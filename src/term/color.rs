@@ -48,8 +48,11 @@ pub enum ColorChoice {
 
 /// Reason topics (the same names `term::caps` and `--doctor` use).
 pub mod topic {
+    /// The colour depth.
     pub const COLOR: &str = "color";
+    /// OSC 8 hyperlinks.
     pub const HYPERLINKS: &str = "hyperlinks";
+    /// Styled underlines.
     pub const UNDERLINE: &str = "underline";
 }
 

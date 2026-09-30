@@ -77,19 +77,27 @@ pub struct Cli {
 /// `--align`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
 pub enum AlignArg {
+    /// Centred when the terminal is wider than the text column.
     Center,
+    /// At the left margin.
     Left,
 }
 
 /// `--color`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
 pub enum ColorArg {
+    /// Detect from the terminal and the environment.
     Auto,
+    /// Colour even when not writing to a terminal.
     Always,
+    /// No escape sequences at all.
     Never,
+    /// 24-bit colour.
     Truecolor,
+    /// The xterm 256-colour palette.
     #[value(name = "256")]
     Ansi256,
+    /// The 16 ANSI colours.
     #[value(name = "16")]
     Ansi16,
 }
@@ -97,32 +105,43 @@ pub enum ColorArg {
 /// `auto | always | never`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
 pub enum WhenArg {
+    /// Decide from the terminal.
     Auto,
+    /// Always.
     Always,
+    /// Never.
     Never,
 }
 
 /// `--math`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
 pub enum MathArg {
+    /// One line of Unicode.
     Unicode,
+    /// Plain ASCII.
     Ascii,
+    /// The TeX source.
     Raw,
 }
 
 /// `--math-display`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
 pub enum MathDisplayArg {
+    /// Stacked fractions, limits and tall delimiters.
     #[value(name = "2d")]
     TwoD,
+    /// One wrapped line.
     Linear,
+    /// The TeX source.
     Raw,
 }
 
 /// `--dump`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
 pub enum DumpArg {
+    /// The parsed document model.
     Ir,
+    /// The laid-out lines.
     Lines,
 }
 

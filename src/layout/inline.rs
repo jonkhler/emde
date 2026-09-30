@@ -463,11 +463,8 @@ impl<'a> Builder<'a> {
                     if cols <= CODE_ATOM_COLS {
                         out.atom(start..end);
                     }
-                    if pill && start > 0 {
-                        // UAX #14 allows a break between a space and a
-                        // no-break space; keep it explicit.
-                        out.breaks.push(start);
-                    }
+                    // UAX #14 allows a break between a space and the pill's
+                    // no-break space, and none after `(`: no extra break.
                 }
                 RunKind::Math => {
                     out.map(range.start..range.end, false);

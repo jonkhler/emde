@@ -21,7 +21,7 @@ use crate::layout::{Fill, Layout};
 use crate::style::{Attrs, Color, Rgb, Style, Underline};
 use crate::term::ColorDepth;
 
-use super::emit::{SegStyle, segments};
+use super::emit::{Piece, SegStyle, segments};
 use super::sgr::Palette;
 
 fn color_name(c: Color) -> String {
@@ -107,7 +107,10 @@ pub fn debug_text(layout: &Layout, depth: ColorDepth, styled_underline: bool) ->
                 }
             }
         };
-        let mut piece = |text: &str, style: SegStyle, link: Option<LinkId>| {
+        let mut piece = |p: Piece<'_>| {
+            let Piece {
+                text, style, link, ..
+            } = p;
             let s = match style {
                 SegStyle::Id(id) => styles.get(usize::from(id.0)).copied().unwrap_or_default(),
                 SegStyle::Style(s) => palette.style(&s),
@@ -124,7 +127,12 @@ pub fn debug_text(layout: &Layout, depth: ColorDepth, styled_underline: bool) ->
         if gradient {
             // Spans with their own styles; the gradient replaces backgrounds.
             for span in layout.line_spans(i) {
-                piece(layout.span_text(span), SegStyle::Id(span.style), span.link);
+                piece(Piece {
+                    text: layout.span_text(span),
+                    style: SegStyle::Id(span.style),
+                    link: span.link,
+                    off: Some(span.off),
+                });
             }
         } else {
             segments(layout, i, &mut piece);

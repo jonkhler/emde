@@ -629,3 +629,17 @@ fn raw_html_is_shown_dim() {
     let html = l.styles.get(l.line_spans(0)[0].style);
     assert_eq!(html.fg, Theme::test().style(crate::theme::Element::Html).fg);
 }
+
+#[test]
+fn pills_stay_with_opening_punctuation() {
+    // Width 10: "see (" fits, but "(" must not end a line before the pill.
+    let (_, l) = lay_with("see (`code`)", 10, &Caps::full(), &RenderOptions::default());
+    let text = lines(&l);
+    assert!(
+        text.iter().all(|t| !t.trim_end().ends_with('(')),
+        "{text:?}"
+    );
+    // After a space the pill may start a line.
+    let (_, l) = lay_with("see a `code`", 8, &Caps::full(), &RenderOptions::default());
+    assert_eq!(lines(&l), ["see a", " code "]);
+}

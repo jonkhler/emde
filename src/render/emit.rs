@@ -1,19 +1,23 @@
 //! Lines to bytes.
 //!
-//! [`segments`] walks one layout line as a sequence of `(text, style,
-//! link)` pieces, applying what layout left for output time: the highlight
+//! [`segments`] walks one layout line as a sequence of [`Piece`]s (text,
+//! style, link), applying what layout left for output time: the highlight
 //! overlay of code lines (by byte offset into the tab-expanded line), the
-//! per-column background of gradient bars, and panel padding. The
-//! [`Emitter`] turns the pieces into bytes: the indent, SGR transitions
-//! between downsampled styles, OSC 8 around each link fragment, and a reset
-//! at the end of every styled line so styles never bleed into the next line
-//! (or into `less -R`). [`super::debug`] renders the same pieces as tags.
+//! per-column background of gradient bars, panel padding, and [`Mark`]s —
+//! styles laid over byte ranges of the layout's text, such as search
+//! matches. The [`Emitter`] turns the pieces into bytes: the indent, SGR
+//! transitions between downsampled styles, OSC 8 around each link fragment,
+//! and a reset at the end of every styled line so styles never bleed into
+//! the next line (or into `less -R`). [`super::debug`] renders the same
+//! pieces as tags.
+
+use std::ops::Range;
 
 use crate::color::mix_oklab;
 use crate::highlight::HlSpan;
 use crate::ir::{Document, LinkId};
 use crate::layout::{Fill, Layout, LineKind, Span, SpanFlags};
-use crate::style::{Color, Rgb, Style, StyleId, Underline};
+use crate::style::{Color, Rgb, Style, StyleId, StylePatch, Underline};
 use crate::term::{Caps, ColorDepth};
 use crate::text::grapheme_width;
 use crate::text::width::next_grapheme_end;
@@ -25,13 +29,40 @@ use super::sgr::{self, Palette};
 /// time (overlays, gradients).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SegStyle {
+    /// A style of [`Layout::styles`].
     Id(StyleId),
+    /// A style made for this piece (not yet downsampled).
     Style(Style),
+}
+
+/// One piece of a line, as [`segments`] hands it out.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Piece<'a> {
+    /// The text (never contains control characters).
+    pub text: &'a str,
+    /// Its style.
+    pub style: SegStyle,
+    /// The link it belongs to.
+    pub link: Option<LinkId>,
+    /// Where the text is in [`Layout::text`]; `None` for padding.
+    pub off: Option<u32>,
+}
+
+/// A style laid over a byte range of [`Layout::text`] at output time
+/// (search matches, a focused link). Marks passed together must be sorted
+/// by start and must not overlap.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Mark {
+    /// Byte range in [`Layout::text`].
+    pub range: Range<u32>,
+    /// What the mark changes about the style underneath.
+    pub patch: StylePatch,
 }
 
 /// How output is encoded.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RenderConfig {
+    /// Colours the terminal shows (`None`: no escape sequences at all).
     pub depth: ColorDepth,
     /// Styled underlines (`4:3`) and underline colours (`58`).
     pub styled_underline: bool,
@@ -102,8 +133,8 @@ fn floor_boundary(s: &str, i: usize) -> usize {
     i
 }
 
-/// Call `f` for each piece of line `index`: its text, style and link.
-pub fn segments(layout: &Layout, index: usize, f: &mut dyn FnMut(&str, SegStyle, Option<LinkId>)) {
+/// Call `f` for each piece of line `index`.
+pub fn segments(layout: &Layout, index: usize, f: &mut dyn FnMut(Piece<'_>)) {
     let Some(line) = layout.lines.get(index) else {
         return;
     };
@@ -131,17 +162,91 @@ pub fn segments(layout: &Layout, index: usize, f: &mut dyn FnMut(&str, SegStyle,
         match hl {
             Some((hl_spans, _)) if span.flags.contains(SpanFlags::CODE) => {
                 let base = *layout.styles.get(span.style);
-                overlay_segments(text, &base, hl_spans, cursor, span.link, f);
+                overlay_segments(text, span.off, &base, hl_spans, cursor, span.link, f);
                 cursor = cursor.saturating_add(span.len);
             }
-            _ => f(text, SegStyle::Id(span.style), span.link),
+            _ => f(Piece {
+                text,
+                style: SegStyle::Id(span.style),
+                link: span.link,
+                off: Some(span.off),
+            }),
         }
     }
     if let Fill::Panel { style, to_col } = line.fill
         && to_col > line.cols
     {
         spaces(to_col - line.cols, &mut |pad| {
-            f(pad, SegStyle::Id(style), None)
+            f(Piece {
+                text: pad,
+                style: SegStyle::Id(style),
+                link: None,
+                off: None,
+            })
+        });
+    }
+}
+
+/// [`segments`] with `marks` laid over the text they cover.
+pub fn marked_segments(
+    layout: &Layout,
+    index: usize,
+    marks: &[Mark],
+    f: &mut dyn FnMut(Piece<'_>),
+) {
+    if marks.is_empty() {
+        segments(layout, index, f);
+        return;
+    }
+    segments(layout, index, &mut |piece| {
+        split_marks(layout, piece, marks, f)
+    });
+}
+
+/// Hand out `piece`, split where marks start and end.
+fn split_marks(layout: &Layout, piece: Piece<'_>, marks: &[Mark], f: &mut dyn FnMut(Piece<'_>)) {
+    let Some(off) = piece.off else {
+        f(piece);
+        return;
+    };
+    let len = u32::try_from(piece.text.len()).unwrap_or(u32::MAX);
+    let end = off.saturating_add(len);
+    let first = marks.partition_point(|m| m.range.end <= off);
+    let at = |pos: usize| Some(off.saturating_add(u32::try_from(pos).unwrap_or(u32::MAX)));
+    let mut pos = 0usize; // in `piece.text`
+    for mark in marks.get(first..).unwrap_or(&[]) {
+        if mark.range.start >= end {
+            break;
+        }
+        let start = floor_boundary(piece.text, mark.range.start.saturating_sub(off) as usize);
+        let stop = floor_boundary(piece.text, (mark.range.end.min(end) - off) as usize);
+        if start > pos {
+            f(Piece {
+                text: piece.text.get(pos..start).unwrap_or(""),
+                off: at(pos),
+                ..piece
+            });
+        }
+        let from = start.max(pos);
+        if stop > from {
+            let base = match piece.style {
+                SegStyle::Id(id) => *layout.styles.get(id),
+                SegStyle::Style(s) => s,
+            };
+            f(Piece {
+                text: piece.text.get(from..stop).unwrap_or(""),
+                style: SegStyle::Style(base.patch(&mark.patch)),
+                off: at(from),
+                ..piece
+            });
+            pos = stop;
+        }
+    }
+    if pos < piece.text.len() {
+        f(Piece {
+            text: piece.text.get(pos..).unwrap_or(""),
+            off: at(pos),
+            ..piece
         });
     }
 }
@@ -158,18 +263,25 @@ fn spaces(n: u16, f: &mut dyn FnMut(&str)) {
 }
 
 /// Pieces of one code span under its highlight runs; `start` is the span's
-/// offset in the expanded code line.
+/// offset in the expanded code line, `arena` its offset in the layout text.
 fn overlay_segments(
     text: &str,
+    arena: u32,
     base: &Style,
     hl: &[HlSpan],
     start: u32,
     link: Option<LinkId>,
-    f: &mut dyn FnMut(&str, SegStyle, Option<LinkId>),
+    f: &mut dyn FnMut(Piece<'_>),
 ) {
     let end = start.saturating_add(u32::try_from(text.len()).unwrap_or(u32::MAX));
     let mut pos = 0usize; // in `text`
     let mut run_start = 0u32; // in the line
+    let piece = |from: usize, to: usize, style: Style| Piece {
+        text: text.get(from..to).unwrap_or(""),
+        style: SegStyle::Style(style),
+        link,
+        off: Some(arena.saturating_add(u32::try_from(from).unwrap_or(u32::MAX))),
+    };
     for h in hl {
         let run = run_start..h.end;
         run_start = h.end;
@@ -180,12 +292,11 @@ fn overlay_segments(
         if piece_end <= pos {
             continue;
         }
-        let piece = text.get(pos..piece_end).unwrap_or("");
-        f(piece, SegStyle::Style(overlay(base, &h.style)), link);
+        f(piece(pos, piece_end, overlay(base, &h.style)));
         pos = piece_end;
     }
     if pos < text.len() {
-        f(text.get(pos..).unwrap_or(""), SegStyle::Style(*base), link);
+        f(piece(pos, text.len(), *base));
     }
 }
 
@@ -196,7 +307,7 @@ fn gradient_segments(
     spans: &[Span],
     cols: u16,
     (from, to, x0, x1): (Rgb, Rgb, u16, u16),
-    f: &mut dyn FnMut(&str, SegStyle, Option<LinkId>),
+    f: &mut dyn FnMut(Piece<'_>),
 ) {
     let mut col = 0u16;
     for span in spans {
@@ -204,10 +315,21 @@ fn gradient_segments(
         let base = *layout.styles.get(span.style);
         let span_end = col.saturating_add(span.cols);
         if span_end <= x0 || col >= x1 {
-            f(text, SegStyle::Id(span.style), span.link);
+            f(Piece {
+                text,
+                style: SegStyle::Id(span.style),
+                link: span.link,
+                off: Some(span.off),
+            });
             col = span_end;
             continue;
         }
+        let at = |pos: usize| {
+            Some(
+                span.off
+                    .saturating_add(u32::try_from(pos).unwrap_or(u32::MAX)),
+            )
+        };
         let mut pos = 0;
         let mut piece_start = 0;
         let mut piece_bg: Option<Rgb> = None;
@@ -216,13 +338,8 @@ fn gradient_segments(
             let w = grapheme_width(text.get(pos..end).unwrap_or(""), false);
             let bg = (col >= x0 && col < x1).then(|| gradient_color(from, to, x0, x1, col));
             if bg != piece_bg && pos > piece_start {
-                emit_bg(
-                    text.get(piece_start..pos).unwrap_or(""),
-                    &base,
-                    piece_bg,
-                    span.link,
-                    f,
-                );
+                let piece = text.get(piece_start..pos).unwrap_or("");
+                emit_bg(piece, at(piece_start), &base, piece_bg, span.link, f);
                 piece_start = pos;
             }
             piece_bg = bg;
@@ -230,13 +347,8 @@ fn gradient_segments(
             pos = end;
         }
         if pos > piece_start {
-            emit_bg(
-                text.get(piece_start..pos).unwrap_or(""),
-                &base,
-                piece_bg,
-                span.link,
-                f,
-            );
+            let piece = text.get(piece_start..pos).unwrap_or("");
+            emit_bg(piece, at(piece_start), &base, piece_bg, span.link, f);
         }
         col = span_end.max(col);
     }
@@ -251,23 +363,29 @@ fn gradient_segments(
         };
         let bg = (c >= x0).then(|| gradient_color(from, to, x0, x1, c));
         let n = step_end.saturating_sub(c).max(1);
-        spaces(n, &mut |pad| emit_bg(pad, &Style::PLAIN, bg, None, f));
+        spaces(n, &mut |pad| emit_bg(pad, None, &Style::PLAIN, bg, None, f));
         c = c.saturating_add(n);
     }
 }
 
 fn emit_bg(
     text: &str,
+    off: Option<u32>,
     base: &Style,
     bg: Option<Rgb>,
     link: Option<LinkId>,
-    f: &mut dyn FnMut(&str, SegStyle, Option<LinkId>),
+    f: &mut dyn FnMut(Piece<'_>),
 ) {
     let style = match bg {
         Some(rgb) => base.on(Color::Rgb(rgb)),
         None => *base,
     };
-    f(text, SegStyle::Style(style), link);
+    f(Piece {
+        text,
+        style: SegStyle::Style(style),
+        link,
+        off,
+    });
 }
 
 /// Writes layout lines as bytes; see the module docs.
@@ -292,7 +410,7 @@ impl<'a> Emitter<'a> {
     /// An emitter for one laid-out document.
     pub fn new(doc: &'a Document, layout: &'a Layout, cfg: &'a RenderConfig) -> Emitter<'a> {
         let mut palette = Palette::new(cfg.depth, cfg.styled_underline);
-        let styles = layout
+        let styles: Vec<Style> = layout
             .styles
             .styles()
             .iter()
@@ -331,14 +449,10 @@ impl<'a> Emitter<'a> {
     }
 
     /// Append one piece.
-    fn piece(
-        &mut self,
-        out: &mut Vec<u8>,
-        pen: &mut Pen,
-        text: &str,
-        style: SegStyle,
-        link: Option<LinkId>,
-    ) {
+    fn piece(&mut self, out: &mut Vec<u8>, pen: &mut Pen, piece: Piece<'_>) {
+        let Piece {
+            text, style, link, ..
+        } = piece;
         let s = match style {
             SegStyle::Id(id) => self
                 .styles
@@ -365,6 +479,12 @@ impl<'a> Emitter<'a> {
 
     /// Append line `index` (with its newline) to `out`.
     pub fn write_line(&mut self, index: usize, out: &mut Vec<u8>) {
+        self.write_line_marked(index, &[], out);
+    }
+
+    /// [`Emitter::write_line`] with `marks` (search matches, …) laid over
+    /// the text.
+    pub fn write_line_marked(&mut self, index: usize, marks: &[Mark], out: &mut Vec<u8>) {
         let layout = self.layout;
         let Some(line) = layout.lines.get(index) else {
             return;
@@ -378,8 +498,8 @@ impl<'a> Emitter<'a> {
             style: Style::PLAIN,
             link: None,
         };
-        segments(layout, index, &mut |text, style, link| {
-            self.piece(out, &mut pen, text, style, link);
+        marked_segments(layout, index, marks, &mut |piece| {
+            self.piece(out, &mut pen, piece);
         });
         if pen.link.is_some() {
             osc8::close(out);
@@ -395,5 +515,160 @@ impl<'a> Emitter<'a> {
         for i in 0..self.layout.lines.len() {
             self.write_line(i, out);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::highlight::PlainHighlighter;
+    use crate::layout::{NoImages, layout};
+    use crate::options::RenderOptions;
+    use crate::parse::{ParseOptions, parse};
+    use crate::style::Attrs;
+    use crate::theme::Theme;
+
+    fn lay(md: &str, width: u16, caps: &Caps) -> (Document, Layout) {
+        let doc = parse(md, &ParseOptions::default());
+        let opts = RenderOptions::default();
+        let l = layout(
+            &doc,
+            width,
+            &Theme::test(),
+            caps,
+            &opts,
+            &PlainHighlighter,
+            &NoImages,
+        );
+        (doc, l)
+    }
+
+    fn pieces(l: &Layout, i: usize, marks: &[Mark]) -> Vec<(String, Option<u32>)> {
+        let mut out = Vec::new();
+        marked_segments(l, i, marks, &mut |p| out.push((p.text.to_string(), p.off)));
+        out
+    }
+
+    fn cfg(caps: &Caps) -> RenderConfig {
+        RenderConfig {
+            link_id_prefix: "t".into(),
+            ..RenderConfig::from_caps(caps)
+        }
+    }
+
+    #[test]
+    fn pieces_carry_arena_offsets() {
+        let (_, l) = lay("hello *world*", 40, &Caps::plain());
+        let p = pieces(&l, 0, &[]);
+        assert_eq!(p, [("hello ".into(), Some(0)), ("world".into(), Some(6))]);
+    }
+
+    #[test]
+    fn marks_split_pieces_and_patch_styles() {
+        let (_, l) = lay("hello world, again", 40, &Caps::full());
+        let patch = StylePatch {
+            set: Attrs::REVERSE,
+            ..StylePatch::default()
+        };
+        let marks = [
+            Mark {
+                range: 6..11,
+                patch,
+            },
+            Mark {
+                range: 13..15,
+                patch,
+            },
+        ];
+        let texts: Vec<String> = pieces(&l, 0, &marks).into_iter().map(|p| p.0).collect();
+        assert_eq!(texts, ["hello ", "world", ", ", "ag", "ain"]);
+        let mut styles = Vec::new();
+        marked_segments(&l, 0, &marks, &mut |p| styles.push(p.style));
+        assert!(matches!(styles[1], SegStyle::Style(s) if s.attrs.contains(Attrs::REVERSE)));
+        assert!(matches!(styles[0], SegStyle::Id(_)));
+        // A mark across a line break only covers this line's part.
+        let (_, l) = lay("aaa bbb", 3, &Caps::plain());
+        let m = [Mark { range: 1..6, patch }];
+        let first: Vec<String> = pieces(&l, 0, &m).into_iter().map(|p| p.0).collect();
+        assert_eq!(first, ["a", "aa"]);
+    }
+
+    #[test]
+    fn panels_pad_with_spaces_not_erase() {
+        let (doc, l) = lay("```\nx\n```", 20, &Caps::full());
+        let bytes = super::super::to_bytes(&doc, &l, &cfg(&Caps::full()));
+        let text = String::from_utf8(bytes).unwrap();
+        assert!(!text.contains("\u{1b}[K"), "no erase-line");
+        let widest = text
+            .lines()
+            .map(|line| {
+                let mut plain = String::new();
+                let mut esc = false;
+                for c in line.chars() {
+                    match (esc, c) {
+                        (false, '\u{1b}') => esc = true,
+                        (true, 'm') => esc = false,
+                        (false, c) => plain.push(c),
+                        _ => {}
+                    }
+                }
+                plain.chars().count()
+            })
+            .max()
+            .unwrap();
+        assert_eq!(widest, 20, "indent 2 + a 16-column panel + margin");
+    }
+
+    #[test]
+    fn links_are_opened_and_closed_per_line() {
+        let caps = Caps::full();
+        let (doc, l) = lay("[a long link](https://example.com)", 8, &caps);
+        let bytes = super::super::to_bytes(&doc, &l, &cfg(&caps));
+        let text = String::from_utf8(bytes).unwrap();
+        for line in text.lines() {
+            assert_eq!(line.matches("\u{1b}]8;id=t-0;").count(), 1, "{line:?}");
+            assert_eq!(line.matches("\u{1b}]8;;\u{1b}\\").count(), 1, "{line:?}");
+            assert!(line.ends_with("\u{1b}[0m"), "{line:?}");
+        }
+        // Without hyperlinks the text is only styled.
+        let off = Caps {
+            hyperlinks: false,
+            ..caps
+        };
+        let text = String::from_utf8(super::super::to_bytes(&doc, &l, &cfg(&off))).unwrap();
+        assert!(!text.contains("\u{1b}]8"));
+    }
+
+    #[test]
+    fn gradient_pieces_step_every_two_columns() {
+        let (_, l) = lay("# Ab", 12, &Caps::full());
+        let mut bgs = Vec::new();
+        segments(&l, 0, &mut |p| {
+            if let SegStyle::Style(s) = p.style {
+                bgs.push((p.text.to_string(), s.bg));
+            }
+        });
+        let texts: String = bgs.iter().map(|(t, _)| t.as_str()).collect();
+        assert_eq!(
+            texts.chars().count(),
+            12,
+            "the whole 12-column bar: {bgs:?}"
+        );
+        // Columns 0-1 share a colour, column 2 starts the next step.
+        assert_eq!(bgs[0].0, " A");
+        assert_ne!(bgs[0].1, bgs[1].1);
+        assert_eq!(
+            gradient_color(Rgb(0, 0, 0), Rgb(255, 255, 255), 0, 1, 0),
+            Rgb(0, 0, 0)
+        );
+    }
+
+    #[test]
+    fn plain_output_is_the_text() {
+        let (doc, l) = lay("# T\n\n- a\n\n> b", 30, &Caps::plain());
+        assert_eq!(
+            super::super::plain_text(&doc, &l),
+            "T\n══════════════════════════\n\n• a\n\n▎ b\n"
+        );
     }
 }

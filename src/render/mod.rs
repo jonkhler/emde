@@ -15,7 +15,7 @@ pub mod sgr;
 pub mod stream;
 
 pub use debug::debug_text;
-pub use emit::{Emitter, RenderConfig, SegStyle, segments};
+pub use emit::{Emitter, Mark, Piece, RenderConfig, SegStyle, marked_segments, segments};
 pub use stream::{StreamSink, is_broken_pipe};
 
 use crate::ir::Document;
