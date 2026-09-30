@@ -96,6 +96,7 @@ expression: "styled(\"lists\", & Caps :: full(), & WIDTHS)"
    ⟦fg=#6c7086⟧▎⟦/⟧      ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧wrap at⟦/⟧
    ⟦fg=#6c7086⟧▎⟦/⟧      ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧small⟦/⟧
    ⟦fg=#6c7086⟧▎⟦/⟧      ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧widths.⟦/⟧
+
   ⟦fg=#89b4fa⟧•⟦/⟧
 
   ⟦fg=#89b4fa⟧•⟦/⟧ The item above is
@@ -166,6 +167,7 @@ expression: "styled(\"lists\", & Caps :: full(), & WIDTHS)"
     ⟦fg=#6c7086⟧▎⟦/⟧      ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧And a quote inside again,⟦/⟧
     ⟦fg=#6c7086⟧▎⟦/⟧      ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧long enough to wrap at⟦/⟧
     ⟦fg=#6c7086⟧▎⟦/⟧      ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧small widths.⟦/⟧
+
   ⟦fg=#89b4fa⟧•⟦/⟧
 
   ⟦fg=#89b4fa⟧•⟦/⟧ The item above is empty
@@ -227,6 +229,7 @@ expression: "styled(\"lists\", & Caps :: full(), & WIDTHS)"
     ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#89b4fa⟧◦⟦/⟧ ⟦fg=#a6adc8⟧Nested in the quote⟦/⟧
     ⟦fg=#6c7086⟧▎⟦/⟧   ⟦fg=#89b4fa⟧1.⟦/⟧ ⟦fg=#a6adc8⟧Numbered inside that⟦/⟧
     ⟦fg=#6c7086⟧▎⟦/⟧      ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧And a quote inside again, long enough to wrap at small widths.⟦/⟧
+
   ⟦fg=#89b4fa⟧•⟦/⟧
 
   ⟦fg=#89b4fa⟧•⟦/⟧ The item above is empty
@@ -285,6 +288,7 @@ expression: "styled(\"lists\", & Caps :: full(), & WIDTHS)"
             ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#89b4fa⟧◦⟦/⟧ ⟦fg=#a6adc8⟧Nested in the quote⟦/⟧
             ⟦fg=#6c7086⟧▎⟦/⟧   ⟦fg=#89b4fa⟧1.⟦/⟧ ⟦fg=#a6adc8⟧Numbered inside that⟦/⟧
             ⟦fg=#6c7086⟧▎⟦/⟧      ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧And a quote inside again, long enough to wrap at small widths.⟦/⟧
+
           ⟦fg=#89b4fa⟧•⟦/⟧
 
           ⟦fg=#89b4fa⟧•⟦/⟧ The item above is empty

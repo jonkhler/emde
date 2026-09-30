@@ -1,8 +1,8 @@
 //! Text measurement (grapheme widths) and line breaking.
 //!
-//! * [`sanitize`] — control characters → visible control pictures.
+//! * [`mod@sanitize`] — control characters → visible control pictures.
 //! * [`width`] — display width per grapheme cluster, with an ASCII fast path.
-//! * [`wrap`] — greedy UAX #14 line breaking with atoms, extra break points,
+//! * [`mod@wrap`] — greedy UAX #14 line breaking with atoms, extra break points,
 //!   hard breaks and soft hyphens, plus [`wrap::split_runs`] to cut a styled
 //!   run list at the computed lines.
 //! * [`tabs`] — tab expansion for code lines.

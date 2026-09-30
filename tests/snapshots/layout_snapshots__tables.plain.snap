@@ -90,13 +90,13 @@ Note: ref¹
 │ locked`          │
 ╰──────────────────╯
 
+[1]: https://
+     example.com
+
 ── Footnotes ───────
 
 1. A footnote from a
    table. ↑
-
-[1]: https://
-     example.com
 ━━ width 40 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ╭────────┬────────┬───────┬────────╮
 │ Left   │ Center │ Right │ None   │
@@ -160,11 +160,11 @@ g: seven
 │ `cargo build --release --locked` │
 ╰──────────────────────────────────╯
 
+[1]: https://example.com
+
 ── Footnotes ───────────────────────
 
 1. A footnote from a table. ↑
-
-[1]: https://example.com
 ━━ width 80 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ╭─────────────┬───────────┬───────┬─────────────╮
 │ Left        │  Center   │ Right │ None        │
@@ -214,11 +214,11 @@ g: seven
 │ `cargo build --release --locked` │
 ╰──────────────────────────────────╯
 
+[1]: https://example.com
+
 ── Footnotes ───────────────────────────────────────────────────────────────
 
 1. A footnote from a table. ↑
-
-[1]: https://example.com
 ━━ width 120 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ╭─────────────┬───────────┬───────┬─────────────╮
 │ Left        │  Center   │ Right │ None        │
@@ -266,8 +266,8 @@ g: seven
 │ `cargo build --release --locked` │
 ╰──────────────────────────────────╯
 
+[1]: https://example.com
+
 ── Footnotes ───────────────────────────────────────────────────────────────────────────────────────
 
 1. A footnote from a table. ↑
-
-[1]: https://example.com

@@ -7,7 +7,7 @@
 //! count as zero. Summing per-`char` widths gets both wrong.
 //!
 //! The text measured here never contains escape sequences or control
-//! characters other than `\n` and `\t` (see [`super::sanitize`]); callers
+//! characters other than `\n` and `\t` (see [`super::sanitize()`]); callers
 //! expand tabs ([`super::tabs`]) and split at newlines before measuring.
 
 use unicode_segmentation::UnicodeSegmentation;

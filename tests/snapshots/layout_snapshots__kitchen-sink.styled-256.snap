@@ -82,8 +82,8 @@ expression: "styled(\"kitchen-sink\", &caps, &[80])"
   ⟦bg=idx236⟧                                                                            ⟦/⟧
 
   ⟦bg=idx236⟧                                                                       ⟦/⟧⟦fg=idx243 bg=idx236⟧diff⟦/⟧⟦bg=idx236⟧ ⟦/⟧
-  ⟦bg=idx238⟧ -old line                                                                  ⟦/⟧
-  ⟦bg=idx238⟧ +new line                                                                  ⟦/⟧
+  ⟦fg=idx211 bg=idx236⟧ -old line                                                                  ⟦/⟧
+  ⟦fg=idx150 bg=idx236⟧ +new line                                                                  ⟦/⟧
   ⟦bg=idx236⟧                                                                            ⟦/⟧
 
   ⟦fg=idx183 bold⟧Math⟦/⟧

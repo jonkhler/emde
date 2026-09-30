@@ -10,7 +10,7 @@
 //! * invalid UTF-8 is replaced with `U+FFFD` (with a diagnostic);
 //! * CRLF and lone CR become LF;
 //! * control characters other than `\n` and `\t` become visible control
-//!   pictures (`ESC` → `␛`, see [`crate::text::sanitize`]), so a document can
+//!   pictures (`ESC` → `␛`, see [`crate::text::sanitize()`]), so a document can
 //!   never inject escape sequences.
 
 use std::fmt;

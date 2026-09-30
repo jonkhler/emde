@@ -16,7 +16,7 @@ use crate::term::ColorDepth;
 use crate::text::str_width;
 use crate::theme::Element;
 
-use super::build::{Builder, Seg};
+use super::build::{Builder, Fade, Seg};
 use super::inline::{Composed, Look, Tail};
 use super::scripts::superscript;
 use super::style::Ctx;
@@ -98,6 +98,7 @@ impl Builder<'_> {
                 }
             }
         }
+        self.heading_done();
         self.off = off.saturating_add(to_u32(text.text.len()));
     }
 
@@ -272,53 +273,78 @@ impl Builder<'_> {
         let rule = self.sty.el(Element::HeadingRule);
         let (heavy, light) = (self.deco.h2_heavy, self.deco.h2_light);
         self.begin();
+        // The rule spans the whole width: container alignment has nothing
+        // to move, the heavy part is placed below.
+        self.placed();
         if self.sty.depth() < ColorDepth::Ansi256 {
             self.repeat(light, width, rule);
         } else {
             let under = widest.clamp(1, width);
+            // In an aligned container (`<h2 align="center">`) the heavy
+            // part stays under the text, light rule on both sides.
+            let lead = match self.alignment() {
+                HAlign::Left => 0,
+                HAlign::Center => (width - under) / 2,
+                HAlign::Right => width - under,
+            };
+            let tail = width - under - lead;
+            let fading = match self.sty.of(Element::HeadingRule).fg {
+                Color::Rgb(rgb) if self.gradients() => Some(rgb),
+                _ => None,
+            };
+            match fading {
+                Some(rgb) => self.fade(light, lead, rgb, Fade::In),
+                None => self.repeat(light, lead, rule),
+            }
             self.repeat(heavy, under, rule);
-            let tail = width - under;
-            let fg = self.sty.of(Element::HeadingRule).fg;
-            match fg {
-                Color::Rgb(rgb) if self.gradients() => self.fade(light, tail, rgb, false),
-                _ => self.repeat(light, tail, rule),
+            match fading {
+                Some(rgb) => self.fade(light, tail, rgb, Fade::Out),
+                None => self.repeat(light, tail, rule),
             }
         }
         self.end(LineKind::Text, Fill::None, off);
     }
 
-    /// `cols` columns of `glyph` fading from `rgb` towards the background:
-    /// over the whole run in two-column steps (`both_ends == false`), or
-    /// over the first and last few glyphs. The runs of equal colour are
-    /// computed once per glyph width, length, colour and shape.
-    fn fade(&mut self, glyph: &str, cols: u16, rgb: Rgb, both_ends: bool) {
+    /// `cols` columns of `glyph` fading between `rgb` and the background in
+    /// the given shape: over the whole run in two-column steps ([`Fade::Out`]
+    /// and its mirror [`Fade::In`]), or over the first and last few glyphs
+    /// ([`Fade::Both`]). The runs of equal colour are computed once per
+    /// glyph width, length, colour and shape.
+    fn fade(&mut self, glyph: &str, cols: u16, rgb: Rgb, shape: Fade) {
         let w = to_u16(str_width(glyph, self.amb)).max(1);
         let n = cols / w;
-        let key = (w, n, rgb, both_ends);
+        let key = (w, n, rgb, shape);
         let runs = match self.fades.get(&key) {
             Some(runs) => runs.clone(),
             None => {
-                let runs = self.fade_runs(w, n, rgb, both_ends);
+                let runs = self.fade_runs(w, n, rgb, shape);
                 self.fades.insert(key, runs.clone());
                 runs
             }
         };
+        let plain = self.sty.el(Element::Rule);
+        // Any remainder of a wide glyph pads the faint end of the rule.
+        let rest = cols - n * w;
+        if shape == Fade::In {
+            self.spaces(rest, plain);
+        }
         for (style, count) in runs {
             self.put(&glyph.repeat(usize::from(count)), style, None);
         }
-        let plain = self.sty.el(Element::Rule);
-        self.spaces(cols - n * w, plain);
+        if shape != Fade::In {
+            self.spaces(rest, plain);
+        }
     }
 
     /// The runs of [`Builder::fade`]: `(style, glyphs)`.
-    fn fade_runs(&mut self, w: u16, n: u16, rgb: Rgb, both_ends: bool) -> Vec<(StyleId, u16)> {
+    fn fade_runs(&mut self, w: u16, n: u16, rgb: Rgb, shape: Fade) -> Vec<(StyleId, u16)> {
         let base = self.theme.base;
         let plain = self.sty.el(Element::Rule);
         let ramp = u32::from((n / 8).clamp(1, 10));
         let steps = (u32::from(n) * u32::from(w) / 2).max(1);
         let mut runs: Vec<(Rgb, u16)> = Vec::new();
         for i in 0..n {
-            let t = if both_ends {
+            let t = if shape == Fade::Both {
                 let edge = u32::from((i + 1).min(n - i));
                 (edge as f32 / (ramp + 1) as f32).min(1.0)
             } else {
@@ -330,6 +356,9 @@ impl Builder<'_> {
                 Some((last, count)) if *last == c => *count += 1,
                 _ => runs.push((c, 1)),
             }
+        }
+        if shape == Fade::In {
+            runs.reverse();
         }
         runs.into_iter()
             .map(|(c, count)| (self.sty.with_fg(plain, Color::Rgb(c)), count))
@@ -343,8 +372,9 @@ impl Builder<'_> {
         let style = self.sty.el(Element::Rule);
         let glyph = self.deco.rule.text.clone();
         self.begin();
+        self.placed();
         match self.sty.of(Element::Rule).fg {
-            Color::Rgb(rgb) if self.gradients() => self.fade(&glyph, width, rgb, true),
+            Color::Rgb(rgb) if self.gradients() => self.fade(&glyph, width, rgb, Fade::Both),
             _ => self.repeat(&glyph, width, style),
         }
         self.end(LineKind::Text, Fill::None, self.off);

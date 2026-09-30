@@ -34,7 +34,7 @@ use crate::highlight::Highlighter;
 use crate::ir::{Block, Document, HAlign, HeadingId, Link, LinkId, LinkKind, SrcPos, Target};
 use crate::options::{RenderOptions, When};
 use crate::style::StyleId;
-use crate::term::Caps;
+use crate::term::{Caps, ColorDepth};
 use crate::text::width::next_grapheme_end;
 use crate::text::{Wrapper, grapheme_width, str_width};
 use crate::theme::{Element, Theme};
@@ -146,7 +146,9 @@ impl Refs {
 }
 
 /// Whether a link gets a numbered reference: it goes somewhere a reader
-/// may want to look up, and its text is not already its URL.
+/// may want to look up, and was not written as its URL (bare URLs,
+/// autolinks). A link whose text happens to be its URL is left out where
+/// the text is known ([`super::inline::shows_url`]).
 pub(super) fn wants_ref(link: &Link) -> bool {
     !matches!(
         link.kind,
@@ -157,8 +159,19 @@ pub(super) fn wants_ref(link: &Link) -> bool {
     )
 }
 
-/// A fading rule: glyph width, glyph count, colour, fading at both ends.
-pub(super) type FadeKey = (u16, u16, crate::style::Rgb, bool);
+/// Where a rule fades towards the background.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub(super) enum Fade {
+    /// Full colour at the start, fading towards the end (the `h2` tail).
+    Out,
+    /// The mirror of [`Fade::Out`]: fading in towards the end.
+    In,
+    /// Faded at both ends (thematic breaks).
+    Both,
+}
+
+/// A fading rule: glyph width, glyph count, colour and shape.
+pub(super) type FadeKey = (u16, u16, crate::style::Rgb, Fade);
 
 /// Lays out one document; see the module docs.
 pub(super) struct Builder<'a> {
@@ -186,7 +199,8 @@ pub(super) struct Builder<'a> {
     pub(super) off: u32,
     /// Element of paragraph text in the current container.
     pub(super) text_el: Element,
-    /// Bullet lists around the current block.
+    /// Lists (bullet or ordered) around the current block: picks the bullet
+    /// of a nested bullet list, as browsers do.
     pub(super) list_depth: usize,
     /// Heading numbers per level (`heading.numbers`).
     pub(super) numbers: [u32; 6],
@@ -217,11 +231,14 @@ impl<'a> Builder<'a> {
             highlighter,
             sizer,
         } = inputs;
+        // OSC 8 needs escape sequences: without any, links are numbered
+        // whatever `caps.hyperlinks` says.
+        let osc8 = caps.hyperlinks && caps.color != ColorDepth::None;
         let refs = Refs {
             enabled: match opts.link_refs {
                 When::Always => true,
                 When::Never => false,
-                When::Auto => !caps.hyperlinks,
+                When::Auto => !osc8,
             },
             ..Refs::default()
         };
@@ -310,7 +327,13 @@ impl<'a> Builder<'a> {
 
     /// Lay out a list of sibling blocks, one blank line apart unless
     /// `tight`.
+    ///
+    /// A gap asked for between the siblings but never drawn (the last ones
+    /// showed nothing) is dropped. A gap the caller asked for before them
+    /// is kept when none of them showed anything, so it still separates
+    /// whatever comes next (the marker of an empty list item).
     pub(super) fn blocks(&mut self, blocks: &[Block], tight: bool) {
+        let entry = self.pending_gap;
         let mut produced = false;
         for b in blocks {
             let before = self.out.lines.len();
@@ -322,7 +345,7 @@ impl<'a> Builder<'a> {
                 produced = true;
             }
         }
-        self.pending_gap = None;
+        self.pending_gap = if produced { None } else { entry };
     }
 
     /// Ask for a blank line before the next line.
@@ -335,6 +358,19 @@ impl<'a> Builder<'a> {
     /// The first line of the next content line belongs to this heading.
     pub(super) fn mark_heading(&mut self, id: HeadingId) {
         self.pending_heading = Some(id);
+    }
+
+    /// The heading marked with [`Builder::mark_heading`] is laid out. If it
+    /// showed nothing (an empty `###`) it keeps no line, rather than taking
+    /// the next block's first line for its own.
+    pub(super) fn heading_done(&mut self) {
+        self.pending_heading = None;
+    }
+
+    /// The alignment of the aligned container around the current block
+    /// (left when there is none).
+    pub(super) fn alignment(&self) -> HAlign {
+        self.align.map_or(HAlign::Left, |(a, _)| a)
     }
 
     // ----- prefix levels, contexts, alignment -------------------------------
@@ -787,7 +823,12 @@ impl<'a> Builder<'a> {
             if removed == 0 {
                 break;
             }
-            self.out.text.truncate(last.off as usize + kept);
+            // Spans are appended in order, so the line's last span ends the
+            // arena; never cut text that belongs to another span.
+            let span_end = (last.off as usize).saturating_add(last.len as usize);
+            if span_end == self.out.text.len() {
+                self.out.text.truncate(last.off as usize + kept);
+            }
             self.cur.cols = self.cur.cols.saturating_sub(to_u16(removed));
             if kept == 0 {
                 self.out.spans.pop();
@@ -917,9 +958,12 @@ fn text_estimate(doc: &Document) -> usize {
         .min(1 << 30)
 }
 
-/// Whether a top-level block starts a new h1/h2 section.
+/// Whether a top-level block starts a new section for numbered link
+/// references: an h1/h2, or the footnotes (so the last section's list comes
+/// before them, and links inside footnotes get a list of their own).
 fn starts_section(block: &Block) -> bool {
     matches!(block, Block::Heading { level, .. } if *level <= 2)
+        || matches!(block, Block::FootnoteSection)
 }
 
 /// The longest prefix of `text` that fits `cols` columns (whole graphemes)

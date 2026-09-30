@@ -172,6 +172,9 @@ badge.
 English mixed with
 emoji 👨‍👩‍👧 and ❤️.
 
+[3]: https://
+     ci.example.com
+
 ── Footnotes ───────
 
 1. The footnote
@@ -179,9 +182,6 @@ emoji 👨‍👩‍👧 and ❤️.
    emphasis. ↑ ↑²
 2. Second footnote.
    ↑
-
-[3]: https://
-     ci.example.com
 ━━ width 40 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ┌──────────────────────────┐
 │ title   Kitchen Sink     │
@@ -325,13 +325,13 @@ a ▣ badge[3] badge.
 日本語のテキストと English mixed
 with emoji 👨‍👩‍👧 and ❤️.
 
+[3]: https://ci.example.com
+
 ── Footnotes ───────────────────────
 
 1. The footnote text, with emphasis.
    ↑ ↑²
 2. Second footnote. ↑
-
-[3]: https://ci.example.com
 ━━ width 80 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ┌──────────────────────────┐
 │ title   Kitchen Sink     │
@@ -460,12 +460,12 @@ Text with an ▣ inline image chip and a ▣ badge[3] badge.
 
 日本語のテキストと English mixed with emoji 👨‍👩‍👧 and ❤️.
 
+[3]: https://ci.example.com
+
 ── Footnotes ───────────────────────────────────────────────────────────────
 
 1. The footnote text, with emphasis. ↑ ↑²
 2. Second footnote. ↑
-
-[3]: https://ci.example.com
 ━━ width 120 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ┌──────────────────────────┐
 │ title   Kitchen Sink     │
@@ -594,9 +594,9 @@ Text with an ▣ inline image chip and a ▣ badge[3] badge.
 
 日本語のテキストと English mixed with emoji 👨‍👩‍👧 and ❤️.
 
+[3]: https://ci.example.com
+
 ── Footnotes ───────────────────────────────────────────────────────────────────────────────────────
 
 1. The footnote text, with emphasis. ↑ ↑²
 2. Second footnote. ↑
-
-[3]: https://ci.example.com

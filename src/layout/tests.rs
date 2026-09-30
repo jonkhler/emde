@@ -643,3 +643,221 @@ fn pills_stay_with_opening_punctuation() {
     let (_, l) = lay_with("see a `code`", 8, &Caps::full(), &RenderOptions::default());
     assert_eq!(lines(&l), ["see a", " code "]);
 }
+
+// ----- regressions found in review ----------------------------------------------
+
+/// Columns of line `i` before its first non-space character.
+fn lead(l: &Layout, i: usize) -> usize {
+    let text = l.line_text(i);
+    text.chars().take_while(|&c| c == ' ').count()
+}
+
+#[test]
+fn an_empty_item_of_a_loose_list_keeps_its_gap() {
+    let (d, l) = lay("- a\n\n-\n- b", 40);
+    check(&l, &d);
+    assert_eq!(lines(&l), ["• a", "", "•", "", "• b"]);
+    // Tight lists stay tight.
+    let (_, l) = lay("- a\n-\n- b", 40);
+    assert_eq!(lines(&l), ["• a", "•", "• b"]);
+}
+
+#[test]
+fn an_empty_heading_takes_no_line() {
+    let (d, l) = lay("# One\n\n###\n\ntext after", 30);
+    check(&l, &d);
+    assert_eq!(l.heading_line.len(), 2);
+    assert_eq!(l.line_text(l.heading_line[0] as usize), "One");
+    assert_eq!(l.heading_line[1], u32::MAX, "nothing was shown for it");
+}
+
+#[test]
+fn code_blocks_keep_their_shape_in_aligned_containers() {
+    let code = "```rust\nsome code\n```";
+    let md = format!("<div align=\"center\">\n\n{code}\n\n</div>");
+    let caps16 = Caps {
+        color: ColorDepth::Ansi16,
+        ..Caps::full()
+    };
+    for caps in [Caps::full(), caps16] {
+        let (d, centred) = lay_with(&md, 40, &caps, &RenderOptions::default());
+        check(&centred, &d);
+        let (_, plain) = lay_with(code, 40, &caps, &RenderOptions::default());
+        // Exactly the rows (text and panel) of the block on its own.
+        assert_eq!(lines(&centred), lines(&plain), "{:?}", caps.color);
+        let fills = |l: &Layout| l.lines.iter().map(|line| line.fill).collect::<Vec<_>>();
+        assert_eq!(fills(&centred), fills(&plain));
+    }
+}
+
+#[test]
+fn a_centred_h2_keeps_its_heavy_rule_under_the_text() {
+    for depth in [ColorDepth::TrueColor, ColorDepth::Ansi256] {
+        let caps = Caps {
+            color: depth,
+            ..Caps::full()
+        };
+        let (d, l) = lay_with(
+            "<h2 align=\"center\">Features</h2>",
+            40,
+            &caps,
+            &RenderOptions::default(),
+        );
+        check(&l, &d);
+        let text = l.line_text(0);
+        let rule = l.line_text(1);
+        let start = lead(&l, 0);
+        assert_eq!(text.trim(), "Features");
+        let heavy: Vec<usize> = rule
+            .chars()
+            .enumerate()
+            .filter(|&(_, c)| c == '━')
+            .map(|(i, _)| i)
+            .collect();
+        assert_eq!(heavy.first(), Some(&start), "{depth:?} {rule:?}");
+        assert_eq!(heavy.len(), "Features".len());
+        assert_eq!(rule.chars().count(), 36, "the rule spans the width");
+    }
+    // Left-aligned headings keep the heavy part at the start.
+    let (_, l) = lay_with("## Features", 40, &Caps::full(), &RenderOptions::default());
+    assert!(l.line_text(1).starts_with("━━━━━━━━─"));
+}
+
+#[test]
+fn frame_headers_fit_any_width() {
+    let caps16 = Caps {
+        color: ColorDepth::Ansi16,
+        ..Caps::full()
+    };
+    let long = "l".repeat(70_000);
+    for md in [
+        "```rust title=\"a-long-title.rs\"\nx\n```".to_string(),
+        "```rust\nx\n```".to_string(),
+        format!("```{long}\nx\n```"),
+        format!("```rust title=\"{long}\"\nx\n```"),
+    ] {
+        for width in 1..=40 {
+            for caps in [plain_caps(), caps16.clone(), Caps::full()] {
+                let (d, l) = lay_with(&md, width, &caps, &RenderOptions::default());
+                check(&l, &d);
+                let first = l.line_text(0);
+                if first.starts_with('┌') {
+                    assert!(first.ends_with('┐'), "{width}: {first:?}");
+                    let bottom = l.line_text(l.len() - 1);
+                    assert_eq!(
+                        first.chars().count(),
+                        bottom.chars().count(),
+                        "{width}: {first:?}"
+                    );
+                }
+            }
+        }
+    }
+    // With room, a dash separates the title from the label.
+    let (_, l) = lay("```rust title=\"hello.rs\"\nx\n```", 24);
+    assert_eq!(l.line_text(0), "┌─ hello.r ─ rust ─┐");
+}
+
+#[test]
+fn only_panels_have_a_background() {
+    let md = "```diff\n-a\n+b\n```";
+    let caps16 = Caps {
+        color: ColorDepth::Ansi16,
+        ..Caps::full()
+    };
+    let (_, l) = lay_with(md, 30, &caps16, &RenderOptions::default());
+    for span in &l.spans {
+        assert_eq!(l.styles.get(span.style).bg, Color::Default, "{span:?}");
+    }
+    let mut opts = RenderOptions::default();
+    opts.code.style = CodeStyle::Gutter;
+    let (_, l) = lay_with(md, 30, &Caps::full(), &opts);
+    for span in &l.spans {
+        assert_eq!(l.styles.get(span.style).bg, Color::Default, "{span:?}");
+    }
+}
+
+#[test]
+fn diff_lines_stay_apart_at_every_depth() {
+    let md = "```diff\n-removed\n+added\n```";
+    for depth in [
+        ColorDepth::TrueColor,
+        ColorDepth::Ansi256,
+        ColorDepth::Ansi16,
+    ] {
+        let caps = Caps {
+            color: depth,
+            ..Caps::full()
+        };
+        let (_, l) = lay_with(md, 30, &caps, &RenderOptions::default());
+        let style_of = |needle: &str| {
+            let i = (0..l.len())
+                .find(|&i| l.line_text(i).contains(needle))
+                .unwrap();
+            let span = l
+                .line_spans(i)
+                .iter()
+                .find(|s| l.span_text(s).contains(needle))
+                .copied()
+                .unwrap();
+            let mut palette = crate::render::sgr::Palette::new(depth, true);
+            palette.style(l.styles.get(span.style))
+        };
+        assert_ne!(style_of("removed"), style_of("added"), "{depth:?}");
+    }
+}
+
+#[test]
+fn link_references_come_before_the_footnotes() {
+    let md = "a [link](https://a.org) and a note[^1].\n\n[^1]: With [another](https://b.org).";
+    let (d, l) = lay(md, 40);
+    check(&l, &d);
+    let text = lines(&l).join("\n");
+    let first = text.find("[1]: https://a.org").unwrap();
+    let section = text.find("── Footnotes").unwrap();
+    let second = text.find("[2]: https://b.org").unwrap();
+    assert!(first < section && section < second, "{text}");
+}
+
+#[test]
+fn links_are_numbered_when_no_escapes_can_link_them() {
+    let caps = Caps {
+        hyperlinks: true,
+        ..Caps::plain()
+    };
+    let (_, l) = lay_with("[a](https://a.org)", 40, &caps, &RenderOptions::default());
+    assert_eq!(lines(&l), ["a[1]", "", "[1]: https://a.org"]);
+}
+
+#[test]
+fn many_runs_with_url_breaks_compose_in_linear_time() {
+    // Every run used to scan every extra break of the paragraph.
+    let md = "`c` https://x.org/a/b?c=d&e=f ".repeat(20_000);
+    let t = std::time::Instant::now();
+    let (d, l) = lay(&md, 80);
+    assert!(t.elapsed().as_secs() < 20, "{:?}", t.elapsed());
+    assert!(l.len() > 1000);
+    // The URL break points still apply.
+    let (_, small) = lay("`c` https://x.org/a/b?c=d", 14);
+    assert_eq!(lines(&small), ["`c` https://", "x.org/a/b?c=d"]);
+    drop(d);
+}
+
+#[test]
+fn links_showing_their_url_get_no_number() {
+    let md = "See [https://example.com/](https://example.com), [me@x.org](mailto:me@x.org) \
+              and [docs](https://d.org).";
+    let (d, l) = lay(md, 80);
+    check(&l, &d);
+    assert_eq!(
+        lines(&l),
+        [
+            "See https://example.com/, me@x.org and docs[1].",
+            "",
+            "[1]: https://d.org"
+        ]
+    );
+    assert!(inline::shows_url(" https://a.b ", "https://a.b/"));
+    assert!(!inline::shows_url("", "https://a.b"));
+    assert!(!inline::shows_url("a.b", "https://a.b"));
+}

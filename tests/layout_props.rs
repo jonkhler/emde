@@ -233,14 +233,19 @@ fn word() -> impl Strategy<Value = &'static str> {
     prop::sample::select(WORDS)
 }
 
-/// A piece of inline text around a word.
+/// A piece of inline text around a word. Some glue an atom (a code span,
+/// a key cap, a link's reference number) to a word, so a word too long for
+/// its line has an atom to keep whole.
 fn inline() -> impl Strategy<Value = String> {
-    (word(), 0u8..8).prop_map(|(w, how)| match how {
+    (word(), word(), 0u8..11).prop_map(|(w, v, how)| match how {
         0 => format!("*{w}*"),
         1 => format!("**{w}**"),
         2 => format!("`{w} {w}`"),
         3 => format!("[{w}](https://x.org/{w})"),
         4 => format!("~~{w}~~"),
+        5 => format!("{w}`{v}`"),
+        6 => format!("{w}<kbd>{v}</kbd>{w}"),
+        7 => format!("[{w}{v}](https://x.org/)"),
         _ => w.to_string(),
     })
 }

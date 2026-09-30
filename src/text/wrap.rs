@@ -20,8 +20,10 @@
 //!   when the line actually breaks there (the renderer must never emit
 //!   `U+00AD` itself, see [`super::strip_soft_hyphens`]).
 //! * A word wider than the line is broken between grapheme clusters. Atoms
-//!   are never broken: an atom wider than the line overflows it, as does a
-//!   single grapheme wider than the line (a CJK character at width 1).
+//!   are never broken: one that would straddle the end of the line moves
+//!   whole to the next line, and an atom wider than the line overflows it,
+//!   as does a single grapheme wider than the line (a CJK character at
+//!   width 1).
 //!
 //! # Performance
 //!
@@ -232,6 +234,7 @@ fn wrap_general(
         ws_start: 0,
         in_ws: false,
         cand: None,
+        atom_cand: None,
         fast: StretchCache::default(),
     };
     let mut prev_soft_hyphen = false;
@@ -250,8 +253,12 @@ fn wrap_general(
             continue;
         }
         let in_atom = cursor.inside_atom(pos);
-        if pos > f.line_start && !in_atom && cursor.allowed(pos) {
-            f.candidate(pos, prev_soft_hyphen);
+        if pos > f.line_start && !in_atom {
+            if cursor.allowed(pos) {
+                f.candidate(pos, prev_soft_hyphen);
+            } else if cursor.atom_starts_at(pos) {
+                f.atom_candidate(pos);
+            }
         }
         // Fast path: printable ASCII up to the next break opportunity
         // (one column per byte, no break inside) that fits the line.
@@ -273,9 +280,11 @@ fn wrap_general(
             f.acc += w;
         } else {
             if f.acc + w > f.limit() {
-                if let Some(c) = f.cand.take() {
-                    // Break at the last opportunity and measure what
-                    // follows it again against the next line's width.
+                // Break at the last opportunity (or, inside an atom of a
+                // word longer than the line, where that atom starts) and
+                // measure what follows again against the next line's width.
+                let at_atom = if in_atom { f.atom_cand.take() } else { None };
+                if let Some(c) = f.cand.take().or(at_atom) {
                     f.emit(c.end, c.cols, c.hyphen, false);
                     f.start_line(c.at);
                     pos = c.at;
@@ -488,6 +497,13 @@ impl Cursor<'_> {
             .map_or(0, |&b| b as usize)
     }
 
+    /// Whether an atom starts at `pos` (call after `inside_atom(pos)`).
+    fn atom_starts_at(&self, pos: usize) -> bool {
+        self.atoms
+            .get(self.next_atom)
+            .is_some_and(|a| a.start as usize == pos && a.start < a.end)
+    }
+
     /// Whether no atom starts in `(pos, end)` (call after `inside_atom(pos)`).
     fn no_atom_before(&self, end: usize) -> bool {
         self.atoms
@@ -516,6 +532,10 @@ struct Filler<'o> {
     ws_start: usize,
     in_ws: bool,
     cand: Option<Candidate>,
+    /// The start of the latest atom on the line that is no break
+    /// opportunity: where a word too long for the line breaks if it
+    /// overflows inside that atom, so the atom moves whole to the next line.
+    atom_cand: Option<Candidate>,
     fast: StretchCache,
 }
 
@@ -627,6 +647,18 @@ impl Filler<'_> {
         }
     }
 
+    /// Remember the start of an atom at `pos` (no break opportunity there)
+    /// as the place a too-long word breaks if it overflows inside the atom.
+    fn atom_candidate(&mut self, pos: usize) {
+        let (end, cols) = self.trimmed(pos);
+        self.atom_cand = Some(Candidate {
+            at: pos,
+            end,
+            cols,
+            hyphen: false,
+        });
+    }
+
     fn emit(&mut self, end: usize, cols: usize, hyphen: bool, hard: bool) {
         self.out.push(Line {
             range: to_u32(self.line_start)..to_u32(end.max(self.line_start)),
@@ -649,6 +681,7 @@ impl Filler<'_> {
         self.ws = 0;
         self.in_ws = false;
         self.cand = None;
+        self.atom_cand = None;
     }
 }
 
@@ -1131,6 +1164,39 @@ mod tests {
             extra_breaks: &[],
         };
         assert_eq!(lines_c(t, 3, c), ["a b c", "d"]);
+    }
+
+    #[test]
+    fn atoms_in_words_too_long_for_the_line_move_whole() {
+        // "aaaaaaa[Q]" has no break opportunity: it is broken between
+        // graphemes, but never inside the key cap `[Q]` (bytes 7..10).
+        let atoms = [Range { start: 7, end: 10 }];
+        let c = Constraints {
+            atoms: &atoms,
+            extra_breaks: &[],
+        };
+        assert_eq!(lines_c("aaaaaaa[Q]", 8, c), ["aaaaaaa", "[Q]"]);
+        assert_eq!(lines_c("aaaaaaa[Q]", 7, c), ["aaaaaaa", "[Q]"]);
+        assert_eq!(lines_c("aaaaaaa[Q]", 9, c), ["aaaaaaa", "[Q]"]);
+        assert_eq!(lines_c("aaaaaaa[Q]", 10, c), ["aaaaaaa[Q]"]);
+        // Text after the atom still breaks between graphemes.
+        assert_eq!(lines_c("aaaaaaa[Q]bbbb", 5, c), ["aaaaa", "aa[Q]", "bbbb"]);
+        assert_eq!(lines_c("aaaaaaa[Q]bbbb", 6, c), ["aaaaaa", "a[Q]bb", "bb"]);
+        // A break opportunity before the atom is preferred.
+        let t = "x aaaaaa[Q]";
+        let atoms = [Range { start: 8, end: 11 }];
+        let c = Constraints {
+            atoms: &atoms,
+            extra_breaks: &[],
+        };
+        assert_eq!(lines_c(t, 8, c), ["x", "aaaaaa", "[Q]"]);
+        // An atom that starts the line and is wider than it still overflows.
+        let atoms = [Range { start: 0, end: 5 }];
+        let c = Constraints {
+            atoms: &atoms,
+            extra_breaks: &[],
+        };
+        assert_eq!(lines_c("[abc]", 3, c), ["[abc]"]);
     }
 
     #[test]

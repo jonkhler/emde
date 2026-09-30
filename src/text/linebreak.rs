@@ -6,7 +6,7 @@
 //! printable ASCII (`0x20..=0x7E`, the bulk of real documents) the rules of
 //! UAX #14 (Unicode 15.0, as the crate implements them) reduce to a table of
 //! 14 classes and a two-part state: the class of the last non-space
-//! character and whether spaces followed it. [`ascii_breaks`] implements
+//! character and whether spaces followed it. `ascii_breaks` implements
 //! exactly that; tests compare it with the crate on every class sequence up
 //! to length 6 and on random text, so the two never disagree.
 //!

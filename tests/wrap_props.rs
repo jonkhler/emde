@@ -1,6 +1,7 @@
 //! Property tests for the line breaker: on random text and widths 1–200,
-//! no line exceeds its width (unless a single grapheme or an atom is wider
-//! than the line), no grapheme is lost or split, lines appear in order, and
+//! no line exceeds its width (unless it is a single grapheme, or starts with
+//! an atom, wider than the line), no grapheme is lost or split, lines
+//! appear in order, and
 //! only breakable whitespace, soft hyphens and hard-break newlines fall
 //! between lines.
 
@@ -100,17 +101,21 @@ fn check_lines(text: &str, lines: &[Line], width: impl Fn(usize) -> u16, atoms: 
         // The reported width is right.
         let shown = str_width(slice(text, r), false) + usize::from(line.hyphen);
         assert_eq!(usize::from(line.cols), shown, "line {i} width");
-        // Lines fit, unless one grapheme or an atom is wider than the line.
+        // Lines fit, unless one grapheme or an atom is wider than the line:
+        // then the line is that grapheme, or starts with that atom (an atom
+        // that would straddle the end of a line moves to the next one).
         let width = width(i);
         if line.cols > width {
             let graphemes = bounds
                 .iter()
                 .filter(|&&b| b > r.start as usize && b <= r.end as usize)
                 .count();
-            let has_atom = atoms.iter().any(|a| a.start < r.end && a.end > r.start);
+            let wide_atom = atoms.iter().any(|a| {
+                a.start == r.start && str_width(slice(text, a), false) > usize::from(width)
+            });
             assert!(
-                graphemes == 1 || has_atom,
-                "line {i} ({:?}, {} cols) exceeds width {width}",
+                graphemes == 1 || wide_atom,
+                "line {i} ({:?}, {} cols) exceeds width {width}; atoms {atoms:?}",
                 slice(text, r),
                 line.cols
             );

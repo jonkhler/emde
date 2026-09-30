@@ -84,9 +84,17 @@ impl Builder<'_> {
         }
     }
 
+    /// The styles of a block drawn in `mode`. Only a panel has the
+    /// background: in a frame, a gutter or bare, the background would sit
+    /// behind the characters alone and leave ragged edges.
     fn code_look(&mut self, mode: Mode) -> Look {
-        let panel = self.sty.el(Element::CodeBlock);
+        let block = self.sty.el(Element::CodeBlock);
         let panel_bg = self.sty.of(Element::CodeBlock).bg;
+        let panel = if mode == Mode::Panel {
+            block
+        } else {
+            self.sty.with_bg(block, Color::Default)
+        };
         let on_panel = |b: &mut Self, id: StyleId| {
             if mode == Mode::Panel && panel_bg != Color::Default {
                 b.sty.with_bg(id, panel_bg)
@@ -112,13 +120,15 @@ impl Builder<'_> {
     }
 
     /// Styles of added and removed `diff` lines: a background tint on a
-    /// panel, a foreground colour otherwise.
+    /// truecolor panel, a foreground colour otherwise (at 256 colours and
+    /// below both tints fall on the same palette grey).
     fn diff_styles(&mut self, panel: StyleId, mode: Mode) -> (StyleId, StyleId) {
         let green = self.theme.color("green");
         let red = self.theme.color("red");
         let panel_bg = self.sty.of(Element::CodeBlock).bg;
+        let tint = mode == Mode::Panel && self.sty.depth() == ColorDepth::TrueColor;
         let pick = |b: &mut Self, rgb: Option<crate::style::Rgb>| match (rgb, panel_bg) {
-            (Some(c), Color::Rgb(bg)) if mode == Mode::Panel => b
+            (Some(c), Color::Rgb(bg)) if tint => b
                 .sty
                 .with_bg(panel, Color::Rgb(mix_oklab(bg, c, DIFF_TINT))),
             (Some(c), _) => b.sty.with_fg(panel, Color::Rgb(c)),
@@ -140,12 +150,12 @@ impl Builder<'_> {
         guarded(|| hl.highlight(lang, &cb.code))
     }
 
-    /// A code block.
+    /// A code block. Its rows keep their place in aligned containers
+    /// (`<div align="center">`): a panel or frame spans the whole content
+    /// width, so centring rows one by one would only tear it apart.
     pub(super) fn code_block(&mut self, cb: &CodeBlock) {
         let off = self.off;
         let width = self.avail();
-        let mode = self.code_mode();
-        let look = self.code_look(mode);
         let source: Vec<&str> = cb.code.split('\n').collect();
         let tab = self.opts.code.tab_width;
         let amb = self.amb;
@@ -159,6 +169,7 @@ impl Builder<'_> {
         let numbers = self.opts.code.line_numbers;
         let digits = to_u16(source.len().to_string().len());
         let gutter = if numbers { digits + 1 } else { 0 };
+        let mode = self.code_mode();
         let (left, right) = match mode {
             Mode::Panel => (1, 1),
             Mode::Frame => (2, 2),
@@ -171,7 +182,7 @@ impl Builder<'_> {
         } else {
             (mode, left, right, gutter, numbers)
         };
-        let look = Look { mode, ..look };
+        let look = self.code_look(mode);
         let content = width.saturating_sub(left + right + gutter).max(1);
         let diff = cb
             .lang
@@ -200,6 +211,7 @@ impl Builder<'_> {
                 let text = visible_code(e.text.get(chunk.clone()).unwrap_or(""));
                 let text = text.as_ref();
                 self.begin();
+                self.placed();
                 let start = self.cols();
                 self.code_left(&look, style, ci > 0);
                 if numbers {
@@ -295,7 +307,8 @@ impl Builder<'_> {
         }
     }
 
-    /// The row above the code: title and language label.
+    /// The row above the code: title and language label, each cut (or
+    /// left out) so the row fits `width` columns, the label first.
     fn code_header(
         &mut self,
         look: &Look,
@@ -308,23 +321,31 @@ impl Builder<'_> {
         let clean = |s: &str| {
             crate::text::strip_soft_hyphens(&crate::text::sanitize(s)).replace(['\n', '\t'], " ")
         };
-        let title = title.map(clean).filter(|t| !t.is_empty());
-        let label = label.map(clean).filter(|l| !l.is_empty());
+        let title = title.map(clean);
+        let label = label.map(clean);
+        // `text` cut to `room` columns; `None` when nothing of it fits.
+        let fit = |text: &Option<String>, room: u16| -> Option<(String, u16)> {
+            let (t, w) = cut_to_cols(text.as_deref()?, room, amb);
+            (w > 0).then(|| (t.to_string(), w))
+        };
         match look.mode {
             Mode::Gutter | Mode::Bare => {}
             Mode::Panel => {
+                // ` title … label `: one column of padding on each side.
+                let inner = width.saturating_sub(2);
+                let label = fit(&label, inner);
+                let label_room = label.as_ref().map_or(0, |(_, w)| w.saturating_add(1));
+                let title = fit(&title, inner.saturating_sub(label_room));
                 self.begin();
+                self.placed();
                 let start = self.cols();
                 self.put(" ", look.panel, None);
-                let label_w = label.as_deref().map_or(0, |l| to_u16(str_width(l, amb)));
-                if let Some(t) = &title {
-                    let room = width.saturating_sub(label_w + 3);
-                    let (t, _) = cut_to_cols(t, room, amb);
+                if let Some((t, _)) = &title {
                     self.put(t, look.label, None);
                 }
-                if let Some(l) = &label {
+                if let Some((l, label_w)) = &label {
                     let used = self.cols() - start;
-                    let pad = width.saturating_sub(used + label_w + 1);
+                    let pad = width.saturating_sub(used.saturating_add(*label_w).saturating_add(1));
                     self.spaces(pad, look.panel);
                     self.put(l, look.label, None);
                 }
@@ -335,25 +356,31 @@ impl Builder<'_> {
                 self.end(LineKind::Text, fill, off);
             }
             Mode::Frame => {
+                // `┌─ title ─── label ─┐`: the label takes ` label ─`, the
+                // title `─ title ` (and one more dash before a label),
+                // dashes fill what is left.
                 let b = self.deco.frame;
+                let inner = width.saturating_sub(2);
+                let label = fit(&label, inner.saturating_sub(3));
+                let label_seg = label.as_ref().map_or(0, |(_, w)| w.saturating_add(3));
+                let separator = u16::from(label.is_some());
+                let title_room = inner
+                    .saturating_sub(label_seg)
+                    .saturating_sub(3 + separator);
+                let title = fit(&title, title_room);
+                let title_seg = title.as_ref().map_or(0, |(_, w)| w.saturating_add(3));
                 self.begin();
-                let start = self.cols();
+                self.placed();
                 self.put_glyph(b.top_left, look.frame);
-                let label_w = label
-                    .as_deref()
-                    .map_or(0, |l| to_u16(str_width(l, amb)) + 3);
-                if let Some(t) = &title {
+                if let Some((t, _)) = &title {
                     self.put_glyph(b.horizontal, look.frame);
                     self.put(" ", look.frame, None);
-                    let room = width.saturating_sub(label_w + 6);
-                    let (t, _) = cut_to_cols(t, room, amb);
                     self.put(t, look.label, None);
                     self.put(" ", look.frame, None);
                 }
-                let used = self.cols() - start;
-                let dashes = width.saturating_sub(used + label_w + 1);
+                let dashes = inner.saturating_sub(title_seg).saturating_sub(label_seg);
                 self.repeat(b.horizontal, dashes, look.frame);
-                if let Some(l) = &label {
+                if let Some((l, _)) = &label {
                     self.put(" ", look.frame, None);
                     self.put(l, look.label, None);
                     self.put(" ", look.frame, None);
@@ -371,6 +398,7 @@ impl Builder<'_> {
             Mode::Gutter | Mode::Bare => {}
             Mode::Panel => {
                 self.begin();
+                self.placed();
                 let start = self.cols();
                 self.put(" ", look.panel, None);
                 let fill = Fill::Panel {
@@ -382,6 +410,7 @@ impl Builder<'_> {
             Mode::Frame => {
                 let b = self.deco.frame;
                 self.begin();
+                self.placed();
                 self.put_glyph(b.bottom_left, look.frame);
                 self.repeat(b.horizontal, width.saturating_sub(2), look.frame);
                 self.put_glyph(b.bottom_right, look.frame);

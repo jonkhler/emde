@@ -6,10 +6,11 @@
 //! references superscript digits, image chips `▣ alt`, code spans and key
 //! caps pills (padded where their background shows, in backticks or
 //! brackets where nothing would set them apart), and links without OSC 8 a
-//! numbered reference. Line-breaking constraints follow: atoms for math,
-//! footnote numbers, key caps and code spans up to 24 columns; extra break
-//! points for URLs and at math break hints. Plain prose skips all of it and
-//! borrows the IR text.
+//! numbered reference (unless their text is the URL). Line-breaking
+//! constraints follow: atoms for math, footnote numbers, reference numbers,
+//! key caps and code spans up to 24 columns; extra break points for URLs
+//! and at math break hints. Plain prose skips all of it and borrows the IR
+//! text.
 //!
 //! A composed text keeps a map back to IR offsets, so every line records
 //! where its content came from ([`crate::ir::SrcPos`]).
@@ -228,6 +229,17 @@ fn to_u32(n: usize) -> u32 {
     u32::try_from(n).unwrap_or(u32::MAX)
 }
 
+/// Whether a link's text is its URL already (`[https://x.org](https://x.org)`,
+/// `[me@x.org](mailto:me@x.org)`), so a numbered reference would only
+/// repeat it.
+pub(super) fn shows_url(text: &str, url: &str) -> bool {
+    let text = text.trim();
+    let url = url.trim();
+    let same = |a: &str, b: &str| a.trim_end_matches('/') == b.trim_end_matches('/');
+    !text.is_empty()
+        && (same(text, url) || url.strip_prefix("mailto:").is_some_and(|u| same(text, u)))
+}
+
 fn to_u16(n: usize) -> u16 {
     u16::try_from(n).unwrap_or(u16::MAX)
 }
@@ -382,9 +394,14 @@ impl<'a> Builder<'a> {
         };
         let runs: Vec<(Range<u32>, &crate::ir::Run)> = inl.runs_with_ranges().collect();
         let mut kbd_start: Option<u32> = None;
+        // Where the current link's text starts in the IR text.
+        let mut link_start = 0u32;
         for (i, (range, run)) in runs.iter().enumerate() {
             let src = inl.slice(range.clone());
             let link = run.link;
+            if link.is_some() && (i == 0 || runs.get(i - 1).is_none_or(|(_, r)| r.link != link)) {
+                link_start = range.start;
+            }
             let has_link = link.is_some();
             match run.kind {
                 RunKind::Text | RunKind::Html => {
@@ -418,11 +435,15 @@ impl<'a> Builder<'a> {
                             out.map(range.clone(), true);
                             let at = out.len();
                             out.push(src, style, link, SpanFlags::empty(), pill);
-                            for &b in &inl.extra_breaks {
-                                if b > range.start && b < range.end {
+                            // The run's own extra breaks (sorted in the IR):
+                            // found by binary search, so a paragraph with
+                            // many runs and many URL breaks stays linear.
+                            let breaks = &inl.extra_breaks;
+                            let lo = breaks.partition_point(|&b| b < range.start);
+                            let hi = breaks.partition_point(|&b| b < range.end);
+                            for &b in breaks.get(lo..hi).unwrap_or(&[]) {
+                                if b > 0 {
                                     out.breaks.push(at + (b - range.start));
-                                } else if b == range.start && b > 0 {
-                                    out.breaks.push(at);
                                 }
                             }
                         }
@@ -489,19 +510,24 @@ impl<'a> Builder<'a> {
                     out.push(src, alt, link, SpanFlags::empty(), false);
                 }
             }
-            // A numbered reference after the last run of a link.
+            // A numbered reference after the last run of a link, unless its
+            // text already shows the URL.
             if let Some(l) = link
                 && self.refs.enabled
                 && runs.get(i + 1).is_none_or(|(_, r)| r.link != Some(l))
                 && let Some(target) = self.doc.link(l)
                 && wants_ref(target)
+                && !shows_url(inl.slice(link_start..range.end), &target.url)
             {
                 let n = self.refs.number(l, &target.url);
                 let style = self
                     .sty
                     .inline(base, InlineFlags::empty(), Kind::LinkRef, false);
                 out.map(range.end..range.end, false);
-                out.push(&format!("[{n}]"), style, None, SpanFlags::empty(), false);
+                // An atom: a word too long for its line (a code span in a
+                // narrow table cell) never splits the number.
+                let r = out.push(&format!("[{n}]"), style, None, SpanFlags::empty(), false);
+                out.atom(r);
             }
         }
         let ir_end = to_u32(inl.text.len());

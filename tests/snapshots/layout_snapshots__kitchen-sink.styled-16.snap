@@ -72,18 +72,18 @@ expression: "styled(\"kitchen-sink\", &caps, &[80])"
   ⟦fg=ansi7 bold⟧────────────────────────────────────────────────────────────────────────────⟦/⟧
 
   ⟦fg=ansi8⟧┌─ hello.rs ──────────────────────────────────────────────────────── rust ─┐⟦/⟧
-  ⟦fg=ansi8⟧│⟦/⟧ ⟦fg=ansi7 bg=ansi8 bold⟧fn⟦/⟧⟦bg=ansi8⟧ main() {⟦/⟧                                                              ⟦fg=ansi8⟧│⟦/⟧
-  ⟦fg=ansi8⟧│⟦/⟧ ⟦bg=ansi8⟧    println!(⟦/⟧⟦fg=ansi3 bg=ansi8⟧"Hello, {}!"⟦/⟧⟦bg=ansi8⟧, ⟦/⟧⟦fg=ansi3 bg=ansi8⟧"world"⟦/⟧⟦bg=ansi8⟧);⟦/⟧                                     ⟦fg=ansi8⟧│⟦/⟧
-  ⟦fg=ansi8⟧│⟦/⟧ ⟦bg=ansi8⟧}⟦/⟧                                                                        ⟦fg=ansi8⟧│⟦/⟧
+  ⟦fg=ansi8⟧│⟦/⟧ ⟦fg=ansi7 bold⟧fn⟦/⟧ main() {                                                              ⟦fg=ansi8⟧│⟦/⟧
+  ⟦fg=ansi8⟧│⟦/⟧     println!(⟦fg=ansi3⟧"Hello, {}!"⟦/⟧, ⟦fg=ansi3⟧"world"⟦/⟧);                                     ⟦fg=ansi8⟧│⟦/⟧
+  ⟦fg=ansi8⟧│⟦/⟧ }                                                                        ⟦fg=ansi8⟧│⟦/⟧
   ⟦fg=ansi8⟧└──────────────────────────────────────────────────────────────────────────┘⟦/⟧
 
   ⟦fg=ansi8⟧┌──────────────────────────────────────────────────────────────────────────┐⟦/⟧
-  ⟦fg=ansi8⟧│⟦/⟧ ⟦bg=ansi8⟧indented code block⟦/⟧                                                      ⟦fg=ansi8⟧│⟦/⟧
+  ⟦fg=ansi8⟧│⟦/⟧ indented code block                                                      ⟦fg=ansi8⟧│⟦/⟧
   ⟦fg=ansi8⟧└──────────────────────────────────────────────────────────────────────────┘⟦/⟧
 
   ⟦fg=ansi8⟧┌─────────────────────────────────────────────────────────────────── diff ─┐⟦/⟧
-  ⟦fg=ansi8⟧│⟦/⟧ ⟦fg=ansi9 bg=ansi8⟧-old line⟦/⟧                                                                ⟦fg=ansi8⟧│⟦/⟧
-  ⟦fg=ansi8⟧│⟦/⟧ ⟦fg=ansi3 bg=ansi8⟧+new line⟦/⟧                                                                ⟦fg=ansi8⟧│⟦/⟧
+  ⟦fg=ansi8⟧│⟦/⟧ ⟦fg=ansi9⟧-old line⟦/⟧                                                                ⟦fg=ansi8⟧│⟦/⟧
+  ⟦fg=ansi8⟧│⟦/⟧ ⟦fg=ansi3⟧+new line⟦/⟧                                                                ⟦fg=ansi8⟧│⟦/⟧
   ⟦fg=ansi8⟧└──────────────────────────────────────────────────────────────────────────┘⟦/⟧
 
   ⟦fg=ansi7 bold⟧Math⟦/⟧

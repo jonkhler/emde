@@ -501,7 +501,7 @@ impl Inlines {
         &self.text
     }
 
-    /// Line-breaking constraints for [`crate::text::wrap`].
+    /// Line-breaking constraints for [`crate::text::wrap()`].
     pub fn constraints(&self) -> Constraints<'_> {
         Constraints {
             atoms: &self.atoms,

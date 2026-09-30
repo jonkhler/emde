@@ -16,7 +16,7 @@
 //!
 //! Spans are positioned relative to the *text column*: the measure is
 //! `min(max_width, width − 2·margin)` columns wide, centred on a terminal
-//! with [`Align::Center`](crate::options::Align::Center), and the emitter
+//! with [`Align::Center`], and the emitter
 //! puts [`Layout::indent`] spaces before every line. Every line fits the
 //! measure; nothing a document contains can make a line wider.
 //!
