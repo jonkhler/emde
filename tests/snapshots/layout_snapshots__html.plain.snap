@@ -1,0 +1,151 @@
+---
+source: tests/layout_snapshots.rs
+expression: "plain(\"html\")"
+---
+━━ width 24 ━━━━━━━━━━━━
+▾ Summary with bold
+  Content inside
+  details.
+
+▾ Details
+  No summary here.
+
+       ▣ Logo
+
+ Centered markdown
+ text inside a div.
+
+       Right aligned
+
+Line one
+line two
+line three.
+
+Press
+[Ctrl]+[Shift]+[P].
+
+H₂O, E = mc², 1ˢᵗ
+and x[a].
+
+Marked, underlined,
+inserted, deleted,
+struck.
+
+ Centered with the
+     center tag
+
+An HTML link[1] and
+an anchor.
+
+ ▣ Picture fallback
+
+Unknown tags keep
+their text.
+
+cell cell two
+
+[1]: https://
+     example.com
+━━ width 40 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+▾ Summary with bold
+  Content inside details.
+
+▾ Details
+  No summary here.
+
+               ▣ Logo
+
+Centered markdown text inside a div.
+
+                       Right aligned
+
+Line one
+line two
+line three.
+
+Press [Ctrl]+[Shift]+[P].
+
+H₂O, E = mc², 1ˢᵗ and x[a].
+
+Marked, underlined, inserted,
+deleted, struck.
+
+    Centered with the center tag
+
+An HTML link[1] and an anchor.
+
+         ▣ Picture fallback
+
+Unknown tags keep their text.
+
+cell cell two
+
+[1]: https://example.com
+━━ width 80 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+▾ Summary with bold
+  Content inside details.
+
+▾ Details
+  No summary here.
+
+                                   ▣ Logo
+
+                    Centered markdown text inside a div.
+
+                                                               Right aligned
+
+Line one
+line two
+line three.
+
+Press [Ctrl]+[Shift]+[P].
+
+H₂O, E = mc², 1ˢᵗ and x[a].
+
+Marked, underlined, inserted, deleted, struck.
+
+                        Centered with the center tag
+
+An HTML link[1] and an anchor.
+
+                             ▣ Picture fallback
+
+Unknown tags keep their text.
+
+cell cell two
+
+[1]: https://example.com
+━━ width 120 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+▾ Summary with bold
+  Content inside details.
+
+▾ Details
+  No summary here.
+
+                                               ▣ Logo
+
+                                Centered markdown text inside a div.
+
+                                                                                       Right aligned
+
+Line one
+line two
+line three.
+
+Press [Ctrl]+[Shift]+[P].
+
+H₂O, E = mc², 1ˢᵗ and x[a].
+
+Marked, underlined, inserted, deleted, struck.
+
+                                    Centered with the center tag
+
+An HTML link[1] and an anchor.
+
+                                         ▣ Picture fallback
+
+Unknown tags keep their text.
+
+cell cell two
+
+[1]: https://example.com

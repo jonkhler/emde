@@ -1,0 +1,27 @@
+Inline: $e^{i\pi} + 1 = 0$, $\alpha^2 + \beta^2$, and $\frac{a}{b}$.
+
+Dollars stay prose: it costs $5 and $10, or $5-$10.
+
+LaTeX delimiters: \(x^2 + y^2 = z^2\) inline.
+
+\[
+\sum_{i=1}^{n} i^2 = \frac{n(n+1)(2n+1)}{6}
+\]
+
+$$
+A = \begin{pmatrix} a & b \\ c & d \end{pmatrix}
+$$
+
+```math
+f(x) = \begin{cases} 1 & x > 0 \\ 0 & \text{otherwise} \end{cases}
+```
+
+GitHub style: $`\sqrt{x^2+1}`$.
+
+A long inline formula $a_1 + a_2 + a_3 + a_4 + a_5 + a_6 + a_7 + a_8 + a_9 + a_{10}$ wraps at operators.
+
+Broken TeX: $\frac{a$ and a broken display:
+
+$$
+\begin{matrix} a & b
+$$

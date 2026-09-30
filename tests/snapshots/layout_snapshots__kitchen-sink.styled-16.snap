@@ -1,0 +1,131 @@
+---
+source: tests/layout_snapshots.rs
+expression: "styled(\"kitchen-sink\", &caps, &[80])"
+---
+━━ width 80 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ⟦fg=ansi8⟧┌──────────────────────────┐⟦/⟧
+  ⟦fg=ansi8⟧│⟦/⟧ ⟦fg=ansi8⟧title⟦/⟧   Kitchen Sink     ⟦fg=ansi8⟧│⟦/⟧
+  ⟦fg=ansi8⟧│⟦/⟧ ⟦fg=ansi8⟧author⟦/⟧  emde             ⟦fg=ansi8⟧│⟦/⟧
+  ⟦fg=ansi8⟧│⟦/⟧ ⟦fg=ansi8⟧tags⟦/⟧    [markdown, test] ⟦fg=ansi8⟧│⟦/⟧
+  ⟦fg=ansi8⟧└──────────────────────────┘⟦/⟧
+
+  ⟦bold reverse⟧ Kitchen Sink                                                               ⟦/⟧
+
+  A paragraph with ⟦italic⟧emphasis⟦/⟧, ⟦bold⟧strong⟦/⟧, ⟦bold italic⟧both⟦/⟧, ⟦fg=ansi8 strike⟧strikethrough⟦/⟧, ⟦fg=ansi7 bg=ansi8⟧inline code⟦/⟧, a ⟦fg=ansi6 ul link 0⟧link⟦/⟧,
+  an autolink ⟦fg=ansi6 ul link 1⟧https://example.org/path⟦/⟧, and a bare URL ⟦fg=ansi6 ul link 4⟧https://www.rust-⟦/⟧
+  ⟦fg=ansi6 ul link 4⟧lang.org/learn⟦/⟧. Hard break at the end of this line
+  and a backslash hard break
+  then more text. Footnote reference⟦fg=ansi6 link 2⟧¹⟦/⟧ and another⟦fg=ansi6 link 3⟧²⟦/⟧.
+
+  ⟦fg=ansi7 bold⟧Headings⟦/⟧
+  ⟦fg=ansi7 bold⟧────────────────────────────────────────────────────────────────────────────⟦/⟧
+
+  ⟦fg=ansi14 bold⟧▎ Third level⟦/⟧
+
+  ⟦bold⟧Fourth level⟦/⟧
+
+  ⟦fg=ansi6 bold italic⟧Fifth level⟦/⟧
+
+  ⟦fg=ansi8 bold italic⟧Sixth level⟦/⟧
+
+  ⟦fg=ansi7 bold⟧Lists⟦/⟧
+  ⟦fg=ansi7 bold⟧────────────────────────────────────────────────────────────────────────────⟦/⟧
+
+  ⟦fg=ansi6⟧•⟦/⟧ Tight item one
+  ⟦fg=ansi6⟧•⟦/⟧ Tight item with ⟦bold⟧bold⟦/⟧
+    ⟦fg=ansi6⟧◦⟦/⟧ Nested item
+      ⟦fg=ansi6⟧‣⟦/⟧ Deeper item
+  ⟦fg=ansi8⟧☐⟦/⟧ Unchecked task
+  ⟦fg=ansi3⟧☒⟦/⟧ ⟦dim⟧Checked task⟦/⟧
+
+  ⟦fg=ansi6⟧1.⟦/⟧ First
+
+  ⟦fg=ansi6⟧2.⟦/⟧ Second
+
+     With a second paragraph.
+
+  ⟦fg=ansi6⟧3.⟦/⟧ Third
+
+  ⟦fg=ansi7 bold⟧Quotes and alerts⟦/⟧
+  ⟦fg=ansi7 bold⟧────────────────────────────────────────────────────────────────────────────⟦/⟧
+
+  ⟦fg=ansi8⟧▎⟦/⟧ ⟦fg=ansi6⟧A plain quote with a ⟦/⟧⟦fg=ansi6 ul link 5⟧reference link⟦/⟧⟦fg=ansi6⟧.⟦/⟧
+  ⟦fg=ansi8⟧▎⟦/⟧
+  ⟦fg=ansi8⟧▎⟦/⟧ ⟦fg=ansi8⟧▎⟦/⟧ ⟦fg=ansi6⟧A nested quote.⟦/⟧
+
+  ⟦fg=ansi6⟧▎⟦/⟧ ⟦fg=ansi6 bold⟧ⓘ Note⟦/⟧
+  ⟦fg=ansi6⟧▎⟦/⟧ Notes carry an icon and a title.
+
+  ⟦fg=ansi3⟧▎⟦/⟧ ⟦fg=ansi3 bold⟧✦ Tip⟦/⟧
+  ⟦fg=ansi3⟧▎⟦/⟧ A tip.
+
+  ⟦fg=ansi7⟧▎⟦/⟧ ⟦fg=ansi7 bold⟧❖ Important⟦/⟧
+  ⟦fg=ansi7⟧▎⟦/⟧ Something important.
+
+  ⟦fg=ansi7⟧▎⟦/⟧ ⟦fg=ansi7 bold⟧▲ Warning⟦/⟧
+  ⟦fg=ansi7⟧▎⟦/⟧ Careful: this is a ⟦italic⟧warning⟦/⟧.
+
+  ⟦fg=ansi9⟧▎⟦/⟧ ⟦fg=ansi9 bold⟧⊘ Caution⟦/⟧
+  ⟦fg=ansi9⟧▎⟦/⟧ Mind the risks.
+
+  ⟦fg=ansi7 bold⟧Code⟦/⟧
+  ⟦fg=ansi7 bold⟧────────────────────────────────────────────────────────────────────────────⟦/⟧
+
+  ⟦fg=ansi8⟧┌─ hello.rs ──────────────────────────────────────────────────────── rust ─┐⟦/⟧
+  ⟦fg=ansi8⟧│⟦/⟧ ⟦fg=ansi7 bold⟧fn⟦/⟧ main() {                                                              ⟦fg=ansi8⟧│⟦/⟧
+  ⟦fg=ansi8⟧│⟦/⟧     println!(⟦fg=ansi3⟧"Hello, {}!"⟦/⟧, ⟦fg=ansi3⟧"world"⟦/⟧);                                     ⟦fg=ansi8⟧│⟦/⟧
+  ⟦fg=ansi8⟧│⟦/⟧ }                                                                        ⟦fg=ansi8⟧│⟦/⟧
+  ⟦fg=ansi8⟧└──────────────────────────────────────────────────────────────────────────┘⟦/⟧
+
+  ⟦fg=ansi8⟧┌──────────────────────────────────────────────────────────────────────────┐⟦/⟧
+  ⟦fg=ansi8⟧│⟦/⟧ indented code block                                                      ⟦fg=ansi8⟧│⟦/⟧
+  ⟦fg=ansi8⟧└──────────────────────────────────────────────────────────────────────────┘⟦/⟧
+
+  ⟦fg=ansi8⟧┌─────────────────────────────────────────────────────────────────── diff ─┐⟦/⟧
+  ⟦fg=ansi8⟧│⟦/⟧ ⟦fg=ansi9⟧-old line⟦/⟧                                                                ⟦fg=ansi8⟧│⟦/⟧
+  ⟦fg=ansi8⟧│⟦/⟧ ⟦fg=ansi3⟧+new line⟦/⟧                                                                ⟦fg=ansi8⟧│⟦/⟧
+  ⟦fg=ansi8⟧└──────────────────────────────────────────────────────────────────────────┘⟦/⟧
+
+  ⟦fg=ansi7 bold⟧Math⟦/⟧
+  ⟦fg=ansi7 bold⟧────────────────────────────────────────────────────────────────────────────⟦/⟧
+
+  Inline math ⟦fg=ansi9 ul=curly ulc=ansi9⟧e^{i\pi} + 1 = 0⟦/⟧ and ⟦fg=ansi9 ul=curly ulc=ansi9⟧x^2⟦/⟧, and money: $5 and $10, or $5-$10.
+
+                  ⟦fg=ansi9 ul=curly ulc=ansi9⟧\sum_{i=1}^{n} i^2 = \frac{n(n+1)(2n+1)}{6}⟦/⟧
+
+                ⟦fg=ansi9 ul=curly ulc=ansi9⟧A = \begin{pmatrix} a & b \\ c & d \end{pmatrix}⟦/⟧
+
+  ⟦fg=ansi7 bold⟧Table⟦/⟧
+  ⟦fg=ansi7 bold⟧────────────────────────────────────────────────────────────────────────────⟦/⟧
+
+  ⟦fg=ansi8⟧╭───────────────────────┬────────┬───────╮⟦/⟧
+  ⟦fg=ansi8⟧│⟦/⟧⟦bg=ansi8 bold⟧ Left                  ⟦/⟧⟦fg=ansi8⟧│⟦/⟧⟦bg=ansi8 bold⟧ Center ⟦/⟧⟦fg=ansi8⟧│⟦/⟧⟦bg=ansi8 bold⟧ Right ⟦/⟧⟦fg=ansi8⟧│⟦/⟧
+  ⟦fg=ansi8⟧├───────────────────────┼────────┼───────┤⟦/⟧
+  ⟦fg=ansi8⟧│⟦/⟧ ⟦fg=ansi7 bg=ansi8⟧a⟦/⟧                     ⟦fg=ansi8⟧│⟦/⟧   ⟦bold⟧b⟦/⟧    ⟦fg=ansi8⟧│⟦/⟧     ⟦fg=ansi9 ul=curly ulc=ansi9⟧c⟦/⟧ ⟦fg=ansi8⟧│⟦/⟧
+  ⟦fg=ansi8⟧│⟦/⟧ long cell with a ⟦fg=ansi6 ul link 6⟧link⟦/⟧ ⟦fg=ansi8⟧│⟦/⟧   x⟦fg=ansi6 link 7⟧¹⟦/⟧   ⟦fg=ansi8⟧│⟦/⟧     3 ⟦fg=ansi8⟧│⟦/⟧
+  ⟦fg=ansi8⟧╰───────────────────────┴────────┴───────╯⟦/⟧
+
+  ⟦fg=ansi7 bold⟧Other blocks⟦/⟧
+  ⟦fg=ansi7 bold⟧────────────────────────────────────────────────────────────────────────────⟦/⟧
+
+  ⟦bold⟧Term⟦/⟧
+      Its definition.
+
+  ⟦fg=ansi8⟧────────────────────────────────────────────────────────────────────────────⟦/⟧
+
+  ⟦fg=ansi8⟧▾ ⟦/⟧⟦bold⟧Click to expand⟦/⟧
+    Hidden content with ⟦fg=ansi7 bg=ansi8 bold⟧[Ctrl]⟦/⟧+⟦fg=ansi7 bg=ansi8 bold⟧[C]⟦/⟧ and H₂O and x².
+
+                      Centred text, ⟦bg=ansi8⟧marked⟦/⟧ and ⟦ul⟧underlined⟦/⟧.
+
+                                   ⟦fg=ansi8⟧▣ ⟦/⟧⟦fg=ansi8 italic⟧A figure⟦/⟧
+                                 ⟦fg=ansi6 italic⟧Figure caption⟦/⟧
+
+  Text with an ⟦fg=ansi8⟧▣ ⟦/⟧⟦fg=ansi8 italic⟧inline image⟦/⟧ chip and a ⟦fg=ansi6 ul link 8⟧▣ ⟦/⟧⟦fg=ansi6 italic ul link 8⟧badge⟦/⟧ badge.
+
+  日本語のテキストと English mixed with emoji 👨‍👩‍👧 and ❤️.
+
+  ⟦fg=ansi8⟧── ⟦/⟧⟦fg=ansi6⟧Footnotes⟦/⟧⟦fg=ansi8⟧ ───────────────────────────────────────────────────────────────⟦/⟧
+
+  ⟦fg=ansi6⟧1.⟦/⟧ ⟦fg=ansi6⟧The footnote text, with ⟦/⟧⟦fg=ansi6 italic⟧emphasis⟦/⟧⟦fg=ansi6⟧.⟦/⟧⟦fg=ansi6 link 2⟧ ↑⟦/⟧⟦fg=ansi6 link 7⟧ ↑²⟦/⟧
+  ⟦fg=ansi6⟧2.⟦/⟧ ⟦fg=ansi6⟧Second footnote.⟦/⟧⟦fg=ansi6 link 3⟧ ↑⟦/⟧

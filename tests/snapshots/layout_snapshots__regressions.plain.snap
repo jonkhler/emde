@@ -1,0 +1,442 @@
+---
+source: tests/layout_snapshots.rs
+expression: "plain(\"regressions\")"
+---
+━━ width 24 ━━━━━━━━━━━━
+Regressions
+════════════════════
+
+glamour 314: list
+continuation indent
+────────────────────
+
+• Lorem ipsum dolor
+  sit amet,
+  consectetur
+  adipiscing elit.
+  Nulla mattis
+  dignissim leo et
+  tempus. Cras sit
+  amet nisi id leo
+  eleifend iaculis
+  nec in lectus.
+  ◦ Cras quis ornare
+    mi, in
+    condimentum
+    tortor. Vivamus
+    id convallis
+    ligula. Morbi ac
+    commodo lacus,
+    in blandit
+    augue.
+
+glamour 172: quote
+prefix after
+wrapping
+────────────────────
+
+▎ The quick brown
+▎ fox jumps over the
+▎ lazy dog. The
+▎ quick brown fox
+▎ jumps over the
+▎ lazy dog. The
+▎ quick brown fox
+▎ jumps over the
+▎ lazy dog.
+
+▎ The quick brown
+▎ fox jumps over the
+▎ lazy dog. The
+▎ quick brown fox
+▎ jumps over the
+▎ lazy dog. The
+▎ quick brown fox
+▎ jumps over the
+▎ lazy dog. The
+▎ quick brown fox
+▎ jumps over the
+▎ lazy dog.
+
+glamour 149: wrapped
+hyperlinks
+────────────────────
+
+See https://
+github.com/
+ValveSoftware/steam-
+for-linux/issues/
+1234567890 for the
+details.
+
+glamour 84: two
+trailing spaces
+────────────────────
+
+First line with two
+trailing spaces
+second line after a
+hard break.
+
+glamour 454:
+backgrounds fill the
+line
+────────────────────
+
+┌──────────────────┐
+│ short            │
+└──────────────────┘
+
+glamour 315: inline
+code in tables
+────────────────────
+
+╭─────────┬────────╮
+│ Command │ Meanin │
+│         │ g      │
+├─────────┼────────┤
+│ `git    │ rewrit │
+│ commit  │ e the  │
+│ --      │ last   │
+│ amend`  │ commit │
+╰─────────┴────────╯
+
+mdcat 43: footnote
+in a table, and OSC
+8 ids
+────────────────────
+
+╭─────────┬────────╮
+│ Berry   │ Number │
+│         │ of Rs  │
+├─────────┼────────┤
+│ Strawbe │ 2¹     │
+│ rry     │        │
+├─────────┼────────┤
+│ Raspber │ 3      │
+│ ry      │        │
+╰─────────┴────────╯
+
+mdcat 301: `<br>` in
+a table
+────────────────────
+
+Port PoE: 8+
+Connection: PoE
+  Splitter
+  G5 Left Rear
+  G5 Front Lawn
+Power: 3W PoE
+  4W PoE
+
+mdcat 302: task
+lists with
+paragraphs
+────────────────────
+
+☐ foo
+
+  ☐ bar
+  ☐ baz
+
+☐ test
+
+  ☐ test1
+  ☐ test2
+
+── Footnotes ───────
+
+1. According to many
+   LLMs[1] ↑
+
+[1]: https://
+     techcrunch.com/
+     2024/08/27/why-
+     ai-cant-spell-
+     strawberry/
+━━ width 40 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Regressions
+════════════════════════════════════
+
+glamour 314: list continuation
+indent
+────────────────────────────────────
+
+• Lorem ipsum dolor sit amet,
+  consectetur adipiscing elit. Nulla
+  mattis dignissim leo et tempus.
+  Cras sit amet nisi id leo eleifend
+  iaculis nec in lectus.
+  ◦ Cras quis ornare mi, in
+    condimentum tortor. Vivamus id
+    convallis ligula. Morbi ac
+    commodo lacus, in blandit augue.
+
+glamour 172: quote prefix after
+wrapping
+────────────────────────────────────
+
+▎ The quick brown fox jumps over the
+▎ lazy dog. The quick brown fox
+▎ jumps over the lazy dog. The quick
+▎ brown fox jumps over the lazy dog.
+
+▎ The quick brown fox jumps over the
+▎ lazy dog. The quick brown fox
+▎ jumps over the lazy dog. The quick
+▎ brown fox jumps over the lazy dog.
+▎ The quick brown fox jumps over the
+▎ lazy dog.
+
+glamour 149: wrapped hyperlinks
+────────────────────────────────────
+
+See https://github.com/
+ValveSoftware/steam-for-linux/
+issues/1234567890 for the details.
+
+glamour 84: two trailing spaces
+────────────────────────────────────
+
+First line with two trailing spaces
+second line after a hard break.
+
+glamour 454: backgrounds fill the
+line
+────────────────────────────────────
+
+┌──────────────────────────────────┐
+│ short                            │
+└──────────────────────────────────┘
+
+glamour 315: inline code in tables
+────────────────────────────────────
+
+╭─────────────────┬────────────────╮
+│ Command         │ Meaning        │
+├─────────────────┼────────────────┤
+│ `git commit --  │ rewrite the    │
+│ amend`          │ last commit    │
+╰─────────────────┴────────────────╯
+
+mdcat 43: footnote in a table, and
+OSC 8 ids
+────────────────────────────────────
+
+╭────────────┬──────────────╮
+│ Berry      │ Number of Rs │
+├────────────┼──────────────┤
+│ Strawberry │ 2¹           │
+│ Raspberry  │ 3            │
+╰────────────┴──────────────╯
+
+mdcat 301: `<br>` in a table
+────────────────────────────────────
+
+╭──────────┬──────────────┬────────╮
+│ Port PoE │ Connection   │ Power  │
+├──────────┼──────────────┼────────┤
+│ 8+       │ PoE Splitter │ 3W PoE │
+│          │ G5 Left Rear │ 4W PoE │
+│          │ G5 Front     │        │
+│          │ Lawn         │        │
+╰──────────┴──────────────┴────────╯
+
+mdcat 302: task lists with
+paragraphs
+────────────────────────────────────
+
+☐ foo
+
+  ☐ bar
+  ☐ baz
+
+☐ test
+
+  ☐ test1
+  ☐ test2
+
+── Footnotes ───────────────────────
+
+1. According to many LLMs[1] ↑
+
+[1]: https://techcrunch.com/2024/08/
+     27/why-ai-cant-spell-
+     strawberry/
+━━ width 80 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Regressions
+════════════════════════════════════════════════════════════════════════════
+
+glamour 314: list continuation indent
+────────────────────────────────────────────────────────────────────────────
+
+• Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla mattis
+  dignissim leo et tempus. Cras sit amet nisi id leo eleifend iaculis nec in
+  lectus.
+  ◦ Cras quis ornare mi, in condimentum tortor. Vivamus id convallis ligula.
+    Morbi ac commodo lacus, in blandit augue.
+
+glamour 172: quote prefix after wrapping
+────────────────────────────────────────────────────────────────────────────
+
+▎ The quick brown fox jumps over the lazy dog. The quick brown fox jumps
+▎ over the lazy dog. The quick brown fox jumps over the lazy dog.
+
+▎ The quick brown fox jumps over the lazy dog. The quick brown fox jumps
+▎ over the lazy dog. The quick brown fox jumps over the lazy dog. The quick
+▎ brown fox jumps over the lazy dog.
+
+glamour 149: wrapped hyperlinks
+────────────────────────────────────────────────────────────────────────────
+
+See https://github.com/ValveSoftware/steam-for-linux/issues/1234567890 for
+the details.
+
+glamour 84: two trailing spaces
+────────────────────────────────────────────────────────────────────────────
+
+First line with two trailing spaces
+second line after a hard break.
+
+glamour 454: backgrounds fill the line
+────────────────────────────────────────────────────────────────────────────
+
+┌──────────────────────────────────────────────────────────────────────────┐
+│ short                                                                    │
+└──────────────────────────────────────────────────────────────────────────┘
+
+glamour 315: inline code in tables
+────────────────────────────────────────────────────────────────────────────
+
+╭──────────────────────┬─────────────────────────╮
+│ Command              │ Meaning                 │
+├──────────────────────┼─────────────────────────┤
+│ `git commit --amend` │ rewrite the last commit │
+╰──────────────────────┴─────────────────────────╯
+
+mdcat 43: footnote in a table, and OSC 8 ids
+────────────────────────────────────────────────────────────────────────────
+
+╭────────────┬──────────────╮
+│ Berry      │ Number of Rs │
+├────────────┼──────────────┤
+│ Strawberry │ 2¹           │
+│ Raspberry  │ 3            │
+╰────────────┴──────────────╯
+
+mdcat 301: `<br>` in a table
+────────────────────────────────────────────────────────────────────────────
+
+╭──────────┬───────────────┬────────╮
+│ Port PoE │ Connection    │ Power  │
+├──────────┼───────────────┼────────┤
+│ 8+       │ PoE Splitter  │ 3W PoE │
+│          │ G5 Left Rear  │ 4W PoE │
+│          │ G5 Front Lawn │        │
+╰──────────┴───────────────┴────────╯
+
+mdcat 302: task lists with paragraphs
+────────────────────────────────────────────────────────────────────────────
+
+☐ foo
+
+  ☐ bar
+  ☐ baz
+
+☐ test
+
+  ☐ test1
+  ☐ test2
+
+── Footnotes ───────────────────────────────────────────────────────────────
+
+1. According to many LLMs[1] ↑
+
+[1]: https://techcrunch.com/2024/08/27/why-ai-cant-spell-strawberry/
+━━ width 120 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Regressions
+════════════════════════════════════════════════════════════════════════════════════════════════════
+
+glamour 314: list continuation indent
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+• Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla mattis dignissim leo et tempus.
+  Cras sit amet nisi id leo eleifend iaculis nec in lectus.
+  ◦ Cras quis ornare mi, in condimentum tortor. Vivamus id convallis ligula. Morbi ac commodo lacus,
+    in blandit augue.
+
+glamour 172: quote prefix after wrapping
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+▎ The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The
+▎ quick brown fox jumps over the lazy dog.
+
+▎ The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The
+▎ quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.
+
+glamour 149: wrapped hyperlinks
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+See https://github.com/ValveSoftware/steam-for-linux/issues/1234567890 for the details.
+
+glamour 84: two trailing spaces
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+First line with two trailing spaces
+second line after a hard break.
+
+glamour 454: backgrounds fill the line
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ short                                                                                            │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+glamour 315: inline code in tables
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+╭──────────────────────┬─────────────────────────╮
+│ Command              │ Meaning                 │
+├──────────────────────┼─────────────────────────┤
+│ `git commit --amend` │ rewrite the last commit │
+╰──────────────────────┴─────────────────────────╯
+
+mdcat 43: footnote in a table, and OSC 8 ids
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+╭────────────┬──────────────╮
+│ Berry      │ Number of Rs │
+├────────────┼──────────────┤
+│ Strawberry │ 2¹           │
+│ Raspberry  │ 3            │
+╰────────────┴──────────────╯
+
+mdcat 301: `<br>` in a table
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+╭──────────┬───────────────┬────────╮
+│ Port PoE │ Connection    │ Power  │
+├──────────┼───────────────┼────────┤
+│ 8+       │ PoE Splitter  │ 3W PoE │
+│          │ G5 Left Rear  │ 4W PoE │
+│          │ G5 Front Lawn │        │
+╰──────────┴───────────────┴────────╯
+
+mdcat 302: task lists with paragraphs
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+☐ foo
+
+  ☐ bar
+  ☐ baz
+
+☐ test
+
+  ☐ test1
+  ☐ test2
+
+── Footnotes ───────────────────────────────────────────────────────────────────────────────────────
+
+1. According to many LLMs[1] ↑
+
+[1]: https://techcrunch.com/2024/08/27/why-ai-cant-spell-strawberry/

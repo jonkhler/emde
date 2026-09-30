@@ -1,0 +1,7 @@
+---
+source: tests/sgr_snapshots.rs
+expression: out
+---
+  \e[1;38;5;234;48;5;111m Title              \e[0m
+  \e[1;7m Title              \e[0m
+  \e[1;7m Title              \e[0m

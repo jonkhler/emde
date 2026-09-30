@@ -1,0 +1,218 @@
+---
+source: tests/layout_snapshots.rs
+expression: "plain(\"edge-cases\")"
+---
+━━ width 24 ━━━━━━━━━━━━
+Edge cases
+════════════════════
+
+Control characters
+are shown, never
+executed: ␛[31m red?
+␛[2J
+
+A very long URL:
+https://example.com/
+a/very/long/path/
+that/keeps/going/
+and/going?with=
+query&and=more#
+fragment
+
+Softhyphenated words
+and no break spaces.
+
+Unclosed bold that
+ends with the
+paragraph
+
+Next paragraph is
+not bold. Unknown
+tags keep text.
+
+Unclosed div at the
+end of an HTML block
+
+☐ task
+
+  ┌────────────────┐
+  │ code in a task │
+  └────────────────┘
+
+  More paragraph
+  text.
+
+▎ ▎ ▎ ▎ ▎ five
+▎ ▎ ▎ ▎ ▎ levels of
+▎ ▎ ▎ ▎ ▎ quote
+
+────────────────────
+
+╭─────────────────╮
+│ a               │
+├─────────────────┤
+│ no closing pipe │
+│ [^missing]      │
+╰─────────────────╯
+
+link with bold and
+`code`[1]
+
+Escapes: *not
+emphasis*, # not a
+heading, [not a
+link](x).
+
+Emoji: 🎉 ❤️ 👍🏽 🇺🇸
+and combining: é â.
+
+한국어 문장은 띄어쓰
+기를 합니다.
+
+[1]: https://
+     example.com/
+     x_(y)
+━━ width 40 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Edge cases
+════════════════════════════════════
+
+Control characters are shown, never
+executed: ␛[31m red? ␛[2J
+
+A very long URL: https://
+example.com/a/very/long/path/that/
+keeps/going/and/going?with=query&
+and=more#fragment
+
+Softhyphenated words and
+no break spaces.
+
+Unclosed bold that ends with the
+paragraph
+
+Next paragraph is not bold. Unknown
+tags keep text.
+
+ Unclosed div at the end of an HTML
+               block
+
+☐ task
+
+  ┌────────────────────────────────┐
+  │ code in a task                 │
+  └────────────────────────────────┘
+
+  More paragraph text.
+
+▎ ▎ ▎ ▎ ▎ five levels of quote
+
+────────────────────────────────────
+
+╭─────────────────╮
+│ a               │
+├─────────────────┤
+│ no closing pipe │
+│ [^missing]      │
+╰─────────────────╯
+
+link with bold and `code`[1]
+
+Escapes: *not emphasis*, # not a
+heading, [not a link](x).
+
+Emoji: 🎉 ❤️ 👍🏽 🇺🇸 and combining: é
+â.
+
+한국어 문장은 띄어쓰기를 합니다.
+
+[1]: https://example.com/x_(y)
+━━ width 80 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Edge cases
+════════════════════════════════════════════════════════════════════════════
+
+Control characters are shown, never executed: ␛[31m red? ␛[2J
+
+A very long URL: https://example.com/a/very/long/path/that/keeps/going/and/
+going?with=query&and=more#fragment
+
+Softhyphenated words and no break spaces.
+
+Unclosed bold that ends with the paragraph
+
+Next paragraph is not bold. Unknown tags keep text.
+
+                  Unclosed div at the end of an HTML block
+
+☐ task
+
+  ┌────────────────────────────────────────────────────────────────────────┐
+  │ code in a task                                                         │
+  └────────────────────────────────────────────────────────────────────────┘
+
+  More paragraph text.
+
+▎ ▎ ▎ ▎ ▎ five levels of quote
+
+────────────────────────────────────────────────────────────────────────────
+
+╭─────────────────╮
+│ a               │
+├─────────────────┤
+│ no closing pipe │
+│ [^missing]      │
+╰─────────────────╯
+
+link with bold and `code`[1]
+
+Escapes: *not emphasis*, # not a heading, [not a link](x).
+
+Emoji: 🎉 ❤️ 👍🏽 🇺🇸 and combining: é â.
+
+한국어 문장은 띄어쓰기를 합니다.
+
+[1]: https://example.com/x_(y)
+━━ width 120 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Edge cases
+════════════════════════════════════════════════════════════════════════════════════════════════════
+
+Control characters are shown, never executed: ␛[31m red? ␛[2J
+
+A very long URL: https://example.com/a/very/long/path/that/keeps/going/and/going?with=query&and=
+more#fragment
+
+Softhyphenated words and no break spaces.
+
+Unclosed bold that ends with the paragraph
+
+Next paragraph is not bold. Unknown tags keep text.
+
+                              Unclosed div at the end of an HTML block
+
+☐ task
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ code in a task                                                                                 │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  More paragraph text.
+
+▎ ▎ ▎ ▎ ▎ five levels of quote
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+╭─────────────────╮
+│ a               │
+├─────────────────┤
+│ no closing pipe │
+│ [^missing]      │
+╰─────────────────╯
+
+link with bold and `code`[1]
+
+Escapes: *not emphasis*, # not a heading, [not a link](x).
+
+Emoji: 🎉 ❤️ 👍🏽 🇺🇸 and combining: é â.
+
+한국어 문장은 띄어쓰기를 합니다.
+
+[1]: https://example.com/x_(y)

@@ -1,0 +1,204 @@
+---
+source: tests/layout_snapshots.rs
+expression: "styled(\"edge-cases\", & Caps :: full(), & WIDTHS)"
+---
+━━ width 24 ━━━━━━━━━━━━
+  ⟦grad #89b4fa→#cba6f7 0..20⟧⟦fg=#1e1e2e bold⟧ Edge cases⟦/⟧⟦/grad⟧
+
+  Control characters
+  are shown, never
+  executed: ␛[31m red?
+  ␛[2J
+
+  A very long URL:
+  ⟦fg=#89b4fa ul link 0⟧https://example.com/⟦/⟧
+  ⟦fg=#89b4fa ul link 0⟧a/very/long/path/⟦/⟧
+  ⟦fg=#89b4fa ul link 0⟧that/keeps/going/⟦/⟧
+  ⟦fg=#89b4fa ul link 0⟧and/going?with=⟦/⟧
+  ⟦fg=#89b4fa ul link 0⟧query&and=more#⟦/⟧
+  ⟦fg=#89b4fa ul link 0⟧fragment⟦/⟧
+
+  Softhyphenated words
+  and no break spaces.
+
+  Unclosed ⟦bold⟧bold that⟦/⟧
+  ⟦bold⟧ends with the⟦/⟧
+  ⟦bold⟧paragraph⟦/⟧
+
+  Next paragraph is
+  not bold. Unknown
+  tags keep text.
+
+  Unclosed div at the
+  end of an HTML block
+
+  ⟦fg=#6c7086⟧☐⟦/⟧ task
+
+    ⟦bg=#2c2d3d⟧                  ⟦/⟧
+    ⟦bg=#2c2d3d⟧ code in a task   ⟦/⟧
+    ⟦bg=#2c2d3d⟧                  ⟦/⟧
+
+    More paragraph
+    text.
+
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧five⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧levels of⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧quote⟦/⟧
+
+  ⟦fg=#36374a⟧─⟦/⟧⟦fg=#505367⟧─⟦/⟧⟦fg=#6c7086⟧────────────────⟦/⟧⟦fg=#505367⟧─⟦/⟧⟦fg=#36374a⟧─⟦/⟧
+
+  ⟦fg=#6c7086⟧╭─────────────────╮⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ a               ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧├─────────────────┤⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧ no closing pipe ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧ [^missing]      ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧╰─────────────────╯⟦/⟧
+
+  ⟦fg=#89b4fa ul link 1⟧link with ⟦/⟧⟦fg=#89b4fa bold ul link 1⟧bold⟦/⟧⟦fg=#89b4fa ul link 1⟧ and⟦/⟧
+  ⟦fg=#89b4fa bg=#2c2d3d ul link 1⟧ code ⟦/⟧
+
+  Escapes: *not
+  emphasis*, # not a
+  heading, [not a
+  link](x).
+
+  Emoji: 🎉 ❤️ 👍🏽 🇺🇸
+  and combining: é â.
+
+  한국어 문장은 띄어쓰
+  기를 합니다.
+━━ width 40 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ⟦grad #89b4fa→#cba6f7 0..36⟧⟦fg=#1e1e2e bold⟧ Edge cases⟦/⟧⟦/grad⟧
+
+  Control characters are shown, never
+  executed: ␛[31m red? ␛[2J
+
+  A very long URL: ⟦fg=#89b4fa ul link 0⟧https://⟦/⟧
+  ⟦fg=#89b4fa ul link 0⟧example.com/a/very/long/path/that/⟦/⟧
+  ⟦fg=#89b4fa ul link 0⟧keeps/going/and/going?with=query&⟦/⟧
+  ⟦fg=#89b4fa ul link 0⟧and=more#fragment⟦/⟧
+
+  Softhyphenated words and
+  no break spaces.
+
+  Unclosed ⟦bold⟧bold that ends with the⟦/⟧
+  ⟦bold⟧paragraph⟦/⟧
+
+  Next paragraph is not bold. Unknown
+  tags keep text.
+
+   Unclosed div at the end of an HTML
+                 block
+
+  ⟦fg=#6c7086⟧☐⟦/⟧ task
+
+    ⟦bg=#2c2d3d⟧                                  ⟦/⟧
+    ⟦bg=#2c2d3d⟧ code in a task                   ⟦/⟧
+    ⟦bg=#2c2d3d⟧                                  ⟦/⟧
+
+    More paragraph text.
+
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧five levels of quote⟦/⟧
+
+  ⟦fg=#2c2d3e⟧─⟦/⟧⟦fg=#3b3d4f⟧─⟦/⟧⟦fg=#4b4d61⟧─⟦/⟧⟦fg=#5b5e73⟧─⟦/⟧⟦fg=#6c7086⟧────────────────────────────⟦/⟧⟦fg=#5b5e73⟧─⟦/⟧⟦fg=#4b4d61⟧─⟦/⟧⟦fg=#3b3d4f⟧─⟦/⟧⟦fg=#2c2d3e⟧─⟦/⟧
+
+  ⟦fg=#6c7086⟧╭─────────────────╮⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ a               ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧├─────────────────┤⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧ no closing pipe ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧ [^missing]      ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧╰─────────────────╯⟦/⟧
+
+  ⟦fg=#89b4fa ul link 1⟧link with ⟦/⟧⟦fg=#89b4fa bold ul link 1⟧bold⟦/⟧⟦fg=#89b4fa ul link 1⟧ and ⟦/⟧⟦fg=#89b4fa bg=#2c2d3d ul link 1⟧ code ⟦/⟧
+
+  Escapes: *not emphasis*, # not a
+  heading, [not a link](x).
+
+  Emoji: 🎉 ❤️ 👍🏽 🇺🇸 and combining: é
+  â.
+
+  한국어 문장은 띄어쓰기를 합니다.
+━━ width 80 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ⟦grad #89b4fa→#cba6f7 0..76⟧⟦fg=#1e1e2e bold⟧ Edge cases⟦/⟧⟦/grad⟧
+
+  Control characters are shown, never executed: ␛[31m red? ␛[2J
+
+  A very long URL: ⟦fg=#89b4fa ul link 0⟧https://example.com/a/very/long/path/that/keeps/going/and/⟦/⟧
+  ⟦fg=#89b4fa ul link 0⟧going?with=query&and=more#fragment⟦/⟧
+
+  Softhyphenated words and no break spaces.
+
+  Unclosed ⟦bold⟧bold that ends with the paragraph⟦/⟧
+
+  Next paragraph is not bold. Unknown tags keep text.
+
+                    Unclosed div at the end of an HTML block
+
+  ⟦fg=#6c7086⟧☐⟦/⟧ task
+
+    ⟦bg=#2c2d3d⟧                                                                          ⟦/⟧
+    ⟦bg=#2c2d3d⟧ code in a task                                                           ⟦/⟧
+    ⟦bg=#2c2d3d⟧                                                                          ⟦/⟧
+
+    More paragraph text.
+
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧five levels of quote⟦/⟧
+
+  ⟦fg=#252536⟧─⟦/⟧⟦fg=#2c2d3e⟧─⟦/⟧⟦fg=#343547⟧─⟦/⟧⟦fg=#3b3d4f⟧─⟦/⟧⟦fg=#434558⟧─⟦/⟧⟦fg=#4b4d61⟧─⟦/⟧⟦fg=#53566a⟧─⟦/⟧⟦fg=#5b5e73⟧─⟦/⟧⟦fg=#64677d⟧─⟦/⟧⟦fg=#6c7086⟧──────────────────────────────────────────────────────────⟦/⟧⟦fg=#64677d⟧─⟦/⟧⟦fg=#5b5e73⟧─⟦/⟧⟦fg=#53566a⟧─⟦/⟧⟦fg=#4b4d61⟧─⟦/⟧⟦fg=#434558⟧─⟦/⟧⟦fg=#3b3d4f⟧─⟦/⟧⟦fg=#343547⟧─⟦/⟧⟦fg=#2c2d3e⟧─⟦/⟧⟦fg=#252536⟧─⟦/⟧
+
+  ⟦fg=#6c7086⟧╭─────────────────╮⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ a               ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧├─────────────────┤⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧ no closing pipe ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧ [^missing]      ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧╰─────────────────╯⟦/⟧
+
+  ⟦fg=#89b4fa ul link 1⟧link with ⟦/⟧⟦fg=#89b4fa bold ul link 1⟧bold⟦/⟧⟦fg=#89b4fa ul link 1⟧ and ⟦/⟧⟦fg=#89b4fa bg=#2c2d3d ul link 1⟧ code ⟦/⟧
+
+  Escapes: *not emphasis*, # not a heading, [not a link](x).
+
+  Emoji: 🎉 ❤️ 👍🏽 🇺🇸 and combining: é â.
+
+  한국어 문장은 띄어쓰기를 합니다.
+━━ width 120 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          ⟦grad #89b4fa→#cba6f7 0..100⟧⟦fg=#1e1e2e bold⟧ Edge cases⟦/⟧⟦/grad⟧
+
+          Control characters are shown, never executed: ␛[31m red? ␛[2J
+
+          A very long URL: ⟦fg=#89b4fa ul link 0⟧https://example.com/a/very/long/path/that/keeps/going/and/going?with=query&and=⟦/⟧
+          ⟦fg=#89b4fa ul link 0⟧more#fragment⟦/⟧
+
+          Softhyphenated words and no break spaces.
+
+          Unclosed ⟦bold⟧bold that ends with the paragraph⟦/⟧
+
+          Next paragraph is not bold. Unknown tags keep text.
+
+                                        Unclosed div at the end of an HTML block
+
+          ⟦fg=#6c7086⟧☐⟦/⟧ task
+
+            ⟦bg=#2c2d3d⟧                                                                                                  ⟦/⟧
+            ⟦bg=#2c2d3d⟧ code in a task                                                                                   ⟦/⟧
+            ⟦bg=#2c2d3d⟧                                                                                                  ⟦/⟧
+
+            More paragraph text.
+
+          ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧five levels of quote⟦/⟧
+
+          ⟦fg=#242535⟧─⟦/⟧⟦fg=#2b2c3d⟧─⟦/⟧⟦fg=#323344⟧─⟦/⟧⟦fg=#383a4c⟧─⟦/⟧⟦fg=#3f4154⟧─⟦/⟧⟦fg=#47495c⟧─⟦/⟧⟦fg=#4e5064⟧─⟦/⟧⟦fg=#55586d⟧─⟦/⟧⟦fg=#5d6075⟧─⟦/⟧⟦fg=#64687d⟧─⟦/⟧⟦fg=#6c7086⟧────────────────────────────────────────────────────────────────────────────────⟦/⟧⟦fg=#64687d⟧─⟦/⟧⟦fg=#5d6075⟧─⟦/⟧⟦fg=#55586d⟧─⟦/⟧⟦fg=#4e5064⟧─⟦/⟧⟦fg=#47495c⟧─⟦/⟧⟦fg=#3f4154⟧─⟦/⟧⟦fg=#383a4c⟧─⟦/⟧⟦fg=#323344⟧─⟦/⟧⟦fg=#2b2c3d⟧─⟦/⟧⟦fg=#242535⟧─⟦/⟧
+
+          ⟦fg=#6c7086⟧╭─────────────────╮⟦/⟧
+          ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ a               ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+          ⟦fg=#6c7086⟧├─────────────────┤⟦/⟧
+          ⟦fg=#6c7086⟧│⟦/⟧ no closing pipe ⟦fg=#6c7086⟧│⟦/⟧
+          ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧ [^missing]      ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+          ⟦fg=#6c7086⟧╰─────────────────╯⟦/⟧
+
+          ⟦fg=#89b4fa ul link 1⟧link with ⟦/⟧⟦fg=#89b4fa bold ul link 1⟧bold⟦/⟧⟦fg=#89b4fa ul link 1⟧ and ⟦/⟧⟦fg=#89b4fa bg=#2c2d3d ul link 1⟧ code ⟦/⟧
+
+          Escapes: *not emphasis*, # not a heading, [not a link](x).
+
+          Emoji: 🎉 ❤️ 👍🏽 🇺🇸 and combining: é â.
+
+          한국어 문장은 띄어쓰기를 합니다.

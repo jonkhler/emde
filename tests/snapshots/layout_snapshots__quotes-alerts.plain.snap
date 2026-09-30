@@ -1,0 +1,198 @@
+---
+source: tests/layout_snapshots.rs
+expression: "plain(\"quotes-alerts\")"
+---
+━━ width 24 ━━━━━━━━━━━━
+▎ A plain quote that
+▎ is long enough to
+▎ wrap onto several
+▎ lines, so every
+▎ wrapped line must
+▎ keep its bar.
+
+▎ A quote with two
+▎ paragraphs.
+▎
+▎ The second
+▎ paragraph.
+
+▎ Outer quote
+▎
+▎ ▎ Inner quote
+▎ ▎
+▎ ▎ ▎ Innermost
+▎ ▎ ▎ quote that
+▎ ▎ ▎ also wraps
+▎ ▎ ▎ when the
+▎ ▎ ▎ terminal is
+▎ ▎ ▎ narrow enough.
+
+▎ ⓘ Note
+▎ Useful information
+▎ that users should
+▎ know.
+
+▎ ✦ Tip
+▎ Helpful advice for
+▎ doing things
+▎ better.
+
+▎ ❖ Important
+▎ Key information
+▎ users need to
+▎ know.
+
+▎ ▲ Warning
+▎ Urgent info that
+▎ needs immediate
+▎ attention, long
+▎ enough to wrap at
+▎ small widths.
+
+▎ ⊘ Caution
+▎ Advises about
+▎ risks or negative
+▎ outcomes.
+▎
+▎ • with a list
+▎ • inside the alert
+
+▎ Quote with `code`,
+▎ bold and a
+▎ link[1].
+▎
+▎ ┌───────── rust ─┐
+▎ │ let x = 1;     │
+▎ └────────────────┘
+
+[1]: https://
+     example.com
+━━ width 40 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+▎ A plain quote that is long enough
+▎ to wrap onto several lines, so
+▎ every wrapped line must keep its
+▎ bar.
+
+▎ A quote with two paragraphs.
+▎
+▎ The second paragraph.
+
+▎ Outer quote
+▎
+▎ ▎ Inner quote
+▎ ▎
+▎ ▎ ▎ Innermost quote that also
+▎ ▎ ▎ wraps when the terminal is
+▎ ▎ ▎ narrow enough.
+
+▎ ⓘ Note
+▎ Useful information that users
+▎ should know.
+
+▎ ✦ Tip
+▎ Helpful advice for doing things
+▎ better.
+
+▎ ❖ Important
+▎ Key information users need to
+▎ know.
+
+▎ ▲ Warning
+▎ Urgent info that needs immediate
+▎ attention, long enough to wrap at
+▎ small widths.
+
+▎ ⊘ Caution
+▎ Advises about risks or negative
+▎ outcomes.
+▎
+▎ • with a list
+▎ • inside the alert
+
+▎ Quote with `code`, bold and a
+▎ link[1].
+▎
+▎ ┌───────────────────────── rust ─┐
+▎ │ let x = 1;                     │
+▎ └────────────────────────────────┘
+
+[1]: https://example.com
+━━ width 80 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+▎ A plain quote that is long enough to wrap onto several lines, so every
+▎ wrapped line must keep its bar.
+
+▎ A quote with two paragraphs.
+▎
+▎ The second paragraph.
+
+▎ Outer quote
+▎
+▎ ▎ Inner quote
+▎ ▎
+▎ ▎ ▎ Innermost quote that also wraps when the terminal is narrow enough.
+
+▎ ⓘ Note
+▎ Useful information that users should know.
+
+▎ ✦ Tip
+▎ Helpful advice for doing things better.
+
+▎ ❖ Important
+▎ Key information users need to know.
+
+▎ ▲ Warning
+▎ Urgent info that needs immediate attention, long enough to wrap at small
+▎ widths.
+
+▎ ⊘ Caution
+▎ Advises about risks or negative outcomes.
+▎
+▎ • with a list
+▎ • inside the alert
+
+▎ Quote with `code`, bold and a link[1].
+▎
+▎ ┌───────────────────────────────────────────────────────────────── rust ─┐
+▎ │ let x = 1;                                                             │
+▎ └────────────────────────────────────────────────────────────────────────┘
+
+[1]: https://example.com
+━━ width 120 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+▎ A plain quote that is long enough to wrap onto several lines, so every wrapped line must keep its
+▎ bar.
+
+▎ A quote with two paragraphs.
+▎
+▎ The second paragraph.
+
+▎ Outer quote
+▎
+▎ ▎ Inner quote
+▎ ▎
+▎ ▎ ▎ Innermost quote that also wraps when the terminal is narrow enough.
+
+▎ ⓘ Note
+▎ Useful information that users should know.
+
+▎ ✦ Tip
+▎ Helpful advice for doing things better.
+
+▎ ❖ Important
+▎ Key information users need to know.
+
+▎ ▲ Warning
+▎ Urgent info that needs immediate attention, long enough to wrap at small widths.
+
+▎ ⊘ Caution
+▎ Advises about risks or negative outcomes.
+▎
+▎ • with a list
+▎ • inside the alert
+
+▎ Quote with `code`, bold and a link[1].
+▎
+▎ ┌───────────────────────────────────────────────────────────────────────────────────────── rust ─┐
+▎ │ let x = 1;                                                                                     │
+▎ └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+[1]: https://example.com

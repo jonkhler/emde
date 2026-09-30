@@ -1,0 +1,104 @@
+---
+source: tests/layout_snapshots.rs
+expression: "styled(\"footnotes\", & Caps :: full(), & WIDTHS)"
+---
+━━ width 24 ━━━━━━━━━━━━
+  A sentence with a
+  footnote.⟦fg=#89b4fa link 0⟧¹⟦/⟧ Another
+  one.⟦fg=#89b4fa link 1⟧²⟦/⟧ And the first
+  again.⟦fg=#89b4fa link 2⟧¹⟦/⟧
+
+  A footnote with
+  several paragraphs.⟦fg=#89b4fa link 3⟧³⟦/⟧
+
+  An undefined
+  reference[^missing]
+  stays as text.
+
+  ⟦fg=#6c7086⟧── ⟦/⟧⟦fg=#a6adc8⟧Footnotes⟦/⟧⟦fg=#6c7086⟧ ───────⟦/⟧
+
+  ⟦fg=#89b4fa⟧1.⟦/⟧ ⟦fg=#a6adc8⟧The first⟦/⟧
+     ⟦fg=#a6adc8⟧footnote.⟦/⟧⟦fg=#89b4fa link 0⟧ ↑⟦/⟧⟦fg=#89b4fa link 2⟧ ↑²⟦/⟧
+
+  ⟦fg=#89b4fa⟧2.⟦/⟧ ⟦fg=#a6adc8⟧A named footnote⟦/⟧
+     ⟦fg=#a6adc8⟧with a ⟦/⟧⟦fg=#89b4fa ul link 4⟧link⟦/⟧⟦fg=#a6adc8⟧.⟦/⟧⟦fg=#89b4fa link 1⟧ ↑⟦/⟧
+
+  ⟦fg=#89b4fa⟧3.⟦/⟧ ⟦fg=#a6adc8⟧The first⟦/⟧
+     ⟦fg=#a6adc8⟧paragraph of a⟦/⟧
+     ⟦fg=#a6adc8⟧long footnote.⟦/⟧
+
+     ⟦fg=#a6adc8⟧The second⟦/⟧
+     ⟦fg=#a6adc8⟧paragraph,⟦/⟧
+     ⟦fg=#a6adc8⟧indented.⟦/⟧
+
+     ⟦bg=#2c2d3d⟧                 ⟦/⟧
+     ⟦bg=#2c2d3d⟧ code in a footn ⟦/⟧
+     ⟦fg=#6c7086 bg=#2c2d3d⟧↳⟦/⟧⟦bg=#2c2d3d⟧ote             ⟦/⟧
+     ⟦bg=#2c2d3d⟧                 ⟦/⟧
+     ⟦fg=#89b4fa link 3⟧↑⟦/⟧
+━━ width 40 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  A sentence with a footnote.⟦fg=#89b4fa link 0⟧¹⟦/⟧ Another
+  one.⟦fg=#89b4fa link 1⟧²⟦/⟧ And the first again.⟦fg=#89b4fa link 2⟧¹⟦/⟧
+
+  A footnote with several paragraphs.⟦fg=#89b4fa link 3⟧³⟦/⟧
+
+  An undefined reference[^missing]
+  stays as text.
+
+  ⟦fg=#6c7086⟧── ⟦/⟧⟦fg=#a6adc8⟧Footnotes⟦/⟧⟦fg=#6c7086⟧ ───────────────────────⟦/⟧
+
+  ⟦fg=#89b4fa⟧1.⟦/⟧ ⟦fg=#a6adc8⟧The first footnote.⟦/⟧⟦fg=#89b4fa link 0⟧ ↑⟦/⟧⟦fg=#89b4fa link 2⟧ ↑²⟦/⟧
+
+  ⟦fg=#89b4fa⟧2.⟦/⟧ ⟦fg=#a6adc8⟧A named footnote with a ⟦/⟧⟦fg=#89b4fa ul link 4⟧link⟦/⟧⟦fg=#a6adc8⟧.⟦/⟧⟦fg=#89b4fa link 1⟧ ↑⟦/⟧
+
+  ⟦fg=#89b4fa⟧3.⟦/⟧ ⟦fg=#a6adc8⟧The first paragraph of a long⟦/⟧
+     ⟦fg=#a6adc8⟧footnote.⟦/⟧
+
+     ⟦fg=#a6adc8⟧The second paragraph, indented.⟦/⟧
+
+     ⟦bg=#2c2d3d⟧                                 ⟦/⟧
+     ⟦bg=#2c2d3d⟧ code in a footnote              ⟦/⟧
+     ⟦bg=#2c2d3d⟧                                 ⟦/⟧
+     ⟦fg=#89b4fa link 3⟧↑⟦/⟧
+━━ width 80 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  A sentence with a footnote.⟦fg=#89b4fa link 0⟧¹⟦/⟧ Another one.⟦fg=#89b4fa link 1⟧²⟦/⟧ And the first again.⟦fg=#89b4fa link 2⟧¹⟦/⟧
+
+  A footnote with several paragraphs.⟦fg=#89b4fa link 3⟧³⟦/⟧
+
+  An undefined reference[^missing] stays as text.
+
+  ⟦fg=#6c7086⟧── ⟦/⟧⟦fg=#a6adc8⟧Footnotes⟦/⟧⟦fg=#6c7086⟧ ───────────────────────────────────────────────────────────────⟦/⟧
+
+  ⟦fg=#89b4fa⟧1.⟦/⟧ ⟦fg=#a6adc8⟧The first footnote.⟦/⟧⟦fg=#89b4fa link 0⟧ ↑⟦/⟧⟦fg=#89b4fa link 2⟧ ↑²⟦/⟧
+
+  ⟦fg=#89b4fa⟧2.⟦/⟧ ⟦fg=#a6adc8⟧A named footnote with a ⟦/⟧⟦fg=#89b4fa ul link 4⟧link⟦/⟧⟦fg=#a6adc8⟧.⟦/⟧⟦fg=#89b4fa link 1⟧ ↑⟦/⟧
+
+  ⟦fg=#89b4fa⟧3.⟦/⟧ ⟦fg=#a6adc8⟧The first paragraph of a long footnote.⟦/⟧
+
+     ⟦fg=#a6adc8⟧The second paragraph, indented.⟦/⟧
+
+     ⟦bg=#2c2d3d⟧                                                                         ⟦/⟧
+     ⟦bg=#2c2d3d⟧ code in a footnote                                                      ⟦/⟧
+     ⟦bg=#2c2d3d⟧                                                                         ⟦/⟧
+     ⟦fg=#89b4fa link 3⟧↑⟦/⟧
+━━ width 120 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          A sentence with a footnote.⟦fg=#89b4fa link 0⟧¹⟦/⟧ Another one.⟦fg=#89b4fa link 1⟧²⟦/⟧ And the first again.⟦fg=#89b4fa link 2⟧¹⟦/⟧
+
+          A footnote with several paragraphs.⟦fg=#89b4fa link 3⟧³⟦/⟧
+
+          An undefined reference[^missing] stays as text.
+
+          ⟦fg=#6c7086⟧── ⟦/⟧⟦fg=#a6adc8⟧Footnotes⟦/⟧⟦fg=#6c7086⟧ ───────────────────────────────────────────────────────────────────────────────────────⟦/⟧
+
+          ⟦fg=#89b4fa⟧1.⟦/⟧ ⟦fg=#a6adc8⟧The first footnote.⟦/⟧⟦fg=#89b4fa link 0⟧ ↑⟦/⟧⟦fg=#89b4fa link 2⟧ ↑²⟦/⟧
+
+          ⟦fg=#89b4fa⟧2.⟦/⟧ ⟦fg=#a6adc8⟧A named footnote with a ⟦/⟧⟦fg=#89b4fa ul link 4⟧link⟦/⟧⟦fg=#a6adc8⟧.⟦/⟧⟦fg=#89b4fa link 1⟧ ↑⟦/⟧
+
+          ⟦fg=#89b4fa⟧3.⟦/⟧ ⟦fg=#a6adc8⟧The first paragraph of a long footnote.⟦/⟧
+
+             ⟦fg=#a6adc8⟧The second paragraph, indented.⟦/⟧
+
+             ⟦bg=#2c2d3d⟧                                                                                                 ⟦/⟧
+             ⟦bg=#2c2d3d⟧ code in a footnote                                                                              ⟦/⟧
+             ⟦bg=#2c2d3d⟧                                                                                                 ⟦/⟧
+             ⟦fg=#89b4fa link 3⟧↑⟦/⟧

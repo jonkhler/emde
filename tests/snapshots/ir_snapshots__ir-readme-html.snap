@@ -1,0 +1,49 @@
+---
+source: tests/ir_snapshots.rs
+expression: "dump(\"readme-html\")"
+---
+align Center
+  figure I0
+align Center
+  h1 H0: "Project"
+align Center
+  para: "CI"[img I1,L0] " " "crates.io"[img I2,L1] "\n" "A fast tool"[strong] " — written in Rust."
+align Center
+  para: "Install"[strong,L2] " · " "Usage"[strong,L3] " · " "FAQ"[strong,L4]
+h2 H1: "Installation"
+code lang=console: "$ cargo install x"
+h2 H2: "Usage"
+para: "Run " "x --help"[code] ". See the " "guide"[L5] " or " "the directory"[L6] "."
+details: "Advanced options"[strong]
+  table [None, None]
+    head 0: "Flag"
+    head 1: "Meaning"
+    cell 0.0: "-v"[code]
+    cell 0.1: "verbose"
+h2 H3: "Usage"
+para: "A second " "Usage"[emph] " heading gets a de-duplicated slug."
+align Center
+  para: "Centered text"
+para: "cell one cell two"
+para: "Line one\nline twocontinued"
+  breaks [17]
+L0 Html "https://ci.example.com" -> External
+L1 Html "https://crates.io/crates/x" -> External
+L2 Inline "#installation" -> Anchor("installation")
+L3 Inline "#usage" -> Anchor("usage")
+L4 Inline "docs/faq.md" -> LocalDoc { path: "docs/faq.md", anchor: None }
+L5 Inline "docs/guide.md#getting-started" -> LocalDoc { path: "docs/guide.md", anchor: Some("getting-started") }
+L6 Inline "docs/" -> LocalDoc { path: "docs/", anchor: None }
+I0 src="assets/logo-light.svg" alt="Project logo" width=Px(240)
+  source "assets/logo-dark.svg" media=Some("(prefers-color-scheme: dark)")
+I1 src="https://img.shields.io/badge/ci-passing-green" alt="CI" link=L0
+I2 src="https://img.shields.io/crates/v/x.svg" alt="crates.io" link=L1
+H0 h1 "Project" #project parent=- top=1
+H1 h2 "Installation" #installation parent=H0 top=4
+H2 h2 "Usage" #usage parent=H0 top=6
+H3 h2 "Usage" #usage-1 parent=H0 top=9
+anchor #installation -> H1
+anchor #project -> H0
+anchor #usage -> H2
+anchor #usage-1 -> H3
+title "Project"

@@ -1,0 +1,9 @@
+---
+source: tests/sgr_snapshots.rs
+expression: "bytes(INLINE, 60, &Caps::full())"
+---
+  Some \e[3mem\e[0m, \e[1mstrong\e[0m, \e[9;38;2;108;112;134mgone\e[0m, \e[38;2;250;179;135;48;2;44;45;61m code \e[0m, a \e]8;id=e1-0;https://example.com/%C3%A4%20b\e\\e[4;38;2;137;180;250mlink\e]8;;\e\\e[0m and a note\e[38;2;137;180;250m¹\e[0m.
+
+  \e[38;2;108;112;134m── \e[38;2;166;173;200mFootnotes\e[38;2;108;112;134m ───────────────────────────────────────────\e[0m
+
+  \e[38;2;137;180;250m1.\e[0m \e[38;2;166;173;200mNote.\e[38;2;137;180;250m ↑\e[0m

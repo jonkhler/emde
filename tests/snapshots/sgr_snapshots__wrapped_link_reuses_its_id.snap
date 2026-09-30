@@ -1,0 +1,7 @@
+---
+source: tests/sgr_snapshots.rs
+expression: "bytes(md, 24, &Caps::full())"
+---
+  Read \e]8;id=e1-0;https://example.com/docs\e\\e[4;38;2;137;180;250mthe long\e]8;;\e\\e[0m
+  \e]8;id=e1-0;https://example.com/docs\e\\e[4;38;2;137;180;250mdocumentation page\e]8;;\e\\e[0m
+  today.

@@ -3,7 +3,6 @@
 //! Pipeline: source → pulldown-cmark events → owned IR (`ir`) →
 //! layout(width) → styled lines → stream writer (`render`) or built-in pager.
 
-use std::io::Write as _;
 use std::process::ExitCode;
 
 use clap::Parser as _;
@@ -26,13 +25,16 @@ pub mod term;
 pub mod text;
 pub mod theme;
 
-/// Entry point used by the binary.
+/// Entry point used by the binary: parse the arguments (usage errors exit
+/// with status 2, `--help` and `--version` with 0) and run.
 pub fn main() -> ExitCode {
-    let cli = cli::Cli::parse();
-    if cli.files.is_empty() {
-        let _ = writeln!(std::io::stderr(), "emde: no input (rendering lands in M1)");
-        return ExitCode::from(2);
-    }
-    let _ = writeln!(std::io::stderr(), "emde: rendering lands in M1");
-    ExitCode::SUCCESS
+    let cli = match cli::Cli::try_parse() {
+        Ok(cli) => cli,
+        Err(e) => {
+            let code = e.exit_code();
+            let _ = e.print();
+            return ExitCode::from(u8::try_from(code).unwrap_or(2));
+        }
+    };
+    app::run(&cli)
 }
