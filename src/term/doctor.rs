@@ -7,19 +7,19 @@
 //! ```text
 //!  terminal  tmux 3.4 → iTerm2 3.6.9, 214×54, SSH   colour truecolor (in tmux)   background dark (tmux OSC 11)
 //!  links     OSC 8 ✓   underline curly ✓   images blocks(half) — kitty/iterm ✗ passthrough off · sixel ✗ client cell 0x0
-//!  probe     tmux answered in 2 ms   cell 16×32 px (tmux 16t)
+//!  probe     tmux answered in 2 ms   cell size unknown (client cell 0x0)
 //!  tip       `set -g allow-passthrough on` → kitty Unicode placeholders via iTerm2: real pixels that scroll with the text
 //! ```
 //!
 //! [`json`] gives the same decisions, the raw tmux and probe answers and the
 //! environment snapshot as JSON (written by hand; `SSH_CONNECTION` is
 //! redacted). Text reported by terminals was stripped of control characters
-//! when it was parsed, and JSON strings are escaped, so the output is safe to
-//! print.
+//! when it was parsed, environment text shown in the report is stripped
+//! here, and JSON strings are escaped, so the output is safe to print.
 
 use std::time::Duration;
 
-use super::caps::{Emulator, Identity, IdentitySource, glyph_name, topic};
+use super::caps::{Emulator, Identity, IdentitySource, clean, glyph_name, topic};
 use super::env::Env;
 use super::probe::{LATE_REPLY_GRACE, ProbeOutcome, ProbeReplies, ProbeStatus};
 use super::tmux::TmuxInfo;
@@ -64,7 +64,7 @@ pub fn report(
     push_line(
         &mut out,
         "probe",
-        &[probe_summary(caps, probe), cell_summary(caps)],
+        &[probe_summary(env, caps, probe), cell_summary(caps)],
     );
     for (i, tip) in tips(env, caps, tmux).iter().enumerate() {
         let label = if i == 0 { "tip" } else { "" };
@@ -214,10 +214,11 @@ fn mark(ok: bool) -> &'static str {
 /// `tmux 3.4 → iTerm2 3.6.9, 214×54, SSH`
 fn terminal_summary(env: &Env, caps: &Caps, tmux: Option<&TmuxInfo>) -> String {
     let mut text = if caps.in_tmux {
-        let version = tmux.map(|t| t.version.as_str()).or_else(|| {
+        let version = tmux.map(|t| t.version.clone()).or_else(|| {
             env.get("TERM_PROGRAM")
                 .filter(|p| p.eq_ignore_ascii_case("tmux"))
                 .and(env.non_empty("TERM_PROGRAM_VERSION"))
+                .map(clean)
         });
         let outer = caps
             .terminal
@@ -315,13 +316,16 @@ fn images_summary(caps: &Caps) -> String {
     }
 }
 
-fn probe_summary(caps: &Caps, probe: Option<&ProbeOutcome>) -> String {
+fn probe_summary(env: &Env, caps: &Caps, probe: Option<&ProbeOutcome>) -> String {
     let Some(outcome) = probe else {
-        return if caps.is_tty {
-            "not run".to_string()
+        let why = if !caps.is_tty {
+            "skipped (stdout is not a terminal)"
+        } else if env.get("TERM") == Some("dumb") {
+            "skipped (TERM=dumb)"
         } else {
-            "skipped (stdout is not a terminal)".to_string()
+            "not run"
         };
+        return why.to_string();
     };
     match &outcome.status {
         ProbeStatus::Complete => {
@@ -639,7 +643,7 @@ mod tests {
                 &env,
                 base,
                 tmux.as_ref(),
-                probe.as_ref().map(|p| &p.replies),
+                probe.as_ref().and_then(ProbeOutcome::answers),
                 &ImageOptions::default(),
             );
             Scenario {
@@ -739,8 +743,25 @@ mod tests {
         assert!(line(&s).contains("tmux answered in <1 ms"));
         s.probe = None;
         assert!(line(&s).contains("probe     not run"));
+        s.env = Env::from_pairs(&[("TERM", "dumb")]);
+        assert!(line(&s).contains("probe     skipped (TERM=dumb)"));
         s.caps.is_tty = false;
         assert!(line(&s).contains("probe     skipped (stdout is not a terminal)"));
+    }
+
+    #[test]
+    fn environment_text_is_made_printable() {
+        let env = [
+            ("TMUX", "/tmp/tmux-1001/default,1,0"),
+            ("TERM_PROGRAM", "tmux"),
+            ("TERM_PROGRAM_VERSION", "3.4\u{1b}]0;pwned\u{7}"),
+        ];
+        let text = Scenario::new(&env, tmux_base(), None, None, 0).report();
+        assert!(
+            !text.contains('\u{1b}') && !text.contains('\u{7}'),
+            "{text:?}"
+        );
+        assert!(text.starts_with(" terminal  tmux 3.4]0;pwned → unknown terminal"));
     }
 
     #[test]

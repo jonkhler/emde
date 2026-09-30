@@ -9,7 +9,7 @@ expression: "Scenario::users_session().json()"
     "tmux": true,
     "ssh": true,
     "size": [214, 54],
-    "cell_px": [16, 32]
+    "cell_px": null
   },
   "color": "truecolor",
   "hyperlinks": true,
@@ -74,7 +74,7 @@ expression: "Scenario::users_session().json()"
     },
     {
       "topic": "cell",
-      "detail": "tmux 16t"
+      "detail": "client cell 0x0"
     },
     {
       "topic": "graphics",

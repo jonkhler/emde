@@ -4,4 +4,4 @@ expression: s.report()
 ---
  terminal  tmux 3.4 → iTerm2 3.6.9, 214×54, SSH   colour truecolor (in tmux)   background dark (tmux OSC 11)
  links     OSC 8 ✓   underline curly ✓   images kitty placeholders — passthrough on, iTerm2 3.6.9 answered a=q
- probe     tmux and iTerm2 3.6.9 answered in 41 ms   cell 16×32 px (tmux 16t)
+ probe     tmux and iTerm2 3.6.9 answered in 41 ms   cell size unknown (client cell 0x0)

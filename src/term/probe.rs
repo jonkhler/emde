@@ -49,7 +49,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use filedescriptor::{POLLIN, pollfd};
 
-use super::caps::{multiplexer_term, tmux_placeholder_candidate};
+use super::caps::{behind_multiplexer, tmux_placeholder_candidate};
 use super::env::Env;
 use super::tmux::TmuxInfo;
 use crate::style::Rgb;
@@ -626,7 +626,9 @@ fn clean_text(bytes: &[u8]) -> String {
 /// How a probe ended.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ProbeStatus {
-    /// Every sentinel came back before the deadline.
+    /// Every sentinel came back, before the deadline or while late bytes
+    /// were drained after it. Terminals answer in order, so nothing more
+    /// can follow.
     Complete,
     /// The deadline passed first. Late replies may still arrive; see
     /// [`LateReplyFilter`].
@@ -636,7 +638,8 @@ pub enum ProbeStatus {
         /// Age of the cache entry.
         age: Duration,
     },
-    /// The terminal could not be probed (no `/dev/tty`, raw mode failed, …).
+    /// The terminal could not be probed (no `/dev/tty`, a background job,
+    /// raw mode failed, …).
     Failed(String),
 }
 
@@ -647,7 +650,8 @@ pub struct ProbeOutcome {
     pub replies: ProbeReplies,
     /// How the probe ended.
     pub status: ProbeStatus,
-    /// Time from writing the batch to the last sentinel (or the deadline).
+    /// Time from writing the batch to the last sentinel, or to the deadline
+    /// when that passed first.
     pub elapsed: Duration,
     /// The wrapped tmux passthrough queries were sent.
     pub wrapped: bool,
@@ -666,6 +670,18 @@ impl ProbeOutcome {
     /// Replies may still be on their way (the probe timed out).
     pub fn replies_may_follow(&self) -> bool {
         self.status == ProbeStatus::TimedOut
+    }
+
+    /// The replies, unless the probe failed before the terminal was asked.
+    ///
+    /// This is what [`decide`](super::caps::decide) takes: a failed probe
+    /// then reads as "not probed" rather than as a terminal that answered
+    /// nothing.
+    pub fn answers(&self) -> Option<&ProbeReplies> {
+        match self.status {
+            ProbeStatus::Failed(_) => None,
+            _ => Some(&self.replies),
+        }
     }
 }
 
@@ -690,13 +706,19 @@ pub struct ProbeRequest<'a> {
 
 /// Probe the terminal, or answer from the cache.
 ///
-/// Returns `None` without touching the terminal when nothing is needed or
-/// stdout is not a terminal.
+/// Returns `None` without touching the terminal when nothing is needed,
+/// stdout is not a terminal, or `TERM=dumb` (a terminal that would show the
+/// queries as text).
 pub fn probe(req: &ProbeRequest<'_>) -> Option<ProbeOutcome> {
-    if !req.needs.any() || !io::stdout().is_terminal() {
+    if !wanted(req, io::stdout().is_terminal()) {
         return None;
     }
     Some(probe_with(req, SystemTime::now(), run))
+}
+
+/// Whether [`probe`] may query the terminal at all.
+fn wanted(req: &ProbeRequest<'_>, stdout_is_terminal: bool) -> bool {
+    req.needs.any() && stdout_is_terminal && req.env.get("TERM") != Some("dumb")
 }
 
 /// [`probe`] with the clock and the terminal exchange supplied (tests).
@@ -705,10 +727,9 @@ fn probe_with(
     now: SystemTime,
     runner: impl FnOnce(&Batch, Duration) -> io::Result<ProbeOutcome>,
 ) -> ProbeOutcome {
-    let behind_multiplexer = req.env.is_set("TMUX") || multiplexer_term(req.env);
     let batch = Batch::new(
         req.needs,
-        behind_multiplexer,
+        behind_multiplexer(req.env),
         req.tmux,
         req.tmux_passthrough,
     );
@@ -750,12 +771,31 @@ pub fn default_timeout(env: &Env, batch: &Batch) -> Duration {
 /// mode, write the batch once, read replies until the sentinels or
 /// `timeout`, then drain late bytes for [`DRAIN`].
 ///
+/// Fails without touching the terminal when this process is not in its
+/// foreground process group (see [`ensure_foreground`]).
+///
 /// Raw mode is restored on every path out, including errors and panics; a
 /// terminal that already was in raw mode is left in it.
 pub fn run(batch: &Batch, timeout: Duration) -> io::Result<ProbeOutcome> {
     let mut tty = OpenOptions::new().read(true).write(true).open("/dev/tty")?;
+    ensure_foreground(&tty)?;
     let _raw = RawMode::enable()?;
     exchange(&mut tty, batch, timeout, DRAIN)
+}
+
+/// Fail unless this process is in the terminal's foreground process group.
+///
+/// A background job (`emde -p x.md &`) that switches the terminal to raw
+/// mode or reads from it is stopped by `SIGTTOU` or `SIGTTIN` until it is
+/// brought to the foreground; no probe is worth that.
+fn ensure_foreground(tty: &File) -> io::Result<()> {
+    if rustix::termios::tcgetpgrp(tty)? == rustix::process::getpgrp() {
+        Ok(())
+    } else {
+        Err(io::Error::other(
+            "not in the terminal's foreground process group",
+        ))
+    }
 }
 
 /// Write the batch and collect the replies from a terminal-like stream.
@@ -770,28 +810,31 @@ fn exchange<T: Read + Write + AsRawFd>(
     let deadline = start.checked_add(timeout).unwrap_or(start);
     tty.write_all(batch.bytes())?;
     tty.flush()?;
-    let done = read_until_done(tty, &mut parser, deadline)?;
+    read_until_done(tty, &mut parser, deadline)?;
     let elapsed = start.elapsed();
     drain(tty, &mut parser, drain_for);
+    // A sentinel that only arrives during the drain still completes the
+    // probe: everything before it has been read, so no late reply follows.
+    let status = if parser.is_done() {
+        ProbeStatus::Complete
+    } else {
+        ProbeStatus::TimedOut
+    };
     Ok(ProbeOutcome {
         replies: parser.into_replies(),
-        status: if done {
-            ProbeStatus::Complete
-        } else {
-            ProbeStatus::TimedOut
-        },
+        status,
         elapsed,
         wrapped: batch.wrapped(),
     })
 }
 
 /// Feed replies to `parser` until it is done, the deadline passes or the
-/// stream ends. Returns whether it is done.
+/// stream ends.
 fn read_until_done<R: Read + AsRawFd>(
     src: &mut R,
     parser: &mut ReplyParser,
     deadline: Instant,
-) -> io::Result<bool> {
+) -> io::Result<()> {
     let mut buf = [0u8; 512];
     while !parser.is_done() && wait_readable(src.as_raw_fd(), deadline)? {
         match src.read(&mut buf) {
@@ -801,7 +844,7 @@ fn read_until_done<R: Read + AsRawFd>(
             Err(e) => return Err(e),
         }
     }
-    Ok(parser.is_done())
+    Ok(())
 }
 
 /// Feed whatever arrives within `window` to `parser`, so stragglers never
@@ -1835,19 +1878,61 @@ mod tests {
     }
 
     #[test]
-    fn multiplexer_terms_never_get_an_unwrapped_kitty_query() {
+    fn multiplexers_never_get_an_unwrapped_kitty_query() {
         let dir = RuntimeDir::new();
-        for term in ["tmux-256color", "screen-256color", "screen"] {
-            let env = dir.env(&[("TERM", term)]);
+        let sent = |env: &Env| {
             let seen = std::cell::RefCell::new(Vec::new());
-            probe_with(&request(&env), test_clock(), |batch, _| {
+            probe_with(&request(env), test_clock(), |batch, _| {
                 seen.borrow_mut().extend_from_slice(batch.bytes());
                 Err(io::Error::other("no terminal in tests"))
             });
-            let bytes = seen.into_inner();
-            assert!(bytes.ends_with(DA1_QUERY), "{term}");
-            assert!(!contains(&bytes, b"\x1b_G"), "{term}");
+            seen.into_inner()
+        };
+        let multiplexed: &[&[(&str, &str)]] = &[
+            &[("TERM", "tmux-256color")],
+            &[("TERM", "screen-256color")],
+            &[("TERM", "screen")],
+            &[
+                ("TMUX", "/tmp/tmux-1001/default,1,0"),
+                ("TERM", "xterm-256color"),
+            ],
+            // `unset TMUX` inside tmux leaves TERM_PROGRAM behind.
+            &[("TERM_PROGRAM", "tmux"), ("TERM", "xterm-256color")],
+        ];
+        for pairs in multiplexed {
+            let bytes = sent(&dir.env(pairs));
+            assert!(bytes.ends_with(DA1_QUERY), "{pairs:?}");
+            assert!(!contains(&bytes, b"\x1b_G"), "{pairs:?}");
         }
+        // The check is real: a plain terminal gets the query.
+        let bytes = sent(&dir.env(&[("TERM", "xterm-256color")]));
+        assert!(bytes.starts_with(KITTY_QUERY));
+    }
+
+    #[test]
+    fn probing_needs_a_terminal_that_understands_escapes() {
+        let env = Env::from_pairs(&[("TERM", "xterm-256color")]);
+        let dumb = Env::from_pairs(&[("TERM", "dumb")]);
+        let bare = Env::default();
+        assert!(wanted(&request(&env), true));
+        assert!(wanted(&request(&bare), true), "TERM unset is not dumb");
+        assert!(!wanted(&request(&env), false), "stdout is not a terminal");
+        assert!(
+            !wanted(&request(&dumb), true),
+            "TERM=dumb shows queries as text"
+        );
+        let nothing = ProbeRequest {
+            needs: Needs::default(),
+            ..request(&env)
+        };
+        assert!(!wanted(&nothing, true));
+    }
+
+    #[test]
+    fn the_foreground_check_fails_closed() {
+        // Not a terminal: tcgetpgrp fails, so the probe never goes ahead.
+        let not_a_tty = File::open("/dev/null").unwrap();
+        assert!(ensure_foreground(&not_a_tty).is_err());
     }
 
     // --- the exchange ------------------------------------------------------
@@ -1929,6 +2014,24 @@ mod tests {
         assert_eq!(outcome.status, ProbeStatus::Complete);
         assert!(outcome.elapsed < Duration::from_secs(5));
         assert_eq!(outcome.replies.background, Some(Rgb(0, 0, 0)));
+    }
+
+    #[test]
+    fn a_sentinel_during_the_drain_completes_the_probe() {
+        let batch = Batch::new(Needs::ALL, false, None, true);
+        let (head, tail) = KITTY.split_at(KITTY.len() - 10);
+        let script = vec![
+            (head.to_vec(), Duration::from_millis(150)),
+            (tail.to_vec(), Duration::ZERO),
+        ];
+        let (mut tty, terminal) = fake_terminal(&batch, script);
+        let timeout = Duration::from_millis(40);
+        let outcome = exchange(&mut tty, &batch, timeout, Duration::from_secs(5)).unwrap();
+        terminal.join().unwrap();
+        assert_eq!(outcome.status, ProbeStatus::Complete);
+        assert!(!outcome.replies_may_follow());
+        assert!(outcome.elapsed >= timeout && outcome.elapsed < Duration::from_secs(5));
+        assert_eq!(&outcome.replies, parse_all(KITTY, false, false).replies());
     }
 
     #[test]
@@ -2335,6 +2438,28 @@ mod tests {
         assert!(!LateReplyFilter::after(Some(&outcome(ProbeStatus::Complete)), now).is_active(now));
         assert!(!LateReplyFilter::after(None, now).is_active(now));
         assert!(!LateReplyFilter::inactive().is_active(now));
+    }
+
+    #[test]
+    fn failed_probes_have_no_answers() {
+        let outcome = |status| ProbeOutcome {
+            replies: parse_all(KITTY, false, false).into_replies(),
+            status,
+            elapsed: Duration::ZERO,
+            wrapped: false,
+        };
+        let failed = outcome(ProbeStatus::Failed("no tty".into()));
+        assert_eq!(failed.answers(), None);
+        for status in [
+            ProbeStatus::Complete,
+            ProbeStatus::TimedOut,
+            ProbeStatus::Cached {
+                age: Duration::from_secs(1),
+            },
+        ] {
+            let o = outcome(status);
+            assert_eq!(o.answers(), Some(&o.replies));
+        }
     }
 
     #[test]

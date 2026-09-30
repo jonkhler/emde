@@ -379,7 +379,8 @@ impl Identity {
 /// `base` carries the colour, hyperlink and underline decisions (and may
 /// preset `size`, `background` or `cell_px`); its reasons are kept and new
 /// ones appended. `tmux` is the tmux query result and `probe` the probe
-/// replies, when they ran.
+/// replies ([`ProbeOutcome::answers`](super::probe::ProbeOutcome::answers)),
+/// when they ran.
 pub fn decide(
     env: &Env,
     base: Caps,
@@ -429,6 +430,21 @@ pub fn decide(
 pub fn multiplexer_term(env: &Env) -> bool {
     env.get("TERM")
         .is_some_and(|t| t.starts_with("tmux") || t.starts_with("screen"))
+}
+
+/// Queries reach a terminal multiplexer rather than the terminal: `$TMUX`
+/// is set, `TERM_PROGRAM` is `tmux` (tmux exports it into panes, and it
+/// survives an `unset TMUX`), or [`multiplexer_term`].
+///
+/// The probe then never sends the kitty query unwrapped (it would set the
+/// pane title), and environment hints are ignored: they describe the
+/// terminal outside, which images cannot reach.
+pub fn behind_multiplexer(env: &Env) -> bool {
+    env.is_set("TMUX")
+        || env
+            .get("TERM_PROGRAM")
+            .is_some_and(|p| p.eq_ignore_ascii_case("tmux"))
+        || multiplexer_term(env)
 }
 
 /// Whether kitty placeholders could reach the outer terminal through tmux:
@@ -490,7 +506,7 @@ impl<'a> Facts<'a> {
         };
         // Behind a multiplexer, environment hints describe the terminal
         // outside it, which images cannot reach.
-        let hinted = if in_tmux || multiplexer_term(env) {
+        let hinted = if in_tmux || behind_multiplexer(env) {
             None
         } else {
             Identity::from_env(env)
@@ -579,7 +595,19 @@ impl<'a> Facts<'a> {
     }
 
     /// `CSI 16 t`, else `CSI 14 t` / `CSI 18 t`, else what `preset` says.
+    ///
+    /// Inside tmux those answers give tmux's window cell: the largest any
+    /// attached client reports, or tmux's 16×32 default when none does. So
+    /// with the tmux query at hand only the client's own cell counts, and
+    /// `0x0` leaves the size unknown.
     fn cell_size(&self, preset: Option<(u16, u16)>) -> (Option<(u16, u16)>, String) {
+        if let (true, Some(tmux)) = (self.in_tmux, self.tmux) {
+            return match (tmux.cell, preset) {
+                (Some(cell), _) => (Some(cell), "tmux client cell".into()),
+                (None, Some(cell)) => (Some(cell), "preset".into()),
+                (None, None) => (None, "client cell 0x0".into()),
+            };
+        }
         let via = if self.in_tmux { "tmux " } else { "" };
         if let Some(p) = self.probe {
             if let Some(cell) = p.cell_px {
@@ -805,7 +833,7 @@ fn auto_direct(facts: &Facts<'_>, caps: &Caps) -> Choice {
         return Choice::new(Graphics::KittyClassic, why, &notes);
     }
     // 4. Sixel.
-    match direct_sixel(facts) {
+    match direct_sixel(facts, caps.cell_px) {
         Ok(why) => return Choice::new(Graphics::Sixel, why, &notes),
         Err(note) => notes.push(note),
     }
@@ -814,22 +842,33 @@ fn auto_direct(facts: &Facts<'_>, caps: &Caps) -> Choice {
 
 /// The identity that picks OSC 1337: an OSC 1337 terminal by XTVERSION or
 /// `TERM_PROGRAM`, or iTerm2 by `LC_TERMINAL`.
+///
+/// The environment only counts when the terminal did not name itself, or
+/// named something emde does not know or the xterm.js library (which OSC
+/// 1337 hosts such as Tabby embed). A terminal that did name itself wins
+/// over a `TERM_PROGRAM` inherited from the terminal it was started from.
 fn osc1337_identity<'f>(facts: &'f Facts<'_>) -> Option<&'f Identity> {
+    let env_counts = facts
+        .reported
+        .as_ref()
+        .is_none_or(|id| matches!(id.emulator, Emulator::Unknown | Emulator::XtermJs));
+    let hinted = facts.hinted.as_ref().filter(|id| {
+        env_counts
+            && matches!(
+                id.source,
+                IdentitySource::Env("TERM_PROGRAM" | "LC_TERMINAL")
+            )
+    });
     facts
         .reported
         .iter()
-        .chain(&facts.hinted)
-        .filter(|id| {
-            id.source.is_reported()
-                || matches!(
-                    id.source,
-                    IdentitySource::Env("TERM_PROGRAM" | "LC_TERMINAL")
-                )
-        })
+        .chain(hinted)
         .find(|id| id.emulator.speaks_osc1337())
 }
 
-fn direct_sixel(facts: &Facts<'_>) -> Result<String, String> {
+/// Sixel straight to the terminal: DA1 lists `4` and the cell size (as
+/// decided: probe, else preset) is known.
+fn direct_sixel(facts: &Facts<'_>, cell: Option<(u16, u16)>) -> Result<String, String> {
     if !SIXEL_BUILT {
         return Err("sixel ✗ built without sixel".into());
     }
@@ -842,7 +881,7 @@ fn direct_sixel(facts: &Facts<'_>) -> Result<String, String> {
     if !p.da1_has(4) {
         return Err("sixel ✗ DA1 without 4".into());
     }
-    let Some((w, h)) = p.cell_size() else {
+    let Some((w, h)) = cell else {
         return Err("sixel ✗ cell size unknown".into());
     };
     Ok(format!("DA1 has 4, cell {w}x{h} px"))
@@ -883,7 +922,7 @@ fn forced_sixel(facts: &Facts<'_>) -> Result<(Graphics, String), String> {
 }
 
 /// Trim and drop control characters from reported text.
-fn clean(s: &str) -> String {
+pub(super) fn clean(s: &str) -> String {
     s.trim().chars().filter(|c| !c.is_control()).collect()
 }
 
@@ -1125,6 +1164,64 @@ mod tests {
             (caps.cell_px, reason(&caps, topic::CELL)),
             (Some((9, 18)), "preset")
         );
+    }
+
+    #[test]
+    fn cell_size_inside_tmux() {
+        use crate::term::tmux::fixtures as tmux_lines;
+        let cell = |caps: &Caps| (caps.cell_px, reason(caps, topic::CELL).to_string());
+        // tmux answers 16t with its window cell (16x32 here); the client's
+        // own cell is what the outer terminal draws with.
+        let caps = Case::new(&[], Some(TMUX_LOCAL))
+            .in_tmux(tmux_lines::FOOT_CLIENT, false)
+            .decide();
+        assert_eq!(cell(&caps), (Some((10, 20)), "tmux client cell".into()));
+        // A client cell of 0x0 leaves the size unknown: 16x32 is tmux's default.
+        let caps = Case::new(&[], Some(TMUX_LOCAL))
+            .in_tmux(tmux_lines::USER_SESSION, false)
+            .decide();
+        assert_eq!(cell(&caps), (None, "client cell 0x0".into()));
+        // A preset fills the gap, but never beats the client's cell.
+        let base = Caps {
+            cell_px: Some((9, 18)),
+            ..Caps::full()
+        };
+        let caps = Case::new(&[], Some(TMUX_LOCAL))
+            .in_tmux(tmux_lines::USER_SESSION, false)
+            .decide_with(base.clone(), &ImageOptions::default());
+        assert_eq!(cell(&caps), (Some((9, 18)), "preset".into()));
+        let caps = Case::new(&[], Some(TMUX_LOCAL))
+            .in_tmux(tmux_lines::FOOT_CLIENT, false)
+            .decide_with(base, &ImageOptions::default());
+        assert_eq!(cell(&caps), (Some((10, 20)), "tmux client cell".into()));
+        // Without the tmux query, tmux's answer is all there is.
+        let caps = Case::new(&[("TERM", "tmux-256color")], Some(TMUX_LOCAL)).decide();
+        assert!(caps.in_tmux);
+        assert_eq!(cell(&caps), (Some((16, 32)), "tmux 16t".into()));
+        let mut no_query = Case::new(&[], Some(TMUX_LOCAL)).in_tmux(tmux_lines::FOOT_CLIENT, false);
+        no_query.tmux = None;
+        assert_eq!(
+            cell(&no_query.decide()),
+            (Some((16, 32)), "tmux 16t".into())
+        );
+    }
+
+    #[test]
+    fn multiplexers_are_recognised() {
+        let behind = |pairs: &[(&str, &str)]| behind_multiplexer(&Env::from_pairs(pairs));
+        assert!(behind(&[("TMUX", "/tmp/tmux-1001/default,1,0")]));
+        assert!(behind(&[
+            ("TERM_PROGRAM", "tmux"),
+            ("TERM", "xterm-256color")
+        ]));
+        assert!(behind(&[("TERM", "tmux-256color")]));
+        assert!(behind(&[("TERM", "screen.xterm-256color")]));
+        assert!(!behind(&[
+            ("TERM", "xterm-kitty"),
+            ("TERM_PROGRAM", "vscode")
+        ]));
+        assert!(!behind(&[("TMUX", "")]));
+        assert!(!behind(&[]));
     }
 
     #[test]
@@ -1388,8 +1485,9 @@ mod tests {
             assert_eq!(caps.terminal.as_deref(), Some("iTerm2 3.6.9"));
             assert_eq!(caps.background, Some(Rgb(0x1e, 0x1e, 0x2e)));
             assert_eq!(reason(&caps, topic::BACKGROUND), "tmux OSC 11");
-            assert_eq!(caps.cell_px, Some((16, 32)));
-            assert_eq!(reason(&caps, topic::CELL), "tmux 16t");
+            // tmux answered 16t with its 16x32 default; the client cell is 0x0.
+            assert_eq!(caps.cell_px, None);
+            assert_eq!(reason(&caps, topic::CELL), "client cell 0x0");
             assert_eq!(caps.size, Some((214, 54)));
             assert_eq!(
                 reason(&caps, topic::TMUX),
@@ -1488,6 +1586,57 @@ mod tests {
             if SIXEL_BUILT {
                 assert!(reason(&caps, topic::GRAPHICS).ends_with("sixel ✗ cell size unknown"));
             }
+        }
+
+        #[test]
+        fn sixel_uses_a_preset_cell_size() {
+            // DA1 lists sixel, but the terminal answers no window reports.
+            let quiet = b"\x1bP>|XTerm(390)\x1b\\\x1b[?63;1;2;4c";
+            let base = Caps {
+                cell_px: Some((9, 17)),
+                ..Caps::full()
+            };
+            let caps = Case::new(&[("TERM", "xterm")], Some(quiet))
+                .decide_with(base, &ImageOptions::default());
+            assert_eq!(caps.graphics, sixel_or_blocks());
+            if SIXEL_BUILT {
+                assert_eq!(
+                    reason(&caps, topic::GRAPHICS),
+                    "DA1 has 4, cell 9x17 px · kitty ✗ no a=q reply"
+                );
+            }
+        }
+
+        #[test]
+        fn a_reported_terminal_beats_stale_environment_hints() {
+            // foot started from a WezTerm shell inherits TERM_PROGRAM=WezTerm,
+            // but foot has no OSC 1337: its own XTVERSION answer counts.
+            let caps = Case::new(&[("TERM_PROGRAM", "WezTerm")], Some(FOOT)).decide();
+            assert_eq!(caps.graphics, sixel_or_blocks());
+            assert_eq!(caps.terminal.as_deref(), Some("foot(1.20.2)"));
+            // kitty < 0.28 under a stale iTerm2 hint: classic kitty, not OSC 1337.
+            let old_kitty = b"\x1b_Gi=31;OK\x1b\\\x1bP>|kitty(0.27.1)\x1b\\\x1b[?62;c";
+            let env = [("LC_TERMINAL", "iTerm2"), ("TERM_PROGRAM", "iTerm.app")];
+            let caps = Case::new(&env, Some(old_kitty)).decide();
+            assert_eq!(caps.graphics, Graphics::KittyClassic);
+            // An unknown name leaves the environment in charge.
+            let unknown = b"\x1bP>|SomeTerm 2.0\x1b\\\x1b[?62;c";
+            let caps = Case::new(&[("TERM_PROGRAM", "WezTerm")], Some(unknown)).decide();
+            assert_eq!(caps.graphics, Graphics::Iterm);
+        }
+
+        #[test]
+        fn term_program_tmux_hides_environment_hints() {
+            // `unset TMUX` inside tmux: TERM_PROGRAM still says tmux.
+            let env = [
+                ("TERM", "xterm-256color"),
+                ("TERM_PROGRAM", "tmux"),
+                ("LC_TERMINAL", "iTerm2"),
+                ("LC_TERMINAL_VERSION", "3.6.9"),
+            ];
+            let caps = Case::new(&env, None).decide();
+            assert_eq!(caps.graphics, Graphics::Blocks);
+            assert_eq!(caps.terminal, None);
         }
 
         #[test]
