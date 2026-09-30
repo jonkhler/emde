@@ -1,0 +1,17 @@
+[package]
+name = "emde-math"
+description = "LaTeX math to Unicode text (linear and 2D) for the emde Markdown reader"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+pulldown-latex = "~0.8"
+unicode-width = "0.2.2"
+
+[dev-dependencies]
+insta = "1.48"
+
+[lints]
+workspace = true

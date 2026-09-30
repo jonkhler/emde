@@ -1,0 +1,48 @@
+# cargo-deny configuration: licence allow-list, banned crates, advisories.
+# Run with `cargo deny check` (part of `cargo xtask ci`).
+
+[graph]
+all-features = true
+
+[advisories]
+ignore = [
+    { id = "RUSTSEC-2025-0141", reason = "bincode 1.x is pulled in by syntect's `parsing` feature (binary syntax dumps); no alternative until syntect 6" },
+]
+
+[licenses]
+# Allow-list only: anything not listed here is rejected.
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "Zlib",
+    "Unicode-3.0",
+]
+confidence-threshold = 0.9
+
+[licenses.private]
+# The workspace crates are `publish = false`; the project licence is not chosen yet.
+ignore = true
+
+[bans]
+multiple-versions = "allow"
+wildcards = "deny"
+allow-wildcard-paths = true
+deny = [
+    # C Oniguruma: two-face/syntect default features silently link it.
+    { crate = "onig", reason = "keep the build pure Rust (use regex-fancy)" },
+    { crate = "onig_sys", reason = "keep the build pure Rust (use regex-fancy)" },
+    { crate = "openssl-sys", reason = "no C TLS stack" },
+    { crate = "ratatui", reason = "own viewport; ratatui cannot carry OSC 8" },
+    { crate = "tokio", reason = "no async runtime" },
+    { crate = "serde_yaml", reason = "deprecated" },
+    { crate = "serde_yml", reason = "RUSTSEC-2025-0068 (unsound)" },
+    { crate = "yaml-rust", reason = "unmaintained (RUSTSEC-2024-0320)" },
+    { crate = "ansi_colours", reason = "LGPL-3.0" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

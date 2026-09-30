@@ -1,0 +1,92 @@
+[workspace]
+members = [".", "crates/emde-math", "xtask"]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.90"
+publish = false
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+unreachable_pub = "warn"
+unused_qualifications = "warn"
+
+[workspace.lints.clippy]
+dbg_macro = "warn"
+todo = "warn"
+unimplemented = "warn"
+print_stdout = "warn"
+print_stderr = "warn"
+
+[package]
+name = "emde"
+description = "An ultra-fast, lightweight terminal Markdown reader"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[features]
+default = ["highlight", "tmtheme", "images", "sixel", "simd"]
+# Syntax highlighting (syntect + two-face on the pure-Rust fancy-regex backend).
+highlight = ["dep:syntect", "dep:two-face", "dep:fancy-regex"]
+# Load user `.tmTheme` files for code highlighting.
+tmtheme = ["highlight", "syntect/plist-load"]
+# Image decoding (PNG, JPEG, GIF, WebP) and header-only sizing.
+images = ["dep:image", "dep:imagesize"]
+# Sixel output for terminals without kitty/iTerm2 graphics.
+sixel = ["images", "dep:icy_sixel"]
+# SVG images (resvg); off by default because of its size.
+svg = ["images", "dep:resvg"]
+# SSSE3 scanners in pulldown-cmark (runtime-detected, x86_64 only).
+simd = ["pulldown-cmark/simd"]
+
+[dependencies]
+emde-math = { path = "crates/emde-math" }
+bitflags = "2"
+clap = { version = "4.6", default-features = false, features = ["std", "help", "usage", "error-context", "suggestions", "derive"] }
+crossterm = { version = "0.29", default-features = false, features = ["events", "use-dev-tty"] }
+filedescriptor = "0.8"
+linkify = "0.11"
+memchr = "2"
+pulldown-cmark = { version = "0.13.4", default-features = false }
+serde = { version = "1", features = ["derive"] }
+serde_ignored = "0.1"
+signal-hook = "0.3"
+thiserror = "2"
+toml = { version = "1.1", default-features = false, features = ["std", "serde", "parse"] }
+unicode-linebreak = "0.1.5"
+unicode-segmentation = "1.13.3"
+unicode-width = "0.2.2"
+
+syntect = { version = "5.3", default-features = false, features = ["parsing", "regex-fancy"], optional = true }
+two-face = { version = "0.5.2", default-features = false, features = ["syntect-fancy"], optional = true }
+fancy-regex = { version = "0.16", optional = true }
+image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "gif", "webp"], optional = true }
+imagesize = { version = "0.15", default-features = false, features = ["png", "jpeg", "gif", "webp"], optional = true }
+icy_sixel = { version = "0.7", optional = true }
+resvg = { version = "0.48.1", optional = true }
+
+[dev-dependencies]
+insta = "1.48"
+proptest = "1.11"
+vt100 = "0.16"
+
+[lints]
+workspace = true
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "unwind"
+strip = true
+
+# Keep dependencies (syntect, image decoders) fast in debug builds and tests.
+[profile.dev.package."*"]
+opt-level = 2
+
+[profile.test.package."*"]
+opt-level = 2

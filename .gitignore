@@ -1,0 +1,8 @@
+/target
+/fuzz/target
+/fuzz/corpus
+/fuzz/artifacts
+*.pending-snap
+*.snap.new
+*.swp
+.DS_Store
