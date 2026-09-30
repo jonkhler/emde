@@ -1,0 +1,34 @@
+---
+source: tests/ir_snapshots.rs
+expression: "dump(\"llm-math\")"
+---
+h1 H0: "Quadratic equations"
+para: "The solutions of " "ax^2 + bx + c = 0"[math] " are given by"
+  atoms 17..34
+math: "x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}"
+para: "where " "a \\neq 0"[math] ". The discriminant " "\\Delta = b^2 - 4ac"[math] " decides:"
+  atoms 6..14 33..51
+list start=1 tight
+  item
+    para: "If " "\\Delta > 0"[math] ", there are two real roots " "x_1"[math] " and " "x_2"[math] "."
+      atoms 3..13 40..43 48..51
+  item
+    para: "If " "\\Delta = 0"[math] ", there is one root " "x = -\\frac{b}{2a}"[math] "."
+      atoms 3..13 33..50
+  item
+    para: "If " "\\Delta < 0"[math] ", the roots are complex."
+      atoms 3..13
+para: "Subscripts that look like emphasis: " "x^{2}_{1}"[math] " and " "y^{2}_{3}"[math] "."
+  atoms 36..45 50..59
+para: "GitHub style: " "\\sqrt{x^2+1}"[math] " and dollars: " "E = mc^2"[math] "."
+  atoms 14..26 40..48
+para: "Prices stay prose: it costs $5 and $10, or $5-$10."
+quote
+  para: "Inside a quote:"
+  math: "\\int_0^\\infty e^{-x^2}\\,dx = \\frac{\\sqrt{\\pi}}{2}"
+para: "Code keeps delimiters: " "\\(not math\\)"[code] "."
+para: "An aligned block:"
+math: "\\begin{aligned}\nf(x) &= x^2 \\\\\nf'(x) &= 2x\n\\end{aligned}"
+H0 h1 "Quadratic equations" #quadratic-equations parent=- top=0
+anchor #quadratic-equations -> H0
+title "Quadratic equations"

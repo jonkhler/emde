@@ -1,0 +1,38 @@
+---
+source: tests/ir_snapshots.rs
+expression: "dump(\"edge-cases\")"
+---
+h1 H0: "Edge cases"
+para: "Control characters are shown, never executed: ␛[31m red? ␛[2J"
+para: "A very long URL: " "https://example.com/a/very/long/path/that/keeps/going/and/going?with=query&and=more#fragment"[L0]
+  breaks [25, 37, 39, 44, 49, 54, 59, 65, 71, 75, 81, 86, 92, 96, 101]
+para: "Soft\u{ad}hyphen\u{ad}ated words and no\u{a0}break\u{a0}spaces."
+para: "Unclosed " "bold that ends with the paragraph"[strong]
+para: "Next paragraph is not bold. Unknown tags keep text."
+align Center
+  para: "Unclosed div at the end of an HTML block"
+list loose
+  item [ ]
+    para: "task"
+    code: "code in a task"
+    para: "More paragraph text."
+quote
+  quote
+    quote
+      quote
+        quote
+          para: "five levels of quote"
+rule
+table [None]
+  head 0: "a"
+  cell 0.0: "no closing pipe"
+  cell 1.0: "[^missing]"
+para: "link with "[L1] "bold"[strong,L1] " and "[L1] "code"[code,L1]
+para: "Escapes: *not emphasis*, # not a heading, [not a link](x)."
+para: "Emoji: 🎉 ❤\u{fe0f} 👍🏽 🇺🇸 and combining: e\u{301} a\u{302}."
+para: "한국어 문장은 띄어쓰기를 합니다."
+L0 Bare "https://example.com/a/very/long/path/that/keeps/going/and/going?with=query&and=more#fragment" -> External
+L1 Inline "https://example.com/x_(y)" -> External
+H0 h1 "Edge cases" #edge-cases parent=- top=0
+anchor #edge-cases -> H0
+title "Edge cases"

@@ -1,0 +1,4924 @@
+Markdown inputs of the pulldown-cmark 0.13.4 test suite (tests/suite/*.rs),
+used as a no-panic corpus. pulldown-cmark is MIT licensed; spec.rs holds the
+CommonMark 0.31.2 spec examples (CC-BY-SA 4.0, commonmark.org). Each example
+starts with a line '⸻⸻⸻ example <file>:<n>'; everything before the first one
+is this header.
+⸻⸻⸻ example blockquotes_tags.rs:1
+> This is a normal blockquote without tag.
+⸻⸻⸻ example blockquotes_tags.rs:2
+> [!NOTE]
+> Note blockquote
+⸻⸻⸻ example blockquotes_tags.rs:3
+> [!TIP]
+> Tip blockquote
+⸻⸻⸻ example blockquotes_tags.rs:4
+> [!IMPORTANT]
+> Important blockquote
+⸻⸻⸻ example blockquotes_tags.rs:5
+> [!WARNING]
+> Warning blockquote
+⸻⸻⸻ example blockquotes_tags.rs:6
+> [!CAUTION]
+> Caution blockquote
+⸻⸻⸻ example blockquotes_tags.rs:7
+> [!CAUTION]
+⸻⸻⸻ example blockquotes_tags.rs:8
+> [!CAUTION]
+> Line 1.
+> Line 2.
+⸻⸻⸻ example blockquotes_tags.rs:9
+> [!CAUTION]
+> Line 1.
+> [!CAUTION]
+> Line 2.
+⸻⸻⸻ example blockquotes_tags.rs:10
+> [!CAUTION]
+> Line 1.
+> > [!TIP]
+> Line 2.
+⸻⸻⸻ example blockquotes_tags.rs:11
+> [!CAUTION]
+> Line 1.
+
+
+> [!TIP]
+> Line 2.
+⸻⸻⸻ example blockquotes_tags.rs:12
+> > [!CAUTION]
+> > Line 1.
+> Line 2.
+⸻⸻⸻ example blockquotes_tags.rs:13
+> [!CAUTION]	
+> Line 1.
+> > [!NOTE]      
+> > Line 2.
+⸻⸻⸻ example blockquotes_tags.rs:14
+> [!caution]	
+> Line 1.
+> > [!note]      
+> > Line 2.
+⸻⸻⸻ example blockquotes_tags.rs:15
+  * loose lists
+
+    > [!NOTE]
+    > sink ships
+⸻⸻⸻ example blockquotes_tags.rs:16
+> [!NOTE]
+sink ships
+
+> [!NOTE]
+> sink ships
+
+  * loose lists
+
+    > [!NOTE]
+    sink ships
+
+    > [!NOTE]
+    > sink ships
+⸻⸻⸻ example blockquotes_tags.rs:17
+  * loose lists
+
+    > [!NOTE]
+    - sink ships
+
+    > [!NOTE]
+    > - sink ships
+⸻⸻⸻ example blockquotes_tags.rs:18
+> [!Hello]
+> This should be a normal block quote.
+⸻⸻⸻ example definition_lists.rs:1
+apple
+:   red fruit
+
+orange
+:   orange fruit
+⸻⸻⸻ example definition_lists.rs:2
+apple
+
+:   red fruit
+
+orange
+
+:   orange fruit
+⸻⸻⸻ example definition_lists.rs:3
+apple
+
+:   red fruit
+⸻⸻⸻ example definition_lists.rs:4
+apple
+  : red fruit
+
+orange
+  : orange fruit
+⸻⸻⸻ example definition_lists.rs:5
+apple
+
+ : red fruit
+
+orange
+
+ : orange fruit
+⸻⸻⸻ example definition_lists.rs:6
+*apple*
+
+:   red fruit
+
+    contains seeds,
+    crisp, pleasant to taste
+
+*orange*
+
+:   orange fruit
+
+        { orange code block }
+
+    > orange block quote
+⸻⸻⸻ example definition_lists.rs:7
+term
+
+:   1. Para one
+
+       Para two
+⸻⸻⸻ example definition_lists.rs:8
+apple
+:   red fruit
+:   computer company
+
+orange
+:   orange fruit
+:   telecom company
+⸻⸻⸻ example definition_lists.rs:9
+apple
+
+:   red fruit
+
+:   computer company
+
+orange
+
+:   orange fruit
+:   telecom company
+⸻⸻⸻ example definition_lists.rs:10
+apple
+
+:   red fruit
+
+:   computer
+company
+
+orange
+
+:   orange
+fruit
+:   telecom company
+⸻⸻⸻ example definition_lists.rs:11
+apple
+   : > computer company
+     : red fruit
+
+orange
+   : > telecom company
+   : orange fruit
+
+chili's
+   : > restaurant company
+ : spicy fruit
+⸻⸻⸻ example definition_lists.rs:12
+> cherry
+> : keyboard company
+> pomegranate
+: tart fruit
+⸻⸻⸻ example definition_lists.rs:13
+a
+b\
+c
+
+:   foo
+⸻⸻⸻ example definition_lists.rs:14
+Foo
+
+bar
+:   baz
+
+bim
+:   bor
+⸻⸻⸻ example definition_lists.rs:15
+bar
+:   baz
+
+bim
+:   bor
+
+Bloze
+⸻⸻⸻ example definition_lists.rs:16
+bar
+    :baz
+
+Bloze
+⸻⸻⸻ example definition_lists.rs:17
+bar
+:    baz
+
+Bloze
+⸻⸻⸻ example definition_lists.rs:18
+bar
+:       baz
+
+bar
+ :      baz
+
+bar
+  :     baz
+
+bar
+   :    baz
+
+bar
+    :   baz
+⸻⸻⸻ example definition_lists.rs:19
+*orange*
+
+:   orange fruit
+
+        { orange code block }
+
+  > orange block quote
+
+*orange*
+
+:     orange fruit
+
+        { orange code block }
+
+  > orange block quote
+⸻⸻⸻ example definition_lists.rs:20
+Test|Table
+----|-----
+: first
+⸻⸻⸻ example definition_lists.rs:21
+first
+: second
+
+Test|Table
+----|-----
+: fourth
+⸻⸻⸻ example definition_lists.rs:22
+My section
+==========
+: first
+⸻⸻⸻ example definition_lists.rs:23
+first
+: second
+
+My section
+==========
+: fourth
+⸻⸻⸻ example definition_lists.rs:24
+## My subsection
+: first
+⸻⸻⸻ example definition_lists.rs:25
+first
+: second
+
+## My subsection
+: fourth
+⸻⸻⸻ example definition_lists.rs:26
+> first
+: second
+⸻⸻⸻ example definition_lists.rs:27
+first\
+: second
+
+third  
+: fourth
+⸻⸻⸻ example definition_lists.rs:28
+<div>first</div>
+: second
+
+first
+: second
+<div>third</div>
+: fourth
+⸻⸻⸻ example definition_lists.rs:29
+<span>first</span>
+: second
+
+third
+: fourth
+
+<span>fifth</span>
+: sixth
+⸻⸻⸻ example definition_lists.rs:30
+level one
+: l1
+    level two
+    : l2
+        level three
+        : l3
+
+level one
+: l1
+⸻⸻⸻ example footnotes.rs:1
+Lorem ipsum.[^a] [^missing]
+
+[^a]: Cool.
+⸻⸻⸻ example footnotes.rs:2
+> This is the song that never ends.\
+> Yes it goes on and on my friends.[^lambchops]
+>
+> [^lambchops]: <https://www.youtube.com/watch?v=0U2zJOryHKQ>
+⸻⸻⸻ example footnotes.rs:3
+Songs that simply loop are a popular way to annoy people. [^examples]
+
+[^examples]:
+ * [The song that never ends](https://www.youtube.com/watch?v=0U2zJOryHKQ)
+ * [I know a song that gets on everybody's nerves](https://www.youtube.com/watch?v=TehWI09qxls)
+ * [Ninety-nine bottles of beer on the wall](https://www.youtube.com/watch?v=qVjCag8XoHQ)
+⸻⸻⸻ example footnotes.rs:4
+Songs that simply loop are a popular way to annoy people. [^examples]
+
+[^examples]:
+    * [The song that never ends](https://www.youtube.com/watch?v=0U2zJOryHKQ)
+    * [I know a song that gets on everybody's nerves](https://www.youtube.com/watch?v=TehWI09qxls)
+    * [Ninety-nine bottles of beer on the wall](https://www.youtube.com/watch?v=qVjCag8XoHQ)
+⸻⸻⸻ example footnotes.rs:5
+[^not-code] [^code] [^quote] [^not-quote] [^indented-quote]
+
+[^not-code]:         not code
+
+[^code]:
+        code
+
+[^quote]: > quote
+
+[^not-quote]:
+ > external quote
+
+[^indented-quote]:
+    > indented quote
+⸻⸻⸻ example footnotes.rs:6
+[^ab] [^cd]
+
+[^ab]: a
+b
+
+[^cd]: c\
+d
+⸻⸻⸻ example footnotes.rs:7
+[^lorem]: If heaven ever wishes to grant me a boon, it will be a total effacing of the results of a mere chance which fixed my eye on a certain stray piece of shelf-paper. It was nothing on which I would naturally have stumbled in the course of my daily round, for it was an old number of an Australian journal, the Sydney Bulletin for April 18, 1925. It had escaped even the cutting bureau which had at the time of its issuance been avidly collecting material for my uncle's research.
+
+I had largely given over my inquiries into what Professor Angell called the "Cthulhu Cult", and was visiting a learned friend in Paterson, New Jersey; the curator of a local museum and a mineralogist of note. Examining one day the reserve specimens roughly set on the storage shelves in a rear room of the museum, my eye was caught by an odd picture in one of the old papers spread beneath the stones. It was the Sydney Bulletin I have mentioned, for my friend had wide affiliations in all conceivable foreign parts; and the picture was a half-tone cut of a hideous stone image almost identical with that which Legrasse had found in the swamp.
+
+[^ipsum]: If heaven ever wishes to grant me a boon, it will be a total effacing of the results of a mere chance which fixed my eye on a certain stray piece of shelf-paper. It was nothing on which I would naturally have stumbled in the course of my daily round, for it was an old number of an Australian journal, the Sydney Bulletin for April 18, 1925. It had escaped even the cutting bureau which had at the time of its issuance been avidly collecting material for my uncle's research.
+
+    I had largely given over my inquiries into what Professor Angell called the "Cthulhu Cult", and was visiting a learned friend in Paterson, New Jersey; the curator of a local museum and a mineralogist of note. Examining one day the reserve specimens roughly set on the storage shelves in a rear room of the museum, my eye was caught by an odd picture in one of the old papers spread beneath the stones. It was the Sydney Bulletin I have mentioned, for my friend had wide affiliations in all conceivable foreign parts; and the picture was a half-tone cut of a hideous stone image almost identical with that which Legrasse had found in the swamp.
+⸻⸻⸻ example footnotes.rs:8
+[^ipsum]: How much wood would a woodchuck chuck.
+
+If a woodchuck could chuck wood.
+
+
+# Forms of entertainment that aren't childish
+⸻⸻⸻ example footnotes.rs:9
+Footnotes [^one] [^many].
+
+[^one]:
+
+
+
+
+
+    first paragraph inside footnote
+
+[^many]: first paragraph inside footnote
+
+
+
+
+
+    second paragraph still inside footnote
+⸻⸻⸻ example footnotes.rs:10
+> He's also really stupid. [^why]
+>
+> [^why]: Because your mamma!
+
+As such, we can guarantee that the non-childish forms of entertainment are probably more entertaining to adults, since, having had a whole childhood doing the childish ones, the non-childish ones are merely the ones that haven't gotten boring yet.
+⸻⸻⸻ example footnotes.rs:11
+Nested footnotes are considered poor style. [^a] [^xkcd] [^indent1] [^indent2]
+
+[^a]: This does not mean that footnotes cannot reference each other. [^b]
+
+[^b]: This means that a footnote definition cannot be directly inside another footnote definition.
+> This means that a footnote cannot be directly inside another footnote's body. [^e]
+>
+> [^e]: They can, however, be inside anything else.
+
+[^xkcd]: [The other kind of nested footnote is, however, considered poor style.](https://xkcd.com/1208/)
+
+[^indent1]: indent1
+
+    [^indent2]: indent2
+⸻⸻⸻ example footnotes.rs:12
+[^foo] [^bar]
+
+[^foo]: [^bar]: 1
+⸻⸻⸻ example footnotes.rs:13
+[^Doh] Ray Me Fa So La Te Do! [^1]
+
+[^Doh]: I know. Wrong Doe. And it won't render right.
+[^1]: Common for people practicing music.
+⸻⸻⸻ example footnotes.rs:14
+Lorem ipsum.[^a]
+
+An unordered list before the footnotes:
+* Ipsum
+* Lorem
+
+[^a]: Cool.
+⸻⸻⸻ example footnotes.rs:15
+Songs that simply loop are a popular way to annoy people. [^examples]
+
+[^examples]: * [The song that never ends](https://www.youtube.com/watch?v=0U2zJOryHKQ)
+* [I know a song that gets on everybody's nerves](https://www.youtube.com/watch?v=TehWI09qxls)
+* [Ninety-nine bottles of beer on the wall](https://www.youtube.com/watch?v=qVjCag8XoHQ)
+
+
+Songs that simply loop are a popular way to annoy people. [^examples2]
+
+[^examples2]: * [The song that never ends](https://www.youtube.com/watch?v=0U2zJOryHKQ) 2
+    * [I know a song that gets on everybody's nerves](https://www.youtube.com/watch?v=TehWI09qxls) 2
+    - [Ninety-nine bottles of beer on the wall](https://www.youtube.com/watch?v=qVjCag8XoHQ) 2
+
+
+Songs that simply loop are a popular way to annoy people. [^examples3]
+
+[^examples3]: * [The song that never ends](https://www.youtube.com/watch?v=0U2zJOryHKQ) 3
+
+    * [I know a song that gets on everybody's nerves](https://www.youtube.com/watch?v=TehWI09qxls) 3
+
+    * [Ninety-nine bottles of beer on the wall](https://www.youtube.com/watch?v=qVjCag8XoHQ) 3
+⸻⸻⸻ example footnotes.rs:16
+My [cmark-gfm][^c].
+
+My [cmark-gfm][cmark-gfm][^c].
+
+My [cmark-gfm][][^c].
+
+My [cmark-gfm] [^c].
+
+My [cmark-gfm[^c]].
+
+[cmark-gfm]: https://github.com/github/cmark-gfm/blob/1e230827a584ebc9938c3eadc5059c55ef3c9abf/test/extensions.txt#L702
+
+[^c]: cmark-gfm is under the MIT license, so incorporating parts of its
+    test suite into pulldown-cmark should be fine.
+
+
+My [otherlink[^c]].
+
+[otherlink[^c]]: https://github.com/github/cmark-gfm/blob/1e230827a584ebc9938c3eadc5059c55ef3c9abf/test/extensions.txt#L702
+⸻⸻⸻ example footnotes.rs:17
+[^1]: footnote definition text
+
+<!-- -->
+
+    // indented code block
+    fn main() {
+        println!("hello world!");
+    }
+⸻⸻⸻ example footnotes.rs:18
+[^1]: footnote definition text
+[^1]\: this is a reference, rather than a definition
+⸻⸻⸻ example footnotes.rs:19
+[^1]:
+
+    | column1 | column2 |
+    |---------|---------|
+    | row1a   | row1b   |
+    | row2a   | row2b   |
+⸻⸻⸻ example footnotes.rs:20
+* First
+  [^1]: test
+* Second [^1] test
+
+
+> first
+> [^2]: test
+> Second [^2] test
+
+
+   First   | Second
+-----------|----------
+first      | second
+[^3]: test | test [^3]
+
+
+|    First   | Second    |
+|------------|-----------|
+| first      | second    |
+| [^4]: test | test [^4] |
+
+> [^5]: * test [^5]
+⸻⸻⸻ example footnotes.rs:21
+Test [^] link
+
+[^]: https://rust-lang.org
+⸻⸻⸻ example footnotes.rs:22
+[^foo\
+bar]: not a footnote definition
+
+[baz\
+quux]: https://rust-lang.org
+
+[first
+second]: https://rust-lang.org
+
+[^third
+fourth]: not a footnote definition
+
+[baz\
+quux]
+[^foo\
+bar]
+[first
+second]
+[^third
+fourth]
+⸻⸻⸻ example footnotes.rs:23
+[^foo
+]: https://rust-lang.org
+
+[^foo
+]
+⸻⸻⸻ example footnotes.rs:24
+footnote [^baz]
+footnote [^quux]
+
+    [^quux]: x
+
+   [^baz]: x
+⸻⸻⸻ example footnotes.rs:25
+Lorem ipsum.[^a][^b]
+
+[^a]: Foo
+[^b]: Bar
+⸻⸻⸻ example footnotes.rs:26
+Lorem ipsum.[^a] [^b]
+
+[^a]: Foo
+[^b]: Bar
+⸻⸻⸻ example gfm_strikethrough.rs:1
+~~Hi~~ Hello, ~there~ world!
+⸻⸻⸻ example gfm_strikethrough.rs:2
+This ~~has a
+
+new paragraph~~.
+⸻⸻⸻ example gfm_strikethrough.rs:3
+This will ~~~not~~~ strike.
+⸻⸻⸻ example gfm_table.rs:1
+| foo | bar |
+| --- | --- |
+| baz | bim |
+⸻⸻⸻ example gfm_table.rs:2
+| abc | defghi |
+:-: | -----------:
+bar | baz
+⸻⸻⸻ example gfm_table.rs:3
+| f\|oo  |
+| ------ |
+| b `\|` az |
+| b **\|** im |
+⸻⸻⸻ example gfm_table.rs:4
+| abc | def |
+| --- | --- |
+| bar | baz |
+> bar
+⸻⸻⸻ example gfm_table.rs:5
+| abc | def |
+| --- | --- |
+| bar | baz |
+bar
+
+bar
+⸻⸻⸻ example gfm_table.rs:6
+| abc | def |
+| --- |
+| bar |
+⸻⸻⸻ example gfm_table.rs:7
+| abc | def |
+| --- | --- |
+| bar |
+| bar | baz | boo |
+⸻⸻⸻ example gfm_table.rs:8
+| abc | def |
+| --- | --- |
+⸻⸻⸻ example gfm_table.rs:9
+Hello World
+| abc | def |
+| --- | --- |
+| bar | baz |
+⸻⸻⸻ example gfm_tasklist.rs:1
+- [ ] foo
+- [x] bar
+⸻⸻⸻ example gfm_tasklist.rs:2
+- [x] foo
+  - [ ] bar
+  - [x] baz
+- [ ] bim
+⸻⸻⸻ example heading_attrs.rs:1
+with the ID {#myh1}
+===================
+with a class {.myclass}
+------------
+with a custom attribute {myattr=myvalue}
+========================================
+multiple! {.myclass1 myattr #myh3 otherattr=value .myclass2}
+--
+⸻⸻⸻ example heading_attrs.rs:2
+# with the ID {#myh1}
+## with a class {.myclass}
+#### with a custom attribute {myattr=myvalue}
+### multiple! {.myclass1 myattr #myh3 otherattr=value .myclass2}
+⸻⸻⸻ example heading_attrs.rs:3
+# H1 # {#id1}
+## H2 ## with ## multiple ## hashes ## {#id2}
+### with trailing hash # ### {#id3}
+
+#### non-attribute-block {#id4} ####
+⸻⸻⸻ example heading_attrs.rs:4
+# spaces {#myid1}    
+## tabs {#myid2}		
+⸻⸻⸻ example heading_attrs.rs:5
+# H1 \
+nextline
+⸻⸻⸻ example heading_attrs.rs:6
+# H1 \
+{#myid}
+
+## H2 \
+nextline {.class}
+
+### H3 [link
+](https://example.com/) {#myid3}
+⸻⸻⸻ example heading_attrs.rs:7
+H1
+cont
+{#myid}
+==
+⸻⸻⸻ example heading_attrs.rs:8
+H1
+{
+  .class1
+  .class2
+}
+==
+⸻⸻⸻ example heading_attrs.rs:9
+# without space, not recommended{#id1}
+## recommended style with spaces {#id2}
+⸻⸻⸻ example heading_attrs.rs:10
+# H1 { #id1 }
+## H2 {.myclass      #id2 }
+### H3 {     .myclass}
+⸻⸻⸻ example heading_attrs.rs:11
+# H1 {#id1.class1.class2 .class3}
+## H2 {.class1#id2.class2}
+⸻⸻⸻ example heading_attrs.rs:12
+# H1 { #id1
+## H2 {#id2
+⸻⸻⸻ example heading_attrs.rs:13
+# H1 #id1 }
+## H2 #id2}
+⸻⸻⸻ example heading_attrs.rs:14
+# H1 { #id1 } foo
+## H2 {#id2} <!-- hello -->
+⸻⸻⸻ example heading_attrs.rs:15
+# *H1* { #id1 }
+## **H2** {#id2}
+### _H3_ {#id3}
+#### ~~H4~~ {#id4}
+##### [text](uri) {#id5}
+⸻⸻⸻ example heading_attrs.rs:16
+# H1 {#first #second #last}
+⸻⸻⸻ example heading_attrs.rs:17
+# H1 {.z .a .zz}
+⸻⸻⸻ example heading_attrs.rs:18
+# H1 {.a .a .a}
+⸻⸻⸻ example heading_attrs.rs:19
+# H1 {.myclass #myid}
+## H2 {.z #m .a}
+⸻⸻⸻ example heading_attrs.rs:20
+# H1 {foo}
+## H2 {#myid unknown this#is.ignored attr=value .myclass}
+⸻⸻⸻ example heading_attrs.rs:21
+# Header # {myattr=value other_attr}
+⸻⸻⸻ example heading_attrs.rs:22
+#### Header {#id myattr= .class1 other_attr=false}
+⸻⸻⸻ example heading_attrs.rs:23
+# H1 {.foo{unknown}
+## H2 {.foo{.bar}
+⸻⸻⸻ example heading_attrs.rs:24
+# H1 {.foo}bar}
+⸻⸻⸻ example heading_attrs.rs:25
+# H1 {<i>foo</i>}
+⸻⸻⸻ example heading_attrs.rs:26
+# H1 {.foo\}
+⸻⸻⸻ example heading_attrs.rs:27
+H1 {.foo
+.bar}
+==
+⸻⸻⸻ example heading_attrs.rs:28
+H1 {} {}
+=====
+
+## H2 {} {}
+⸻⸻⸻ example heading_attrs.rs:29
+## H2 {} ##
+⸻⸻⸻ example heading_attrs.rs:30
+# H1 {\}
+## this is also ok \{\}
+
+newline can be used for setext heading {
+}
+--
+⸻⸻⸻ example heading_attrs.rs:31
+# H1 \{.foo}
+## H2 \\{.bar}
+### stray backslash at the end is preserved \
+⸻⸻⸻ example heading_attrs.rs:32
+H1 \{.foo}
+==
+H2 \\{.bar}
+--
+
+stray backslash at the end is preserved \
+--
+⸻⸻⸻ example heading_attrs.rs:33
+# H1 {#`code`}
+## H2 {#foo__bar__baz}
+### H3 {#foo**bar**baz}
+⸻⸻⸻ example heading_attrs.rs:34
+H1 {#`code`}
+==
+
+H2-1 {#foo__bar__baz}
+----
+
+H2-2 {#foo**bar**baz}
+--
+⸻⸻⸻ example heading_attrs.rs:35
+# H1 {.foo#bar}
+## H2 {#foo.bar}
+### H3 {.a"b'c&d}
+⸻⸻⸻ example heading_attrs.rs:36
+# H1 {#}
+## H2 {.}
+⸻⸻⸻ example heading_attrs.rs:37
+# H1 {#foo #}
+# H1 {.foo . . .bar}
+⸻⸻⸻ example heading_attrs.rs:38
+# {}
+## {}
+### {\}
+#### {} {}
+
+#{}
+⸻⸻⸻ example heading_attrs.rs:39
+{}
+==
+
+\{}
+--
+
+\
+--
+
+{\}
+==
+
+{}{}
+--
+⸻⸻⸻ example heading_attrs.rs:40
+# horizontal tab	
+# horizontal tab	{#ht}
+## form feed
+## form feed{#ff}
+### vertical tab
+### vertical tab{#vt}
+⸻⸻⸻ example heading_attrs.rs:41
+# horizontal tab (U+000A) {#ht	.myclass}
+## form feed (U+000C) {#ff.myclass}
+
+# vertical tab (U+000B) {#vt.myclass}
+⸻⸻⸻ example heading_attrs.rs:42
+# EN SPACE (U+2002) {#en-space .myclass}
+## IDEOGRAPHIC SPACE (U+3000) {#ideographic-space　.myclass}
+⸻⸻⸻ example math.rs:1
+This sentence uses `$` delimiters to show math inline: $\sqrt{3x-1}+(1+x)^2$
+$\sum_{k=1}^n a_k b_k$: Mathematical expression at head of line
+
+`\` may follow just after the first `$`: $\{1, 2, 3\}$
+⸻⸻⸻ example math.rs:2
+**The Cauchy-Schwarz Inequality**
+
+$$\left( \sum_{k=1}^n a_k b_k \right)^2 \leq \left( \sum_{k=1}^n a_k^2 \right) \left( \sum_{k=1}^n b_k^2 \right)$$
+⸻⸻⸻ example math.rs:3
+Oops empty $$ expression.
+
+$$$$
+⸻⸻⸻ example math.rs:4
+$x$$$$$$$y$$
+
+$x$$$$$$y$$
+
+$$x$$$$$$y$$
+⸻⸻⸻ example math.rs:5
+$a<b>c</b>$
+
+$${a*b*c} _c_ d$$
+
+$not `code`$
+
+$![not an](/image)$
+
+$<https://not.a.link/>$
+
+$&alpha;$
+⸻⸻⸻ example math.rs:6
+Hello $world.
+
+Dollar at end of line$
+⸻⸻⸻ example math.rs:7
+$5x + 2 =
+17$
+
+$$\left( \sum_{k=1}^n a_k b_k \right)^2 \leq \left( \sum_{k=1}^n a_k^2 \right)
+\left( \sum_{k=1}^n b_k^2 \right)$$
+⸻⸻⸻ example math.rs:8
+$not a\
+hard break  
+either$
+⸻⸻⸻ example math.rs:9
+$\$$
+
+$$y = \$ x$$
+⸻⸻⸻ example math.rs:10
+$x $ x$
+
+$$ $ $$
+⸻⸻⸻ example math.rs:11
+alpha$$beta$gamma$$delta
+⸻⸻⸻ example math.rs:12
+these are not math texts: $ y=x$, $y=x $, $
+y=x$ and $y=x
+$
+
+>The start of a line counts as whitespace $2 +
+>$
+
+While displays can start with whitespace, {${
+they should not allow inlines to do that $$2 +
+$*$
+⸻⸻⸻ example math.rs:13
+these are math texts: foo$y=x$bar and $y=x$bar and foo$y=x$ bar
+⸻⸻⸻ example math.rs:14
+math texts: $x=y$! and $x=y$? and $x=y$: and $x=y$. and $x=y$"
+
+also math texts: !$x=y$! and ?$x=y$? and :$x=y$: and .$x=y$. and "$x=y$"
+
+braces: ($x=y$) [$x=y$] {$x=y$}
+⸻⸻⸻ example math.rs:15
+$x=y$
+⸻⸻⸻ example math.rs:16
+$a$$b$
+
+$a$$$b$$
+
+$$a$$$b$
+
+$$a$$$$b$$
+⸻⸻⸻ example math.rs:17
+$Inline `first$ then` code
+
+`Code $first` then$ inline
+
+$$ Display `first $$ then` code
+
+`Code $$ first` then $$ display
+⸻⸻⸻ example math.rs:18
+$x + y - z$
+
+$x + y
+- z$
+
+$$ x + y
+> z $$
+⸻⸻⸻ example math.rs:19
+$not
+
+math$
+
+$$
+not
+
+math
+$$
+⸻⸻⸻ example math.rs:20
+- $not
+    - *
+  math$
+⸻⸻⸻ example math.rs:21
+This is display math:
+$$
+\text{Hello $x^2$}
+$$
+And this is inline math:
+$\text{Hello $x$ there!}$
+⸻⸻⸻ example math.rs:22
+This is not valid math: $}{$
+
+Neither is this: { $}{$ }
+
+This is: $\}\{$
+
+This is: $\}$
+
+Math environment contains 2+2: $}$2+2$
+
+Math environment contains y: $x {$ $ } $y$
+⸻⸻⸻ example math.rs:23
+This is not display math. It is inline math:
+
+$$\text{first $$ second}$
+
+$$$\text{first $$ second}$
+
+This is display math:
+
+$$\text{first $$ second}$$
+
+$$$\text{first $$ second}$$
+
+This is also display math, but (counterintuitively) it's allowed to be empty
+and expected to be as short as possible:
+
+$$$$\text{first $$ second}$$
+⸻⸻⸻ example math.rs:24
+$\text{\$}$
+
+$$x$x$$
+
+${$^$$
+
+$}$$$$
+
+$}$] $$
+⸻⸻⸻ example math.rs:25
+$x$ $`y`$
+⸻⸻⸻ example math.rs:26
+- $a$
+
+  ```math
+  a
+  ```
+
+  $$
+  a
+  $$
+
+- ```math
+  b
+  ```
+
+  $$
+  b
+  $$
+⸻⸻⸻ example math.rs:27
+- ![node logo](https://nodejs.org/static/images/logo.svg)
+- $x$
+⸻⸻⸻ example math.rs:28
+<details>
+
+$A = 5$
+
+$$
+A = 5
+$$
+
+</details>
+⸻⸻⸻ example math.rs:29
+$a<b$
+
+$$a<b$$
+⸻⸻⸻ example math.rs:30
+[^a]
+
+[^a]: Lorem $a$
+⸻⸻⸻ example math.rs:31
+[$a$](x)
+⸻⸻⸻ example math.rs:32
+a$x$
+
+-$x$
+
+1$x$
+⸻⸻⸻ example math.rs:33
+_$a$ equals $b$_
+
+_$a$ equals $b$_
+
+**$a$ equals $b$**
+⸻⸻⸻ example math.rs:34
+$$
+a
+$$
+
+- $$
+  \text{$b$}
+  $$
+⸻⸻⸻ example math.rs:35
+$\{a\,b\}$
+⸻⸻⸻ example math.rs:36
+$a <b > c$
+
+$[(a+b)c](d+e)$
+
+${a}_b c_{d}$
+⸻⸻⸻ example math.rs:37
+When $a \ne 0$, there are two solutions to $(ax^2 + bx + c = 0)$ and they are
+$$ x = {-b \pm \sqrt{b^2-4ac} \over 2a} $$
+⸻⸻⸻ example math.rs:38
+$x = \$$
+⸻⸻⸻ example math.rs:39
+_Equation $\Omega(69)$ in italic text_
+⸻⸻⸻ example math.rs:40
+$\pi$
+'$\pi$
+"$\pi$
+($\pi$
+[$\pi$
+{$\pi$
+/$\pi$
+⸻⸻⸻ example math.rs:41
+| first $|$ second |
+|--------|---------|
+| a ${   | }$ b    |
+⸻⸻⸻ example math.rs:42
+| first $\|$ second |
+|-------------------|
+| a ${   \| }$ b    |
+⸻⸻⸻ example math.rs:43
+| Description | Test case |
+|-------------|-----------|
+| Single      | $\$       |
+| Double      | $\\$      |
+| Basic test  | $\|$      |
+| Basic test 2| $\|\|\$   |
+| Basic test 3| $x\|y\|z\$|
+| Not pipe    | $\.$      |
+| Combo       | $\.\|$    |
+| Combo 2     | $\.\|\$   |
+| Extra       | $\\\.$    |
+| Wait, what? | $\\|$     |
+| Wait, what? | $\\\|$    |
+| Wait, what? | $\\\\|$   |
+| Wait, what? | $\\\\\|$  |
+⸻⸻⸻ example math.rs:44
+This is not an inline math environment: $}{$
+But, because it's nested too deeply, this is parsed as an inline math environment:
+{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{
+improperly $}{$ nested
+}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+But this still isn't, because the braces are still counted: $}{$
+⸻⸻⸻ example math.rs:45
+This is also deeply nested, but, unlike the first example,
+they don't have an equal number of close braces and open braces,
+so aren't detected as math.
+{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{
+improperly $}$ nested ${$ example
+}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+This, however, is detected ${}$
+
+${{{{{{{{{{{{{{{{{{{{{{{{{{{{{{
+another improperly nested example
+}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}$
+⸻⸻⸻ example math.rs:46
+${}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}  20 brace pairs
+{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}  40 brace pairs
+{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}  60 brace pairs
+{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}  80 brace pairs
+{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{} 100 brace pairs
+{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{} 120 brace pairs
+{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{} 140 brace pairs
+{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{} 160 brace pairs
+{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{} 180 brace pairs
+{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{} 200 brace pairs
+{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{} 220 brace pairs
+{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{} 240 brace pairs
+{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{$ 255 brace pairs and one unclosed brace
+⸻⸻⸻ example math.rs:47
+${{{{{{{{{{{{{{{{{{{{ 20 open braces
+{{{{{{{{{{{{{{{{{{{{  40 open braces
+{{{{{{{{{{{{{{{{{{{{  60 open braces
+{{{{{{{{{{{{{{{{{{{{  80 open braces
+{{{{{{{{{{{{{{{{{{{{ 100 open braces
+{{{{{{{{{{{{{{{{{{{{ 110 open braces
+{{{{{{{{{{{{{{{{{{{{ 120 open braces
+{{{{{{{{{{{{{{{{{{{{ 140 open braces
+{{{{{{{{{{{{{{{{{{{{ 160 open braces
+{{{{{{{{{{{{{{{{{{{{ 180 open braces
+{{{{{{{{{{{{{{{{{{{{ 200 open braces
+{{{{{{{{{{{{{{{{{{{{ 220 open braces
+{{{{{{{{{{{{{{{{{{{{ 240 open braces
+{{{{{{{{{{{{{{{ 255 open braces
+}}}}}}}}}}}}}}}}}}}}  20 close braces
+}}}}}}}}}}}}}}}}}}}}  40 close braces
+}}}}}}}}}}}}}}}}}}}}  60 close braces
+}}}}}}}}}}}}}}}}}}}}  80 close braces
+}}}}}}}}}}}}}}}}}}}} 100 close braces
+}}}}}}}}}}}}}}}}}}}} 120 close braces
+}}}}}}}}}}}}}}}}}}}} 140 close braces
+}}}}}}}}}}}}}}}}}}}} 160 close braces
+}}}}}}}}}}}}}}}}}}}} 180 close braces
+}}}}}}}}}}}}}}}}}}}} 200 close braces
+}}}}}}}}}}}}}}}}}}}} 220 close braces
+}}}}}}}}}}}}}}}}}}}} 240 close braces
+}}}}}}}}}}}}}}}{$ 255 close braces and one open brace
+⸻⸻⸻ example metadata_blocks.rs:1
+---
+title: example
+another_field: 0
+---
+⸻⸻⸻ example metadata_blocks.rs:2
+---
+title: example
+another_field: 0
+⸻⸻⸻ example metadata_blocks.rs:3
+---
+---
+⸻⸻⸻ example metadata_blocks.rs:4
+---
+
+title: example
+another_field: 0
+---
+⸻⸻⸻ example metadata_blocks.rs:5
+My paragraph here.
+---
+title: example
+another_field: 0
+---
+⸻⸻⸻ example metadata_blocks.rs:6
+My paragraph here.
+
+---
+title: example
+another_field: 0
+---
+⸻⸻⸻ example metadata_blocks.rs:7
+---    
+title: example
+another_field: 0
+---
+
+--- -
+title: example
+another_field: 0
+---
+⸻⸻⸻ example metadata_blocks.rs:8
+---
+title: example
+another_field: 0
+---        
+
+---
+title: example
+another_field: 0
+---a
+⸻⸻⸻ example metadata_blocks.rs:9
+---
+title: example
+another_field: 0
+...
+⸻⸻⸻ example metadata_blocks.rs:10
++++
+title: example
+another_field: 0
++++
+⸻⸻⸻ example metadata_blocks.rs:11
+    ---
+    Things
+    ---
+⸻⸻⸻ example metadata_blocks.rs:12
+---
+- Item 1
+- Item 2
+---
+⸻⸻⸻ example old_footnotes.rs:1
+Lorem ipsum.[^a]
+
+[^a]: Cool.
+⸻⸻⸻ example old_footnotes.rs:2
+> This is the song that never ends.\
+> Yes it goes on and on my friends.[^lambchops]
+>
+> [^lambchops]: <https://www.youtube.com/watch?v=0U2zJOryHKQ>
+⸻⸻⸻ example old_footnotes.rs:3
+Songs that simply loop are a popular way to annoy people. [^examples]
+
+[^examples]:
+ * [The song that never ends](https://www.youtube.com/watch?v=0U2zJOryHKQ)
+ * [I know a song that gets on everybody's nerves](https://www.youtube.com/watch?v=TehWI09qxls)
+ * [Ninety-nine bottles of beer on the wall](https://www.youtube.com/watch?v=qVjCag8XoHQ)
+⸻⸻⸻ example old_footnotes.rs:4
+[^lorem]: If heaven ever wishes to grant me a boon, it will be a total effacing of the results of a mere chance which fixed my eye on a certain stray piece of shelf-paper. It was nothing on which I would naturally have stumbled in the course of my daily round, for it was an old number of an Australian journal, the Sydney Bulletin for April 18, 1925. It had escaped even the cutting bureau which had at the time of its issuance been avidly collecting material for my uncle's research.
+
+I had largely given over my inquiries into what Professor Angell called the "Cthulhu Cult", and was visiting a learned friend in Paterson, New Jersey; the curator of a local museum and a mineralogist of note. Examining one day the reserve specimens roughly set on the storage shelves in a rear room of the museum, my eye was caught by an odd picture in one of the old papers spread beneath the stones. It was the Sydney Bulletin I have mentioned, for my friend had wide affiliations in all conceivable foreign parts; and the picture was a half-tone cut of a hideous stone image almost identical with that which Legrasse had found in the swamp.
+⸻⸻⸻ example old_footnotes.rs:5
+[^ipsum]: How much wood would a woodchuck chuck.
+
+If a woodchuck could chuck wood.
+
+
+# Forms of entertainment that aren't childish
+⸻⸻⸻ example old_footnotes.rs:6
+> He's also really stupid. [^why]
+>
+> [^why]: Because your mamma!
+
+As such, we can guarantee that the non-childish forms of entertainment are probably more entertaining to adults, since, having had a whole childhood doing the childish ones, the non-childish ones are merely the ones that haven't gotten boring yet.
+⸻⸻⸻ example old_footnotes.rs:7
+Nested footnotes are considered poor style. [^a] [^xkcd]
+
+[^a]: This does not mean that footnotes cannot reference each other. [^b]
+
+[^b]: This means that a footnote definition cannot be directly inside another footnote definition.
+> This means that a footnote cannot be directly inside another footnote's body. [^e]
+>
+> [^e]: They can, however, be inside anything else.
+
+[^xkcd]: [The other kind of nested footnote is, however, considered poor style.](https://xkcd.com/1208/)
+⸻⸻⸻ example old_footnotes.rs:8
+[^Doh] Ray Me Fa So La Te Do! [^1]
+
+[^Doh]: I know. Wrong Doe. And it will render right.
+[^1]: Common for people practicing music.
+⸻⸻⸻ example old_footnotes.rs:9
+[Reference to footnotes A[^1], B[^2] and C[^3].
+
+[^1]: Footnote A.
+[^2]: Footnote B.
+[^3]: Footnote C.
+⸻⸻⸻ example old_footnotes.rs:10
+Lorem ipsum.[^a][^b]
+
+[^a]: Foo
+[^b]: Bar
+⸻⸻⸻ example old_footnotes.rs:11
+Lorem ipsum.[^a] [^b]
+
+[^a]: Foo
+[^b]: Bar
+⸻⸻⸻ example regression.rs:1
+<details><summary>Testing 1..2..3..</summary>
+
+This is a test of the details element.
+
+</details>
+⸻⸻⸻ example regression.rs:2
+see the [many] [articles] [on] [QuickCheck].
+
+[many]: https://medium.com/@jlouis666/quickcheck-advice-c357efb4e7e6
+[articles]: http://www.quviq.com/products/erlang-quickcheck/
+[on]: https://wiki.haskell.org/Introduction_to_QuickCheck1
+[QuickCheck]: https://hackage.haskell.org/package/QuickCheck
+⸻⸻⸻ example regression.rs:3
+[![debug-stub-derive on crates.io][cratesio-image]][cratesio]
+[![debug-stub-derive on docs.rs][docsrs-image]][docsrs]
+
+[cratesio-image]: https://img.shields.io/crates/v/debug_stub_derive.svg
+[cratesio]: https://crates.io/crates/debug_stub_derive
+[docsrs-image]: https://docs.rs/debug_stub_derive/badge.svg?version=0.3.0
+[docsrs]: https://docs.rs/debug_stub_derive/0.3.0/
+⸻⸻⸻ example regression.rs:4
+|  Title A  |  Title B  |
+| --------- | --------- |
+| Content   | Content   |
+
+|  Title A  |  Title B  |  Title C  |  Title D  |
+| --------- | --------- | --------- | ---------:|
+| Content   | Content   | Conent    | Content   |
+⸻⸻⸻ example regression.rs:5
+foo§__(bar)__
+⸻⸻⸻ example regression.rs:6
+<https://example.com> hello
+⸻⸻⸻ example regression.rs:7
+[foo][bar]
+
+<!-- foo -->
+[bar]: a
+⸻⸻⸻ example regression.rs:8
+<!-- <dl> -->
+- **foo** (u8, u8)
+
+  make something
+
+- **bar** (u16, u16)
+
+  make something
+⸻⸻⸻ example regression.rs:9
+[`
+i8
+`](
+../../../std/primitive.i8.html
+)
+⸻⸻⸻ example regression.rs:10
+[a]
+
+[a]: /url (title\\*)
+⸻⸻⸻ example regression.rs:11
+[a]
+
+[a]: /url (title\))
+⸻⸻⸻ example regression.rs:12
+[a]
+
+[a]: /url (title))
+⸻⸻⸻ example regression.rs:13
+a <?php this is not a valid processing tag
+---
+b <?php but this is ?>
+⸻⸻⸻ example regression.rs:14
+[a]: u\
+foo
+⸻⸻⸻ example regression.rs:15
+\`foo`
+⸻⸻⸻ example regression.rs:16
+foo\\
+bar
+⸻⸻⸻ example regression.rs:17
+1\. foo
+
+1\) bar
+⸻⸻⸻ example regression.rs:18
+1...
+
+1.2.3.
+
+1 2 3 .
+
+1.|2.-3.
+
+1)2)3)
+⸻⸻⸻ example regression.rs:19
+[](<<>)
+⸻⸻⸻ example regression.rs:20
+\``foo``bar`
+⸻⸻⸻ example regression.rs:21
+\\`foo`
+⸻⸻⸻ example regression.rs:22
+[\\]: x
+
+YOLO
+⸻⸻⸻ example regression.rs:23
+lorem ipsum
+A | B
+---|---
+foo | bar
+⸻⸻⸻ example regression.rs:24
+foo|bar  
+---|---
+foo|bar
+⸻⸻⸻ example regression.rs:25
+foo|bar\\
+---|---
+foo|bar
+⸻⸻⸻ example regression.rs:26
+[<foo>](url)
+⸻⸻⸻ example regression.rs:27
+[<foo>bar</foo>](url)
+⸻⸻⸻ example regression.rs:28
+![<http://example.com>](http://example.com/logo.png)
+⸻⸻⸻ example regression.rs:29
+[<http://one> <http://two>](url)
+⸻⸻⸻ example regression.rs:30
+Markdown | Less | Pretty
+--- | --- | ---
+ 
+some text
+⸻⸻⸻ example regression.rs:31
+1. > foo
+2. >
+⸻⸻⸻ example regression.rs:32
+[
+x
+
+]: f
+⸻⸻⸻ example regression.rs:33
+[foo]:
+⸻⸻⸻ example regression.rs:34
+> [foo
+> bar]: /url
+>
+> [foo bar]
+⸻⸻⸻ example regression.rs:35
+> foo | bar
+> --- | ---
+yolo | swag
+⸻⸻⸻ example regression.rs:36
+<foo bar>
+⸻⸻⸻ example regression.rs:37
+<foo bar =
+ "hi"> 
+⸻⸻⸻ example regression.rs:38
+~~*_**__
+
+__a__
+⸻⸻⸻ example regression.rs:39
+> `
+> `
+⸻⸻⸻ example regression.rs:40
+`\|`
+⸻⸻⸻ example regression.rs:41
+Paragraph 1
+    
+Paragraph 2
+⸻⸻⸻ example regression.rs:42
+\[[link text](https://www.google.com/)\]
+⸻⸻⸻ example regression.rs:43
+foo | bar
+--- | ---
+[a](< | url>)
+⸻⸻⸻ example regression.rs:44
+[a](url "
+- - -
+")
+⸻⸻⸻ example regression.rs:45
+[a](url
+
+)
+⸻⸻⸻ example regression.rs:46
+[a](b "
+
+")
+⸻⸻⸻ example regression.rs:47
+<http:// >
+⸻⸻⸻ example regression.rs:48
+<http://>
+⸻⸻⸻ example regression.rs:49
+foo | bar
+--- | ---
+<http://| baz
+⸻⸻⸻ example regression.rs:50
+foo | bar
+--- | ---
+<http://|>
+⸻⸻⸻ example regression.rs:51
+<sup>\*hi</sup>\_
+⸻⸻⸻ example regression.rs:52
+email: <john@example.com>\_
+⸻⸻⸻ example regression.rs:53
+> [link](/url 'foo
+> bar')
+⸻⸻⸻ example regression.rs:54
+> [foo
+> bar]: /url
+>
+> [foo bar]
+⸻⸻⸻ example regression.rs:55
+> [foo   bar]: /url
+>
+> [foo
+> bar]
+⸻⸻⸻ example regression.rs:56
+> - [a
+> b c]: /foo
+
+[a b c]
+⸻⸻⸻ example regression.rs:57
+[a
+> b]: /foo
+
+[a b] [a > b]
+⸻⸻⸻ example regression.rs:58
+[`cargo
+package`]
+
+[`cargo package`]: https://example.com
+⸻⸻⸻ example regression.rs:59
+> [`cargo
+> package`]
+
+[`cargo package`]: https://example.com
+⸻⸻⸻ example regression.rs:60
+> `cargo
+> package`
+⸻⸻⸻ example regression.rs:61
+> Note: Though you should not rely on this, all pointers to <abbr
+> title="Dynamically Sized Types">DSTs</abbr> are currently twice the size of
+> the size of `usize` and have the same alignment.
+⸻⸻⸻ example regression.rs:62
+Lorem ipsum.[^a]
+
+An unordered list before the footnotes:
+* Ipsum
+* Lorem
+
+[^a]: Cool.
+⸻⸻⸻ example regression.rs:63
+[][a]
+
+[a]: b
+
+# assimp-rs [![][crates-badge]][crates]
+
+[crates]: https://crates.io/crates/assimp
+[crates-badge]: http://meritbadge.herokuapp.com/assimp
+⸻⸻⸻ example regression.rs:64
+* A list.
+
+   * A sublist.
+
+   * Another sublist.
+
+
+* A list.
+ 
+   * A sublist.
+ 
+   * Another sublist.
+ 
+⸻⸻⸻ example regression.rs:65
+<foo
+⸻⸻⸻ example regression.rs:66
+> > a <a href
+> > ="yo
+> > lo">
+⸻⸻⸻ example regression.rs:67
+	-	the whitespace here are tabs
+⸻⸻⸻ example regression.rs:68
+1. a
+   1. a
+
+a
+2. a
+⸻⸻⸻ example regression.rs:69
+1. a
+2. a
+   2. a
+⸻⸻⸻ example regression.rs:70
+* [ ] foo
+
+* [ ] bar
+
+baz
+⸻⸻⸻ example regression.rs:71
+* foo
+    + bar
+    + baz
+⸻⸻⸻ example regression.rs:72
+[`]: xx:
+
+[`]`]
+⸻⸻⸻ example regression.rs:73
+~~foo~~bar
+⸻⸻⸻ example regression.rs:74
+foo~~bar~~
+⸻⸻⸻ example regression.rs:75
+*~~__emphasis strike strong__~~* ~~*__strike emphasis strong__*~~
+⸻⸻⸻ example regression.rs:76
+*~~__emphasis strike strong__~~* ~~*__`strike emphasis strong code`__*~~
+⸻⸻⸻ example regression.rs:77
+*~~`emphasis strike code`~~* ~~*__strike emphasis strong__*~~
+⸻⸻⸻ example regression.rs:78
+*~~`emphasis strike code`~~* ~~*__`strike emphasis strong code`__*~~
+⸻⸻⸻ example regression.rs:79
+**~~_strong strike emphasis_~~** ~~*__strike emphasis strong__*~~
+⸻⸻⸻ example regression.rs:80
+**~~_strong strike emphasis_~~** ~~*__`strike emphasis strong code`__*~~
+⸻⸻⸻ example regression.rs:81
+**~~`strong strike code`~~** ~~*__strike emphasis strong__*~~
+⸻⸻⸻ example regression.rs:82
+**~~`strong strike code`~~** ~~*__`strike emphasis strong code`__*~~
+⸻⸻⸻ example regression.rs:83
+  | foo | bar  |
+  |-----|------|
+  | baz | alef |
+
+  | foo | bar  |
+  |-----|------|
+| baz | alef |
+
+  | foo | bar  |
+|-----|------|
+  | baz | alef |
+
+| foo | bar  |
+  |-----|------|
+  | baz | alef |
+
+  | foo | bar  |
+|-----|------|
+| baz | alef |
+
+| foo | bar  |
+|-----|------|
+  | baz | alef |
+
+| foo | bar  |
+|-----|------|
+| baz | alef |
+
+| foo | bar  |
+  |-----|------|
+| baz | alef |
+
+    | foo | bar  |
+    |-----|------|
+    | baz | alef |
+
+| foo | bar  |
+    |-----|------|
+| baz | alef |
+
+	| foo | bar  |
+	|-----|------|
+	| baz | alef |
+
+| foo | bar  |
+	|-----|------|
+| baz | alef |
+⸻⸻⸻ example regression.rs:84
+### ###
+⸻⸻⸻ example regression.rs:85
+### 
+⸻⸻⸻ example regression.rs:86
+<!doctype html>
+⸻⸻⸻ example regression.rs:87
+| A | table    |
+| ------ | ---- |
+| not   |  in  |
+| a     | list|
+
+* A blockquote:
+  > inside a list item
+* A Heading:
+  # inside a list item
+* A table:
+
+  | inside | a       |
+  | ------ | ------- |
+  | list   | item    |
+  | with   | leading |
+  | empty  | lines   |
+* A table:
+  | inside  | a       |
+  | ------- | ------- |
+  | list    | item    |
+  | without | leading |
+  | empty   | lines   |
+⸻⸻⸻ example regression.rs:88
+a\
+
+b
+⸻⸻⸻ example regression.rs:89
+a\
+* b
+⸻⸻⸻ example regression.rs:90
+a\
+> b
+⸻⸻⸻ example regression.rs:91
+a\
+# b
+⸻⸻⸻ example regression.rs:92
+a\
+==
+⸻⸻⸻ example regression.rs:93
+> a\
+>
+⸻⸻⸻ example regression.rs:94
+<a
+>
+⸻⸻⸻ example regression.rs:95
+<div
+>
+⸻⸻⸻ example regression.rs:96
+<a
+> quote
+⸻⸻⸻ example regression.rs:97
+<div
+> not quote
+⸻⸻⸻ example regression.rs:98
+<a
+>quote
+⸻⸻⸻ example regression.rs:99
+<div
+>not quote
+⸻⸻⸻ example regression.rs:100
+> alpha
+> | a | b |
+> |---|---|
+> | c | d |
+⸻⸻⸻ example regression.rs:101
+***R]*-*
+⸻⸻⸻ example regression.rs:102
+****foo*bar*baz****
+⸻⸻⸻ example regression.rs:103
+;
+*
+%
+⸻⸻⸻ example regression.rs:104
+;
+* 
+%
+⸻⸻⸻ example regression.rs:105
+<@1>
+⸻⸻⸻ example regression.rs:106
+---
+anything:
+    indented4Spaces: true
+---
+Things
+⸻⸻⸻ example regression.rs:107
+---
+something:
+  nested:
+    twice: true
+---
+Things
+⸻⸻⸻ example regression.rs:108
+---
+lists:
+    - indented 4 spaces
+---
+Things
+⸻⸻⸻ example regression.rs:109
+-
+
+-
+
+
+-
+
+
+
+-
+⸻⸻⸻ example regression.rs:110
+-
+
+  -  .
+⸻⸻⸻ example regression.rs:111
+j***5*=*
+⸻⸻⸻ example regression.rs:112
+Not enough table
+
+|
+|
+
+Not enough table
+
+|x
+|
+
+Not enough table
+
+|
+|-
+
+Table
+
+|x
+|-
+
+Not enough table
+| col1 | col2 |
+|      | ---- |
+
+Not enough table
+| col1 | col2 |
+| :    | ---- |
+
+Table
+| col1 | col2 |
+| ---- | ---- |
+⸻⸻⸻ example regression.rs:113
+[x] is not a valid link definition, because parens aren't balanced.
+
+[x]: (
+⸻⸻⸻ example regression.rs:114
+Both of these two paragraphs are structurally the same, but the first one has
+an unmatched asterisk.
+
+_*_
+*{*{
+
+_x_
+*{*{
+⸻⸻⸻ example regression.rs:115
+**a.*.**a*.**.
+⸻⸻⸻ example regression.rs:116
+_*__*_*
+
+_*xx*_*
+
+_*__-_-
+
+_*xx-_-
+⸻⸻⸻ example regression.rs:117
+-
+
+	-
+
+
+- x
+
+	-
+⸻⸻⸻ example regression.rs:118
+-
+
+    -
+
+
+- x
+
+    -
+⸻⸻⸻ example regression.rs:119
+[x\
+
+]: https://rust-lang.org
+⸻⸻⸻ example regression.rs:120
+>>**#*
+>
+>**#*
+
+**#*
+
+|**#*|
+|----|
+|**#*|
+|**#*
+**#*|
+**#*
+⸻⸻⸻ example regression.rs:121
+The second hyphen should parse the same way in both samples.
+
+ - >*
+
+   -
+
+The second hyphen should parse the same way in both samples.
+
+ - >x
+
+   -
+⸻⸻⸻ example regression.rs:122
+> Rewriting it in [Rust] is usually a bad idea.
+>
+> [Rust]:
+https://rust-lang.org
+⸻⸻⸻ example regression.rs:123
+[First try
+----------
+Second try]: https://rust-lang.org
+⸻⸻⸻ example regression.rs:124
+[^foo][]
+
+[^foo][baz]
+
+[baz][^foo]
+
+[^foo]: bar
+
+[baz]: https://rust-lang.org
+⸻⸻⸻ example regression.rs:125
+# foo \
+bar \
+⸻⸻⸻ example regression.rs:126
+[third try]:
+-
+
+[third try]
+⸻⸻⸻ example regression.rs:127
+- [foo]: test
+bar
+
+> [bar]: test
+[baz]: rstr
+[bar]
+⸻⸻⸻ example regression.rs:128
+> - [foo]: test
+> bar
+> 
+> > [bar]: test
+> [baz]: rstr
+> [bar]
+⸻⸻⸻ example regression.rs:129
+[bar]: test
+-
+⸻⸻⸻ example regression.rs:130
+[link](
+foo)
+
+> [link](
+> foo)
+⸻⸻⸻ example regression.rs:131
+[link](foo
+)
+
+> [link](foo
+> )
+⸻⸻⸻ example regression.rs:132
+[link](foo
+"bar"
+)
+
+> [link](foo
+> "bar"
+> )
+⸻⸻⸻ example regression.rs:133
+[link](	
+	foo	
+	"bar"	
+	)
+
+> [link](	
+> 	foo	
+> 	"bar"	
+> 	)
+⸻⸻⸻ example regression.rs:134
+[linkme]: foo
+    - baz
+⸻⸻⸻ example regression.rs:135
+[linkme-3]:
+   [^foo]:
+
+[linkme-4]:
+    [^bar]:
+
+GFM footnotes can interrupt link defs if they have three spaces, but not four.
+⸻⸻⸻ example regression.rs:136
+[linkme-3]:
+   ===
+
+[linkme-4]:
+    ===
+
+Setext heading can interrupt link def if it has three spaces, but not four.
+⸻⸻⸻ example regression.rs:137
+[linkme-3]: a
+   - a
+
+[linkme-4]: a
+    - b
+
+List can interrupt the paragraph at the start of a link definition if it starts with three spaces, but not four.
+⸻⸻⸻ example regression.rs:138
+[first
+-
+second]: https://example.com
+
+[first
+-
+second]
+⸻⸻⸻ example regression.rs:139
+[first
+    -
+second]: https://example.com
+
+[first
+    -
+second]
+⸻⸻⸻ example regression.rs:140
+[first]: https://example.com
+"
+-
+"
+
+[first]
+⸻⸻⸻ example regression.rs:141
+[first]: https://example.com
+"
+    -
+"
+
+[first]
+⸻⸻⸻ example regression.rs:142
+> [first]: https://example.com
+> "
+> -
+> "
+>
+> [first]
+⸻⸻⸻ example regression.rs:143
+> ```
+> code
+
+> text
+⸻⸻⸻ example regression.rs:144
+> [first]: https://example.com
+> "
+>     -
+> "
+>
+> [first]
+⸻⸻⸻ example regression.rs:145
+[first]: https://example.com
+"
+\
+"
+
+[first]
+⸻⸻⸻ example regression.rs:146
+[first]: https://example.com
+"
+\
+
+"
+
+[first]
+⸻⸻⸻ example regression.rs:147
+[foo]: https://example.com
+'[foo]'bar
+⸻⸻⸻ example regression.rs:148
+- [foo]: https://example.com
+'[foo]'
+[foo]
+⸻⸻⸻ example regression.rs:149
+[
+a]: https://example.com
+
+[b
+]: https://example.com
+
+[a] [b]
+⸻⸻⸻ example regression.rs:150
+> > ```
+> > code
+>
+> > text
+⸻⸻⸻ example regression.rs:151
+- *foo
+  - - 
+  baz*
+⸻⸻⸻ example regression.rs:152
+- `foo
+  - - 
+  baz`
+⸻⸻⸻ example regression.rs:153
+- [foo
+  - - 
+  baz](https://example.com)
+⸻⸻⸻ example regression.rs:154
+[mylink]
+
+[mylink]: https://example.com
+'
+part of the title'
+⸻⸻⸻ example regression.rs:155
+1.
+      pulldown-cmark used to think this was code, but commonmark.js and commonmark-hs didn't.
+      The dot in the list marker is at column two, so the child paragraph actually
+      starts in column *three*.
+⸻⸻⸻ example regression.rs:156
+1.
+  This is not in the list at all. It's a paragraph after it.
+⸻⸻⸻ example regression.rs:157
+`\!\&quot;\#\$\%\&
+\!\&quot;\#\$\%\&
+\!\&quot;\#\$\%\&`
+⸻⸻⸻ example regression.rs:158
+|
+-|- *
+⸻⸻⸻ example regression.rs:159
+ A paragraph is a paragraph and spaces must be removed. 
+
+   Another paragraph whose spaces must be removed.  
+⸻⸻⸻ example regression.rs:160
+![^1]
+
+[^1]: foo
+⸻⸻⸻ example regression.rs:161
+First ![^1][] Second
+
+[^1]: foo
+⸻⸻⸻ example regression.rs:162
+&#00000000; &#x0000000;
+⸻⸻⸻ example regression.rs:163
+&#5307530;
+⸻⸻⸻ example regression.rs:164
+- _t
+  # test
+  t_
+⸻⸻⸻ example regression.rs:165
+* *_
+  #
+  N*
+⸻⸻⸻ example regression.rs:166
+
+ <foo>
+⸻⸻⸻ example regression.rs:167
+
+<foo>
+⸻⸻⸻ example regression.rs:168
+
+   <foo>
+⸻⸻⸻ example regression.rs:169
+* <foo>
+	<bar>
+⸻⸻⸻ example regression.rs:170
+* test
+
+	 <foo>
+	<bar>
+⸻⸻⸻ example regression.rs:171
+*
+	 <div>
+	 <div>
+⸻⸻⸻ example regression.rs:172
+*
+	<div>
+	<div>
+⸻⸻⸻ example regression.rs:173
+*
+     <div>
+  <div>
+⸻⸻⸻ example regression.rs:174
+*
+     <div>
+   <div>
+⸻⸻⸻ example regression.rs:175
+*
+      <div>
+     <div>
+⸻⸻⸻ example regression.rs:176
+[link]: test (()
+
+[link]
+⸻⸻⸻ example regression.rs:177
+[link]: test (())
+
+[link]
+⸻⸻⸻ example regression.rs:178
+[link]: test (\(\))
+
+[link]
+⸻⸻⸻ example regression.rs:179
+[link]: test """
+
+[link]
+⸻⸻⸻ example regression.rs:180
+[link]: test "\""
+
+[link]
+⸻⸻⸻ example regression.rs:181
+[link]: test '''
+
+[link]
+⸻⸻⸻ example regression.rs:182
+[link]: test '\''
+
+[link]
+⸻⸻⸻ example regression.rs:183
+-     test
+
+  test2
+⸻⸻⸻ example regression.rs:184
+    test
+
+test2
+⸻⸻⸻ example regression.rs:185
+-     test
+  test2
+⸻⸻⸻ example regression.rs:186
+-     test
+- test2
+⸻⸻⸻ example regression.rs:187
+-     test
+
+- test2
+⸻⸻⸻ example regression.rs:188
+<!p>
+
+<\!p>
+⸻⸻⸻ example regression.rs:189
+[linky]
+
+[linky]: ((()))
+⸻⸻⸻ example regression.rs:190
+><span
+title
+>junk
+⸻⸻⸻ example regression.rs:191
+ ~~~
+    ~~~
+⸻⸻⸻ example regression.rs:192
+ ~~~
+   ~~~
+⸻⸻⸻ example regression.rs:193
+[link]: destination "
+          text          "
+
+[link]
+⸻⸻⸻ example regression.rs:194
+* _
+_**
+  ___
+  ^_
+⸻⸻⸻ example regression.rs:195
+> [!Note]
+> - Foo
+⸻⸻⸻ example regression.rs:196
+ ---
+--
+---
+⸻⸻⸻ example regression.rs:197
+[30](https://rust.org/something%3A((((((((((((((((((((((((((((((())))))))))))))))))))))))))))))))
+[40](https://rust.org/something%3A((((((((((((((((((((((((((((((((((((((((())))))))))))))))))))))))))))))))))))))))))
+⸻⸻⸻ example regression.rs:198
+- [x]		
+\
+-
+⸻⸻⸻ example regression.rs:199
+* [ ] 
+---
+bar
+⸻⸻⸻ example regression.rs:200
+`
+`
+⸻⸻⸻ example regression.rs:201
+* def this
+  : def text def text
+⸻⸻⸻ example regression.rs:202
+* def this
+
+  : def text def text
+⸻⸻⸻ example regression.rs:203
+**A:**
+
+> B C
+> I J :x: K
+> :x: L M
+> N O _P_ Q R. (S
+> T U, V W
+> :x:,:x:,:x:, and :x: but no :x: or
+> :x:.)
+⸻⸻⸻ example regression.rs:204
+[abc] check `foobar_raz`
+ Some preamble `foobar_raz`, not `barfoo_raz`
+ :D
+ 
+ This should fix:
+ 
+ &gt; Something is wrong!
+⸻⸻⸻ example regression.rs:205
+- Item definition [it
+  ```rust
+  ```
+  stuff](https://example.com)
+⸻⸻⸻ example regression.rs:206
+foo
+{.class}
+===
+
+> foo
+> {.class}
+> ===
+>
+> > foo
+> > {.class}
+> > ===
+
+* > foo
+  > {.class}
+  > ===
+
+> foo
+>	{.class}
+>	===
+⸻⸻⸻ example regression.rs:207
+the trailing space after the &gt; should be stripped
+    > {.bar}
+===
+⸻⸻⸻ example regression.rs:208
+[[Wiki<|Link]]
+⸻⸻⸻ example regression.rs:209
+* <c
+  >
+⸻⸻⸻ example regression.rs:210
+- [x] * some text
+- [ ] > some text
+- [x]
+  * some text
+- [ ]
+  > some text
+⸻⸻⸻ example smart_punct.rs:1
+"Hello," said the spider.
+"'Shelob' is my name."
+⸻⸻⸻ example smart_punct.rs:2
+'A', 'B', and 'C' are letters.
+⸻⸻⸻ example smart_punct.rs:3
+'Oak,' 'elm,' and 'beech' are names of trees.
+So is 'pine.'
+⸻⸻⸻ example smart_punct.rs:4
+'He said, "I want to go."'
+⸻⸻⸻ example smart_punct.rs:5
+Were you alive in the 70's?
+⸻⸻⸻ example smart_punct.rs:6
+Here is some quoted '`code`' and a "[quoted link](url)".
+⸻⸻⸻ example smart_punct.rs:7
+'tis the season to be 'jolly'
+⸻⸻⸻ example smart_punct.rs:8
+'We'll use Jane's boat and John's truck,' Jenna said.
+⸻⸻⸻ example smart_punct.rs:9
+"A paragraph with no closing quote.
+
+"Second paragraph by same speaker, in fiction."
+⸻⸻⸻ example smart_punct.rs:10
+[a]'s b'
+⸻⸻⸻ example smart_punct.rs:11
+\"This is not smart.\"
+This isn\'t either.
+5\'8\"
+⸻⸻⸻ example smart_punct.rs:12
+Some dashes:  em---em
+en--en
+em --- em
+en -- en
+2--3
+⸻⸻⸻ example smart_punct.rs:13
+one-
+two--
+three---
+four----
+five-----
+six------
+seven-------
+eight--------
+nine---------
+thirteen-------------.
+⸻⸻⸻ example smart_punct.rs:14
+Escaped hyphens: \-- \-\-\-.
+⸻⸻⸻ example smart_punct.rs:15
+Ellipses...and...and....
+⸻⸻⸻ example smart_punct.rs:16
+No ellipses\.\.\.
+⸻⸻⸻ example spec.rs:1
+	foo	baz		bim
+⸻⸻⸻ example spec.rs:2
+  	foo	baz		bim
+⸻⸻⸻ example spec.rs:3
+    a	a
+    ὐ	a
+⸻⸻⸻ example spec.rs:4
+  - foo
+
+	bar
+⸻⸻⸻ example spec.rs:5
+- foo
+
+		bar
+⸻⸻⸻ example spec.rs:6
+>		foo
+⸻⸻⸻ example spec.rs:7
+-		foo
+⸻⸻⸻ example spec.rs:8
+    foo
+	bar
+⸻⸻⸻ example spec.rs:9
+ - foo
+   - bar
+	 - baz
+⸻⸻⸻ example spec.rs:10
+#	Foo
+⸻⸻⸻ example spec.rs:11
+*	*	*	
+⸻⸻⸻ example spec.rs:12
+\!\"\#\$\%\&\'\(\)\*\+\,\-\.\/\:\;\<\=\>\?\@\[\\\]\^\_\`\{\|\}\~
+⸻⸻⸻ example spec.rs:13
+\	\A\a\ \3\φ\«
+⸻⸻⸻ example spec.rs:14
+\*not emphasized*
+\<br/> not a tag
+\[not a link](/foo)
+\`not code`
+1\. not a list
+\* not a list
+\# not a heading
+\[foo]: /url "not a reference"
+\&ouml; not a character entity
+⸻⸻⸻ example spec.rs:15
+\\*emphasis*
+⸻⸻⸻ example spec.rs:16
+foo\
+bar
+⸻⸻⸻ example spec.rs:17
+`` \[\` ``
+⸻⸻⸻ example spec.rs:18
+    \[\]
+⸻⸻⸻ example spec.rs:19
+~~~
+\[\]
+~~~
+⸻⸻⸻ example spec.rs:20
+<https://example.com?find=\*>
+⸻⸻⸻ example spec.rs:21
+<a href="/bar\/)">
+⸻⸻⸻ example spec.rs:22
+[foo](/bar\* "ti\*tle")
+⸻⸻⸻ example spec.rs:23
+[foo]
+
+[foo]: /bar\* "ti\*tle"
+⸻⸻⸻ example spec.rs:24
+``` foo\+bar
+foo
+```
+⸻⸻⸻ example spec.rs:25
+&nbsp; &amp; &copy; &AElig; &Dcaron;
+&frac34; &HilbertSpace; &DifferentialD;
+&ClockwiseContourIntegral; &ngE;
+⸻⸻⸻ example spec.rs:26
+&#35; &#1234; &#992; &#0;
+⸻⸻⸻ example spec.rs:27
+&#X22; &#XD06; &#xcab;
+⸻⸻⸻ example spec.rs:28
+&nbsp &x; &#; &#x;
+&#87654321;
+&#abcdef0;
+&ThisIsNotDefined; &hi?;
+⸻⸻⸻ example spec.rs:29
+&copy
+⸻⸻⸻ example spec.rs:30
+&MadeUpEntity;
+⸻⸻⸻ example spec.rs:31
+<a href="&ouml;&ouml;.html">
+⸻⸻⸻ example spec.rs:32
+[foo](/f&ouml;&ouml; "f&ouml;&ouml;")
+⸻⸻⸻ example spec.rs:33
+[foo]
+
+[foo]: /f&ouml;&ouml; "f&ouml;&ouml;"
+⸻⸻⸻ example spec.rs:34
+``` f&ouml;&ouml;
+foo
+```
+⸻⸻⸻ example spec.rs:35
+`f&ouml;&ouml;`
+⸻⸻⸻ example spec.rs:36
+    f&ouml;f&ouml;
+⸻⸻⸻ example spec.rs:37
+&#42;foo&#42;
+*foo*
+⸻⸻⸻ example spec.rs:38
+&#42; foo
+
+* foo
+⸻⸻⸻ example spec.rs:39
+foo&#10;&#10;bar
+⸻⸻⸻ example spec.rs:40
+&#9;foo
+⸻⸻⸻ example spec.rs:41
+[a](url &quot;tit&quot;)
+⸻⸻⸻ example spec.rs:42
+- `one
+- two`
+⸻⸻⸻ example spec.rs:43
+***
+---
+___
+⸻⸻⸻ example spec.rs:44
++++
+⸻⸻⸻ example spec.rs:45
+===
+⸻⸻⸻ example spec.rs:46
+--
+**
+__
+⸻⸻⸻ example spec.rs:47
+ ***
+  ***
+   ***
+⸻⸻⸻ example spec.rs:48
+    ***
+⸻⸻⸻ example spec.rs:49
+Foo
+    ***
+⸻⸻⸻ example spec.rs:50
+_____________________________________
+⸻⸻⸻ example spec.rs:51
+ - - -
+⸻⸻⸻ example spec.rs:52
+ **  * ** * ** * **
+⸻⸻⸻ example spec.rs:53
+-     -      -      -
+⸻⸻⸻ example spec.rs:54
+- - - -    
+⸻⸻⸻ example spec.rs:55
+_ _ _ _ a
+
+a------
+
+---a---
+⸻⸻⸻ example spec.rs:56
+ *-*
+⸻⸻⸻ example spec.rs:57
+- foo
+***
+- bar
+⸻⸻⸻ example spec.rs:58
+Foo
+***
+bar
+⸻⸻⸻ example spec.rs:59
+Foo
+---
+bar
+⸻⸻⸻ example spec.rs:60
+* Foo
+* * *
+* Bar
+⸻⸻⸻ example spec.rs:61
+- Foo
+- * * *
+⸻⸻⸻ example spec.rs:62
+# foo
+## foo
+### foo
+#### foo
+##### foo
+###### foo
+⸻⸻⸻ example spec.rs:63
+####### foo
+⸻⸻⸻ example spec.rs:64
+#5 bolt
+
+#hashtag
+⸻⸻⸻ example spec.rs:65
+\## foo
+⸻⸻⸻ example spec.rs:66
+# foo *bar* \*baz\*
+⸻⸻⸻ example spec.rs:67
+#                  foo                     
+⸻⸻⸻ example spec.rs:68
+ ### foo
+  ## foo
+   # foo
+⸻⸻⸻ example spec.rs:69
+    # foo
+⸻⸻⸻ example spec.rs:70
+foo
+    # bar
+⸻⸻⸻ example spec.rs:71
+## foo ##
+  ###   bar    ###
+⸻⸻⸻ example spec.rs:72
+# foo ##################################
+##### foo ##
+⸻⸻⸻ example spec.rs:73
+### foo ###     
+⸻⸻⸻ example spec.rs:74
+### foo ### b
+⸻⸻⸻ example spec.rs:75
+# foo#
+⸻⸻⸻ example spec.rs:76
+### foo \###
+## foo #\##
+# foo \#
+⸻⸻⸻ example spec.rs:77
+****
+## foo
+****
+⸻⸻⸻ example spec.rs:78
+Foo bar
+# baz
+Bar foo
+⸻⸻⸻ example spec.rs:79
+## 
+#
+### ###
+⸻⸻⸻ example spec.rs:80
+Foo *bar*
+=========
+
+Foo *bar*
+---------
+⸻⸻⸻ example spec.rs:81
+Foo *bar
+baz*
+====
+⸻⸻⸻ example spec.rs:82
+  Foo *bar
+baz*	
+====
+⸻⸻⸻ example spec.rs:83
+Foo
+-------------------------
+
+Foo
+=
+⸻⸻⸻ example spec.rs:84
+   Foo
+---
+
+  Foo
+-----
+
+  Foo
+  ===
+⸻⸻⸻ example spec.rs:85
+    Foo
+    ---
+
+    Foo
+---
+⸻⸻⸻ example spec.rs:86
+Foo
+   ----      
+⸻⸻⸻ example spec.rs:87
+Foo
+    ---
+⸻⸻⸻ example spec.rs:88
+Foo
+= =
+
+Foo
+--- -
+⸻⸻⸻ example spec.rs:89
+Foo  
+-----
+⸻⸻⸻ example spec.rs:90
+Foo\
+----
+⸻⸻⸻ example spec.rs:91
+`Foo
+----
+`
+
+<a title="a lot
+---
+of dashes"/>
+⸻⸻⸻ example spec.rs:92
+> Foo
+---
+⸻⸻⸻ example spec.rs:93
+> foo
+bar
+===
+⸻⸻⸻ example spec.rs:94
+- Foo
+---
+⸻⸻⸻ example spec.rs:95
+Foo
+Bar
+---
+⸻⸻⸻ example spec.rs:96
+---
+Foo
+---
+Bar
+---
+Baz
+⸻⸻⸻ example spec.rs:97
+
+====
+⸻⸻⸻ example spec.rs:98
+---
+---
+⸻⸻⸻ example spec.rs:99
+- foo
+-----
+⸻⸻⸻ example spec.rs:100
+    foo
+---
+⸻⸻⸻ example spec.rs:101
+> foo
+-----
+⸻⸻⸻ example spec.rs:102
+\> foo
+------
+⸻⸻⸻ example spec.rs:103
+Foo
+
+bar
+---
+baz
+⸻⸻⸻ example spec.rs:104
+Foo
+bar
+
+---
+
+baz
+⸻⸻⸻ example spec.rs:105
+Foo
+bar
+* * *
+baz
+⸻⸻⸻ example spec.rs:106
+Foo
+bar
+\---
+baz
+⸻⸻⸻ example spec.rs:107
+    a simple
+      indented code block
+⸻⸻⸻ example spec.rs:108
+  - foo
+
+    bar
+⸻⸻⸻ example spec.rs:109
+1.  foo
+
+    - bar
+⸻⸻⸻ example spec.rs:110
+    <a/>
+    *hi*
+
+    - one
+⸻⸻⸻ example spec.rs:111
+    chunk1
+
+    chunk2
+  
+ 
+ 
+    chunk3
+⸻⸻⸻ example spec.rs:112
+    chunk1
+      
+      chunk2
+⸻⸻⸻ example spec.rs:113
+Foo
+    bar
+
+⸻⸻⸻ example spec.rs:114
+    foo
+bar
+⸻⸻⸻ example spec.rs:115
+# Heading
+    foo
+Heading
+------
+    foo
+----
+⸻⸻⸻ example spec.rs:116
+        foo
+    bar
+⸻⸻⸻ example spec.rs:117
+
+    
+    foo
+    
+
+⸻⸻⸻ example spec.rs:118
+    foo  
+⸻⸻⸻ example spec.rs:119
+```
+<
+ >
+```
+⸻⸻⸻ example spec.rs:120
+~~~
+<
+ >
+~~~
+⸻⸻⸻ example spec.rs:121
+``
+foo
+``
+⸻⸻⸻ example spec.rs:122
+```
+aaa
+~~~
+```
+⸻⸻⸻ example spec.rs:123
+~~~
+aaa
+```
+~~~
+⸻⸻⸻ example spec.rs:124
+````
+aaa
+```
+``````
+⸻⸻⸻ example spec.rs:125
+~~~~
+aaa
+~~~
+~~~~
+⸻⸻⸻ example spec.rs:126
+```
+⸻⸻⸻ example spec.rs:127
+`````
+
+```
+aaa
+⸻⸻⸻ example spec.rs:128
+> ```
+> aaa
+
+bbb
+⸻⸻⸻ example spec.rs:129
+```
+
+  
+```
+⸻⸻⸻ example spec.rs:130
+```
+```
+⸻⸻⸻ example spec.rs:131
+ ```
+ aaa
+aaa
+```
+⸻⸻⸻ example spec.rs:132
+  ```
+aaa
+  aaa
+aaa
+  ```
+⸻⸻⸻ example spec.rs:133
+   ```
+   aaa
+    aaa
+  aaa
+   ```
+⸻⸻⸻ example spec.rs:134
+    ```
+    aaa
+    ```
+⸻⸻⸻ example spec.rs:135
+```
+aaa
+  ```
+⸻⸻⸻ example spec.rs:136
+   ```
+aaa
+  ```
+⸻⸻⸻ example spec.rs:137
+```
+aaa
+    ```
+⸻⸻⸻ example spec.rs:138
+``` ```
+aaa
+⸻⸻⸻ example spec.rs:139
+~~~~~~
+aaa
+~~~ ~~
+⸻⸻⸻ example spec.rs:140
+foo
+```
+bar
+```
+baz
+⸻⸻⸻ example spec.rs:141
+foo
+---
+~~~
+bar
+~~~
+# baz
+⸻⸻⸻ example spec.rs:142
+```ruby
+def foo(x)
+  return 3
+end
+```
+⸻⸻⸻ example spec.rs:143
+~~~~    ruby startline=3 $%@#$
+def foo(x)
+  return 3
+end
+~~~~~~~
+⸻⸻⸻ example spec.rs:144
+````;
+````
+⸻⸻⸻ example spec.rs:145
+``` aa ```
+foo
+⸻⸻⸻ example spec.rs:146
+~~~ aa ``` ~~~
+foo
+~~~
+⸻⸻⸻ example spec.rs:147
+```
+``` aaa
+```
+⸻⸻⸻ example spec.rs:148
+<table><tr><td>
+<pre>
+**Hello**,
+
+_world_.
+</pre>
+</td></tr></table>
+⸻⸻⸻ example spec.rs:149
+<table>
+  <tr>
+    <td>
+           hi
+    </td>
+  </tr>
+</table>
+
+okay.
+⸻⸻⸻ example spec.rs:150
+ <div>
+  *hello*
+         <foo><a>
+⸻⸻⸻ example spec.rs:151
+</div>
+*foo*
+⸻⸻⸻ example spec.rs:152
+<DIV CLASS="foo">
+
+*Markdown*
+
+</DIV>
+⸻⸻⸻ example spec.rs:153
+<div id="foo"
+  class="bar">
+</div>
+⸻⸻⸻ example spec.rs:154
+<div id="foo" class="bar
+  baz">
+</div>
+⸻⸻⸻ example spec.rs:155
+<div>
+*foo*
+
+*bar*
+⸻⸻⸻ example spec.rs:156
+<div id="foo"
+*hi*
+⸻⸻⸻ example spec.rs:157
+<div class
+foo
+⸻⸻⸻ example spec.rs:158
+<div *???-&&&-<---
+*foo*
+⸻⸻⸻ example spec.rs:159
+<div><a href="bar">*foo*</a></div>
+⸻⸻⸻ example spec.rs:160
+<table><tr><td>
+foo
+</td></tr></table>
+⸻⸻⸻ example spec.rs:161
+<div></div>
+``` c
+int x = 33;
+```
+⸻⸻⸻ example spec.rs:162
+<a href="foo">
+*bar*
+</a>
+⸻⸻⸻ example spec.rs:163
+<Warning>
+*bar*
+</Warning>
+⸻⸻⸻ example spec.rs:164
+<i class="foo">
+*bar*
+</i>
+⸻⸻⸻ example spec.rs:165
+</ins>
+*bar*
+⸻⸻⸻ example spec.rs:166
+<del>
+*foo*
+</del>
+⸻⸻⸻ example spec.rs:167
+<del>
+
+*foo*
+
+</del>
+⸻⸻⸻ example spec.rs:168
+<del>*foo*</del>
+⸻⸻⸻ example spec.rs:169
+<pre language="haskell"><code>
+import Text.HTML.TagSoup
+
+main :: IO ()
+main = print $ parseTags tags
+</code></pre>
+okay
+⸻⸻⸻ example spec.rs:170
+<script type="text/javascript">
+// JavaScript example
+
+document.getElementById("demo").innerHTML = "Hello JavaScript!";
+</script>
+okay
+⸻⸻⸻ example spec.rs:171
+<textarea>
+
+*foo*
+
+_bar_
+
+</textarea>
+⸻⸻⸻ example spec.rs:172
+<style
+  type="text/css">
+h1 {color:red;}
+
+p {color:blue;}
+</style>
+okay
+⸻⸻⸻ example spec.rs:173
+<style
+  type="text/css">
+
+foo
+⸻⸻⸻ example spec.rs:174
+> <div>
+> foo
+
+bar
+⸻⸻⸻ example spec.rs:175
+- <div>
+- foo
+⸻⸻⸻ example spec.rs:176
+<style>p{color:red;}</style>
+*foo*
+⸻⸻⸻ example spec.rs:177
+<!-- foo -->*bar*
+*baz*
+⸻⸻⸻ example spec.rs:178
+<script>
+foo
+</script>1. *bar*
+⸻⸻⸻ example spec.rs:179
+<!-- Foo
+
+bar
+   baz -->
+okay
+⸻⸻⸻ example spec.rs:180
+<?php
+
+  echo '>';
+
+?>
+okay
+⸻⸻⸻ example spec.rs:181
+<!DOCTYPE html>
+⸻⸻⸻ example spec.rs:182
+<![CDATA[
+function matchwo(a,b)
+{
+  if (a < b && a < 0) then {
+    return 1;
+
+  } else {
+
+    return 0;
+  }
+}
+]]>
+okay
+⸻⸻⸻ example spec.rs:183
+  <!-- foo -->
+
+    <!-- foo -->
+⸻⸻⸻ example spec.rs:184
+  <div>
+
+    <div>
+⸻⸻⸻ example spec.rs:185
+Foo
+<div>
+bar
+</div>
+⸻⸻⸻ example spec.rs:186
+<div>
+bar
+</div>
+*foo*
+⸻⸻⸻ example spec.rs:187
+Foo
+<a href="bar">
+baz
+⸻⸻⸻ example spec.rs:188
+<div>
+
+*Emphasized* text.
+
+</div>
+⸻⸻⸻ example spec.rs:189
+<div>
+*Emphasized* text.
+</div>
+⸻⸻⸻ example spec.rs:190
+<table>
+
+<tr>
+
+<td>
+Hi
+</td>
+
+</tr>
+
+</table>
+⸻⸻⸻ example spec.rs:191
+<table>
+
+  <tr>
+
+    <td>
+      Hi
+    </td>
+
+  </tr>
+
+</table>
+⸻⸻⸻ example spec.rs:192
+[foo]: /url "title"
+
+[foo]
+⸻⸻⸻ example spec.rs:193
+   [foo]: 
+      /url  
+           'the title'  
+
+[foo]
+⸻⸻⸻ example spec.rs:194
+[Foo*bar\]]:my_(url) 'title (with parens)'
+
+[Foo*bar\]]
+⸻⸻⸻ example spec.rs:195
+[Foo bar]:
+<my url>
+'title'
+
+[Foo bar]
+⸻⸻⸻ example spec.rs:196
+[foo]: /url '
+title
+line1
+line2
+'
+
+[foo]
+⸻⸻⸻ example spec.rs:197
+[foo]: /url 'title
+
+with blank line'
+
+[foo]
+⸻⸻⸻ example spec.rs:198
+[foo]:
+/url
+
+[foo]
+⸻⸻⸻ example spec.rs:199
+[foo]:
+
+[foo]
+⸻⸻⸻ example spec.rs:200
+[foo]: <>
+
+[foo]
+⸻⸻⸻ example spec.rs:201
+[foo]: <bar>(baz)
+
+[foo]
+⸻⸻⸻ example spec.rs:202
+[foo]: /url\bar\*baz "foo\"bar\baz"
+
+[foo]
+⸻⸻⸻ example spec.rs:203
+[foo]
+
+[foo]: url
+⸻⸻⸻ example spec.rs:204
+[foo]
+
+[foo]: first
+[foo]: second
+⸻⸻⸻ example spec.rs:205
+[FOO]: /url
+
+[Foo]
+⸻⸻⸻ example spec.rs:206
+[ΑΓΩ]: /φου
+
+[αγω]
+⸻⸻⸻ example spec.rs:207
+[foo]: /url
+⸻⸻⸻ example spec.rs:208
+[
+foo
+]: /url
+bar
+⸻⸻⸻ example spec.rs:209
+[foo]: /url "title" ok
+⸻⸻⸻ example spec.rs:210
+[foo]: /url
+"title" ok
+⸻⸻⸻ example spec.rs:211
+    [foo]: /url "title"
+
+[foo]
+⸻⸻⸻ example spec.rs:212
+```
+[foo]: /url
+```
+
+[foo]
+⸻⸻⸻ example spec.rs:213
+Foo
+[bar]: /baz
+
+[bar]
+⸻⸻⸻ example spec.rs:214
+# [Foo]
+[foo]: /url
+> bar
+⸻⸻⸻ example spec.rs:215
+[foo]: /url
+bar
+===
+[foo]
+⸻⸻⸻ example spec.rs:216
+[foo]: /url
+===
+[foo]
+⸻⸻⸻ example spec.rs:217
+[foo]: /foo-url "foo"
+[bar]: /bar-url
+  "bar"
+[baz]: /baz-url
+
+[foo],
+[bar],
+[baz]
+⸻⸻⸻ example spec.rs:218
+[foo]
+
+> [foo]: /url
+⸻⸻⸻ example spec.rs:219
+aaa
+
+bbb
+⸻⸻⸻ example spec.rs:220
+aaa
+bbb
+
+ccc
+ddd
+⸻⸻⸻ example spec.rs:221
+aaa
+
+
+bbb
+⸻⸻⸻ example spec.rs:222
+  aaa
+ bbb
+⸻⸻⸻ example spec.rs:223
+aaa
+             bbb
+                                       ccc
+⸻⸻⸻ example spec.rs:224
+   aaa
+bbb
+⸻⸻⸻ example spec.rs:225
+    aaa
+bbb
+⸻⸻⸻ example spec.rs:226
+aaa     
+bbb     
+⸻⸻⸻ example spec.rs:227
+  
+
+aaa
+  
+
+# aaa
+
+  
+⸻⸻⸻ example spec.rs:228
+> # Foo
+> bar
+> baz
+⸻⸻⸻ example spec.rs:229
+># Foo
+>bar
+> baz
+⸻⸻⸻ example spec.rs:230
+   > # Foo
+   > bar
+ > baz
+⸻⸻⸻ example spec.rs:231
+    > # Foo
+    > bar
+    > baz
+⸻⸻⸻ example spec.rs:232
+> # Foo
+> bar
+baz
+⸻⸻⸻ example spec.rs:233
+> bar
+baz
+> foo
+⸻⸻⸻ example spec.rs:234
+> foo
+---
+⸻⸻⸻ example spec.rs:235
+> - foo
+- bar
+⸻⸻⸻ example spec.rs:236
+>     foo
+    bar
+⸻⸻⸻ example spec.rs:237
+> ```
+foo
+```
+⸻⸻⸻ example spec.rs:238
+> foo
+    - bar
+⸻⸻⸻ example spec.rs:239
+>
+⸻⸻⸻ example spec.rs:240
+>
+>  
+> 
+⸻⸻⸻ example spec.rs:241
+>
+> foo
+>  
+⸻⸻⸻ example spec.rs:242
+> foo
+
+> bar
+⸻⸻⸻ example spec.rs:243
+> foo
+> bar
+⸻⸻⸻ example spec.rs:244
+> foo
+>
+> bar
+⸻⸻⸻ example spec.rs:245
+foo
+> bar
+⸻⸻⸻ example spec.rs:246
+> aaa
+***
+> bbb
+⸻⸻⸻ example spec.rs:247
+> bar
+baz
+⸻⸻⸻ example spec.rs:248
+> bar
+
+baz
+⸻⸻⸻ example spec.rs:249
+> bar
+>
+baz
+⸻⸻⸻ example spec.rs:250
+> > > foo
+bar
+⸻⸻⸻ example spec.rs:251
+>>> foo
+> bar
+>>baz
+⸻⸻⸻ example spec.rs:252
+>     code
+
+>    not code
+⸻⸻⸻ example spec.rs:253
+A paragraph
+with two lines.
+
+    indented code
+
+> A block quote.
+⸻⸻⸻ example spec.rs:254
+1.  A paragraph
+    with two lines.
+
+        indented code
+
+    > A block quote.
+⸻⸻⸻ example spec.rs:255
+- one
+
+ two
+⸻⸻⸻ example spec.rs:256
+- one
+
+  two
+⸻⸻⸻ example spec.rs:257
+ -    one
+
+     two
+⸻⸻⸻ example spec.rs:258
+ -    one
+
+      two
+⸻⸻⸻ example spec.rs:259
+   > > 1.  one
+>>
+>>     two
+⸻⸻⸻ example spec.rs:260
+>>- one
+>>
+  >  > two
+⸻⸻⸻ example spec.rs:261
+-one
+
+2.two
+⸻⸻⸻ example spec.rs:262
+- foo
+
+
+  bar
+⸻⸻⸻ example spec.rs:263
+1.  foo
+
+    ```
+    bar
+    ```
+
+    baz
+
+    > bam
+⸻⸻⸻ example spec.rs:264
+- Foo
+
+      bar
+
+
+      baz
+⸻⸻⸻ example spec.rs:265
+123456789. ok
+⸻⸻⸻ example spec.rs:266
+1234567890. not ok
+⸻⸻⸻ example spec.rs:267
+0. ok
+⸻⸻⸻ example spec.rs:268
+003. ok
+⸻⸻⸻ example spec.rs:269
+-1. not ok
+⸻⸻⸻ example spec.rs:270
+- foo
+
+      bar
+⸻⸻⸻ example spec.rs:271
+  10.  foo
+
+           bar
+⸻⸻⸻ example spec.rs:272
+    indented code
+
+paragraph
+
+    more code
+⸻⸻⸻ example spec.rs:273
+1.     indented code
+
+   paragraph
+
+       more code
+⸻⸻⸻ example spec.rs:274
+1.      indented code
+
+   paragraph
+
+       more code
+⸻⸻⸻ example spec.rs:275
+   foo
+
+bar
+⸻⸻⸻ example spec.rs:276
+-    foo
+
+  bar
+⸻⸻⸻ example spec.rs:277
+-  foo
+
+   bar
+⸻⸻⸻ example spec.rs:278
+-
+  foo
+-
+  ```
+  bar
+  ```
+-
+      baz
+⸻⸻⸻ example spec.rs:279
+-   
+  foo
+⸻⸻⸻ example spec.rs:280
+-
+
+  foo
+⸻⸻⸻ example spec.rs:281
+- foo
+-
+- bar
+⸻⸻⸻ example spec.rs:282
+- foo
+-   
+- bar
+⸻⸻⸻ example spec.rs:283
+1. foo
+2.
+3. bar
+⸻⸻⸻ example spec.rs:284
+*
+⸻⸻⸻ example spec.rs:285
+foo
+*
+
+foo
+1.
+⸻⸻⸻ example spec.rs:286
+ 1.  A paragraph
+     with two lines.
+
+         indented code
+
+     > A block quote.
+⸻⸻⸻ example spec.rs:287
+  1.  A paragraph
+      with two lines.
+
+          indented code
+
+      > A block quote.
+⸻⸻⸻ example spec.rs:288
+   1.  A paragraph
+       with two lines.
+
+           indented code
+
+       > A block quote.
+⸻⸻⸻ example spec.rs:289
+    1.  A paragraph
+        with two lines.
+
+            indented code
+
+        > A block quote.
+⸻⸻⸻ example spec.rs:290
+  1.  A paragraph
+with two lines.
+
+          indented code
+
+      > A block quote.
+⸻⸻⸻ example spec.rs:291
+  1.  A paragraph
+    with two lines.
+⸻⸻⸻ example spec.rs:292
+> 1. > Blockquote
+continued here.
+⸻⸻⸻ example spec.rs:293
+> 1. > Blockquote
+> continued here.
+⸻⸻⸻ example spec.rs:294
+- foo
+  - bar
+    - baz
+      - boo
+⸻⸻⸻ example spec.rs:295
+- foo
+ - bar
+  - baz
+   - boo
+⸻⸻⸻ example spec.rs:296
+10) foo
+    - bar
+⸻⸻⸻ example spec.rs:297
+10) foo
+   - bar
+⸻⸻⸻ example spec.rs:298
+- - foo
+⸻⸻⸻ example spec.rs:299
+1. - 2. foo
+⸻⸻⸻ example spec.rs:300
+- # Foo
+- Bar
+  ---
+  baz
+⸻⸻⸻ example spec.rs:301
+- foo
+- bar
++ baz
+⸻⸻⸻ example spec.rs:302
+1. foo
+2. bar
+3) baz
+⸻⸻⸻ example spec.rs:303
+Foo
+- bar
+- baz
+⸻⸻⸻ example spec.rs:304
+The number of windows in my house is
+14.  The number of doors is 6.
+⸻⸻⸻ example spec.rs:305
+The number of windows in my house is
+1.  The number of doors is 6.
+⸻⸻⸻ example spec.rs:306
+- foo
+
+- bar
+
+
+- baz
+⸻⸻⸻ example spec.rs:307
+- foo
+  - bar
+    - baz
+
+
+      bim
+⸻⸻⸻ example spec.rs:308
+- foo
+- bar
+
+<!-- -->
+
+- baz
+- bim
+⸻⸻⸻ example spec.rs:309
+-   foo
+
+    notcode
+
+-   foo
+
+<!-- -->
+
+    code
+⸻⸻⸻ example spec.rs:310
+- a
+ - b
+  - c
+   - d
+  - e
+ - f
+- g
+⸻⸻⸻ example spec.rs:311
+1. a
+
+  2. b
+
+   3. c
+⸻⸻⸻ example spec.rs:312
+- a
+ - b
+  - c
+   - d
+    - e
+⸻⸻⸻ example spec.rs:313
+1. a
+
+  2. b
+
+    3. c
+⸻⸻⸻ example spec.rs:314
+- a
+- b
+
+- c
+⸻⸻⸻ example spec.rs:315
+* a
+*
+
+* c
+⸻⸻⸻ example spec.rs:316
+- a
+- b
+
+  c
+- d
+⸻⸻⸻ example spec.rs:317
+- a
+- b
+
+  [ref]: /url
+- d
+⸻⸻⸻ example spec.rs:318
+- a
+- ```
+  b
+
+
+  ```
+- c
+⸻⸻⸻ example spec.rs:319
+- a
+  - b
+
+    c
+- d
+⸻⸻⸻ example spec.rs:320
+* a
+  > b
+  >
+* c
+⸻⸻⸻ example spec.rs:321
+- a
+  > b
+  ```
+  c
+  ```
+- d
+⸻⸻⸻ example spec.rs:322
+- a
+⸻⸻⸻ example spec.rs:323
+- a
+  - b
+⸻⸻⸻ example spec.rs:324
+1. ```
+   foo
+   ```
+
+   bar
+⸻⸻⸻ example spec.rs:325
+* foo
+  * bar
+
+  baz
+⸻⸻⸻ example spec.rs:326
+- a
+  - b
+  - c
+
+- d
+  - e
+  - f
+⸻⸻⸻ example spec.rs:327
+`hi`lo`
+⸻⸻⸻ example spec.rs:328
+`foo`
+⸻⸻⸻ example spec.rs:329
+`` foo ` bar ``
+⸻⸻⸻ example spec.rs:330
+` `` `
+⸻⸻⸻ example spec.rs:331
+`  ``  `
+⸻⸻⸻ example spec.rs:332
+` a`
+⸻⸻⸻ example spec.rs:333
+` b `
+⸻⸻⸻ example spec.rs:334
+` `
+`  `
+⸻⸻⸻ example spec.rs:335
+``
+foo
+bar  
+baz
+``
+⸻⸻⸻ example spec.rs:336
+``
+foo 
+``
+⸻⸻⸻ example spec.rs:337
+`foo   bar 
+baz`
+⸻⸻⸻ example spec.rs:338
+`foo\`bar`
+⸻⸻⸻ example spec.rs:339
+``foo`bar``
+⸻⸻⸻ example spec.rs:340
+` foo `` bar `
+⸻⸻⸻ example spec.rs:341
+*foo`*`
+⸻⸻⸻ example spec.rs:342
+[not a `link](/foo`)
+⸻⸻⸻ example spec.rs:343
+`<a href="`">`
+⸻⸻⸻ example spec.rs:344
+<a href="`">`
+⸻⸻⸻ example spec.rs:345
+`<https://foo.bar.`baz>`
+⸻⸻⸻ example spec.rs:346
+<https://foo.bar.`baz>`
+⸻⸻⸻ example spec.rs:347
+```foo``
+⸻⸻⸻ example spec.rs:348
+`foo
+⸻⸻⸻ example spec.rs:349
+`foo``bar``
+⸻⸻⸻ example spec.rs:350
+*foo bar*
+⸻⸻⸻ example spec.rs:351
+a * foo bar*
+⸻⸻⸻ example spec.rs:352
+a*"foo"*
+⸻⸻⸻ example spec.rs:353
+* a *
+⸻⸻⸻ example spec.rs:354
+*$*alpha.
+
+*£*bravo.
+
+*€*charlie.
+⸻⸻⸻ example spec.rs:355
+foo*bar*
+⸻⸻⸻ example spec.rs:356
+5*6*78
+⸻⸻⸻ example spec.rs:357
+_foo bar_
+⸻⸻⸻ example spec.rs:358
+_ foo bar_
+⸻⸻⸻ example spec.rs:359
+a_"foo"_
+⸻⸻⸻ example spec.rs:360
+foo_bar_
+⸻⸻⸻ example spec.rs:361
+5_6_78
+⸻⸻⸻ example spec.rs:362
+пристаням_стремятся_
+⸻⸻⸻ example spec.rs:363
+aa_"bb"_cc
+⸻⸻⸻ example spec.rs:364
+foo-_(bar)_
+⸻⸻⸻ example spec.rs:365
+_foo*
+⸻⸻⸻ example spec.rs:366
+*foo bar *
+⸻⸻⸻ example spec.rs:367
+*foo bar
+*
+⸻⸻⸻ example spec.rs:368
+*(*foo)
+⸻⸻⸻ example spec.rs:369
+*(*foo*)*
+⸻⸻⸻ example spec.rs:370
+*foo*bar
+⸻⸻⸻ example spec.rs:371
+_foo bar _
+⸻⸻⸻ example spec.rs:372
+_(_foo)
+⸻⸻⸻ example spec.rs:373
+_(_foo_)_
+⸻⸻⸻ example spec.rs:374
+_foo_bar
+⸻⸻⸻ example spec.rs:375
+_пристаням_стремятся
+⸻⸻⸻ example spec.rs:376
+_foo_bar_baz_
+⸻⸻⸻ example spec.rs:377
+_(bar)_.
+⸻⸻⸻ example spec.rs:378
+**foo bar**
+⸻⸻⸻ example spec.rs:379
+** foo bar**
+⸻⸻⸻ example spec.rs:380
+a**"foo"**
+⸻⸻⸻ example spec.rs:381
+foo**bar**
+⸻⸻⸻ example spec.rs:382
+__foo bar__
+⸻⸻⸻ example spec.rs:383
+__ foo bar__
+⸻⸻⸻ example spec.rs:384
+__
+foo bar__
+⸻⸻⸻ example spec.rs:385
+a__"foo"__
+⸻⸻⸻ example spec.rs:386
+foo__bar__
+⸻⸻⸻ example spec.rs:387
+5__6__78
+⸻⸻⸻ example spec.rs:388
+пристаням__стремятся__
+⸻⸻⸻ example spec.rs:389
+__foo, __bar__, baz__
+⸻⸻⸻ example spec.rs:390
+foo-__(bar)__
+⸻⸻⸻ example spec.rs:391
+**foo bar **
+⸻⸻⸻ example spec.rs:392
+**(**foo)
+⸻⸻⸻ example spec.rs:393
+*(**foo**)*
+⸻⸻⸻ example spec.rs:394
+**Gomphocarpus (*Gomphocarpus physocarpus*, syn.
+*Asclepias physocarpa*)**
+⸻⸻⸻ example spec.rs:395
+**foo "*bar*" foo**
+⸻⸻⸻ example spec.rs:396
+**foo**bar
+⸻⸻⸻ example spec.rs:397
+__foo bar __
+⸻⸻⸻ example spec.rs:398
+__(__foo)
+⸻⸻⸻ example spec.rs:399
+_(__foo__)_
+⸻⸻⸻ example spec.rs:400
+__foo__bar
+⸻⸻⸻ example spec.rs:401
+__пристаням__стремятся
+⸻⸻⸻ example spec.rs:402
+__foo__bar__baz__
+⸻⸻⸻ example spec.rs:403
+__(bar)__.
+⸻⸻⸻ example spec.rs:404
+*foo [bar](/url)*
+⸻⸻⸻ example spec.rs:405
+*foo
+bar*
+⸻⸻⸻ example spec.rs:406
+_foo __bar__ baz_
+⸻⸻⸻ example spec.rs:407
+_foo _bar_ baz_
+⸻⸻⸻ example spec.rs:408
+__foo_ bar_
+⸻⸻⸻ example spec.rs:409
+*foo *bar**
+⸻⸻⸻ example spec.rs:410
+*foo **bar** baz*
+⸻⸻⸻ example spec.rs:411
+*foo**bar**baz*
+⸻⸻⸻ example spec.rs:412
+*foo**bar*
+⸻⸻⸻ example spec.rs:413
+***foo** bar*
+⸻⸻⸻ example spec.rs:414
+*foo **bar***
+⸻⸻⸻ example spec.rs:415
+*foo**bar***
+⸻⸻⸻ example spec.rs:416
+foo***bar***baz
+⸻⸻⸻ example spec.rs:417
+foo******bar*********baz
+⸻⸻⸻ example spec.rs:418
+*foo **bar *baz* bim** bop*
+⸻⸻⸻ example spec.rs:419
+*foo [*bar*](/url)*
+⸻⸻⸻ example spec.rs:420
+** is not an empty emphasis
+⸻⸻⸻ example spec.rs:421
+**** is not an empty strong emphasis
+⸻⸻⸻ example spec.rs:422
+**foo [bar](/url)**
+⸻⸻⸻ example spec.rs:423
+**foo
+bar**
+⸻⸻⸻ example spec.rs:424
+__foo _bar_ baz__
+⸻⸻⸻ example spec.rs:425
+__foo __bar__ baz__
+⸻⸻⸻ example spec.rs:426
+____foo__ bar__
+⸻⸻⸻ example spec.rs:427
+**foo **bar****
+⸻⸻⸻ example spec.rs:428
+**foo *bar* baz**
+⸻⸻⸻ example spec.rs:429
+**foo*bar*baz**
+⸻⸻⸻ example spec.rs:430
+***foo* bar**
+⸻⸻⸻ example spec.rs:431
+**foo *bar***
+⸻⸻⸻ example spec.rs:432
+**foo *bar **baz**
+bim* bop**
+⸻⸻⸻ example spec.rs:433
+**foo [*bar*](/url)**
+⸻⸻⸻ example spec.rs:434
+__ is not an empty emphasis
+⸻⸻⸻ example spec.rs:435
+____ is not an empty strong emphasis
+⸻⸻⸻ example spec.rs:436
+foo ***
+⸻⸻⸻ example spec.rs:437
+foo *\**
+⸻⸻⸻ example spec.rs:438
+foo *_*
+⸻⸻⸻ example spec.rs:439
+foo *****
+⸻⸻⸻ example spec.rs:440
+foo **\***
+⸻⸻⸻ example spec.rs:441
+foo **_**
+⸻⸻⸻ example spec.rs:442
+**foo*
+⸻⸻⸻ example spec.rs:443
+*foo**
+⸻⸻⸻ example spec.rs:444
+***foo**
+⸻⸻⸻ example spec.rs:445
+****foo*
+⸻⸻⸻ example spec.rs:446
+**foo***
+⸻⸻⸻ example spec.rs:447
+*foo****
+⸻⸻⸻ example spec.rs:448
+foo ___
+⸻⸻⸻ example spec.rs:449
+foo _\__
+⸻⸻⸻ example spec.rs:450
+foo _*_
+⸻⸻⸻ example spec.rs:451
+foo _____
+⸻⸻⸻ example spec.rs:452
+foo __\___
+⸻⸻⸻ example spec.rs:453
+foo __*__
+⸻⸻⸻ example spec.rs:454
+__foo_
+⸻⸻⸻ example spec.rs:455
+_foo__
+⸻⸻⸻ example spec.rs:456
+___foo__
+⸻⸻⸻ example spec.rs:457
+____foo_
+⸻⸻⸻ example spec.rs:458
+__foo___
+⸻⸻⸻ example spec.rs:459
+_foo____
+⸻⸻⸻ example spec.rs:460
+**foo**
+⸻⸻⸻ example spec.rs:461
+*_foo_*
+⸻⸻⸻ example spec.rs:462
+__foo__
+⸻⸻⸻ example spec.rs:463
+_*foo*_
+⸻⸻⸻ example spec.rs:464
+****foo****
+⸻⸻⸻ example spec.rs:465
+____foo____
+⸻⸻⸻ example spec.rs:466
+******foo******
+⸻⸻⸻ example spec.rs:467
+***foo***
+⸻⸻⸻ example spec.rs:468
+_____foo_____
+⸻⸻⸻ example spec.rs:469
+*foo _bar* baz_
+⸻⸻⸻ example spec.rs:470
+*foo __bar *baz bim__ bam*
+⸻⸻⸻ example spec.rs:471
+**foo **bar baz**
+⸻⸻⸻ example spec.rs:472
+*foo *bar baz*
+⸻⸻⸻ example spec.rs:473
+*[bar*](/url)
+⸻⸻⸻ example spec.rs:474
+_foo [bar_](/url)
+⸻⸻⸻ example spec.rs:475
+*<img src="foo" title="*"/>
+⸻⸻⸻ example spec.rs:476
+**<a href="**">
+⸻⸻⸻ example spec.rs:477
+__<a href="__">
+⸻⸻⸻ example spec.rs:478
+*a `*`*
+⸻⸻⸻ example spec.rs:479
+_a `_`_
+⸻⸻⸻ example spec.rs:480
+**a<https://foo.bar/?q=**>
+⸻⸻⸻ example spec.rs:481
+__a<https://foo.bar/?q=__>
+⸻⸻⸻ example spec.rs:482
+[link](/uri "title")
+⸻⸻⸻ example spec.rs:483
+[link](/uri)
+⸻⸻⸻ example spec.rs:484
+[](./target.md)
+⸻⸻⸻ example spec.rs:485
+[link]()
+⸻⸻⸻ example spec.rs:486
+[link](<>)
+⸻⸻⸻ example spec.rs:487
+[]()
+⸻⸻⸻ example spec.rs:488
+[link](/my uri)
+⸻⸻⸻ example spec.rs:489
+[link](</my uri>)
+⸻⸻⸻ example spec.rs:490
+[link](foo
+bar)
+⸻⸻⸻ example spec.rs:491
+[link](<foo
+bar>)
+⸻⸻⸻ example spec.rs:492
+[a](<b)c>)
+⸻⸻⸻ example spec.rs:493
+[link](<foo\>)
+⸻⸻⸻ example spec.rs:494
+[a](<b)c
+[a](<b)c>
+[a](<b>c)
+⸻⸻⸻ example spec.rs:495
+[link](\(foo\))
+⸻⸻⸻ example spec.rs:496
+[link](foo(and(bar)))
+⸻⸻⸻ example spec.rs:497
+[link](foo(and(bar))
+⸻⸻⸻ example spec.rs:498
+[link](foo\(and\(bar\))
+⸻⸻⸻ example spec.rs:499
+[link](<foo(and(bar)>)
+⸻⸻⸻ example spec.rs:500
+[link](foo\)\:)
+⸻⸻⸻ example spec.rs:501
+[link](#fragment)
+
+[link](https://example.com#fragment)
+
+[link](https://example.com?foo=3#frag)
+⸻⸻⸻ example spec.rs:502
+[link](foo\bar)
+⸻⸻⸻ example spec.rs:503
+[link](foo%20b&auml;)
+⸻⸻⸻ example spec.rs:504
+[link]("title")
+⸻⸻⸻ example spec.rs:505
+[link](/url "title")
+[link](/url 'title')
+[link](/url (title))
+⸻⸻⸻ example spec.rs:506
+[link](/url "title \"&quot;")
+⸻⸻⸻ example spec.rs:507
+[link](/url "title")
+⸻⸻⸻ example spec.rs:508
+[link](/url "title "and" title")
+⸻⸻⸻ example spec.rs:509
+[link](/url 'title "and" title')
+⸻⸻⸻ example spec.rs:510
+[link](   /uri
+  "title"  )
+⸻⸻⸻ example spec.rs:511
+[link] (/uri)
+⸻⸻⸻ example spec.rs:512
+[link [foo [bar]]](/uri)
+⸻⸻⸻ example spec.rs:513
+[link] bar](/uri)
+⸻⸻⸻ example spec.rs:514
+[link [bar](/uri)
+⸻⸻⸻ example spec.rs:515
+[link \[bar](/uri)
+⸻⸻⸻ example spec.rs:516
+[link *foo **bar** `#`*](/uri)
+⸻⸻⸻ example spec.rs:517
+[![moon](moon.jpg)](/uri)
+⸻⸻⸻ example spec.rs:518
+[foo [bar](/uri)](/uri)
+⸻⸻⸻ example spec.rs:519
+[foo *[bar [baz](/uri)](/uri)*](/uri)
+⸻⸻⸻ example spec.rs:520
+![[[foo](uri1)](uri2)](uri3)
+⸻⸻⸻ example spec.rs:521
+*[foo*](/uri)
+⸻⸻⸻ example spec.rs:522
+[foo *bar](baz*)
+⸻⸻⸻ example spec.rs:523
+*foo [bar* baz]
+⸻⸻⸻ example spec.rs:524
+[foo <bar attr="](baz)">
+⸻⸻⸻ example spec.rs:525
+[foo`](/uri)`
+⸻⸻⸻ example spec.rs:526
+[foo<https://example.com/?search=](uri)>
+⸻⸻⸻ example spec.rs:527
+[foo][bar]
+
+[bar]: /url "title"
+⸻⸻⸻ example spec.rs:528
+[link [foo [bar]]][ref]
+
+[ref]: /uri
+⸻⸻⸻ example spec.rs:529
+[link \[bar][ref]
+
+[ref]: /uri
+⸻⸻⸻ example spec.rs:530
+[link *foo **bar** `#`*][ref]
+
+[ref]: /uri
+⸻⸻⸻ example spec.rs:531
+[![moon](moon.jpg)][ref]
+
+[ref]: /uri
+⸻⸻⸻ example spec.rs:532
+[foo [bar](/uri)][ref]
+
+[ref]: /uri
+⸻⸻⸻ example spec.rs:533
+[foo *bar [baz][ref]*][ref]
+
+[ref]: /uri
+⸻⸻⸻ example spec.rs:534
+*[foo*][ref]
+
+[ref]: /uri
+⸻⸻⸻ example spec.rs:535
+[foo *bar][ref]*
+
+[ref]: /uri
+⸻⸻⸻ example spec.rs:536
+[foo <bar attr="][ref]">
+
+[ref]: /uri
+⸻⸻⸻ example spec.rs:537
+[foo`][ref]`
+
+[ref]: /uri
+⸻⸻⸻ example spec.rs:538
+[foo<https://example.com/?search=][ref]>
+
+[ref]: /uri
+⸻⸻⸻ example spec.rs:539
+[foo][BaR]
+
+[bar]: /url "title"
+⸻⸻⸻ example spec.rs:540
+[ẞ]
+
+[SS]: /url
+⸻⸻⸻ example spec.rs:541
+[Foo
+  bar]: /url
+
+[Baz][Foo bar]
+⸻⸻⸻ example spec.rs:542
+[foo] [bar]
+
+[bar]: /url "title"
+⸻⸻⸻ example spec.rs:543
+[foo]
+[bar]
+
+[bar]: /url "title"
+⸻⸻⸻ example spec.rs:544
+[foo]: /url1
+
+[foo]: /url2
+
+[bar][foo]
+⸻⸻⸻ example spec.rs:545
+[bar][foo\!]
+
+[foo!]: /url
+⸻⸻⸻ example spec.rs:546
+[foo][ref[]
+
+[ref[]: /uri
+⸻⸻⸻ example spec.rs:547
+[foo][ref[bar]]
+
+[ref[bar]]: /uri
+⸻⸻⸻ example spec.rs:548
+[[[foo]]]
+
+[[[foo]]]: /url
+⸻⸻⸻ example spec.rs:549
+[foo][ref\[]
+
+[ref\[]: /uri
+⸻⸻⸻ example spec.rs:550
+[bar\\]: /uri
+
+[bar\\]
+⸻⸻⸻ example spec.rs:551
+[]
+
+[]: /uri
+⸻⸻⸻ example spec.rs:552
+[
+ ]
+
+[
+ ]: /uri
+⸻⸻⸻ example spec.rs:553
+[foo][]
+
+[foo]: /url "title"
+⸻⸻⸻ example spec.rs:554
+[*foo* bar][]
+
+[*foo* bar]: /url "title"
+⸻⸻⸻ example spec.rs:555
+[Foo][]
+
+[foo]: /url "title"
+⸻⸻⸻ example spec.rs:556
+[foo] 
+[]
+
+[foo]: /url "title"
+⸻⸻⸻ example spec.rs:557
+[foo]
+
+[foo]: /url "title"
+⸻⸻⸻ example spec.rs:558
+[*foo* bar]
+
+[*foo* bar]: /url "title"
+⸻⸻⸻ example spec.rs:559
+[[*foo* bar]]
+
+[*foo* bar]: /url "title"
+⸻⸻⸻ example spec.rs:560
+[[bar [foo]
+
+[foo]: /url
+⸻⸻⸻ example spec.rs:561
+[Foo]
+
+[foo]: /url "title"
+⸻⸻⸻ example spec.rs:562
+[foo] bar
+
+[foo]: /url
+⸻⸻⸻ example spec.rs:563
+\[foo]
+
+[foo]: /url "title"
+⸻⸻⸻ example spec.rs:564
+[foo*]: /url
+
+*[foo*]
+⸻⸻⸻ example spec.rs:565
+[foo][bar]
+
+[foo]: /url1
+[bar]: /url2
+⸻⸻⸻ example spec.rs:566
+[foo][]
+
+[foo]: /url1
+⸻⸻⸻ example spec.rs:567
+[foo]()
+
+[foo]: /url1
+⸻⸻⸻ example spec.rs:568
+[foo](not a link)
+
+[foo]: /url1
+⸻⸻⸻ example spec.rs:569
+[foo][bar][baz]
+
+[baz]: /url
+⸻⸻⸻ example spec.rs:570
+[foo][bar][baz]
+
+[baz]: /url1
+[bar]: /url2
+⸻⸻⸻ example spec.rs:571
+[foo][bar][baz]
+
+[baz]: /url1
+[foo]: /url2
+⸻⸻⸻ example spec.rs:572
+![foo](/url "title")
+⸻⸻⸻ example spec.rs:573
+![foo *bar*]
+
+[foo *bar*]: train.jpg "train & tracks"
+⸻⸻⸻ example spec.rs:574
+![foo ![bar](/url)](/url2)
+⸻⸻⸻ example spec.rs:575
+![foo [bar](/url)](/url2)
+⸻⸻⸻ example spec.rs:576
+![foo *bar*][]
+
+[foo *bar*]: train.jpg "train & tracks"
+⸻⸻⸻ example spec.rs:577
+![foo *bar*][foobar]
+
+[FOOBAR]: train.jpg "train & tracks"
+⸻⸻⸻ example spec.rs:578
+![foo](train.jpg)
+⸻⸻⸻ example spec.rs:579
+My ![foo bar](/path/to/train.jpg  "title"   )
+⸻⸻⸻ example spec.rs:580
+![foo](<url>)
+⸻⸻⸻ example spec.rs:581
+![](/url)
+⸻⸻⸻ example spec.rs:582
+![foo][bar]
+
+[bar]: /url
+⸻⸻⸻ example spec.rs:583
+![foo][bar]
+
+[BAR]: /url
+⸻⸻⸻ example spec.rs:584
+![foo][]
+
+[foo]: /url "title"
+⸻⸻⸻ example spec.rs:585
+![*foo* bar][]
+
+[*foo* bar]: /url "title"
+⸻⸻⸻ example spec.rs:586
+![Foo][]
+
+[foo]: /url "title"
+⸻⸻⸻ example spec.rs:587
+![foo] 
+[]
+
+[foo]: /url "title"
+⸻⸻⸻ example spec.rs:588
+![foo]
+
+[foo]: /url "title"
+⸻⸻⸻ example spec.rs:589
+![*foo* bar]
+
+[*foo* bar]: /url "title"
+⸻⸻⸻ example spec.rs:590
+![[foo]]
+
+[[foo]]: /url "title"
+⸻⸻⸻ example spec.rs:591
+![Foo]
+
+[foo]: /url "title"
+⸻⸻⸻ example spec.rs:592
+!\[foo]
+
+[foo]: /url "title"
+⸻⸻⸻ example spec.rs:593
+\![foo]
+
+[foo]: /url "title"
+⸻⸻⸻ example spec.rs:594
+<http://foo.bar.baz>
+⸻⸻⸻ example spec.rs:595
+<https://foo.bar.baz/test?q=hello&id=22&boolean>
+⸻⸻⸻ example spec.rs:596
+<irc://foo.bar:2233/baz>
+⸻⸻⸻ example spec.rs:597
+<MAILTO:FOO@BAR.BAZ>
+⸻⸻⸻ example spec.rs:598
+<a+b+c:d>
+⸻⸻⸻ example spec.rs:599
+<made-up-scheme://foo,bar>
+⸻⸻⸻ example spec.rs:600
+<https://../>
+⸻⸻⸻ example spec.rs:601
+<localhost:5001/foo>
+⸻⸻⸻ example spec.rs:602
+<https://foo.bar/baz bim>
+⸻⸻⸻ example spec.rs:603
+<https://example.com/\[\>
+⸻⸻⸻ example spec.rs:604
+<foo@bar.example.com>
+⸻⸻⸻ example spec.rs:605
+<foo+special@Bar.baz-bar0.com>
+⸻⸻⸻ example spec.rs:606
+<foo\+@bar.example.com>
+⸻⸻⸻ example spec.rs:607
+<>
+⸻⸻⸻ example spec.rs:608
+< https://foo.bar >
+⸻⸻⸻ example spec.rs:609
+<m:abc>
+⸻⸻⸻ example spec.rs:610
+<foo.bar.baz>
+⸻⸻⸻ example spec.rs:611
+https://example.com
+⸻⸻⸻ example spec.rs:612
+foo@bar.example.com
+⸻⸻⸻ example spec.rs:613
+<a><bab><c2c>
+⸻⸻⸻ example spec.rs:614
+<a/><b2/>
+⸻⸻⸻ example spec.rs:615
+<a  /><b2
+data="foo" >
+⸻⸻⸻ example spec.rs:616
+<a foo="bar" bam = 'baz <em>"</em>'
+_boolean zoop:33=zoop:33 />
+⸻⸻⸻ example spec.rs:617
+Foo <responsive-image src="foo.jpg" />
+⸻⸻⸻ example spec.rs:618
+<33> <__>
+⸻⸻⸻ example spec.rs:619
+<a h*#ref="hi">
+⸻⸻⸻ example spec.rs:620
+<a href="hi'> <a href=hi'>
+⸻⸻⸻ example spec.rs:621
+< a><
+foo><bar/ >
+<foo bar=baz
+bim!bop />
+⸻⸻⸻ example spec.rs:622
+<a href='bar'title=title>
+⸻⸻⸻ example spec.rs:623
+</a></foo >
+⸻⸻⸻ example spec.rs:624
+</a href="foo">
+⸻⸻⸻ example spec.rs:625
+foo <!-- this is a --
+comment - with hyphens -->
+⸻⸻⸻ example spec.rs:626
+foo <!--> foo -->
+
+foo <!---> foo -->
+⸻⸻⸻ example spec.rs:627
+foo <?php echo $a; ?>
+⸻⸻⸻ example spec.rs:628
+foo <!ELEMENT br EMPTY>
+⸻⸻⸻ example spec.rs:629
+foo <![CDATA[>&<]]>
+⸻⸻⸻ example spec.rs:630
+foo <a href="&ouml;">
+⸻⸻⸻ example spec.rs:631
+foo <a href="\*">
+⸻⸻⸻ example spec.rs:632
+<a href="\"">
+⸻⸻⸻ example spec.rs:633
+foo  
+baz
+⸻⸻⸻ example spec.rs:634
+foo\
+baz
+⸻⸻⸻ example spec.rs:635
+foo       
+baz
+⸻⸻⸻ example spec.rs:636
+foo  
+     bar
+⸻⸻⸻ example spec.rs:637
+foo\
+     bar
+⸻⸻⸻ example spec.rs:638
+*foo  
+bar*
+⸻⸻⸻ example spec.rs:639
+*foo\
+bar*
+⸻⸻⸻ example spec.rs:640
+`code  
+span`
+⸻⸻⸻ example spec.rs:641
+`code\
+span`
+⸻⸻⸻ example spec.rs:642
+<a href="foo  
+bar">
+⸻⸻⸻ example spec.rs:643
+<a href="foo\
+bar">
+⸻⸻⸻ example spec.rs:644
+foo\
+⸻⸻⸻ example spec.rs:645
+foo  
+⸻⸻⸻ example spec.rs:646
+### foo\
+⸻⸻⸻ example spec.rs:647
+### foo  
+⸻⸻⸻ example spec.rs:648
+foo
+baz
+⸻⸻⸻ example spec.rs:649
+foo 
+ baz
+⸻⸻⸻ example spec.rs:650
+hello $.;'there
+⸻⸻⸻ example spec.rs:651
+Foo χρῆν
+⸻⸻⸻ example spec.rs:652
+Multiple     spaces
+⸻⸻⸻ example strikethrough.rs:1
+~~This is *stricken out*~~
+⸻⸻⸻ example strikethrough.rs:2
+~~This is \~\~stricken~~
+⸻⸻⸻ example strikethrough.rs:3
+This~~is~~stricken
+⸻⸻⸻ example strikethrough.rs:4
+~~This~~is~~stricken~~
+⸻⸻⸻ example strikethrough.rs:5
+Here I strike out an exclamation point~~!~~.
+⸻⸻⸻ example strikethrough.rs:6
+~This is stricken out~
+⸻⸻⸻ example strikethrough.rs:7
+~This is \~stricken~
+⸻⸻⸻ example strikethrough.rs:8
+This~is~nothing
+⸻⸻⸻ example strikethrough.rs:9
+~This~is~nothing~
+⸻⸻⸻ example strikethrough.rs:10
+Here I fail to strike out an exclamation point~!~.
+⸻⸻⸻ example strikethrough.rs:11
+Here I fail to strike out a tilde ~~~.
+⸻⸻⸻ example strikethrough.rs:12
+Here I fail to match up ~~tildes~.
+⸻⸻⸻ example strikethrough.rs:13
+Here I fail to match up ~tildes~~.
+⸻⸻⸻ example strikethrough.rs:14
+~~This ~is stricken.~~
+⸻⸻⸻ example strikethrough.rs:15
+~This ~~is stricken.~
+⸻⸻⸻ example super_sub.rs:1
+^This is super^ ~This is sub~
+⸻⸻⸻ example super_sub.rs:2
+~This is stricken out~
+⸻⸻⸻ example super_sub.rs:3
+~This is \~stricken~
+⸻⸻⸻ example super_sub.rs:4
+~This~is~nothing~
+⸻⸻⸻ example super_sub.rs:5
+~This ~~is stricken.~
+⸻⸻⸻ example super_sub.rs:6
+~This ~~is stricken~ but this is not~~
+⸻⸻⸻ example table.rs:1
+Test header
+-----------
+⸻⸻⸻ example table.rs:2
+Test|Table
+----|-----
+⸻⸻⸻ example table.rs:3
+> Test  | Table
+> ------|------
+> Row 1 | Every
+> Row 2 | Day
+>
+> Paragraph
+⸻⸻⸻ example table.rs:4
+ 1. First entry
+ 2. Second entry
+
+    Col 1|Col 2
+    -|-
+    Row 1|Part 2
+    Row 2|Part 2
+⸻⸻⸻ example table.rs:5
+|Col 1|Col 2|
+|-----|-----|
+|R1C1 |R1C2 |
+|R2C1 |R2C2 |
+⸻⸻⸻ example table.rs:6
+| Col 1 | Col 2 |
+|-------|-------|
+|       |       |
+|       |       |
+⸻⸻⸻ example table.rs:7
+| Col 1 | Col 2 |
+|-------|-------|
+|   x   |       |
+|       |    x  |
+⸻⸻⸻ example table.rs:8
+|Col 1|Col 2|
+|-----|-----|
+|✓    |✓    |
+|✓    |✓    |
+⸻⸻⸻ example table.rs:9
+|  Target                       | std |rustc|cargo| notes                      |
+|-------------------------------|-----|-----|-----|----------------------------|
+| `x86_64-unknown-linux-musl`   |  ✓  |     |     | 64-bit Linux with MUSL     |
+| `arm-linux-androideabi`       |  ✓  |     |     | ARM Android                |
+| `arm-unknown-linux-gnueabi`   |  ✓  |  ✓  |     | ARM Linux (2.6.18+)        |
+| `arm-unknown-linux-gnueabihf` |  ✓  |  ✓  |     | ARM Linux (2.6.18+)        |
+| `aarch64-unknown-linux-gnu`   |  ✓  |     |     | ARM64 Linux (2.6.18+)      |
+| `mips-unknown-linux-gnu`      |  ✓  |     |     | MIPS Linux (2.6.18+)       |
+| `mipsel-unknown-linux-gnu`    |  ✓  |     |     | MIPS (LE) Linux (2.6.18+)  |
+⸻⸻⸻ example table.rs:10
+|-|-|
+|ぃ|い|
+⸻⸻⸻ example table.rs:11
+|ぁ|ぃ|
+|-|-|
+|ぃ|ぃ|
+⸻⸻⸻ example table.rs:12
+|Колонка 1|Колонка 2|
+|---------|---------|
+|Ячейка 1 |Ячейка 2 |
+⸻⸻⸻ example table.rs:13
+table a
+|  a  |  b  |
+| --- | --- |
+|  c  |  d  |
+
+
+table b
+    |  a  |  b  |
+    | --- | --- |
+    |  c  |  d  |
+
+
+table c
+ a  |  b
+--- | ---
+ c  |  d
+
+
+table d
+    a | b
+    --|--
+    c | d
+
+
+table e
+a | b
+--|--
+c | d
+
+table f
+  |  a  |  b  |
+  | --- | --- |
+  |  c  |  d  |
+
+
+table g
+   a  |  b
+  --- | ---
+   c  |  d
+
+table h
+a
+|-|
+b
+
+table i
+| a
+|-
+b
+
+table j
+| a
+-
+b
+⸻⸻⸻ example table.rs:14
+a | b
+- | -
+1 | 2
+⸻⸻⸻ example table.rs:15
+a | b\
+- | -
+1 | 2
+⸻⸻⸻ example table.rs:16
+a\
+| b | c |
+|---|---|
+| d | e |
+⸻⸻⸻ example table.rs:17
+| Description | Test case |
+|-------------|-----------|
+| Single      | `\`       |
+| Double      | `\\`      |
+| Basic test  | `\|`      |
+| Basic test 2| `\|\|\`   |
+| Basic test 3| `x\|y\|z\`|
+| Not pipe    | `\.`      |
+| Combo       | `\.\|\`   |
+| Extra       | `\\\.`    |
+| Wait, what? | `\\|`     |
+| Wait, what? | `\\\|`    |
+| Wait, what? | `\\\\|`   |
+| Wait, what? | `\\\\\|`  |
+| Wait, what? |          \|
+| Wait, what? |         \\|
+| Wait, what? |        \\\|
+| Wait, what?x|          \|x
+| Wait, what?x|         \\|x
+| Wait, what?x|        \\\|x
+| Direct trail|         \.|x
+⸻⸻⸻ example table.rs:18
+| Single | `\|` |
+|--|--|
+| Single | `\|` |
+
+
+| Double | `\\|` |
+|--|--|
+| Double | `\\|` |
+
+
+| Double Twice | `\\|\\|` |
+|--|--|
+| Double Twice | `\\|\\|` |
+
+
+| Triple | `\\\|` |
+|--|--|
+| Triple | `\\\|` |
+⸻⸻⸻ example table.rs:19
+| Table | Header |
+|-------|--------|
+| Table | Body   |
+|
+| Not   | Enough |
+
+
+| Table | Header |
+|-------|--------|
+| Table | Body   |
+|	
+| Not   | Enough |
+⸻⸻⸻ example table.rs:20
+| Table | Header |
+|-------|--------|
+|
+⸻⸻⸻ example table.rs:21
+|
+|-------|--------|
+| Table | Body   |
+⸻⸻⸻ example table.rs:22
+| Single | [test](first\|second) |
+|--|--|
+
+| Double | [test](first\\|second) |
+|--|--|
+
+| Triple | [test](first\\\|second) |
+|--|--|
+⸻⸻⸻ example table.rs:23
+| Single | [first\|second] |
+|--|--|
+
+| Double | [first\\|second] |
+|--|--|
+
+| Triple | [first\\\|second] |
+|--|--|
+
+[first\|second]: https://rust-lang.org
+
+[first\\|second]: https://docs.rs
+⸻⸻⸻ example table.rs:24
+Q: Knock knock.
+A: Who's there.
+Q: Interrupting cow.
+A: Interrupting —?
+| `Moo\\|ooo` |
+|-------------|
+| `ooo\\|ooo` |
+⸻⸻⸻ example table.rs:25
+| ![Moo\\|Moo](image.png) |
+|-------------|
+| ![Moo\\\|Moo](image.png) |
+⸻⸻⸻ example table.rs:26
+| [Moo](https://example.org "Example\\|Link") |
+|---------------------------------------------|
+| [Moo](https://example.org "Example\\\|Link") |
+⸻⸻⸻ example table.rs:27
+moo | moo
+----|----
+moo | moo
+*
+⸻⸻⸻ example table.rs:28
+moo | moo
+----|----
+moo | moo
+2.
+⸻⸻⸻ example wikilinks.rs:1
+This is a [[WikiLink]].
+⸻⸻⸻ example wikilinks.rs:2
+This is a [[Main/WikiLink]].
+⸻⸻⸻ example wikilinks.rs:3
+This is [[Ambiguous]].
+
+[Ambiguous]: https://example.com/
+⸻⸻⸻ example wikilinks.rs:4
+[[squid] calamari is considered a delicacy](https://en.wikipedia.org/wiki/Squid)
+
+[calamari [squid]](https://en.wikipedia.org/wiki/Squid)
+⸻⸻⸻ example wikilinks.rs:5
+This is [also [[Ambiguous]]](https://example.com/).
+⸻⸻⸻ example wikilinks.rs:6
+<https://example.org/>
+
+[[https://example.org/]]
+⸻⸻⸻ example wikilinks.rs:7
+This is [[WikiLink|a pothole]].
+⸻⸻⸻ example wikilinks.rs:8
+This is a [[WikiLink/In/A/Directory|WikiLink]].
+⸻⸻⸻ example wikilinks.rs:9
+This is [[WikiLink|a **strong** pothole]].
+⸻⸻⸻ example wikilinks.rs:10
+This is a cute dog, linked to the page "WikiLink"
+
+[[WikiLink|![dog](dog.png)]]
+⸻⸻⸻ example wikilinks.rs:11
+[[WikiLink|[[Fish]]]]
+⸻⸻⸻ example wikilinks.rs:12
+[[WikiLink|[cat](cat.html)]]
+⸻⸻⸻ example wikilinks.rs:13
+This is a cute dog.
+
+![[dog.png]]
+⸻⸻⸻ example wikilinks.rs:14
+![[dog.png|a cute dog]]
+⸻⸻⸻ example wikilinks.rs:15
+]] [[]] [[|]] [[|Symbol]] [[
+⸻⸻⸻ example wikilinks.rs:16
+[inline link]([[url]])
+⸻⸻⸻ example wikilinks.rs:17
+[inline link]([[url)]]
+⸻⸻⸻ example wikilinks.rs:18
+`[[code]]`
+⸻⸻⸻ example wikilinks.rs:19
+emphasis **cross [[over** here]]
+⸻⸻⸻ example wikilinks.rs:20
+[[first\|second]]
+⸻⸻⸻ example wikilinks.rs:21
+[[first&#33;second]]

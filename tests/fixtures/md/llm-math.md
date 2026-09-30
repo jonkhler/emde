@@ -1,0 +1,35 @@
+# Quadratic equations
+
+The solutions of \(ax^2 + bx + c = 0\) are given by
+
+\[
+x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}
+\]
+
+where \(a \neq 0\). The discriminant \(\Delta = b^2 - 4ac\) decides:
+
+1. If \(\Delta > 0\), there are two real roots \(x_1\) and \(x_2\).
+2. If \(\Delta = 0\), there is one root \(x = -\frac{b}{2a}\).
+3. If \(\Delta < 0\), the roots are complex.
+
+Subscripts that look like emphasis: \(x^{2}_{1}\) and \(y^{2}_{3}\).
+
+GitHub style: $`\sqrt{x^2+1}`$ and dollars: $E = mc^2$.
+
+Prices stay prose: it costs $5 and $10, or $5-$10.
+
+> Inside a quote:
+> \[
+> \int_0^\infty e^{-x^2}\,dx = \frac{\sqrt{\pi}}{2}
+> \]
+
+Code keeps delimiters: `\(not math\)`.
+
+An aligned block:
+
+$$
+\begin{aligned}
+f(x) &= x^2 \\
+f'(x) &= 2x
+\end{aligned}
+$$

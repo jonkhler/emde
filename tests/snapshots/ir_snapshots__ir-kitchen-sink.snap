@@ -1,0 +1,108 @@
+---
+source: tests/ir_snapshots.rs
+expression: "dump(\"kitchen-sink\")"
+---
+front matter Yaml: "title: Kitchen Sink\nauthor: emde\ntags: [markdown, test]\n"
+  title = "Kitchen Sink"
+  author = "emde"
+  tags = "[markdown, test]"
+h1 H0: "Kitchen Sink"
+para: "A paragraph with " "emphasis"[emph] ", " "strong"[strong] ", " "both"[emph,strong] ", " "strikethrough"[strike] ", " "inline code"[code] ", a " "link"[L0] ", an autolink " "https://example.org/path"[L1] ", and a bare URL " "https://www.rust-lang.org/learn"[L4] ". Hard break at the end of this line\nand a backslash hard break\nthen more text. Footnote reference" "1"[fn F0,L2] " and another" "2"[fn F1,L3] "."
+  atoms 259..260 272..273
+  breaks [97, 109, 138, 156]
+h2 H1: "Lists"
+list tight
+  item
+    para: "Tight item one"
+  item
+    para: "Tight item with " "bold"[strong]
+    list tight
+      item
+        para: "Nested item"
+        list tight
+          item
+            para: "Deeper item"
+  item [ ]
+    para: "Unchecked task"
+  item [x]
+    para: "Checked task"
+list start=1 loose
+  item
+    para: "First"
+  item
+    para: "Second"
+    para: "With a second paragraph."
+  item
+    para: "Third"
+h2 H2: "Quotes and alerts"
+quote
+  para: "A plain quote with a " "reference link"[L5] "."
+  quote
+    para: "A nested quote."
+quote Note
+  para: "Notes carry an icon and a title."
+quote Warning
+  para: "Careful: this is a " "warning"[emph] "."
+h2 H3: "Code"
+code lang=rust title="hello.rs": "fn main() {\n\tprintln!(\"Hello, {}!\", \"world\");\n}"
+code: "indented code block"
+h2 H4: "Math"
+para: "Inline math " "e^{i\\pi} + 1 = 0"[math] " and money: $5 and $10, or $5-$10."
+  atoms 12..28
+math: "\\sum_{i=1}^{n} i^2 = \\frac{n(n+1)(2n+1)}{6}"
+math: "A = \\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}"
+h2 H5: "Table"
+table [Some(Left), Some(Center), Some(Right)]
+  head 0: "Left"
+  head 1: "Center"
+  head 2: "Right"
+  cell 0.0: "a"[code]
+  cell 0.1: "b"[strong]
+  cell 0.2: "c"[math]
+    atoms 0..1
+  cell 1.0: "long cell with a " "link"[L6]
+  cell 1.1: "x" "1"[fn F0,L7]
+    atoms 1..2
+  cell 1.2: "3"
+h2 H6: "Other blocks"
+deflist
+  term: "Term"
+    def
+      para: "Its definition."
+rule
+details: "Click to expand"
+  para: "Hidden content with " "Ctrl"[kbd] "+" "C"[kbd] " and H" "2"[sub] "O and x" "2"[sup] "."
+    atoms 20..24 25..26
+figure I0
+para: "Text with an " "inline image"[img I1] " chip."
+para: "日本語のテキストと English mixed with emoji 👨\u{200d}👩\u{200d}👧 and ❤\u{fe0f}."
+footnotes
+L0 Inline "https://example.com" title="Example" -> External
+L1 Autolink "https://example.org/path" -> External
+L2 Footnote "#fn-note" -> Footnote(FootnoteId(0))
+L3 Footnote "#fn-2" -> Footnote(FootnoteId(1))
+L4 Bare "https://www.rust-lang.org/learn" -> External
+L5 Reference "https://example.net" -> External
+L6 Inline "#lists" -> Anchor("lists")
+L7 Footnote "#fn-note" -> Footnote(FootnoteId(0))
+I0 src="figure.png" alt="A figure" title="Figure caption"
+I1 src="chip.png" alt="inline image"
+H0 h1 "Kitchen Sink" #kitchen-sink parent=- top=1
+H1 h2 "Lists" #lists parent=H0 top=3
+H2 h2 "Quotes and alerts" #quotes-and-alerts parent=H0 top=6
+H3 h2 "Code" #code parent=H0 top=10
+H4 h2 "Math" #math parent=H0 top=13
+H5 h2 "Table" #table parent=H0 top=17
+H6 h2 "Other blocks" #other-blocks parent=H0 top=19
+anchor #code -> H3
+anchor #kitchen-sink -> H0
+anchor #lists -> H1
+anchor #math -> H4
+anchor #other-blocks -> H6
+anchor #quotes-and-alerts -> H2
+anchor #table -> H5
+F0 [^note] refs=L2,L7
+  para: "The footnote text, with " "emphasis"[emph] "."
+F1 [^2] refs=L3
+  para: "Second footnote."
+title "Kitchen Sink"
