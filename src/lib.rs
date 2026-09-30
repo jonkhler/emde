@@ -7,6 +7,11 @@ use std::process::ExitCode;
 
 use clap::Parser as _;
 
+#[cfg(all(feature = "highlight", not(any(feature = "onig", feature = "fancy"))))]
+compile_error!(
+    "the `highlight` feature needs a regex engine: enable `onig` (default) or `fancy` (pure Rust)"
+);
+
 pub mod app;
 pub mod cli;
 pub mod color;

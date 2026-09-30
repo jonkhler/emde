@@ -31,9 +31,6 @@ multiple-versions = "allow"
 wildcards = "deny"
 allow-wildcard-paths = true
 deny = [
-    # C Oniguruma: two-face/syntect default features silently link it.
-    { crate = "onig", reason = "keep the build pure Rust (use regex-fancy)" },
-    { crate = "onig_sys", reason = "keep the build pure Rust (use regex-fancy)" },
     { crate = "openssl-sys", reason = "no C TLS stack" },
     { crate = "ratatui", reason = "own viewport; ratatui cannot carry OSC 8" },
     { crate = "tokio", reason = "no async runtime" },

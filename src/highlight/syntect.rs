@@ -1,7 +1,7 @@
 //! Syntax highlighting with syntect and the two-face syntax and theme sets,
-//! on the pure-Rust `fancy-regex` backend.
+//! on the Oniguruma (default) or pure-Rust `fancy-regex` backend.
 //!
-//! * The syntax set (213 syntaxes, about 1 MiB) is deserialised once, on
+//! * The syntax set (about 200 syntaxes, 1 MiB) is deserialised once, on
 //!   first use; [`prewarm`] does that on a background thread.
 //! * A grammar's regexes compile when a block in that language is first
 //!   highlighted, which takes tens of milliseconds per language;
@@ -501,17 +501,16 @@ mod tests {
             assert_eq!(name_of(&h, token).as_deref(), Some("JSON"), "{token}");
         }
         assert_eq!(name_of(&h, "yml").as_deref(), Some("YAML"));
-        for token in [
-            "text",
-            "txt",
-            "plaintext",
-            "ps",
-            "pwsh",
-            "mermaid",
-            "",
-            "no-such-lang",
-        ] {
+        for token in ["text", "txt", "plaintext", "mermaid", "", "no-such-lang"] {
             assert_eq!(h.resolve(token), None, "{token}");
+        }
+        // PowerShell is only in the Oniguruma syntax set.
+        for token in ["ps", "pwsh"] {
+            if cfg!(feature = "onig") {
+                assert_eq!(name_of(&h, token).as_deref(), Some("PowerShell"), "{token}");
+            } else {
+                assert_eq!(h.resolve(token), None, "{token}");
+            }
         }
         assert_eq!(name_of(&h, "Rust").as_deref(), Some("Rust"));
         assert_eq!(name_of(&h, "rust,ignore").as_deref(), Some("Rust"));
@@ -523,6 +522,9 @@ mod tests {
         let h = highlighter("ansi");
         for (from, to) in alias::BUILTIN {
             if *to == PLAIN {
+                assert_eq!(h.resolve(from), None, "{from}");
+            } else if *to == "ps1" && !cfg!(feature = "onig") {
+                // PowerShell needs the Oniguruma syntax set.
                 assert_eq!(h.resolve(from), None, "{from}");
             } else {
                 assert!(h.resolve(from).is_some(), "{from} → {to} does not resolve");
@@ -810,7 +812,9 @@ mod tests {
             }
         }
         assert!(failed.is_empty(), "{failed:?}");
-        assert_eq!(ss.syntaxes().len(), 213);
+        // two-face ships 220 syntaxes for Oniguruma and 213 for fancy-regex.
+        let expected = if cfg!(feature = "onig") { 220 } else { 213 };
+        assert_eq!(ss.syntaxes().len(), expected);
     }
 
     #[test]

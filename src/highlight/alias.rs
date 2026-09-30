@@ -24,14 +24,14 @@ pub const BUILTIN: &[(&str, &str)] = &[
     ("jsonl", "json"),
     ("ndjson", "json"),
     ("yml", "yaml"),
-    // Plain text, and languages the pure-Rust syntax set cannot highlight.
+    // Plain text.
     ("text", PLAIN),
     ("txt", PLAIN),
     ("plaintext", PLAIN),
-    ("ps", PLAIN),
-    ("pwsh", PLAIN),
-    ("powershell", PLAIN),
     ("mermaid", PLAIN),
+    // PowerShell (only in the Oniguruma syntax set; plain with `fancy`).
+    ("ps", "ps1"),
+    ("pwsh", "ps1"),
     // Common names that are neither an extension nor a syntax name.
     ("golang", "go"),
     ("node", "js"),

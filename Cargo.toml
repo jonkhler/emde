@@ -29,9 +29,13 @@ rust-version.workspace = true
 publish.workspace = true
 
 [features]
-default = ["highlight", "tmtheme", "images", "sixel", "simd"]
-# Syntax highlighting (syntect + two-face on the pure-Rust fancy-regex backend).
-highlight = ["dep:syntect", "dep:two-face", "dep:fancy-regex"]
+default = ["highlight", "onig", "tmtheme", "images", "sixel", "simd"]
+# Syntax highlighting (syntect + two-face). Needs a regex engine: `onig` or `fancy`.
+highlight = ["dep:syntect", "dep:two-face"]
+# Oniguruma regex engine (C; the default): 10-35x faster first use than fancy.
+onig = ["syntect?/regex-onig", "two-face?/syntect-onig"]
+# Pure-Rust fancy-regex engine (no C code, slower). If both are on, onig wins.
+fancy = ["syntect?/regex-fancy", "two-face?/syntect-fancy"]
 # Load user `.tmTheme` files for code highlighting.
 tmtheme = ["highlight", "syntect/plist-load"]
 # Image decoding (PNG, JPEG, GIF, WebP) and header-only sizing.
@@ -63,9 +67,8 @@ unicode-linebreak = "0.1.5"
 unicode-segmentation = "1.13.3"
 unicode-width = "0.2.2"
 
-syntect = { version = "5.3", default-features = false, features = ["parsing", "regex-fancy"], optional = true }
-two-face = { version = "0.5.2", default-features = false, features = ["syntect-fancy"], optional = true }
-fancy-regex = { version = "0.16", optional = true }
+syntect = { version = "5.3", default-features = false, features = ["parsing"], optional = true }
+two-face = { version = "0.5.2", default-features = false, optional = true }
 image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "gif", "webp"], optional = true }
 imagesize = { version = "0.15", default-features = false, features = ["png", "jpeg", "gif", "webp"], optional = true }
 icy_sixel = { version = "0.7", optional = true }

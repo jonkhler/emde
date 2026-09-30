@@ -24,8 +24,6 @@ const SIZE_CAP: u64 = 7 * 1024 * 1024;
 const MSRV: &str = "1.90";
 /// Crates that must never appear in the dependency graph, for any feature set.
 const BANNED: &[&str] = &[
-    "onig",
-    "onig_sys",
     "openssl-sys",
     "ratatui",
     "tokio",
@@ -36,6 +34,14 @@ const BANNED: &[&str] = &[
 ];
 /// Feature sets checked by the dependency guard.
 const FEATURE_SETS: &[&[&str]] = &[&[], &["--all-features"], &["--no-default-features"]];
+/// The pure-Rust build: every default feature, but the `fancy` regex engine.
+const PURE_FEATURES: &[&str] = &[
+    "--no-default-features",
+    "--features",
+    "highlight,fancy,tmtheme,images,sixel,simd",
+];
+/// Crates (C code) that must not appear in the pure-Rust build.
+const NOT_IN_PURE: &[&str] = &["onig", "onig_sys"];
 
 type Result<T = ()> = std::result::Result<T, String>;
 
@@ -137,6 +143,9 @@ fn ci(full: bool) -> Result {
                 "--feature-powerset",
                 "--depth",
                 "2",
+                // `highlight` needs one of the two regex engines.
+                "--at-least-one-of",
+                "onig,fancy",
                 "--no-dev-deps",
             ]),
         )?;
@@ -144,9 +153,9 @@ fn ci(full: bool) -> Result {
     size()
 }
 
-/// Banned-crate guard. `cargo tree -i onig` exits 101 when the crate is absent,
-/// which is indistinguishable from other failures, so list the whole resolved
-/// tree per feature set and search it instead.
+/// Banned-crate guard. `cargo tree -i <crate>` exits 101 when the crate is
+/// absent, which is indistinguishable from other failures, so list the whole
+/// resolved tree per feature set and search it instead.
 fn deps() -> Result {
     for feats in FEATURE_SETS {
         let label = if feats.is_empty() {
@@ -154,39 +163,48 @@ fn deps() -> Result {
         } else {
             feats[0]
         };
-        eprintln!("xtask: == dependency guard ({label})");
-        let tree = output(
-            cargo()
-                .args([
-                    "tree",
-                    "--workspace",
-                    "--target",
-                    "all",
-                    "-e",
-                    "normal,build",
-                    "--prefix",
-                    "none",
-                    "-f",
-                    "{p}",
-                ])
-                .args(*feats),
-        )?;
-        let hits: Vec<&str> = tree
-            .lines()
-            .filter(|line| {
-                let name = line.split_whitespace().next().unwrap_or("");
-                BANNED.contains(&name)
-            })
-            .collect();
-        if !hits.is_empty() {
-            return Err(format!(
-                "banned crate(s) in the {label} dependency tree: {hits:?} \
-                 (inspect with `cargo tree -e features -i <crate> {}`)",
-                feats.join(" ")
-            ));
-        }
+        guard(label, feats, BANNED)?;
     }
-    Ok(())
+    guard("pure Rust", PURE_FEATURES, NOT_IN_PURE)
+}
+
+/// Fail if any crate of `banned` is in the dependency tree for `feats`.
+fn guard(label: &str, feats: &[&str], banned: &[&str]) -> Result {
+    eprintln!("xtask: == dependency guard ({label})");
+    let tree = output(
+        cargo()
+            .args([
+                "tree",
+                "--workspace",
+                "--target",
+                "all",
+                "-e",
+                "normal,build",
+                "--prefix",
+                "none",
+                "-f",
+                "{p}",
+            ])
+            .args(feats),
+    )?;
+    let mut hits: Vec<&str> = tree
+        .lines()
+        .filter(|line| {
+            let name = line.split_whitespace().next().unwrap_or("");
+            banned.contains(&name)
+        })
+        .collect();
+    hits.sort_unstable();
+    hits.dedup();
+    if hits.is_empty() {
+        Ok(())
+    } else {
+        Err(format!(
+            "banned crate(s) in the {label} dependency tree: {hits:?} \
+             (inspect with `cargo tree -e features -i <crate> {}`)",
+            feats.join(" ")
+        ))
+    }
 }
 
 fn msrv() -> Result {
