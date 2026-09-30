@@ -272,6 +272,7 @@ name = "emde-math"
 version = "0.1.0"
 dependencies = [
  "insta",
+ "proptest",
  "pulldown-latex",
  "unicode-width",
 ]

@@ -1,0 +1,20 @@
+---
+source: crates/emde-math/tests/corpus.rs
+expression: "out.join(\"\\n\")"
+---
+\alpha^2 + \frac{a}{b}
+  "α"⟨var⟩ "²"⟨num⟩ " "⟨plain⟩ "+"⟨op⟩ " "⟨plain⟩ "a"⟨var⟩ "/"⟨delim⟩ "b"⟨var⟩
+x^{n+q} = y
+  "x"⟨var⟩ "^("⟨plain~⟩ "n"⟨var⟩ "+"⟨op⟩ "q"⟨var⟩ ")"⟨plain~⟩ " "⟨plain⟩ "="⟨rel⟩ " "⟨plain⟩ "y"⟨var⟩
+\sin x \le 1
+  "sin"⟨func⟩ " "⟨plain⟩ "x"⟨var⟩ " "⟨plain⟩ "≤"⟨rel⟩ " "⟨plain⟩ "1"⟨num⟩
+\mathbf{v} \cdot \boldsymbol{\omega}
+  "v"⟨plain*⟩ " "⟨plain⟩ "⋅"⟨op⟩ " "⟨plain⟩ "ω"⟨var*⟩
+\text{if } n > 0
+  "if "⟨text⟩ "n"⟨var⟩ " "⟨plain⟩ ">"⟨rel⟩ " "⟨plain⟩ "0"⟨num⟩
+\left( a \right)
+  "("⟨delim⟩ "a"⟨var⟩ ")"⟨delim⟩
+\sqrt{2}
+  "√"⟨delim⟩ "2"⟨num⟩
+\frac{x
+  "\\frac{x"⟨error⟩

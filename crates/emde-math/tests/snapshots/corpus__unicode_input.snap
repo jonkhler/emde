@@ -1,0 +1,19 @@
+---
+source: crates/emde-math/tests/corpus.rs
+expression: "render_all(formulas, & MathOptions :: default(), WIDTH)"
+---
+── \text{日本語} = x
+inline  日本語 = x
+▸ │日本語 = x│
+
+── x = \text{größer}
+inline  x = größer
+▸ │x = größer│
+
+── α + β = γ
+inline  α + β = γ
+▸ │α + β = γ│
+
+── \text{naïve} \cdot 2
+inline  naïve ⋅ 2
+▸ │naïve ⋅ 2│

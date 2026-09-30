@@ -1,0 +1,92 @@
+---
+source: crates/emde-math/tests/corpus.rs
+expression: "render_all(formulas, & MathOptions :: default(), WIDTH)"
+---
+── \frac{a+b}{c}
+inline  (a+b)/c
+  │a+b│
+▸ │───│
+  │ c │
+
+── \frac{1}{2}
+inline  ½
+  │1│
+▸ │─│
+  │2│
+
+── \frac{3}{4} + \frac{1}{16}
+inline  ¾ + ⅟16
+  │3   1 │
+▸ │─ + ──│
+  │4   16│
+
+── \frac{n(n+1)}{2}
+inline  n(n+1)/2
+  │n(n+1)│
+▸ │──────│
+  │  2   │
+
+── \dfrac{a}{b} = \tfrac{a}{b}
+inline  a/b = a/b
+  │a   a│
+▸ │─ = ─│
+  │b   b│
+
+── \frac{1}{1+\frac{1}{x}}
+inline  1/(1+1/x)
+  │ 1 │
+▸ │───│
+  │  1│
+  │1+─│
+  │  x│
+
+── \frac{\frac{a}{b}}{\frac{c}{d}}
+inline  (a/b)/(c/d)
+  │ a │
+  │ ─ │
+  │ b │
+▸ │───│
+  │ c │
+  │ ─ │
+  │ d │
+
+── \cfrac{1}{1+\cfrac{1}{1+\cfrac{1}{x}}}
+inline  1/(1+1/(1+1/x))
+  │  1  │
+▸ │─────│
+  │   1 │
+  │1+───│
+  │    1│
+  │  1+─│
+  │    x│
+
+── \frac{\partial f}{\partial x}
+inline  ∂f/∂x
+  │∂f│
+▸ │──│
+  │∂x│
+
+── \frac{d^2 y}{dx^2}
+inline  d²y/dx²
+  │d²y│
+▸ │───│
+  │dx²│
+
+── x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}
+inline  x = (−b±√(b²−4ac))/2a
+  │        ▁▁▁▁▁▁│
+  │    −b±√b²−4ac│
+▸ │x = ──────────│
+  │        2a    │
+
+── \binom{n}{k} = \frac{n!}{k!(n-k)!}
+inline  (n choose k) = n!/k!(n−k)!
+  │⎛n⎞      n!   │
+▸ │⎜ ⎟ = ────────│
+  │⎝k⎠   k!(n−k)!│
+
+── \frac{a}{b} \cdot \frac{c}{d} = \frac{ac}{bd}
+inline  a/b ⋅ c/d = ac/bd
+  │a   c   ac│
+▸ │─ ⋅ ─ = ──│
+  │b   d   bd│

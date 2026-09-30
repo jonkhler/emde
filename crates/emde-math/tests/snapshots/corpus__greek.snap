@@ -1,0 +1,27 @@
+---
+source: crates/emde-math/tests/corpus.rs
+expression: "render_all(formulas, & MathOptions :: default(), WIDTH)"
+---
+── \alpha \beta \gamma \delta
+inline  αβγδ
+▸ │αβγδ│
+
+── \epsilon \varepsilon
+inline  ϵε
+▸ │ϵε│
+
+── \theta \vartheta \phi \varphi
+inline  θϑϕφ
+▸ │θϑϕφ│
+
+── \Gamma \Delta \Theta \Lambda \Xi \Pi \Sigma \Phi \Psi \Omega
+inline  ΓΔΘΛΞΠΣΦΨΩ
+▸ │ΓΔΘΛΞΠΣΦΨΩ│
+
+── \pi r^2
+inline  πr²
+▸ │πr²│
+
+── \mu \nu \xi \rho \sigma \tau \omega
+inline  μνξρστω
+▸ │μνξρστω│

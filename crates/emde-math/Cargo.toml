@@ -12,6 +12,7 @@ unicode-width = "0.2.2"
 
 [dev-dependencies]
 insta = "1.48"
+proptest = "1.11"
 
 [lints]
 workspace = true

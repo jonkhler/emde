@@ -1,0 +1,55 @@
+---
+source: crates/emde-math/tests/corpus.rs
+expression: "render_all(formulas, & MathOptions :: default(), WIDTH)"
+---
+── \sqrt{x}
+inline  √x
+▸ │√x│
+
+── \sqrt{2}
+inline  √2
+▸ │√2│
+
+── \sqrt{x^2+1}
+inline  √(x²+1)
+  │ ▁▁▁▁│
+▸ │√x²+1│
+
+── \sqrt[3]{x}
+inline  ∛x
+▸ │∛x│
+
+── \sqrt[4]{x+1}
+inline  ∜(x+1)
+  │ ▁▁▁│
+▸ │∜x+1│
+
+── \sqrt[n]{x}
+inline  ⁿ√x
+▸ │ⁿ√x│
+
+── \sqrt[n+1]{x}
+inline  ⁿ⁺¹√x
+▸ │ⁿ⁺¹√x│
+
+── \sqrt{\frac{a}{b}}
+inline  √(a/b)
+  │    ▁│
+  │   ╱a│
+▸ │  ╱ ─│
+  │╲╱  b│
+
+── \sqrt{1+\sqrt{2}}
+inline  √(1+√2)
+  │ ▁▁▁▁│
+▸ │√1+√2│
+
+── \sqrt{x_1^2 + x_2^2}
+inline  √(x₁²+x₂²)
+  │ ▁▁▁▁▁▁▁│
+▸ │√x₁²+x₂²│
+
+── \sqrt[\pi]{x}
+inline  x^(1/π)
+  │π ▁│
+▸ │ √x│

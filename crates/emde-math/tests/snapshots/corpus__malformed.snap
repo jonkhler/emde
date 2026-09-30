@@ -1,0 +1,59 @@
+---
+source: crates/emde-math/tests/corpus.rs
+expression: "render_all(formulas, & MathOptions :: default(), WIDTH)"
+---
+── \frac{a}
+inline  \frac{a}   [raw]
+raw     \frac{a}
+
+── x^
+inline  x^   [raw]
+raw     x^
+
+── {
+inline  {   [raw]
+raw     {
+
+── }
+inline  }   [raw]
+raw     }
+
+── \left( x
+inline  \left( x   [raw]
+raw     \left( x
+
+── \begin{foo} x \end{foo}
+inline  \begin{foo} x \end{foo}   [raw]
+raw     \begin{foo} x \end{foo}
+
+── \unknowncommand
+inline  \unknowncommand   [raw]
+raw     \unknowncommand
+
+── x^{a}^{b}
+inline  x^{a}^{b}   [raw]
+raw     x^{a}^{b}
+
+── \\
+inline  
+▸ ││
+
+── \sqrt[
+inline  \sqrt[   [raw]
+raw     \sqrt[
+
+── 
+inline  
+▸ ││
+
+──    
+inline  
+▸ ││
+
+── \text{unclosed
+inline  \text{unclosed   [raw]
+raw     \text{unclosed
+
+── ab
+inline  a�b
+▸ │a�b│

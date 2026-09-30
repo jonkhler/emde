@@ -1,0 +1,86 @@
+---
+source: crates/emde-math/tests/corpus.rs
+expression: "render_all(formulas, & MathOptions :: default(), WIDTH)"
+---
+── E = mc^2
+inline  E = mc²
+▸ │E = mc²│
+
+── F = ma
+inline  F = ma
+▸ │F = ma│
+
+── e^{i\theta} = \cos\theta + i\sin\theta
+inline  eⁱᶿ = cos θ + i sin θ
+▸ │eⁱᶿ = cos θ + i sin θ│
+
+── a^2 + b^2 = c^2
+inline  a² + b² = c²
+▸ │a² + b² = c²│
+
+── \sigma(z)_i = \frac{e^{z_i}}{\sum_{j=1}^K e^{z_j}}
+inline  σ(z)ᵢ = e^(zᵢ)/(∑ⱼ₌₁ᴷ e^(zⱼ))
+  │           zᵢ  │
+  │          e    │
+▸ │σ(z)ᵢ = ───────│
+  │         K   zⱼ│
+  │         ∑  e  │
+  │        j=1    │
+
+── P(A \mid B) = \frac{P(B \mid A)\,P(A)}{P(B)}
+inline  P(A ∣ B) = (P(B∣A) P(A))/P(B)
+  │           P(B∣A) P(A)│
+▸ │P(A ∣ B) = ───────────│
+  │              P(B)    │
+
+── f(x) = \frac{1}{\sigma\sqrt{2\pi}} e^{-\frac{(x-\mu)^2}{2\sigma^2}}
+inline  f(x) = (1/σ√(2π))e^(−(x−μ)²/2σ²)
+  │        1   −(x−μ)²/2σ²│
+▸ │f(x) = ────e           │
+  │         ▁▁            │
+  │       σ√2π            │
+
+── \nabla \cdot \mathbf{E} = \frac{\rho}{\varepsilon_0}
+inline  ∇ ⋅ E = ρ/ε₀
+  │        ρ │
+▸ │∇ ⋅ E = ──│
+  │        ε₀│
+
+── \nabla \times \mathbf{B} = \mu_0 \mathbf{J} + \mu_0 \varepsilon_0 \frac{\partial \mathbf{E}}{\partial t}
+inline  ∇ × B = μ₀J + μ₀ε₀∂E/∂t
+  │                  ∂E│
+▸ │∇ × B = μ₀J + μ₀ε₀──│
+  │                  ∂t│
+
+── i\hbar \frac{\partial}{\partial t} \Psi = \hat{H} \Psi
+inline  iℏ(∂/∂t)Ψ = ĤΨ
+  │  ∂       │
+▸ │iℏ──Ψ = ĤΨ│
+  │  ∂t      │
+
+── \mathcal{L} = -\sum_{i} y_i \log \hat{y}_i
+inline  ℒ = −∑ᵢ yᵢ log ŷᵢ
+▸ │ℒ = −∑ yᵢ log ŷᵢ│
+  │     i          │
+
+── \operatorname{Attention}(Q, K, V) = \operatorname{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right) V
+inline  Attention(Q, K, V) = softmax(QKᵀ/√(dₖ))V
+  │                            ⎛QKᵀ⎞ │
+▸ │Attention(Q, K, V) = softmax⎜───⎟V│
+  │                            ⎜ ▁▁⎟ │
+  │                            ⎝√dₖ⎠ │
+
+── \theta \leftarrow \theta - \eta \nabla_\theta J(\theta)
+inline  θ ← θ − η∇_θJ(θ)
+▸ │θ ← θ − η∇ J(θ)│
+  │          θ    │
+
+── D_{\mathrm{KL}}(P \parallel Q) = \sum_x P(x) \log \frac{P(x)}{Q(x)}
+inline  D_(KL)(P ∥ Q) = ∑ₓ P(x) log (P(x)/Q(x))
+  │                        P(x)│
+▸ │D  (P ∥ Q) = ∑ P(x) log ────│
+  │ KL          x          Q(x)│
+
+── \operatorname{Var}(X) = \mathbb{E}[X^2] - \mathbb{E}[X]^2
+inline  Var(X) = 𝔼[X²] − 𝔼[X]²
+▸ │Var(X) = 𝔼[X²] − 𝔼[X]²│

@@ -1,0 +1,95 @@
+---
+source: crates/emde-math/tests/corpus.rs
+expression: "render_all(formulas, & MathOptions :: default(), WIDTH)"
+---
+── \sum_{i=1}^{n} i = \frac{n(n+1)}{2}
+inline  ∑ᵢ₌₁ⁿ i = n(n+1)/2
+  │ n      n(n+1)│
+▸ │ ∑  i = ──────│
+  │i=1       2   │
+
+── \sum_{k=0}^\infty \frac{x^k}{k!}
+inline  ∑ₖ₌₀^∞ xᵏ/k!
+  │ ∞  xᵏ│
+▸ │ ∑  ──│
+  │k=0 k!│
+
+── \prod_{p} \frac{1}{1-p^{-s}}
+inline  ∏ₚ 1/(1−p⁻ˢ)
+  │    1  │
+▸ │∏ ─────│
+  │p 1−p⁻ˢ│
+
+── \int_0^1 x\,dx
+inline  ∫₀¹ x dx
+  │⌠1     │
+▸ │⎮  x dx│
+  │⌡0     │
+
+── \int_0^\infty e^{-x^2}\,dx = \frac{\sqrt{\pi}}{2}
+inline  ∫₀^∞ e^(−x²) dx = √π/2
+  │⌠∞  −x²      √π│
+▸ │⎮  e    dx = ──│
+  │⌡0           2 │
+
+── \iint_D f\,dA
+inline  ∬_D f dA
+  │⌠⌠      │
+▸ │⎮⎮  f dA│
+  │⌡⌡D     │
+
+── \oint_C \mathbf{F} \cdot d\mathbf{r}
+inline  ∮_C F ⋅ dr
+▸ │∮  F ⋅ dr│
+  │ C       │
+
+── \lim_{x \to 0} \frac{\sin x}{x} = 1
+inline  lim_(x→0) (sin x)/x = 1
+  │    sin x    │
+▸ │lim ───── = 1│
+  │x→0   x      │
+
+── \lim_{n\to\infty} \left(1+\frac{1}{n}\right)^n = e
+inline  lim_(n→∞) (1 + 1/n)ⁿ = e
+  │    ⎛    1⎞ⁿ    │
+▸ │lim ⎜1 + ─⎟  = e│
+  │n→∞ ⎝    n⎠     │
+
+── \max_{x \in S} f(x)
+inline  max_(x∈S) f(x)
+▸ │max f(x)│
+  │x∈S     │
+
+── \operatorname*{argmin}_\theta L(\theta)
+inline  argmin_θ L(θ)
+▸ │argmin L(θ)│
+  │  θ        │
+
+── \bigcup_{i=1}^n A_i
+inline  ⋃ᵢ₌₁ⁿ Aᵢ
+  │ n    │
+▸ │ ⋃  Aᵢ│
+  │i=1   │
+
+── \sum\nolimits_i x_i
+inline  ∑ᵢ xᵢ
+▸ │∑ᵢ xᵢ│
+
+── \int\limits_a^b f
+inline  ∫ₐᵇ f
+  │b  │
+  │⌠  │
+▸ │⎮ f│
+  │⌡  │
+  │a  │
+
+── \sum_{\substack{0<i<m\\0<j<n}} P(i,j)
+inline  ∑_(0<i<m, 0<j<n) P(i, j)
+▸ │  ∑   P(i, j)│
+  │0<i<m        │
+  │0<j<n        │
+
+── \liminf_{n} a_n
+inline  lim infₙ aₙ
+▸ │lim inf aₙ│
+  │   n      │

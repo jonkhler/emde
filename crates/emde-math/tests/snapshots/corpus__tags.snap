@@ -1,0 +1,19 @@
+---
+source: crates/emde-math/tests/corpus.rs
+expression: "render_all(formulas, & MathOptions :: default(), WIDTH)"
+---
+── E = mc^2 \tag{1}
+inline  E = mc²  (1)
+▸ │                                    E = mc²                                  (1)│
+
+── a = b \tag*{(A)}
+inline  a = b  (A)
+▸ │                                     a = b                                   (A)│
+
+── x \label{eq:x} = 1
+inline  x = 1
+▸ │x = 1│
+
+── y = 2 \nonumber
+inline  y = 2
+▸ │y = 2│

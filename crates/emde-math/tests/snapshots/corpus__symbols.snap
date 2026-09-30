@@ -1,0 +1,43 @@
+---
+source: crates/emde-math/tests/corpus.rs
+expression: "render_all(formulas, & MathOptions :: default(), WIDTH)"
+---
+── a \pm b \mp c
+inline  a ± b ∓ c
+▸ │a ± b ∓ c│
+
+── a \times b \div c
+inline  a × b ÷ c
+▸ │a × b ÷ c│
+
+── a \cdot b \circ c
+inline  a ⋅ b ∘ c
+▸ │a ⋅ b ∘ c│
+
+── \nabla f = \partial_x f
+inline  ∇f = ∂ₓf
+▸ │∇f = ∂ₓf│
+
+── \infty \emptyset \aleph_0
+inline  ∞∅ℵ₀
+▸ │∞∅ℵ₀│
+
+── \hbar \omega
+inline  ℏω
+▸ │ℏω│
+
+── 1, 2, \ldots, n
+inline  1, 2, …, n
+▸ │1, 2, …, n│
+
+── a_1 + \cdots + a_n
+inline  a₁ + ⋯ + aₙ
+▸ │a₁ + ⋯ + aₙ│
+
+── A \cup B \cap C \setminus D
+inline  A ∪ B ∩ C ∖ D
+▸ │A ∪ B ∩ C ∖ D│
+
+── \neg p \land q \lor r
+inline  ¬p ∧ q ∨ r
+▸ │¬p ∧ q ∨ r│
