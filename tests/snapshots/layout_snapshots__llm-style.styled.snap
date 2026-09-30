@@ -7,33 +7,31 @@ expression: "styled(\"llm-style\", & Caps :: full(), & WIDTHS)"
   ⟦fg=#cba6f7 bold⟧quadratic equation⟦/⟧
   ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧
 
-  To solve
-  ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧ax^2 + bx + c = 0⟦/⟧,
-  use the ⟦bold⟧quadratic⟦/⟧
-  ⟦bold⟧formula⟦/⟧:
+  To solve ⟦fg=#94e2d5 italic⟧ax⟦/⟧⟦fg=#94e2d5⟧² + ⟦/⟧⟦fg=#94e2d5 italic⟧bx⟦/⟧⟦fg=#94e2d5⟧ +⟦/⟧
+  ⟦fg=#94e2d5 italic⟧c⟦/⟧⟦fg=#94e2d5⟧ = 0⟦/⟧, use the
+  ⟦bold⟧quadratic formula⟦/⟧:
 
-    ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x = \frac{-b \pm⟦/⟧
-   ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\sqrt{b^2 - 4ac}}⟦/⟧
-          ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧{2a}⟦/⟧
+     ⟦fg=#94e2d5⟧        ▁▁▁▁▁▁⟦/⟧
+     ⟦fg=#94e2d5⟧    −⟦/⟧⟦fg=#94e2d5 italic⟧b⟦/⟧⟦fg=#94e2d5⟧±√⟦/⟧⟦fg=#94e2d5 italic⟧b⟦/⟧⟦fg=#94e2d5⟧²−4⟦/⟧⟦fg=#94e2d5 italic⟧ac⟦/⟧
+     ⟦fg=#94e2d5 italic⟧x⟦/⟧⟦fg=#94e2d5⟧ = ──────────⟦/⟧
+     ⟦fg=#94e2d5⟧        2⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧
 
   ⟦fg=#94e2d5 bold⟧▎ Steps⟦/⟧
 
   ⟦fg=#89b4fa⟧1.⟦/⟧ ⟦bold⟧Compute the⟦/⟧
-     ⟦bold⟧discriminant⟦/⟧
-     ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta = b^2 -⟦/⟧
-     ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧4ac⟦/⟧.
+     ⟦bold⟧discriminant⟦/⟧ ⟦fg=#94e2d5⟧Δ =⟦/⟧
+     ⟦fg=#94e2d5 italic⟧b⟦/⟧⟦fg=#94e2d5⟧² − 4⟦/⟧⟦fg=#94e2d5 italic⟧ac⟦/⟧.
   ⟦fg=#89b4fa⟧2.⟦/⟧ ⟦bold⟧Check its sign⟦/⟧:
-     ⟦fg=#89b4fa⟧◦⟦/⟧ If ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta > 0⟦/⟧:
-       two real roots.
-     ⟦fg=#89b4fa⟧◦⟦/⟧ If ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta = 0⟦/⟧:
-       one real root.
-     ⟦fg=#89b4fa⟧◦⟦/⟧ If ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta < 0⟦/⟧:
-       two complex
-       roots.
+     ⟦fg=#89b4fa⟧◦⟦/⟧ If ⟦fg=#94e2d5⟧Δ > 0⟦/⟧: two
+       real roots.
+     ⟦fg=#89b4fa⟧◦⟦/⟧ If ⟦fg=#94e2d5⟧Δ = 0⟦/⟧: one
+       real root.
+     ⟦fg=#89b4fa⟧◦⟦/⟧ If ⟦fg=#94e2d5⟧Δ < 0⟦/⟧: two
+       complex roots.
   ⟦fg=#89b4fa⟧3.⟦/⟧ ⟦bold⟧Apply the formula⟦/⟧
      above.
 
-  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8 bold⟧Note:⟦/⟧⟦fg=#a6adc8⟧ when ⟦/⟧⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧a = 0⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8 bold⟧Note:⟦/⟧⟦fg=#a6adc8⟧ when ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧ = 0⟦/⟧
   ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧the equation is⟦/⟧
   ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧linear, not⟦/⟧
   ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧quadratic.⟦/⟧
@@ -55,17 +53,14 @@ expression: "styled(\"llm-style\", & Caps :: full(), & WIDTHS)"
   ⟦fg=#6c7086 bg=#2c2d3d⟧↳⟦/⟧⟦bg=#2c2d3d⟧ (⟦/⟧⟦fg=#fab387 bg=#2c2d3d⟧1⟦/⟧⟦bg=#2c2d3d⟧, -⟦/⟧⟦fg=#fab387 bg=#2c2d3d⟧1⟦/⟧⟦bg=#2c2d3d⟧)]          ⟦/⟧
   ⟦bg=#2c2d3d⟧                    ⟦/⟧
 
-  ⟦fg=#6c7086⟧╭─────────┬────────╮⟦/⟧
-  ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Case    ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Roots  ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
-  ⟦fg=#6c7086⟧├─────────┼────────┤⟦/⟧
-  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta⟦/⟧  ⟦fg=#6c7086⟧│⟦/⟧ 2 real ⟦fg=#6c7086⟧│⟦/⟧
-  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧> 0⟦/⟧     ⟦fg=#6c7086⟧│⟦/⟧        ⟦fg=#6c7086⟧│⟦/⟧
-  ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧ ⟦/⟧⟦fg=#f38ba8 bg=#272839 ul=curly ulc=#f38ba8⟧\Delta⟦/⟧⟦bg=#272839⟧  ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧ 1 real ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
-  ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧ ⟦/⟧⟦fg=#f38ba8 bg=#272839 ul=curly ulc=#f38ba8⟧= 0⟦/⟧⟦bg=#272839⟧     ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧        ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
-  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta⟦/⟧  ⟦fg=#6c7086⟧│⟦/⟧ 2      ⟦fg=#6c7086⟧│⟦/⟧
-  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧< 0⟦/⟧     ⟦fg=#6c7086⟧│⟦/⟧ comple ⟦fg=#6c7086⟧│⟦/⟧
-  ⟦fg=#6c7086⟧│⟦/⟧         ⟦fg=#6c7086⟧│⟦/⟧ x      ⟦fg=#6c7086⟧│⟦/⟧
-  ⟦fg=#6c7086⟧╰─────────┴────────╯⟦/⟧
+  ⟦fg=#6c7086⟧╭───────┬──────────╮⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Case  ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Roots    ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧├───────┼──────────┤⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#94e2d5⟧Δ > 0⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧ 2 real   ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧ ⟦/⟧⟦fg=#94e2d5 bg=#272839⟧Δ = 0⟦/⟧⟦bg=#272839⟧ ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧ 1 real   ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#94e2d5⟧Δ < 0⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧ 2        ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧       ⟦fg=#6c7086⟧│⟦/⟧ complex  ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧╰───────┴──────────╯⟦/⟧
 
   ⟦fg=#36374a⟧─⟦/⟧⟦fg=#505367⟧─⟦/⟧⟦fg=#6c7086⟧────────────────⟦/⟧⟦fg=#505367⟧─⟦/⟧⟦fg=#36374a⟧─⟦/⟧
 
@@ -78,24 +73,25 @@ expression: "styled(\"llm-style\", & Caps :: full(), & WIDTHS)"
   ⟦fg=#cba6f7 bold⟧Solving the quadratic equation⟦/⟧
   ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#957cb9⟧──⟦/⟧⟦fg=#63547e⟧──⟦/⟧
 
-  To solve ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧ax^2 + bx + c = 0⟦/⟧, use the
+  To solve ⟦fg=#94e2d5 italic⟧ax⟦/⟧⟦fg=#94e2d5⟧² + ⟦/⟧⟦fg=#94e2d5 italic⟧bx⟦/⟧⟦fg=#94e2d5⟧ + ⟦/⟧⟦fg=#94e2d5 italic⟧c⟦/⟧⟦fg=#94e2d5⟧ = 0⟦/⟧, use the
   ⟦bold⟧quadratic formula⟦/⟧:
 
-   ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x = \frac{-b \pm \sqrt{b^2 - 4ac}}⟦/⟧
-                  ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧{2a}⟦/⟧
+             ⟦fg=#94e2d5⟧        ▁▁▁▁▁▁⟦/⟧
+             ⟦fg=#94e2d5⟧    −⟦/⟧⟦fg=#94e2d5 italic⟧b⟦/⟧⟦fg=#94e2d5⟧±√⟦/⟧⟦fg=#94e2d5 italic⟧b⟦/⟧⟦fg=#94e2d5⟧²−4⟦/⟧⟦fg=#94e2d5 italic⟧ac⟦/⟧
+             ⟦fg=#94e2d5 italic⟧x⟦/⟧⟦fg=#94e2d5⟧ = ──────────⟦/⟧
+             ⟦fg=#94e2d5⟧        2⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧
 
   ⟦fg=#94e2d5 bold⟧▎ Steps⟦/⟧
 
-  ⟦fg=#89b4fa⟧1.⟦/⟧ ⟦bold⟧Compute the discriminant⟦/⟧
-     ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta = b^2 - 4ac⟦/⟧.
+  ⟦fg=#89b4fa⟧1.⟦/⟧ ⟦bold⟧Compute the discriminant⟦/⟧ ⟦fg=#94e2d5⟧Δ = ⟦/⟧⟦fg=#94e2d5 italic⟧b⟦/⟧⟦fg=#94e2d5⟧² −⟦/⟧
+     ⟦fg=#94e2d5⟧4⟦/⟧⟦fg=#94e2d5 italic⟧ac⟦/⟧.
   ⟦fg=#89b4fa⟧2.⟦/⟧ ⟦bold⟧Check its sign⟦/⟧:
-     ⟦fg=#89b4fa⟧◦⟦/⟧ If ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta > 0⟦/⟧: two real roots.
-     ⟦fg=#89b4fa⟧◦⟦/⟧ If ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta = 0⟦/⟧: one real root.
-     ⟦fg=#89b4fa⟧◦⟦/⟧ If ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta < 0⟦/⟧: two complex
-       roots.
+     ⟦fg=#89b4fa⟧◦⟦/⟧ If ⟦fg=#94e2d5⟧Δ > 0⟦/⟧: two real roots.
+     ⟦fg=#89b4fa⟧◦⟦/⟧ If ⟦fg=#94e2d5⟧Δ = 0⟦/⟧: one real root.
+     ⟦fg=#89b4fa⟧◦⟦/⟧ If ⟦fg=#94e2d5⟧Δ < 0⟦/⟧: two complex roots.
   ⟦fg=#89b4fa⟧3.⟦/⟧ ⟦bold⟧Apply the formula⟦/⟧ above.
 
-  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8 bold⟧Note:⟦/⟧⟦fg=#a6adc8⟧ when ⟦/⟧⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧a = 0⟦/⟧⟦fg=#a6adc8⟧ the equation is⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8 bold⟧Note:⟦/⟧⟦fg=#a6adc8⟧ when ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧ = 0⟦/⟧⟦fg=#a6adc8⟧ the equation is⟦/⟧
   ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧linear, not quadratic.⟦/⟧
 
   ⟦fg=#94e2d5 bold⟧▎ Example in Python⟦/⟧
@@ -111,13 +107,13 @@ expression: "styled(\"llm-style\", & Caps :: full(), & WIDTHS)"
   ⟦fg=#6c7086 bg=#2c2d3d⟧↳⟦/⟧⟦bg=#2c2d3d⟧) / (⟦/⟧⟦fg=#fab387 bg=#2c2d3d⟧2⟦/⟧⟦bg=#2c2d3d⟧ * a) ⟦/⟧⟦fg=#cba6f7 bg=#2c2d3d bold⟧for⟦/⟧⟦bg=#2c2d3d⟧ s ⟦/⟧⟦fg=#cba6f7 bg=#2c2d3d bold⟧in⟦/⟧⟦bg=#2c2d3d⟧ (⟦/⟧⟦fg=#fab387 bg=#2c2d3d⟧1⟦/⟧⟦bg=#2c2d3d⟧, -⟦/⟧⟦fg=#fab387 bg=#2c2d3d⟧1⟦/⟧⟦bg=#2c2d3d⟧)]      ⟦/⟧
   ⟦bg=#2c2d3d⟧                                    ⟦/⟧
 
-  ⟦fg=#6c7086⟧╭────────────┬───────────╮⟦/⟧
-  ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Case       ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Roots     ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
-  ⟦fg=#6c7086⟧├────────────┼───────────┤⟦/⟧
-  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta > 0⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧ 2 real    ⟦fg=#6c7086⟧│⟦/⟧
-  ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧ ⟦/⟧⟦fg=#f38ba8 bg=#272839 ul=curly ulc=#f38ba8⟧\Delta = 0⟦/⟧⟦bg=#272839⟧ ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧ 1 real    ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
-  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta < 0⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧ 2 complex ⟦fg=#6c7086⟧│⟦/⟧
-  ⟦fg=#6c7086⟧╰────────────┴───────────╯⟦/⟧
+  ⟦fg=#6c7086⟧╭───────┬───────────╮⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Case  ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Roots     ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧├───────┼───────────┤⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#94e2d5⟧Δ > 0⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧ 2 real    ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧ ⟦/⟧⟦fg=#94e2d5 bg=#272839⟧Δ = 0⟦/⟧⟦bg=#272839⟧ ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧ 1 real    ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#94e2d5⟧Δ < 0⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧ 2 complex ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧╰───────┴───────────╯⟦/⟧
 
   ⟦fg=#2c2d3e⟧─⟦/⟧⟦fg=#3b3d4f⟧─⟦/⟧⟦fg=#4b4d61⟧─⟦/⟧⟦fg=#5b5e73⟧─⟦/⟧⟦fg=#6c7086⟧────────────────────────────⟦/⟧⟦fg=#5b5e73⟧─⟦/⟧⟦fg=#4b4d61⟧─⟦/⟧⟦fg=#3b3d4f⟧─⟦/⟧⟦fg=#2c2d3e⟧─⟦/⟧
 
@@ -128,20 +124,23 @@ expression: "styled(\"llm-style\", & Caps :: full(), & WIDTHS)"
   ⟦fg=#cba6f7 bold⟧Solving the quadratic equation⟦/⟧
   ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c4a0ef⟧──⟦/⟧⟦fg=#bd9be6⟧──⟦/⟧⟦fg=#b695de⟧──⟦/⟧⟦fg=#af90d6⟧──⟦/⟧⟦fg=#a88ace⟧──⟦/⟧⟦fg=#a185c6⟧──⟦/⟧⟦fg=#9a80be⟧──⟦/⟧⟦fg=#937ab6⟧──⟦/⟧⟦fg=#8c75ae⟧──⟦/⟧⟦fg=#8570a6⟧──⟦/⟧⟦fg=#7f6b9f⟧──⟦/⟧⟦fg=#786597⟧──⟦/⟧⟦fg=#726090⟧──⟦/⟧⟦fg=#6b5b88⟧──⟦/⟧⟦fg=#655681⟧──⟦/⟧⟦fg=#5f5179⟧──⟦/⟧⟦fg=#584c72⟧──⟦/⟧⟦fg=#52476b⟧──⟦/⟧⟦fg=#4c4364⟧──⟦/⟧⟦fg=#463e5d⟧──⟦/⟧⟦fg=#403956⟧──⟦/⟧⟦fg=#3a344f⟧──⟦/⟧
 
-  To solve ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧ax^2 + bx + c = 0⟦/⟧, use the ⟦bold⟧quadratic formula⟦/⟧:
+  To solve ⟦fg=#94e2d5 italic⟧ax⟦/⟧⟦fg=#94e2d5⟧² + ⟦/⟧⟦fg=#94e2d5 italic⟧bx⟦/⟧⟦fg=#94e2d5⟧ + ⟦/⟧⟦fg=#94e2d5 italic⟧c⟦/⟧⟦fg=#94e2d5⟧ = 0⟦/⟧, use the ⟦bold⟧quadratic formula⟦/⟧:
 
-                     ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}⟦/⟧
+                                 ⟦fg=#94e2d5⟧        ▁▁▁▁▁▁⟦/⟧
+                                 ⟦fg=#94e2d5⟧    −⟦/⟧⟦fg=#94e2d5 italic⟧b⟦/⟧⟦fg=#94e2d5⟧±√⟦/⟧⟦fg=#94e2d5 italic⟧b⟦/⟧⟦fg=#94e2d5⟧²−4⟦/⟧⟦fg=#94e2d5 italic⟧ac⟦/⟧
+                                 ⟦fg=#94e2d5 italic⟧x⟦/⟧⟦fg=#94e2d5⟧ = ──────────⟦/⟧
+                                 ⟦fg=#94e2d5⟧        2⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧
 
   ⟦fg=#94e2d5 bold⟧▎ Steps⟦/⟧
 
-  ⟦fg=#89b4fa⟧1.⟦/⟧ ⟦bold⟧Compute the discriminant⟦/⟧ ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta = b^2 - 4ac⟦/⟧.
+  ⟦fg=#89b4fa⟧1.⟦/⟧ ⟦bold⟧Compute the discriminant⟦/⟧ ⟦fg=#94e2d5⟧Δ = ⟦/⟧⟦fg=#94e2d5 italic⟧b⟦/⟧⟦fg=#94e2d5⟧² − 4⟦/⟧⟦fg=#94e2d5 italic⟧ac⟦/⟧.
   ⟦fg=#89b4fa⟧2.⟦/⟧ ⟦bold⟧Check its sign⟦/⟧:
-     ⟦fg=#89b4fa⟧◦⟦/⟧ If ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta > 0⟦/⟧: two real roots.
-     ⟦fg=#89b4fa⟧◦⟦/⟧ If ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta = 0⟦/⟧: one real root.
-     ⟦fg=#89b4fa⟧◦⟦/⟧ If ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta < 0⟦/⟧: two complex roots.
+     ⟦fg=#89b4fa⟧◦⟦/⟧ If ⟦fg=#94e2d5⟧Δ > 0⟦/⟧: two real roots.
+     ⟦fg=#89b4fa⟧◦⟦/⟧ If ⟦fg=#94e2d5⟧Δ = 0⟦/⟧: one real root.
+     ⟦fg=#89b4fa⟧◦⟦/⟧ If ⟦fg=#94e2d5⟧Δ < 0⟦/⟧: two complex roots.
   ⟦fg=#89b4fa⟧3.⟦/⟧ ⟦bold⟧Apply the formula⟦/⟧ above.
 
-  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8 bold⟧Note:⟦/⟧⟦fg=#a6adc8⟧ when ⟦/⟧⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧a = 0⟦/⟧⟦fg=#a6adc8⟧ the equation is linear, not quadratic.⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8 bold⟧Note:⟦/⟧⟦fg=#a6adc8⟧ when ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧ = 0⟦/⟧⟦fg=#a6adc8⟧ the equation is linear, not quadratic.⟦/⟧
 
   ⟦fg=#94e2d5 bold⟧▎ Example in Python⟦/⟧
 
@@ -155,13 +154,13 @@ expression: "styled(\"llm-style\", & Caps :: full(), & WIDTHS)"
   ⟦bg=#2c2d3d⟧     ⟦/⟧⟦fg=#cba6f7 bg=#2c2d3d bold⟧return⟦/⟧⟦bg=#2c2d3d⟧ [(-b + s * math.sqrt(d)) / (⟦/⟧⟦fg=#fab387 bg=#2c2d3d⟧2⟦/⟧⟦bg=#2c2d3d⟧ * a) ⟦/⟧⟦fg=#cba6f7 bg=#2c2d3d bold⟧for⟦/⟧⟦bg=#2c2d3d⟧ s ⟦/⟧⟦fg=#cba6f7 bg=#2c2d3d bold⟧in⟦/⟧⟦bg=#2c2d3d⟧ (⟦/⟧⟦fg=#fab387 bg=#2c2d3d⟧1⟦/⟧⟦bg=#2c2d3d⟧, -⟦/⟧⟦fg=#fab387 bg=#2c2d3d⟧1⟦/⟧⟦bg=#2c2d3d⟧)]            ⟦/⟧
   ⟦bg=#2c2d3d⟧                                                                            ⟦/⟧
 
-  ⟦fg=#6c7086⟧╭────────────┬───────────╮⟦/⟧
-  ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Case       ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Roots     ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
-  ⟦fg=#6c7086⟧├────────────┼───────────┤⟦/⟧
-  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta > 0⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧ 2 real    ⟦fg=#6c7086⟧│⟦/⟧
-  ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧ ⟦/⟧⟦fg=#f38ba8 bg=#272839 ul=curly ulc=#f38ba8⟧\Delta = 0⟦/⟧⟦bg=#272839⟧ ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧ 1 real    ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
-  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta < 0⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧ 2 complex ⟦fg=#6c7086⟧│⟦/⟧
-  ⟦fg=#6c7086⟧╰────────────┴───────────╯⟦/⟧
+  ⟦fg=#6c7086⟧╭───────┬───────────╮⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Case  ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Roots     ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧├───────┼───────────┤⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#94e2d5⟧Δ > 0⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧ 2 real    ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧ ⟦/⟧⟦fg=#94e2d5 bg=#272839⟧Δ = 0⟦/⟧⟦bg=#272839⟧ ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧ 1 real    ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#94e2d5⟧Δ < 0⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧ 2 complex ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧╰───────┴───────────╯⟦/⟧
 
   ⟦fg=#252536⟧─⟦/⟧⟦fg=#2c2d3e⟧─⟦/⟧⟦fg=#343547⟧─⟦/⟧⟦fg=#3b3d4f⟧─⟦/⟧⟦fg=#434558⟧─⟦/⟧⟦fg=#4b4d61⟧─⟦/⟧⟦fg=#53566a⟧─⟦/⟧⟦fg=#5b5e73⟧─⟦/⟧⟦fg=#64677d⟧─⟦/⟧⟦fg=#6c7086⟧──────────────────────────────────────────────────────────⟦/⟧⟦fg=#64677d⟧─⟦/⟧⟦fg=#5b5e73⟧─⟦/⟧⟦fg=#53566a⟧─⟦/⟧⟦fg=#4b4d61⟧─⟦/⟧⟦fg=#434558⟧─⟦/⟧⟦fg=#3b3d4f⟧─⟦/⟧⟦fg=#343547⟧─⟦/⟧⟦fg=#2c2d3e⟧─⟦/⟧⟦fg=#252536⟧─⟦/⟧
 
@@ -171,20 +170,23 @@ expression: "styled(\"llm-style\", & Caps :: full(), & WIDTHS)"
           ⟦fg=#cba6f7 bold⟧Solving the quadratic equation⟦/⟧
           ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c6a2f2⟧──⟦/⟧⟦fg=#c29fec⟧──⟦/⟧⟦fg=#bd9be7⟧──⟦/⟧⟦fg=#b897e1⟧──⟦/⟧⟦fg=#b494dc⟧──⟦/⟧⟦fg=#af90d7⟧──⟦/⟧⟦fg=#aa8dd1⟧──⟦/⟧⟦fg=#a689cc⟧──⟦/⟧⟦fg=#a185c7⟧──⟦/⟧⟦fg=#9d82c1⟧──⟦/⟧⟦fg=#987ebc⟧──⟦/⟧⟦fg=#947bb7⟧──⟦/⟧⟦fg=#8f77b2⟧──⟦/⟧⟦fg=#8b74ad⟧──⟦/⟧⟦fg=#8670a8⟧──⟦/⟧⟦fg=#826da3⟧──⟦/⟧⟦fg=#7e6a9d⟧──⟦/⟧⟦fg=#796698⟧──⟦/⟧⟦fg=#756393⟧──⟦/⟧⟦fg=#71608e⟧──⟦/⟧⟦fg=#6d5c8a⟧──⟦/⟧⟦fg=#685985⟧──⟦/⟧⟦fg=#645680⟧──⟦/⟧⟦fg=#60527b⟧──⟦/⟧⟦fg=#5c4f76⟧──⟦/⟧⟦fg=#584c71⟧──⟦/⟧⟦fg=#54496d⟧──⟦/⟧⟦fg=#504568⟧──⟦/⟧⟦fg=#4c4263⟧──⟦/⟧⟦fg=#483f5f⟧──⟦/⟧⟦fg=#443c5a⟧──⟦/⟧⟦fg=#403956⟧──⟦/⟧⟦fg=#3c3651⟧──⟦/⟧⟦fg=#38334d⟧──⟦/⟧
 
-          To solve ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧ax^2 + bx + c = 0⟦/⟧, use the ⟦bold⟧quadratic formula⟦/⟧:
+          To solve ⟦fg=#94e2d5 italic⟧ax⟦/⟧⟦fg=#94e2d5⟧² + ⟦/⟧⟦fg=#94e2d5 italic⟧bx⟦/⟧⟦fg=#94e2d5⟧ + ⟦/⟧⟦fg=#94e2d5 italic⟧c⟦/⟧⟦fg=#94e2d5⟧ = 0⟦/⟧, use the ⟦bold⟧quadratic formula⟦/⟧:
 
-                                         ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}⟦/⟧
+                                                     ⟦fg=#94e2d5⟧        ▁▁▁▁▁▁⟦/⟧
+                                                     ⟦fg=#94e2d5⟧    −⟦/⟧⟦fg=#94e2d5 italic⟧b⟦/⟧⟦fg=#94e2d5⟧±√⟦/⟧⟦fg=#94e2d5 italic⟧b⟦/⟧⟦fg=#94e2d5⟧²−4⟦/⟧⟦fg=#94e2d5 italic⟧ac⟦/⟧
+                                                     ⟦fg=#94e2d5 italic⟧x⟦/⟧⟦fg=#94e2d5⟧ = ──────────⟦/⟧
+                                                     ⟦fg=#94e2d5⟧        2⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧
 
           ⟦fg=#94e2d5 bold⟧▎ Steps⟦/⟧
 
-          ⟦fg=#89b4fa⟧1.⟦/⟧ ⟦bold⟧Compute the discriminant⟦/⟧ ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta = b^2 - 4ac⟦/⟧.
+          ⟦fg=#89b4fa⟧1.⟦/⟧ ⟦bold⟧Compute the discriminant⟦/⟧ ⟦fg=#94e2d5⟧Δ = ⟦/⟧⟦fg=#94e2d5 italic⟧b⟦/⟧⟦fg=#94e2d5⟧² − 4⟦/⟧⟦fg=#94e2d5 italic⟧ac⟦/⟧.
           ⟦fg=#89b4fa⟧2.⟦/⟧ ⟦bold⟧Check its sign⟦/⟧:
-             ⟦fg=#89b4fa⟧◦⟦/⟧ If ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta > 0⟦/⟧: two real roots.
-             ⟦fg=#89b4fa⟧◦⟦/⟧ If ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta = 0⟦/⟧: one real root.
-             ⟦fg=#89b4fa⟧◦⟦/⟧ If ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta < 0⟦/⟧: two complex roots.
+             ⟦fg=#89b4fa⟧◦⟦/⟧ If ⟦fg=#94e2d5⟧Δ > 0⟦/⟧: two real roots.
+             ⟦fg=#89b4fa⟧◦⟦/⟧ If ⟦fg=#94e2d5⟧Δ = 0⟦/⟧: one real root.
+             ⟦fg=#89b4fa⟧◦⟦/⟧ If ⟦fg=#94e2d5⟧Δ < 0⟦/⟧: two complex roots.
           ⟦fg=#89b4fa⟧3.⟦/⟧ ⟦bold⟧Apply the formula⟦/⟧ above.
 
-          ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8 bold⟧Note:⟦/⟧⟦fg=#a6adc8⟧ when ⟦/⟧⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧a = 0⟦/⟧⟦fg=#a6adc8⟧ the equation is linear, not quadratic.⟦/⟧
+          ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8 bold⟧Note:⟦/⟧⟦fg=#a6adc8⟧ when ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧ = 0⟦/⟧⟦fg=#a6adc8⟧ the equation is linear, not quadratic.⟦/⟧
 
           ⟦fg=#94e2d5 bold⟧▎ Example in Python⟦/⟧
 
@@ -198,13 +200,13 @@ expression: "styled(\"llm-style\", & Caps :: full(), & WIDTHS)"
           ⟦bg=#2c2d3d⟧     ⟦/⟧⟦fg=#cba6f7 bg=#2c2d3d bold⟧return⟦/⟧⟦bg=#2c2d3d⟧ [(-b + s * math.sqrt(d)) / (⟦/⟧⟦fg=#fab387 bg=#2c2d3d⟧2⟦/⟧⟦bg=#2c2d3d⟧ * a) ⟦/⟧⟦fg=#cba6f7 bg=#2c2d3d bold⟧for⟦/⟧⟦bg=#2c2d3d⟧ s ⟦/⟧⟦fg=#cba6f7 bg=#2c2d3d bold⟧in⟦/⟧⟦bg=#2c2d3d⟧ (⟦/⟧⟦fg=#fab387 bg=#2c2d3d⟧1⟦/⟧⟦bg=#2c2d3d⟧, -⟦/⟧⟦fg=#fab387 bg=#2c2d3d⟧1⟦/⟧⟦bg=#2c2d3d⟧)]                                    ⟦/⟧
           ⟦bg=#2c2d3d⟧                                                                                                    ⟦/⟧
 
-          ⟦fg=#6c7086⟧╭────────────┬───────────╮⟦/⟧
-          ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Case       ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Roots     ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
-          ⟦fg=#6c7086⟧├────────────┼───────────┤⟦/⟧
-          ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta > 0⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧ 2 real    ⟦fg=#6c7086⟧│⟦/⟧
-          ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧ ⟦/⟧⟦fg=#f38ba8 bg=#272839 ul=curly ulc=#f38ba8⟧\Delta = 0⟦/⟧⟦bg=#272839⟧ ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧ 1 real    ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
-          ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta < 0⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧ 2 complex ⟦fg=#6c7086⟧│⟦/⟧
-          ⟦fg=#6c7086⟧╰────────────┴───────────╯⟦/⟧
+          ⟦fg=#6c7086⟧╭───────┬───────────╮⟦/⟧
+          ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Case  ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Roots     ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+          ⟦fg=#6c7086⟧├───────┼───────────┤⟦/⟧
+          ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#94e2d5⟧Δ > 0⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧ 2 real    ⟦fg=#6c7086⟧│⟦/⟧
+          ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧ ⟦/⟧⟦fg=#94e2d5 bg=#272839⟧Δ = 0⟦/⟧⟦bg=#272839⟧ ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧ 1 real    ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+          ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#94e2d5⟧Δ < 0⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧ 2 complex ⟦fg=#6c7086⟧│⟦/⟧
+          ⟦fg=#6c7086⟧╰───────┴───────────╯⟦/⟧
 
           ⟦fg=#242535⟧─⟦/⟧⟦fg=#2b2c3d⟧─⟦/⟧⟦fg=#323344⟧─⟦/⟧⟦fg=#383a4c⟧─⟦/⟧⟦fg=#3f4154⟧─⟦/⟧⟦fg=#47495c⟧─⟦/⟧⟦fg=#4e5064⟧─⟦/⟧⟦fg=#55586d⟧─⟦/⟧⟦fg=#5d6075⟧─⟦/⟧⟦fg=#64687d⟧─⟦/⟧⟦fg=#6c7086⟧────────────────────────────────────────────────────────────────────────────────⟦/⟧⟦fg=#64687d⟧─⟦/⟧⟦fg=#5d6075⟧─⟦/⟧⟦fg=#55586d⟧─⟦/⟧⟦fg=#4e5064⟧─⟦/⟧⟦fg=#47495c⟧─⟦/⟧⟦fg=#3f4154⟧─⟦/⟧⟦fg=#383a4c⟧─⟦/⟧⟦fg=#323344⟧─⟦/⟧⟦fg=#2b2c3d⟧─⟦/⟧⟦fg=#242535⟧─⟦/⟧
 

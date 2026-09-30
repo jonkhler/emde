@@ -89,11 +89,14 @@ expression: "styled(\"kitchen-sink\", &caps, &[80])"
   ⟦fg=idx183 bold⟧Math⟦/⟧
   ⟦fg=idx183 bold⟧━━━━────────────────────────────────────────────────────────────────────────⟦/⟧
 
-  Inline math ⟦fg=idx211 ul=curly ulc=idx211⟧e^{i\pi} + 1 = 0⟦/⟧ and ⟦fg=idx211 ul=curly ulc=idx211⟧x^2⟦/⟧, and money: $5 and $10, or $5-$10.
+  Inline math ⟦fg=idx116 italic⟧e⟦/⟧⟦fg=idx116 dim⟧^(⟦/⟧⟦fg=idx116 italic⟧iπ⟦/⟧⟦fg=idx116 dim⟧)⟦/⟧⟦fg=idx116⟧ + 1 = 0⟦/⟧ and ⟦fg=idx116 italic⟧x⟦/⟧⟦fg=idx116⟧²⟦/⟧, and money: $5 and $10, or $5-$10.
 
-                  ⟦fg=idx211 ul=curly ulc=idx211⟧\sum_{i=1}^{n} i^2 = \frac{n(n+1)(2n+1)}{6}⟦/⟧
+                             ⟦fg=idx116⟧ ⟦/⟧⟦fg=idx116 italic⟧n⟦/⟧⟦fg=idx116⟧       ⟦/⟧⟦fg=idx116 italic⟧n⟦/⟧⟦fg=idx116⟧(⟦/⟧⟦fg=idx116 italic⟧n⟦/⟧⟦fg=idx116⟧+1)(2⟦/⟧⟦fg=idx116 italic⟧n⟦/⟧⟦fg=idx116⟧+1)⟦/⟧
+                             ⟦fg=idx116⟧ ∑  ⟦/⟧⟦fg=idx116 italic⟧i⟦/⟧⟦fg=idx116⟧² = ────────────⟦/⟧
+                             ⟦fg=idx116 italic⟧i⟦/⟧⟦fg=idx116⟧=1           6⟦/⟧
 
-                ⟦fg=idx211 ul=curly ulc=idx211⟧A = \begin{pmatrix} a & b \\ c & d \end{pmatrix}⟦/⟧
+                                   ⟦fg=idx116 italic⟧A⟦/⟧⟦fg=idx116⟧ = ⎛⟦/⟧⟦fg=idx116 italic⟧a⟦/⟧⟦fg=idx116⟧  ⟦/⟧⟦fg=idx116 italic⟧b⟦/⟧⟦fg=idx116⟧⎞⟦/⟧
+                                   ⟦fg=idx116⟧    ⎝⟦/⟧⟦fg=idx116 italic⟧c⟦/⟧⟦fg=idx116⟧  ⟦/⟧⟦fg=idx116 italic⟧d⟦/⟧⟦fg=idx116⟧⎠⟦/⟧
 
   ⟦fg=idx183 bold⟧Table⟦/⟧
   ⟦fg=idx183 bold⟧━━━━━───────────────────────────────────────────────────────────────────────⟦/⟧
@@ -101,7 +104,7 @@ expression: "styled(\"kitchen-sink\", &caps, &[80])"
   ⟦fg=idx243⟧╭───────────────────────┬────────┬───────╮⟦/⟧
   ⟦fg=idx243⟧│⟦/⟧⟦bg=idx236 bold⟧ Left                  ⟦/⟧⟦fg=idx243⟧│⟦/⟧⟦bg=idx236 bold⟧ Center ⟦/⟧⟦fg=idx243⟧│⟦/⟧⟦bg=idx236 bold⟧ Right ⟦/⟧⟦fg=idx243⟧│⟦/⟧
   ⟦fg=idx243⟧├───────────────────────┼────────┼───────┤⟦/⟧
-  ⟦fg=idx243⟧│⟦/⟧ ⟦fg=idx216 bg=idx236⟧ a ⟦/⟧                   ⟦fg=idx243⟧│⟦/⟧   ⟦bold⟧b⟦/⟧    ⟦fg=idx243⟧│⟦/⟧     ⟦fg=idx211 ul=curly ulc=idx211⟧c⟦/⟧ ⟦fg=idx243⟧│⟦/⟧
+  ⟦fg=idx243⟧│⟦/⟧ ⟦fg=idx216 bg=idx236⟧ a ⟦/⟧                   ⟦fg=idx243⟧│⟦/⟧   ⟦bold⟧b⟦/⟧    ⟦fg=idx243⟧│⟦/⟧     ⟦fg=idx116 italic⟧c⟦/⟧ ⟦fg=idx243⟧│⟦/⟧
   ⟦fg=idx243⟧│⟦/⟧ long cell with a ⟦fg=idx111 ul link 6⟧link⟦/⟧ ⟦fg=idx243⟧│⟦/⟧   x⟦fg=idx111 link 7⟧¹⟦/⟧   ⟦fg=idx243⟧│⟦/⟧     3 ⟦fg=idx243⟧│⟦/⟧
   ⟦fg=idx243⟧╰───────────────────────┴────────┴───────╯⟦/⟧
 

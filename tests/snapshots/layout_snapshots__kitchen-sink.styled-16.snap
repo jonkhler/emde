@@ -89,11 +89,14 @@ expression: "styled(\"kitchen-sink\", &caps, &[80])"
   ⟦fg=ansi7 bold⟧Math⟦/⟧
   ⟦fg=ansi7 bold⟧────────────────────────────────────────────────────────────────────────────⟦/⟧
 
-  Inline math ⟦fg=ansi9 ul=curly ulc=ansi9⟧e^{i\pi} + 1 = 0⟦/⟧ and ⟦fg=ansi9 ul=curly ulc=ansi9⟧x^2⟦/⟧, and money: $5 and $10, or $5-$10.
+  Inline math ⟦fg=ansi14 italic⟧e⟦/⟧⟦fg=ansi14 dim⟧^(⟦/⟧⟦fg=ansi14 italic⟧iπ⟦/⟧⟦fg=ansi14 dim⟧)⟦/⟧⟦fg=ansi14⟧ + 1 = 0⟦/⟧ and ⟦fg=ansi14 italic⟧x⟦/⟧⟦fg=ansi14⟧²⟦/⟧, and money: $5 and $10, or $5-$10.
 
-                  ⟦fg=ansi9 ul=curly ulc=ansi9⟧\sum_{i=1}^{n} i^2 = \frac{n(n+1)(2n+1)}{6}⟦/⟧
+                             ⟦fg=ansi14⟧ ⟦/⟧⟦fg=ansi14 italic⟧n⟦/⟧⟦fg=ansi14⟧       ⟦/⟧⟦fg=ansi14 italic⟧n⟦/⟧⟦fg=ansi14⟧(⟦/⟧⟦fg=ansi14 italic⟧n⟦/⟧⟦fg=ansi14⟧+1)(2⟦/⟧⟦fg=ansi14 italic⟧n⟦/⟧⟦fg=ansi14⟧+1)⟦/⟧
+                             ⟦fg=ansi14⟧ ∑  ⟦/⟧⟦fg=ansi14 italic⟧i⟦/⟧⟦fg=ansi14⟧² = ────────────⟦/⟧
+                             ⟦fg=ansi14 italic⟧i⟦/⟧⟦fg=ansi14⟧=1           6⟦/⟧
 
-                ⟦fg=ansi9 ul=curly ulc=ansi9⟧A = \begin{pmatrix} a & b \\ c & d \end{pmatrix}⟦/⟧
+                                   ⟦fg=ansi14 italic⟧A⟦/⟧⟦fg=ansi14⟧ = ⎛⟦/⟧⟦fg=ansi14 italic⟧a⟦/⟧⟦fg=ansi14⟧  ⟦/⟧⟦fg=ansi14 italic⟧b⟦/⟧⟦fg=ansi14⟧⎞⟦/⟧
+                                   ⟦fg=ansi14⟧    ⎝⟦/⟧⟦fg=ansi14 italic⟧c⟦/⟧⟦fg=ansi14⟧  ⟦/⟧⟦fg=ansi14 italic⟧d⟦/⟧⟦fg=ansi14⟧⎠⟦/⟧
 
   ⟦fg=ansi7 bold⟧Table⟦/⟧
   ⟦fg=ansi7 bold⟧────────────────────────────────────────────────────────────────────────────⟦/⟧
@@ -101,7 +104,7 @@ expression: "styled(\"kitchen-sink\", &caps, &[80])"
   ⟦fg=ansi8⟧╭───────────────────────┬────────┬───────╮⟦/⟧
   ⟦fg=ansi8⟧│⟦/⟧⟦bg=ansi8 bold⟧ Left                  ⟦/⟧⟦fg=ansi8⟧│⟦/⟧⟦bg=ansi8 bold⟧ Center ⟦/⟧⟦fg=ansi8⟧│⟦/⟧⟦bg=ansi8 bold⟧ Right ⟦/⟧⟦fg=ansi8⟧│⟦/⟧
   ⟦fg=ansi8⟧├───────────────────────┼────────┼───────┤⟦/⟧
-  ⟦fg=ansi8⟧│⟦/⟧ ⟦fg=ansi7 bg=ansi8⟧a⟦/⟧                     ⟦fg=ansi8⟧│⟦/⟧   ⟦bold⟧b⟦/⟧    ⟦fg=ansi8⟧│⟦/⟧     ⟦fg=ansi9 ul=curly ulc=ansi9⟧c⟦/⟧ ⟦fg=ansi8⟧│⟦/⟧
+  ⟦fg=ansi8⟧│⟦/⟧ ⟦fg=ansi7 bg=ansi8⟧a⟦/⟧                     ⟦fg=ansi8⟧│⟦/⟧   ⟦bold⟧b⟦/⟧    ⟦fg=ansi8⟧│⟦/⟧     ⟦fg=ansi14 italic⟧c⟦/⟧ ⟦fg=ansi8⟧│⟦/⟧
   ⟦fg=ansi8⟧│⟦/⟧ long cell with a ⟦fg=ansi6 ul link 6⟧link⟦/⟧ ⟦fg=ansi8⟧│⟦/⟧   x⟦fg=ansi6 link 7⟧¹⟦/⟧   ⟦fg=ansi8⟧│⟦/⟧     3 ⟦fg=ansi8⟧│⟦/⟧
   ⟦fg=ansi8⟧╰───────────────────────┴────────┴───────╯⟦/⟧
 

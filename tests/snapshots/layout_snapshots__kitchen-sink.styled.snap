@@ -110,25 +110,28 @@ expression: "styled(\"kitchen-sink\", & Caps :: full(), & WIDTHS)"
   ⟦fg=#cba6f7 bold⟧Math⟦/⟧
   ⟦fg=#cba6f7 bold⟧━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#b696df⟧──⟦/⟧⟦fg=#a286c8⟧──⟦/⟧⟦fg=#8f77b1⟧──⟦/⟧⟦fg=#7c689b⟧──⟦/⟧⟦fg=#695985⟧──⟦/⟧⟦fg=#574b70⟧──⟦/⟧⟦fg=#453d5c⟧──⟦/⟧
 
-  Inline math
-  ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧e^{i\pi} + 1 = 0⟦/⟧ and
-  ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x^2⟦/⟧, and money: $5
-  and $10, or $5-$10.
+  Inline math ⟦fg=#94e2d5 italic⟧e⟦/⟧⟦fg=#94e2d5 dim⟧^(⟦/⟧⟦fg=#94e2d5 italic⟧iπ⟦/⟧⟦fg=#94e2d5 dim⟧)⟦/⟧⟦fg=#94e2d5⟧ +⟦/⟧
+  ⟦fg=#94e2d5⟧1 = 0⟦/⟧ and ⟦fg=#94e2d5 italic⟧x⟦/⟧⟦fg=#94e2d5⟧²⟦/⟧, and
+  money: $5 and $10,
+  or $5-$10.
 
-  ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\sum_{i=1}^{n} i^2 =⟦/⟧
-  ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\frac{n(n+1)(2n+1)}⟦/⟧
-          ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧{6}⟦/⟧
+    ⟦fg=#94e2d5⟧ ⟦/⟧⟦fg=#94e2d5 italic⟧n⟦/⟧
+    ⟦fg=#94e2d5⟧ ∑  ⟦/⟧⟦fg=#94e2d5 italic⟧i⟦/⟧⟦fg=#94e2d5⟧²⟦/⟧
+    ⟦fg=#94e2d5 italic⟧i⟦/⟧⟦fg=#94e2d5⟧=1⟦/⟧
 
-  ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧A = \begin{pmatrix}⟦/⟧
-     ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧a & b \\ c & d⟦/⟧
-     ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\end{pmatrix}⟦/⟧
+    ⟦fg=#94e2d5⟧    ⟦/⟧⟦fg=#94e2d5 italic⟧n⟦/⟧⟦fg=#94e2d5⟧(⟦/⟧⟦fg=#94e2d5 italic⟧n⟦/⟧⟦fg=#94e2d5⟧+1)(2⟦/⟧⟦fg=#94e2d5 italic⟧n⟦/⟧⟦fg=#94e2d5⟧+1)⟦/⟧
+    ⟦fg=#94e2d5⟧  = ────────────⟦/⟧
+    ⟦fg=#94e2d5⟧         6⟦/⟧
+
+       ⟦fg=#94e2d5 italic⟧A⟦/⟧⟦fg=#94e2d5⟧ = ⎛⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧  ⟦/⟧⟦fg=#94e2d5 italic⟧b⟦/⟧⟦fg=#94e2d5⟧⎞⟦/⟧
+       ⟦fg=#94e2d5⟧    ⎝⟦/⟧⟦fg=#94e2d5 italic⟧c⟦/⟧⟦fg=#94e2d5⟧  ⟦/⟧⟦fg=#94e2d5 italic⟧d⟦/⟧⟦fg=#94e2d5⟧⎠⟦/⟧
 
   ⟦fg=#cba6f7 bold⟧Table⟦/⟧
   ⟦fg=#cba6f7 bold⟧━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#b494dc⟧──⟦/⟧⟦fg=#9d82c1⟧──⟦/⟧⟦fg=#8670a8⟧──⟦/⟧⟦fg=#71608e⟧──⟦/⟧⟦fg=#5c4f76⟧──⟦/⟧⟦fg=#483f5f⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
 
   ⟦bold⟧Left⟦/⟧⟦fg=#6c7086⟧: ⟦/⟧⟦fg=#fab387 bg=#2c2d3d⟧ a ⟦/⟧
   ⟦bold⟧Center⟦/⟧⟦fg=#6c7086⟧: ⟦/⟧⟦bold⟧b⟦/⟧
-  ⟦bold⟧Right⟦/⟧⟦fg=#6c7086⟧: ⟦/⟧⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧c⟦/⟧
+  ⟦bold⟧Right⟦/⟧⟦fg=#6c7086⟧: ⟦/⟧⟦fg=#94e2d5 italic⟧c⟦/⟧
   ⟦fg=#6c7086⟧────────⟦/⟧
   ⟦bold⟧Left⟦/⟧⟦fg=#6c7086⟧: ⟦/⟧long cell with
     a ⟦fg=#89b4fa ul link 6⟧link⟦/⟧
@@ -262,15 +265,15 @@ expression: "styled(\"kitchen-sink\", & Caps :: full(), & WIDTHS)"
   ⟦fg=#cba6f7 bold⟧Math⟦/⟧
   ⟦fg=#cba6f7 bold⟧━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c19eeb⟧──⟦/⟧⟦fg=#b696df⟧──⟦/⟧⟦fg=#ac8ed4⟧──⟦/⟧⟦fg=#a286c8⟧──⟦/⟧⟦fg=#997fbd⟧──⟦/⟧⟦fg=#8f77b1⟧──⟦/⟧⟦fg=#856fa6⟧──⟦/⟧⟦fg=#7c689b⟧──⟦/⟧⟦fg=#726190⟧──⟦/⟧⟦fg=#695985⟧──⟦/⟧⟦fg=#60527b⟧──⟦/⟧⟦fg=#574b70⟧──⟦/⟧⟦fg=#4e4466⟧──⟦/⟧⟦fg=#453d5c⟧──⟦/⟧⟦fg=#3d3652⟧──⟦/⟧
 
-  Inline math ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧e^{i\pi} + 1 = 0⟦/⟧ and
-  ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x^2⟦/⟧, and money: $5 and $10, or $5-
-  $10.
+  Inline math ⟦fg=#94e2d5 italic⟧e⟦/⟧⟦fg=#94e2d5 dim⟧^(⟦/⟧⟦fg=#94e2d5 italic⟧iπ⟦/⟧⟦fg=#94e2d5 dim⟧)⟦/⟧⟦fg=#94e2d5⟧ + 1 = 0⟦/⟧ and ⟦fg=#94e2d5 italic⟧x⟦/⟧⟦fg=#94e2d5⟧²⟦/⟧,
+  and money: $5 and $10, or $5-$10.
 
-   ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\sum_{i=1}^{n} i^2 = \frac{n(n+1)⟦/⟧
-               ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧(2n+1)}{6}⟦/⟧
+         ⟦fg=#94e2d5⟧ ⟦/⟧⟦fg=#94e2d5 italic⟧n⟦/⟧⟦fg=#94e2d5⟧       ⟦/⟧⟦fg=#94e2d5 italic⟧n⟦/⟧⟦fg=#94e2d5⟧(⟦/⟧⟦fg=#94e2d5 italic⟧n⟦/⟧⟦fg=#94e2d5⟧+1)(2⟦/⟧⟦fg=#94e2d5 italic⟧n⟦/⟧⟦fg=#94e2d5⟧+1)⟦/⟧
+         ⟦fg=#94e2d5⟧ ∑  ⟦/⟧⟦fg=#94e2d5 italic⟧i⟦/⟧⟦fg=#94e2d5⟧² = ────────────⟦/⟧
+         ⟦fg=#94e2d5 italic⟧i⟦/⟧⟦fg=#94e2d5⟧=1           6⟦/⟧
 
-   ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧A = \begin{pmatrix} a & b \\ c & d⟦/⟧
-             ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\end{pmatrix}⟦/⟧
+               ⟦fg=#94e2d5 italic⟧A⟦/⟧⟦fg=#94e2d5⟧ = ⎛⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧  ⟦/⟧⟦fg=#94e2d5 italic⟧b⟦/⟧⟦fg=#94e2d5⟧⎞⟦/⟧
+               ⟦fg=#94e2d5⟧    ⎝⟦/⟧⟦fg=#94e2d5 italic⟧c⟦/⟧⟦fg=#94e2d5⟧  ⟦/⟧⟦fg=#94e2d5 italic⟧d⟦/⟧⟦fg=#94e2d5⟧⎠⟦/⟧
 
   ⟦fg=#cba6f7 bold⟧Table⟦/⟧
   ⟦fg=#cba6f7 bold⟧━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c09dea⟧──⟦/⟧⟦fg=#b595de⟧──⟦/⟧⟦fg=#aa8dd1⟧──⟦/⟧⟦fg=#a084c5⟧──⟦/⟧⟦fg=#957cb9⟧──⟦/⟧⟦fg=#8b74ad⟧──⟦/⟧⟦fg=#816ca1⟧──⟦/⟧⟦fg=#776495⟧──⟦/⟧⟦fg=#6d5c8a⟧──⟦/⟧⟦fg=#63547e⟧──⟦/⟧⟦fg=#594d73⟧──⟦/⟧⟦fg=#504568⟧──⟦/⟧⟦fg=#463e5d⟧──⟦/⟧⟦fg=#3d3753⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
@@ -278,7 +281,7 @@ expression: "styled(\"kitchen-sink\", & Caps :: full(), & WIDTHS)"
   ⟦fg=#6c7086⟧╭─────────────────┬────────┬───────╮⟦/⟧
   ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Left            ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Center ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Right ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
   ⟦fg=#6c7086⟧├─────────────────┼────────┼───────┤⟦/⟧
-  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#fab387 bg=#2c2d3d⟧ a ⟦/⟧             ⟦fg=#6c7086⟧│⟦/⟧   ⟦bold⟧b⟦/⟧    ⟦fg=#6c7086⟧│⟦/⟧     ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧c⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#fab387 bg=#2c2d3d⟧ a ⟦/⟧             ⟦fg=#6c7086⟧│⟦/⟧   ⟦bold⟧b⟦/⟧    ⟦fg=#6c7086⟧│⟦/⟧     ⟦fg=#94e2d5 italic⟧c⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧
   ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧ long cell with  ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧   x⟦/⟧⟦fg=#89b4fa bg=#272839 link 7⟧¹⟦/⟧⟦bg=#272839⟧   ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧     3 ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
   ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧ a ⟦/⟧⟦fg=#89b4fa bg=#272839 ul link 6⟧link⟦/⟧⟦bg=#272839⟧          ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧        ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧       ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
   ⟦fg=#6c7086⟧╰─────────────────┴────────┴───────╯⟦/⟧
@@ -398,11 +401,14 @@ expression: "styled(\"kitchen-sink\", & Caps :: full(), & WIDTHS)"
   ⟦fg=#cba6f7 bold⟧Math⟦/⟧
   ⟦fg=#cba6f7 bold⟧━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c6a2f2⟧──⟦/⟧⟦fg=#c29fec⟧──⟦/⟧⟦fg=#bd9be7⟧──⟦/⟧⟦fg=#b998e2⟧──⟦/⟧⟦fg=#b494dd⟧──⟦/⟧⟦fg=#b091d7⟧──⟦/⟧⟦fg=#ab8dd2⟧──⟦/⟧⟦fg=#a78acd⟧──⟦/⟧⟦fg=#a286c8⟧──⟦/⟧⟦fg=#9e83c3⟧──⟦/⟧⟦fg=#9a7fbe⟧──⟦/⟧⟦fg=#957cb9⟧──⟦/⟧⟦fg=#9179b4⟧──⟦/⟧⟦fg=#8d75af⟧──⟦/⟧⟦fg=#8872aa⟧──⟦/⟧⟦fg=#846fa5⟧──⟦/⟧⟦fg=#806ba0⟧──⟦/⟧⟦fg=#7c689b⟧──⟦/⟧⟦fg=#776596⟧──⟦/⟧⟦fg=#736191⟧──⟦/⟧⟦fg=#6f5e8c⟧──⟦/⟧⟦fg=#6b5b88⟧──⟦/⟧⟦fg=#675883⟧──⟦/⟧⟦fg=#63547e⟧──⟦/⟧⟦fg=#5f5179⟧──⟦/⟧⟦fg=#5b4e75⟧──⟦/⟧⟦fg=#574b70⟧──⟦/⟧⟦fg=#53486c⟧──⟦/⟧⟦fg=#4f4567⟧──⟦/⟧⟦fg=#4b4263⟧──⟦/⟧⟦fg=#473f5e⟧──⟦/⟧⟦fg=#433c5a⟧──⟦/⟧⟦fg=#403955⟧──⟦/⟧⟦fg=#3c3651⟧──⟦/⟧⟦fg=#38334c⟧──⟦/⟧
 
-  Inline math ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧e^{i\pi} + 1 = 0⟦/⟧ and ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x^2⟦/⟧, and money: $5 and $10, or $5-$10.
+  Inline math ⟦fg=#94e2d5 italic⟧e⟦/⟧⟦fg=#94e2d5 dim⟧^(⟦/⟧⟦fg=#94e2d5 italic⟧iπ⟦/⟧⟦fg=#94e2d5 dim⟧)⟦/⟧⟦fg=#94e2d5⟧ + 1 = 0⟦/⟧ and ⟦fg=#94e2d5 italic⟧x⟦/⟧⟦fg=#94e2d5⟧²⟦/⟧, and money: $5 and $10, or $5-$10.
 
-                  ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\sum_{i=1}^{n} i^2 = \frac{n(n+1)(2n+1)}{6}⟦/⟧
+                             ⟦fg=#94e2d5⟧ ⟦/⟧⟦fg=#94e2d5 italic⟧n⟦/⟧⟦fg=#94e2d5⟧       ⟦/⟧⟦fg=#94e2d5 italic⟧n⟦/⟧⟦fg=#94e2d5⟧(⟦/⟧⟦fg=#94e2d5 italic⟧n⟦/⟧⟦fg=#94e2d5⟧+1)(2⟦/⟧⟦fg=#94e2d5 italic⟧n⟦/⟧⟦fg=#94e2d5⟧+1)⟦/⟧
+                             ⟦fg=#94e2d5⟧ ∑  ⟦/⟧⟦fg=#94e2d5 italic⟧i⟦/⟧⟦fg=#94e2d5⟧² = ────────────⟦/⟧
+                             ⟦fg=#94e2d5 italic⟧i⟦/⟧⟦fg=#94e2d5⟧=1           6⟦/⟧
 
-                ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧A = \begin{pmatrix} a & b \\ c & d \end{pmatrix}⟦/⟧
+                                   ⟦fg=#94e2d5 italic⟧A⟦/⟧⟦fg=#94e2d5⟧ = ⎛⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧  ⟦/⟧⟦fg=#94e2d5 italic⟧b⟦/⟧⟦fg=#94e2d5⟧⎞⟦/⟧
+                                   ⟦fg=#94e2d5⟧    ⎝⟦/⟧⟦fg=#94e2d5 italic⟧c⟦/⟧⟦fg=#94e2d5⟧  ⟦/⟧⟦fg=#94e2d5 italic⟧d⟦/⟧⟦fg=#94e2d5⟧⎠⟦/⟧
 
   ⟦fg=#cba6f7 bold⟧Table⟦/⟧
   ⟦fg=#cba6f7 bold⟧━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c6a2f2⟧──⟦/⟧⟦fg=#c29fec⟧──⟦/⟧⟦fg=#bd9be7⟧──⟦/⟧⟦fg=#b897e1⟧──⟦/⟧⟦fg=#b494dc⟧──⟦/⟧⟦fg=#af90d7⟧──⟦/⟧⟦fg=#aa8dd1⟧──⟦/⟧⟦fg=#a689cc⟧──⟦/⟧⟦fg=#a185c7⟧──⟦/⟧⟦fg=#9d82c1⟧──⟦/⟧⟦fg=#987ebc⟧──⟦/⟧⟦fg=#947bb7⟧──⟦/⟧⟦fg=#8f77b2⟧──⟦/⟧⟦fg=#8b74ad⟧──⟦/⟧⟦fg=#8670a8⟧──⟦/⟧⟦fg=#826da3⟧──⟦/⟧⟦fg=#7e6a9d⟧──⟦/⟧⟦fg=#796698⟧──⟦/⟧⟦fg=#756393⟧──⟦/⟧⟦fg=#71608e⟧──⟦/⟧⟦fg=#6d5c8a⟧──⟦/⟧⟦fg=#685985⟧──⟦/⟧⟦fg=#645680⟧──⟦/⟧⟦fg=#60527b⟧──⟦/⟧⟦fg=#5c4f76⟧──⟦/⟧⟦fg=#584c71⟧──⟦/⟧⟦fg=#54496d⟧──⟦/⟧⟦fg=#504568⟧──⟦/⟧⟦fg=#4c4263⟧──⟦/⟧⟦fg=#483f5f⟧──⟦/⟧⟦fg=#443c5a⟧──⟦/⟧⟦fg=#403956⟧──⟦/⟧⟦fg=#3c3651⟧──⟦/⟧⟦fg=#38334d⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
@@ -410,7 +416,7 @@ expression: "styled(\"kitchen-sink\", & Caps :: full(), & WIDTHS)"
   ⟦fg=#6c7086⟧╭───────────────────────┬────────┬───────╮⟦/⟧
   ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Left                  ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Center ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Right ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
   ⟦fg=#6c7086⟧├───────────────────────┼────────┼───────┤⟦/⟧
-  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#fab387 bg=#2c2d3d⟧ a ⟦/⟧                   ⟦fg=#6c7086⟧│⟦/⟧   ⟦bold⟧b⟦/⟧    ⟦fg=#6c7086⟧│⟦/⟧     ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧c⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#fab387 bg=#2c2d3d⟧ a ⟦/⟧                   ⟦fg=#6c7086⟧│⟦/⟧   ⟦bold⟧b⟦/⟧    ⟦fg=#6c7086⟧│⟦/⟧     ⟦fg=#94e2d5 italic⟧c⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧
   ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧ long cell with a ⟦/⟧⟦fg=#89b4fa bg=#272839 ul link 6⟧link⟦/⟧⟦bg=#272839⟧ ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧   x⟦/⟧⟦fg=#89b4fa bg=#272839 link 7⟧¹⟦/⟧⟦bg=#272839⟧   ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧     3 ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
   ⟦fg=#6c7086⟧╰───────────────────────┴────────┴───────╯⟦/⟧
 
@@ -524,11 +530,14 @@ expression: "styled(\"kitchen-sink\", & Caps :: full(), & WIDTHS)"
           ⟦fg=#cba6f7 bold⟧Math⟦/⟧
           ⟦fg=#cba6f7 bold⟧━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c8a3f3⟧──⟦/⟧⟦fg=#c4a1ef⟧──⟦/⟧⟦fg=#c19eeb⟧──⟦/⟧⟦fg=#bd9be7⟧──⟦/⟧⟦fg=#ba99e3⟧──⟦/⟧⟦fg=#b696df⟧──⟦/⟧⟦fg=#b393db⟧──⟦/⟧⟦fg=#b091d7⟧──⟦/⟧⟦fg=#ac8ed4⟧──⟦/⟧⟦fg=#a98cd0⟧──⟦/⟧⟦fg=#a689cc⟧──⟦/⟧⟦fg=#a286c8⟧──⟦/⟧⟦fg=#9f84c4⟧──⟦/⟧⟦fg=#9c81c0⟧──⟦/⟧⟦fg=#997fbd⟧──⟦/⟧⟦fg=#957cb9⟧──⟦/⟧⟦fg=#9279b5⟧──⟦/⟧⟦fg=#8f77b1⟧──⟦/⟧⟦fg=#8c74ad⟧──⟦/⟧⟦fg=#8872aa⟧──⟦/⟧⟦fg=#856fa6⟧──⟦/⟧⟦fg=#826da2⟧──⟦/⟧⟦fg=#7f6a9f⟧──⟦/⟧⟦fg=#7c689b⟧──⟦/⟧⟦fg=#786597⟧──⟦/⟧⟦fg=#756394⟧──⟦/⟧⟦fg=#726190⟧──⟦/⟧⟦fg=#6f5e8c⟧──⟦/⟧⟦fg=#6c5c89⟧──⟦/⟧⟦fg=#695985⟧──⟦/⟧⟦fg=#665782⟧──⟦/⟧⟦fg=#63547e⟧──⟦/⟧⟦fg=#60527b⟧──⟦/⟧⟦fg=#5d5077⟧──⟦/⟧⟦fg=#5a4d74⟧──⟦/⟧⟦fg=#574b70⟧──⟦/⟧⟦fg=#54496d⟧──⟦/⟧⟦fg=#514669⟧──⟦/⟧⟦fg=#4e4466⟧──⟦/⟧⟦fg=#4b4263⟧──⟦/⟧⟦fg=#483f5f⟧──⟦/⟧⟦fg=#453d5c⟧──⟦/⟧⟦fg=#423b58⟧──⟦/⟧⟦fg=#403955⟧──⟦/⟧⟦fg=#3d3652⟧──⟦/⟧⟦fg=#3a344f⟧──⟦/⟧⟦fg=#37324b⟧──⟦/⟧
 
-          Inline math ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧e^{i\pi} + 1 = 0⟦/⟧ and ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x^2⟦/⟧, and money: $5 and $10, or $5-$10.
+          Inline math ⟦fg=#94e2d5 italic⟧e⟦/⟧⟦fg=#94e2d5 dim⟧^(⟦/⟧⟦fg=#94e2d5 italic⟧iπ⟦/⟧⟦fg=#94e2d5 dim⟧)⟦/⟧⟦fg=#94e2d5⟧ + 1 = 0⟦/⟧ and ⟦fg=#94e2d5 italic⟧x⟦/⟧⟦fg=#94e2d5⟧²⟦/⟧, and money: $5 and $10, or $5-$10.
 
-                                      ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\sum_{i=1}^{n} i^2 = \frac{n(n+1)(2n+1)}{6}⟦/⟧
+                                                 ⟦fg=#94e2d5⟧ ⟦/⟧⟦fg=#94e2d5 italic⟧n⟦/⟧⟦fg=#94e2d5⟧       ⟦/⟧⟦fg=#94e2d5 italic⟧n⟦/⟧⟦fg=#94e2d5⟧(⟦/⟧⟦fg=#94e2d5 italic⟧n⟦/⟧⟦fg=#94e2d5⟧+1)(2⟦/⟧⟦fg=#94e2d5 italic⟧n⟦/⟧⟦fg=#94e2d5⟧+1)⟦/⟧
+                                                 ⟦fg=#94e2d5⟧ ∑  ⟦/⟧⟦fg=#94e2d5 italic⟧i⟦/⟧⟦fg=#94e2d5⟧² = ────────────⟦/⟧
+                                                 ⟦fg=#94e2d5 italic⟧i⟦/⟧⟦fg=#94e2d5⟧=1           6⟦/⟧
 
-                                    ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧A = \begin{pmatrix} a & b \\ c & d \end{pmatrix}⟦/⟧
+                                                       ⟦fg=#94e2d5 italic⟧A⟦/⟧⟦fg=#94e2d5⟧ = ⎛⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧  ⟦/⟧⟦fg=#94e2d5 italic⟧b⟦/⟧⟦fg=#94e2d5⟧⎞⟦/⟧
+                                                       ⟦fg=#94e2d5⟧    ⎝⟦/⟧⟦fg=#94e2d5 italic⟧c⟦/⟧⟦fg=#94e2d5⟧  ⟦/⟧⟦fg=#94e2d5 italic⟧d⟦/⟧⟦fg=#94e2d5⟧⎠⟦/⟧
 
           ⟦fg=#cba6f7 bold⟧Table⟦/⟧
           ⟦fg=#cba6f7 bold⟧━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c7a3f3⟧──⟦/⟧⟦fg=#c4a1ef⟧──⟦/⟧⟦fg=#c09eeb⟧──⟦/⟧⟦fg=#bd9be7⟧──⟦/⟧⟦fg=#ba98e3⟧──⟦/⟧⟦fg=#b696df⟧──⟦/⟧⟦fg=#b393db⟧──⟦/⟧⟦fg=#af90d7⟧──⟦/⟧⟦fg=#ac8ed3⟧──⟦/⟧⟦fg=#a88bcf⟧──⟦/⟧⟦fg=#a588cb⟧──⟦/⟧⟦fg=#a286c7⟧──⟦/⟧⟦fg=#9e83c3⟧──⟦/⟧⟦fg=#9b80bf⟧──⟦/⟧⟦fg=#977ebb⟧──⟦/⟧⟦fg=#947bb7⟧──⟦/⟧⟦fg=#9179b4⟧──⟦/⟧⟦fg=#8d76b0⟧──⟦/⟧⟦fg=#8a73ac⟧──⟦/⟧⟦fg=#8771a8⟧──⟦/⟧⟦fg=#846ea4⟧──⟦/⟧⟦fg=#806ca1⟧──⟦/⟧⟦fg=#7d699d⟧──⟦/⟧⟦fg=#7a6799⟧──⟦/⟧⟦fg=#776495⟧──⟦/⟧⟦fg=#746292⟧──⟦/⟧⟦fg=#705f8e⟧──⟦/⟧⟦fg=#6d5d8a⟧──⟦/⟧⟦fg=#6a5a87⟧──⟦/⟧⟦fg=#675883⟧──⟦/⟧⟦fg=#64557f⟧──⟦/⟧⟦fg=#61537c⟧──⟦/⟧⟦fg=#5e5078⟧──⟦/⟧⟦fg=#5b4e75⟧──⟦/⟧⟦fg=#584c71⟧──⟦/⟧⟦fg=#54496e⟧──⟦/⟧⟦fg=#51476a⟧──⟦/⟧⟦fg=#4e4567⟧──⟦/⟧⟦fg=#4c4263⟧──⟦/⟧⟦fg=#494060⟧──⟦/⟧⟦fg=#463e5c⟧──⟦/⟧⟦fg=#433b59⟧──⟦/⟧⟦fg=#403955⟧──⟦/⟧⟦fg=#3d3752⟧──⟦/⟧⟦fg=#3a344f⟧──⟦/⟧⟦fg=#37324b⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
@@ -536,7 +545,7 @@ expression: "styled(\"kitchen-sink\", & Caps :: full(), & WIDTHS)"
           ⟦fg=#6c7086⟧╭───────────────────────┬────────┬───────╮⟦/⟧
           ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Left                  ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Center ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Right ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
           ⟦fg=#6c7086⟧├───────────────────────┼────────┼───────┤⟦/⟧
-          ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#fab387 bg=#2c2d3d⟧ a ⟦/⟧                   ⟦fg=#6c7086⟧│⟦/⟧   ⟦bold⟧b⟦/⟧    ⟦fg=#6c7086⟧│⟦/⟧     ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧c⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧
+          ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#fab387 bg=#2c2d3d⟧ a ⟦/⟧                   ⟦fg=#6c7086⟧│⟦/⟧   ⟦bold⟧b⟦/⟧    ⟦fg=#6c7086⟧│⟦/⟧     ⟦fg=#94e2d5 italic⟧c⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧
           ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧ long cell with a ⟦/⟧⟦fg=#89b4fa bg=#272839 ul link 6⟧link⟦/⟧⟦bg=#272839⟧ ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧   x⟦/⟧⟦fg=#89b4fa bg=#272839 link 7⟧¹⟦/⟧⟦bg=#272839⟧   ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧     3 ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
           ⟦fg=#6c7086⟧╰───────────────────────┴────────┴───────╯⟦/⟧
 

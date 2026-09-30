@@ -119,18 +119,21 @@ Code
 Math
 ────────────────────
 
-Inline math
-e^{i\pi} + 1 = 0 and
-x^2, and money: $5
-and $10, or $5-$10.
+Inline math e^(iπ) +
+1 = 0 and x², and
+money: $5 and $10,
+or $5-$10.
 
-\sum_{i=1}^{n} i^2 =
-\frac{n(n+1)(2n+1)}
-        {6}
+   n
+   ∑  i²
+  i=1
 
-A = \begin{pmatrix}
-   a & b \\ c & d
-   \end{pmatrix}
+      n(n+1)(2n+1)
+    = ────────────
+           6
+
+     A = ⎛a  b⎞
+         ⎝c  d⎠
 
 Table
 ────────────────────
@@ -280,15 +283,15 @@ Code
 Math
 ────────────────────────────────────
 
-Inline math e^{i\pi} + 1 = 0 and
-x^2, and money: $5 and $10, or $5-
-$10.
+Inline math e^(iπ) + 1 = 0 and x²,
+and money: $5 and $10, or $5-$10.
 
- \sum_{i=1}^{n} i^2 = \frac{n(n+1)
-             (2n+1)}{6}
+        n       n(n+1)(2n+1)
+        ∑  i² = ────────────
+       i=1           6
 
- A = \begin{pmatrix} a & b \\ c & d
-           \end{pmatrix}
+             A = ⎛a  b⎞
+                 ⎝c  d⎠
 
 Table
 ────────────────────────────────────
@@ -424,11 +427,14 @@ Code
 Math
 ────────────────────────────────────────────────────────────────────────────
 
-Inline math e^{i\pi} + 1 = 0 and x^2, and money: $5 and $10, or $5-$10.
+Inline math e^(iπ) + 1 = 0 and x², and money: $5 and $10, or $5-$10.
 
-                \sum_{i=1}^{n} i^2 = \frac{n(n+1)(2n+1)}{6}
+                            n       n(n+1)(2n+1)
+                            ∑  i² = ────────────
+                           i=1           6
 
-              A = \begin{pmatrix} a & b \\ c & d \end{pmatrix}
+                                 A = ⎛a  b⎞
+                                     ⎝c  d⎠
 
 Table
 ────────────────────────────────────────────────────────────────────────────
@@ -558,11 +564,14 @@ Code
 Math
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 
-Inline math e^{i\pi} + 1 = 0 and x^2, and money: $5 and $10, or $5-$10.
+Inline math e^(iπ) + 1 = 0 and x², and money: $5 and $10, or $5-$10.
 
-                            \sum_{i=1}^{n} i^2 = \frac{n(n+1)(2n+1)}{6}
+                                        n       n(n+1)(2n+1)
+                                        ∑  i² = ────────────
+                                       i=1           6
 
-                          A = \begin{pmatrix} a & b \\ c & d \end{pmatrix}
+                                             A = ⎛a  b⎞
+                                                 ⎝c  d⎠
 
 Table
 ────────────────────────────────────────────────────────────────────────────────────────────────────

@@ -75,7 +75,7 @@ expression: "styled(\"tables\", & Caps :: full(), & WIDTHS)"
   ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Only a header ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
   ⟦fg=#6c7086⟧╰───────────────╯⟦/⟧
 
-  ⟦bold⟧Math⟦/⟧⟦fg=#6c7086⟧: ⟦/⟧⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x^2⟦/⟧
+  ⟦bold⟧Math⟦/⟧⟦fg=#6c7086⟧: ⟦/⟧⟦fg=#94e2d5 italic⟧x⟦/⟧⟦fg=#94e2d5⟧²⟦/⟧
   ⟦bold⟧Link⟦/⟧⟦fg=#6c7086⟧: ⟦/⟧⟦fg=#89b4fa ul link 0⟧link⟦/⟧
   ⟦bold⟧Note⟦/⟧⟦fg=#6c7086⟧: ⟦/⟧ref⟦fg=#89b4fa link 1⟧¹⟦/⟧
 
@@ -143,7 +143,7 @@ expression: "styled(\"tables\", & Caps :: full(), & WIDTHS)"
   ⟦fg=#6c7086⟧╭──────┬──────┬──────╮⟦/⟧
   ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Math ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Link ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Note ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
   ⟦fg=#6c7086⟧├──────┼──────┼──────┤⟦/⟧
-  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x^2⟦/⟧  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#89b4fa ul link 0⟧link⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧ ref⟦fg=#89b4fa link 1⟧¹⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#94e2d5 italic⟧x⟦/⟧⟦fg=#94e2d5⟧²⟦/⟧   ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#89b4fa ul link 0⟧link⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧ ref⟦fg=#89b4fa link 1⟧¹⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧
   ⟦fg=#6c7086⟧╰──────┴──────┴──────╯⟦/⟧
 
   ⟦fg=#6c7086⟧╭──────────────────────────────────╮⟦/⟧
@@ -194,7 +194,7 @@ expression: "styled(\"tables\", & Caps :: full(), & WIDTHS)"
   ⟦fg=#6c7086⟧╭──────┬──────┬──────╮⟦/⟧
   ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Math ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Link ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Note ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
   ⟦fg=#6c7086⟧├──────┼──────┼──────┤⟦/⟧
-  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x^2⟦/⟧  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#89b4fa ul link 0⟧link⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧ ref⟦fg=#89b4fa link 1⟧¹⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#94e2d5 italic⟧x⟦/⟧⟦fg=#94e2d5⟧²⟦/⟧   ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#89b4fa ul link 0⟧link⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧ ref⟦fg=#89b4fa link 1⟧¹⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧
   ⟦fg=#6c7086⟧╰──────┴──────┴──────╯⟦/⟧
 
   ⟦fg=#6c7086⟧╭──────────────────────────────────╮⟦/⟧
@@ -243,7 +243,7 @@ expression: "styled(\"tables\", & Caps :: full(), & WIDTHS)"
           ⟦fg=#6c7086⟧╭──────┬──────┬──────╮⟦/⟧
           ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Math ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Link ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Note ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
           ⟦fg=#6c7086⟧├──────┼──────┼──────┤⟦/⟧
-          ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x^2⟦/⟧  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#89b4fa ul link 0⟧link⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧ ref⟦fg=#89b4fa link 1⟧¹⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧
+          ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#94e2d5 italic⟧x⟦/⟧⟦fg=#94e2d5⟧²⟦/⟧   ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#89b4fa ul link 0⟧link⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧ ref⟦fg=#89b4fa link 1⟧¹⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧
           ⟦fg=#6c7086⟧╰──────┴──────┴──────╯⟦/⟧
 
           ⟦fg=#6c7086⟧╭──────────────────────────────────╮⟦/⟧

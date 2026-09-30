@@ -7,29 +7,27 @@ Solving the
 quadratic equation
 ────────────────────
 
-To solve
-ax^2 + bx + c = 0,
-use the quadratic
-formula:
+To solve ax² + bx +
+c = 0, use the
+quadratic formula:
 
-  x = \frac{-b \pm
- \sqrt{b^2 - 4ac}}
-        {2a}
+           ▁▁▁▁▁▁
+       −b±√b²−4ac
+   x = ──────────
+           2a
 
 ▎ Steps
 
 1. Compute the
-   discriminant
-   \Delta = b^2 -
-   4ac.
+   discriminant Δ =
+   b² − 4ac.
 2. Check its sign:
-   ◦ If \Delta > 0:
-     two real roots.
-   ◦ If \Delta = 0:
-     one real root.
-   ◦ If \Delta < 0:
-     two complex
-     roots.
+   ◦ If Δ > 0: two
+     real roots.
+   ◦ If Δ = 0: one
+     real root.
+   ◦ If Δ < 0: two
+     complex roots.
 3. Apply the formula
    above.
 
@@ -56,19 +54,16 @@ formula:
 │↳r s in (1, -1)]  │
 └──────────────────┘
 
-╭─────────┬────────╮
-│ Case    │ Roots  │
-├─────────┼────────┤
-│ \Delta  │ 2 real │
-│ > 0     │        │
-├─────────┼────────┤
-│ \Delta  │ 1 real │
-│ = 0     │        │
-├─────────┼────────┤
-│ \Delta  │ 2      │
-│ < 0     │ comple │
-│         │ x      │
-╰─────────┴────────╯
+╭───────┬──────────╮
+│ Case  │ Roots    │
+├───────┼──────────┤
+│ Δ > 0 │ 2 real   │
+├───────┼──────────┤
+│ Δ = 0 │ 1 real   │
+├───────┼──────────┤
+│ Δ < 0 │ 2        │
+│       │ complex  │
+╰───────┴──────────╯
 
 ────────────────────
 
@@ -81,21 +76,22 @@ worked example! 🚀
 Solving the quadratic equation
 ────────────────────────────────────
 
-To solve ax^2 + bx + c = 0, use the
+To solve ax² + bx + c = 0, use the
 quadratic formula:
 
- x = \frac{-b \pm \sqrt{b^2 - 4ac}}
-                {2a}
+                   ▁▁▁▁▁▁
+               −b±√b²−4ac
+           x = ──────────
+                   2a
 
 ▎ Steps
 
-1. Compute the discriminant
-   \Delta = b^2 - 4ac.
+1. Compute the discriminant Δ = b² −
+   4ac.
 2. Check its sign:
-   ◦ If \Delta > 0: two real roots.
-   ◦ If \Delta = 0: one real root.
-   ◦ If \Delta < 0: two complex
-     roots.
+   ◦ If Δ > 0: two real roots.
+   ◦ If Δ = 0: one real root.
+   ◦ If Δ < 0: two complex roots.
 3. Apply the formula above.
 
 ▎ Note: when a = 0 the equation is
@@ -114,13 +110,13 @@ quadratic formula:
 │↳d)) / (2 * a) for s in (1, -1)]  │
 └──────────────────────────────────┘
 
-╭────────────┬───────────╮
-│ Case       │ Roots     │
-├────────────┼───────────┤
-│ \Delta > 0 │ 2 real    │
-│ \Delta = 0 │ 1 real    │
-│ \Delta < 0 │ 2 complex │
-╰────────────┴───────────╯
+╭───────┬───────────╮
+│ Case  │ Roots     │
+├───────┼───────────┤
+│ Δ > 0 │ 2 real    │
+│ Δ = 0 │ 1 real    │
+│ Δ < 0 │ 2 complex │
+╰───────┴───────────╯
 
 ────────────────────────────────────
 
@@ -131,17 +127,20 @@ like a worked example! 🚀
 Solving the quadratic equation
 ────────────────────────────────────────────────────────────────────────────
 
-To solve ax^2 + bx + c = 0, use the quadratic formula:
+To solve ax² + bx + c = 0, use the quadratic formula:
 
-                   x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}
+                                       ▁▁▁▁▁▁
+                                   −b±√b²−4ac
+                               x = ──────────
+                                       2a
 
 ▎ Steps
 
-1. Compute the discriminant \Delta = b^2 - 4ac.
+1. Compute the discriminant Δ = b² − 4ac.
 2. Check its sign:
-   ◦ If \Delta > 0: two real roots.
-   ◦ If \Delta = 0: one real root.
-   ◦ If \Delta < 0: two complex roots.
+   ◦ If Δ > 0: two real roots.
+   ◦ If Δ = 0: one real root.
+   ◦ If Δ < 0: two complex roots.
 3. Apply the formula above.
 
 ▎ Note: when a = 0 the equation is linear, not quadratic.
@@ -158,13 +157,13 @@ To solve ax^2 + bx + c = 0, use the quadratic formula:
 │     return [(-b + s * math.sqrt(d)) / (2 * a) for s in (1, -1)]          │
 └──────────────────────────────────────────────────────────────────────────┘
 
-╭────────────┬───────────╮
-│ Case       │ Roots     │
-├────────────┼───────────┤
-│ \Delta > 0 │ 2 real    │
-│ \Delta = 0 │ 1 real    │
-│ \Delta < 0 │ 2 complex │
-╰────────────┴───────────╯
+╭───────┬───────────╮
+│ Case  │ Roots     │
+├───────┼───────────┤
+│ Δ > 0 │ 2 real    │
+│ Δ = 0 │ 1 real    │
+│ Δ < 0 │ 2 complex │
+╰───────┴───────────╯
 
 ────────────────────────────────────────────────────────────────────────────
 
@@ -174,17 +173,20 @@ worked example! 🚀
 Solving the quadratic equation
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 
-To solve ax^2 + bx + c = 0, use the quadratic formula:
+To solve ax² + bx + c = 0, use the quadratic formula:
 
-                               x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}
+                                                   ▁▁▁▁▁▁
+                                               −b±√b²−4ac
+                                           x = ──────────
+                                                   2a
 
 ▎ Steps
 
-1. Compute the discriminant \Delta = b^2 - 4ac.
+1. Compute the discriminant Δ = b² − 4ac.
 2. Check its sign:
-   ◦ If \Delta > 0: two real roots.
-   ◦ If \Delta = 0: one real root.
-   ◦ If \Delta < 0: two complex roots.
+   ◦ If Δ > 0: two real roots.
+   ◦ If Δ = 0: one real root.
+   ◦ If Δ < 0: two complex roots.
 3. Apply the formula above.
 
 ▎ Note: when a = 0 the equation is linear, not quadratic.
@@ -201,13 +203,13 @@ To solve ax^2 + bx + c = 0, use the quadratic formula:
 │     return [(-b + s * math.sqrt(d)) / (2 * a) for s in (1, -1)]                                  │
 └──────────────────────────────────────────────────────────────────────────────────────────────────┘
 
-╭────────────┬───────────╮
-│ Case       │ Roots     │
-├────────────┼───────────┤
-│ \Delta > 0 │ 2 real    │
-│ \Delta = 0 │ 1 real    │
-│ \Delta < 0 │ 2 complex │
-╰────────────┴───────────╯
+╭───────┬───────────╮
+│ Case  │ Roots     │
+├───────┼───────────┤
+│ Δ > 0 │ 2 real    │
+│ Δ = 0 │ 1 real    │
+│ Δ < 0 │ 2 complex │
+╰───────┴───────────╯
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 

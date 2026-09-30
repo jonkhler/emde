@@ -3,41 +3,41 @@ source: tests/layout_snapshots.rs
 expression: "styled(\"math\", & Caps :: full(), & WIDTHS)"
 ---
 ━━ width 24 ━━━━━━━━━━━━
-  Inline:
-  ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧e^{i\pi} + 1 = 0⟦/⟧,
-  ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\alpha^2 + \beta^2⟦/⟧,
-  and ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\frac{a}{b}⟦/⟧.
+  Inline: ⟦fg=#94e2d5 italic⟧e⟦/⟧⟦fg=#94e2d5 dim⟧^(⟦/⟧⟦fg=#94e2d5 italic⟧iπ⟦/⟧⟦fg=#94e2d5 dim⟧)⟦/⟧⟦fg=#94e2d5⟧ + 1 =⟦/⟧
+  ⟦fg=#94e2d5⟧0⟦/⟧, ⟦fg=#94e2d5 italic⟧α⟦/⟧⟦fg=#94e2d5⟧² + ⟦/⟧⟦fg=#94e2d5 italic⟧β⟦/⟧⟦fg=#94e2d5⟧²⟦/⟧, and ⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧/⟦/⟧⟦fg=#94e2d5 italic⟧b⟦/⟧.
 
   Dollars stay prose:
   it costs $5 and $10,
   or $5-$10.
 
   LaTeX delimiters:
-  ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x^2 + y^2 = z^2⟦/⟧
-  inline.
+  ⟦fg=#94e2d5 italic⟧x⟦/⟧⟦fg=#94e2d5⟧² + ⟦/⟧⟦fg=#94e2d5 italic⟧y⟦/⟧⟦fg=#94e2d5⟧² = ⟦/⟧⟦fg=#94e2d5 italic⟧z⟦/⟧⟦fg=#94e2d5⟧²⟦/⟧ inline.
 
-  ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\sum_{i=1}^{n} i^2 =⟦/⟧
-  ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\frac{n(n+1)(2n+1)}⟦/⟧
-          ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧{6}⟦/⟧
+    ⟦fg=#94e2d5⟧ ⟦/⟧⟦fg=#94e2d5 italic⟧n⟦/⟧
+    ⟦fg=#94e2d5⟧ ∑  ⟦/⟧⟦fg=#94e2d5 italic⟧i⟦/⟧⟦fg=#94e2d5⟧²⟦/⟧
+    ⟦fg=#94e2d5 italic⟧i⟦/⟧⟦fg=#94e2d5⟧=1⟦/⟧
 
-  ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧A = \begin{pmatrix}⟦/⟧
-     ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧a & b \\ c & d⟦/⟧
-     ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\end{pmatrix}⟦/⟧
+    ⟦fg=#94e2d5⟧    ⟦/⟧⟦fg=#94e2d5 italic⟧n⟦/⟧⟦fg=#94e2d5⟧(⟦/⟧⟦fg=#94e2d5 italic⟧n⟦/⟧⟦fg=#94e2d5⟧+1)(2⟦/⟧⟦fg=#94e2d5 italic⟧n⟦/⟧⟦fg=#94e2d5⟧+1)⟦/⟧
+    ⟦fg=#94e2d5⟧  = ────────────⟦/⟧
+    ⟦fg=#94e2d5⟧         6⟦/⟧
 
-  ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧f(x) = \begin{cases}⟦/⟧
-    ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧1 & x > 0 \\ 0 &⟦/⟧
-    ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\text{otherwise}⟦/⟧
-      ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\end{cases}⟦/⟧
+       ⟦fg=#94e2d5 italic⟧A⟦/⟧⟦fg=#94e2d5⟧ = ⎛⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧  ⟦/⟧⟦fg=#94e2d5 italic⟧b⟦/⟧⟦fg=#94e2d5⟧⎞⟦/⟧
+       ⟦fg=#94e2d5⟧    ⎝⟦/⟧⟦fg=#94e2d5 italic⟧c⟦/⟧⟦fg=#94e2d5⟧  ⟦/⟧⟦fg=#94e2d5 italic⟧d⟦/⟧⟦fg=#94e2d5⟧⎠⟦/⟧
+
+   ⟦fg=#94e2d5 italic⟧f⟦/⟧⟦fg=#94e2d5⟧(⟦/⟧⟦fg=#94e2d5 italic⟧x⟦/⟧⟦fg=#94e2d5⟧)⟦/⟧
+
+   ⟦fg=#94e2d5⟧    ⎧ 1  ⟦/⟧⟦fg=#94e2d5 italic⟧x⟦/⟧⟦fg=#94e2d5⟧ > 0⟦/⟧
+   ⟦fg=#94e2d5⟧  = ⎨⟦/⟧
+   ⟦fg=#94e2d5⟧    ⎩ 0  ⟦/⟧otherwise
 
   GitHub style:
-  ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\sqrt{x^2+1}⟦/⟧.
+  ⟦fg=#94e2d5⟧√(⟦/⟧⟦fg=#94e2d5 italic⟧x⟦/⟧⟦fg=#94e2d5⟧²+1)⟦/⟧.
 
   A long inline
-  formula ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧a_1 + a_2 +⟦/⟧
-  ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧a_3 + a_4 + a_5 +⟦/⟧
-  ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧a_6 + a_7 + a_8 +⟦/⟧
-  ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧a_9 + a_{10}⟦/⟧ wraps
-  at operators.
+  formula ⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₁ + ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₂ +⟦/⟧
+  ⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₃ + ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₄ + ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₅ + ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₆ +⟦/⟧
+  ⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₇ + ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₈ + ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₉ + ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₁₀⟦/⟧
+  wraps at operators.
 
   Broken TeX: $
   \frac{a$ and a
@@ -45,73 +45,83 @@ expression: "styled(\"math\", & Caps :: full(), & WIDTHS)"
 
   ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\begin{matrix} a & b⟦/⟧
 ━━ width 40 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Inline: ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧e^{i\pi} + 1 = 0⟦/⟧,
-  ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\alpha^2 + \beta^2⟦/⟧, and ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\frac{a}{b}⟦/⟧.
+  Inline: ⟦fg=#94e2d5 italic⟧e⟦/⟧⟦fg=#94e2d5 dim⟧^(⟦/⟧⟦fg=#94e2d5 italic⟧iπ⟦/⟧⟦fg=#94e2d5 dim⟧)⟦/⟧⟦fg=#94e2d5⟧ + 1 = 0⟦/⟧, ⟦fg=#94e2d5 italic⟧α⟦/⟧⟦fg=#94e2d5⟧² + ⟦/⟧⟦fg=#94e2d5 italic⟧β⟦/⟧⟦fg=#94e2d5⟧²⟦/⟧, and
+  ⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧/⟦/⟧⟦fg=#94e2d5 italic⟧b⟦/⟧.
 
   Dollars stay prose: it costs $5 and
   $10, or $5-$10.
 
-  LaTeX delimiters: ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x^2 + y^2 = z^2⟦/⟧
+  LaTeX delimiters: ⟦fg=#94e2d5 italic⟧x⟦/⟧⟦fg=#94e2d5⟧² + ⟦/⟧⟦fg=#94e2d5 italic⟧y⟦/⟧⟦fg=#94e2d5⟧² = ⟦/⟧⟦fg=#94e2d5 italic⟧z⟦/⟧⟦fg=#94e2d5⟧²⟦/⟧
   inline.
 
-   ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\sum_{i=1}^{n} i^2 = \frac{n(n+1)⟦/⟧
-               ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧(2n+1)}{6}⟦/⟧
+         ⟦fg=#94e2d5⟧ ⟦/⟧⟦fg=#94e2d5 italic⟧n⟦/⟧⟦fg=#94e2d5⟧       ⟦/⟧⟦fg=#94e2d5 italic⟧n⟦/⟧⟦fg=#94e2d5⟧(⟦/⟧⟦fg=#94e2d5 italic⟧n⟦/⟧⟦fg=#94e2d5⟧+1)(2⟦/⟧⟦fg=#94e2d5 italic⟧n⟦/⟧⟦fg=#94e2d5⟧+1)⟦/⟧
+         ⟦fg=#94e2d5⟧ ∑  ⟦/⟧⟦fg=#94e2d5 italic⟧i⟦/⟧⟦fg=#94e2d5⟧² = ────────────⟦/⟧
+         ⟦fg=#94e2d5 italic⟧i⟦/⟧⟦fg=#94e2d5⟧=1           6⟦/⟧
 
-   ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧A = \begin{pmatrix} a & b \\ c & d⟦/⟧
-             ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\end{pmatrix}⟦/⟧
+               ⟦fg=#94e2d5 italic⟧A⟦/⟧⟦fg=#94e2d5⟧ = ⎛⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧  ⟦/⟧⟦fg=#94e2d5 italic⟧b⟦/⟧⟦fg=#94e2d5⟧⎞⟦/⟧
+               ⟦fg=#94e2d5⟧    ⎝⟦/⟧⟦fg=#94e2d5 italic⟧c⟦/⟧⟦fg=#94e2d5⟧  ⟦/⟧⟦fg=#94e2d5 italic⟧d⟦/⟧⟦fg=#94e2d5⟧⎠⟦/⟧
 
-  ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧f(x) = \begin{cases} 1 & x > 0 \\ 0⟦/⟧
-     ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧& \text{otherwise} \end{cases}⟦/⟧
+         ⟦fg=#94e2d5⟧       ⎧ 1  ⟦/⟧⟦fg=#94e2d5 italic⟧x⟦/⟧⟦fg=#94e2d5⟧ > 0⟦/⟧
+         ⟦fg=#94e2d5 italic⟧f⟦/⟧⟦fg=#94e2d5⟧(⟦/⟧⟦fg=#94e2d5 italic⟧x⟦/⟧⟦fg=#94e2d5⟧) = ⎨⟦/⟧
+         ⟦fg=#94e2d5⟧       ⎩ 0  ⟦/⟧otherwise
 
-  GitHub style: ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\sqrt{x^2+1}⟦/⟧.
+  GitHub style: ⟦fg=#94e2d5⟧√(⟦/⟧⟦fg=#94e2d5 italic⟧x⟦/⟧⟦fg=#94e2d5⟧²+1)⟦/⟧.
 
-  A long inline formula ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧a_1 + a_2 +⟦/⟧
-  ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧a_3 + a_4 + a_5 + a_6 + a_7 + a_8 +⟦/⟧
-  ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧a_9 + a_{10}⟦/⟧ wraps at operators.
+  A long inline formula ⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₁ + ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₂ + ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₃ +⟦/⟧
+  ⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₄ + ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₅ + ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₆ + ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₇ + ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₈ + ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₉ + ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₁₀⟦/⟧
+  wraps at operators.
 
   Broken TeX: $\frac{a$ and a broken
   display:
 
           ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\begin{matrix} a & b⟦/⟧
 ━━ width 80 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Inline: ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧e^{i\pi} + 1 = 0⟦/⟧, ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\alpha^2 + \beta^2⟦/⟧, and ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\frac{a}{b}⟦/⟧.
+  Inline: ⟦fg=#94e2d5 italic⟧e⟦/⟧⟦fg=#94e2d5 dim⟧^(⟦/⟧⟦fg=#94e2d5 italic⟧iπ⟦/⟧⟦fg=#94e2d5 dim⟧)⟦/⟧⟦fg=#94e2d5⟧ + 1 = 0⟦/⟧, ⟦fg=#94e2d5 italic⟧α⟦/⟧⟦fg=#94e2d5⟧² + ⟦/⟧⟦fg=#94e2d5 italic⟧β⟦/⟧⟦fg=#94e2d5⟧²⟦/⟧, and ⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧/⟦/⟧⟦fg=#94e2d5 italic⟧b⟦/⟧.
 
   Dollars stay prose: it costs $5 and $10, or $5-$10.
 
-  LaTeX delimiters: ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x^2 + y^2 = z^2⟦/⟧ inline.
+  LaTeX delimiters: ⟦fg=#94e2d5 italic⟧x⟦/⟧⟦fg=#94e2d5⟧² + ⟦/⟧⟦fg=#94e2d5 italic⟧y⟦/⟧⟦fg=#94e2d5⟧² = ⟦/⟧⟦fg=#94e2d5 italic⟧z⟦/⟧⟦fg=#94e2d5⟧²⟦/⟧ inline.
 
-                  ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\sum_{i=1}^{n} i^2 = \frac{n(n+1)(2n+1)}{6}⟦/⟧
+                             ⟦fg=#94e2d5⟧ ⟦/⟧⟦fg=#94e2d5 italic⟧n⟦/⟧⟦fg=#94e2d5⟧       ⟦/⟧⟦fg=#94e2d5 italic⟧n⟦/⟧⟦fg=#94e2d5⟧(⟦/⟧⟦fg=#94e2d5 italic⟧n⟦/⟧⟦fg=#94e2d5⟧+1)(2⟦/⟧⟦fg=#94e2d5 italic⟧n⟦/⟧⟦fg=#94e2d5⟧+1)⟦/⟧
+                             ⟦fg=#94e2d5⟧ ∑  ⟦/⟧⟦fg=#94e2d5 italic⟧i⟦/⟧⟦fg=#94e2d5⟧² = ────────────⟦/⟧
+                             ⟦fg=#94e2d5 italic⟧i⟦/⟧⟦fg=#94e2d5⟧=1           6⟦/⟧
 
-                ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧A = \begin{pmatrix} a & b \\ c & d \end{pmatrix}⟦/⟧
+                                   ⟦fg=#94e2d5 italic⟧A⟦/⟧⟦fg=#94e2d5⟧ = ⎛⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧  ⟦/⟧⟦fg=#94e2d5 italic⟧b⟦/⟧⟦fg=#94e2d5⟧⎞⟦/⟧
+                                   ⟦fg=#94e2d5⟧    ⎝⟦/⟧⟦fg=#94e2d5 italic⟧c⟦/⟧⟦fg=#94e2d5⟧  ⟦/⟧⟦fg=#94e2d5 italic⟧d⟦/⟧⟦fg=#94e2d5⟧⎠⟦/⟧
 
-       ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧f(x) = \begin{cases} 1 & x > 0 \\ 0 & \text{otherwise} \end{cases}⟦/⟧
+                             ⟦fg=#94e2d5⟧       ⎧ 1  ⟦/⟧⟦fg=#94e2d5 italic⟧x⟦/⟧⟦fg=#94e2d5⟧ > 0⟦/⟧
+                             ⟦fg=#94e2d5 italic⟧f⟦/⟧⟦fg=#94e2d5⟧(⟦/⟧⟦fg=#94e2d5 italic⟧x⟦/⟧⟦fg=#94e2d5⟧) = ⎨⟦/⟧
+                             ⟦fg=#94e2d5⟧       ⎩ 0  ⟦/⟧otherwise
 
-  GitHub style: ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\sqrt{x^2+1}⟦/⟧.
+  GitHub style: ⟦fg=#94e2d5⟧√(⟦/⟧⟦fg=#94e2d5 italic⟧x⟦/⟧⟦fg=#94e2d5⟧²+1)⟦/⟧.
 
-  A long inline formula
-  ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧a_1 + a_2 + a_3 + a_4 + a_5 + a_6 + a_7 + a_8 + a_9 + a_{10}⟦/⟧ wraps at
-  operators.
+  A long inline formula ⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₁ + ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₂ + ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₃ + ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₄ + ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₅ + ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₆ + ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₇ + ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₈ + ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₉ + ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₁₀⟦/⟧ wraps
+  at operators.
 
   Broken TeX: $\frac{a$ and a broken display:
 
                               ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\begin{matrix} a & b⟦/⟧
 ━━ width 120 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-          Inline: ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧e^{i\pi} + 1 = 0⟦/⟧, ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\alpha^2 + \beta^2⟦/⟧, and ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\frac{a}{b}⟦/⟧.
+          Inline: ⟦fg=#94e2d5 italic⟧e⟦/⟧⟦fg=#94e2d5 dim⟧^(⟦/⟧⟦fg=#94e2d5 italic⟧iπ⟦/⟧⟦fg=#94e2d5 dim⟧)⟦/⟧⟦fg=#94e2d5⟧ + 1 = 0⟦/⟧, ⟦fg=#94e2d5 italic⟧α⟦/⟧⟦fg=#94e2d5⟧² + ⟦/⟧⟦fg=#94e2d5 italic⟧β⟦/⟧⟦fg=#94e2d5⟧²⟦/⟧, and ⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧/⟦/⟧⟦fg=#94e2d5 italic⟧b⟦/⟧.
 
           Dollars stay prose: it costs $5 and $10, or $5-$10.
 
-          LaTeX delimiters: ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x^2 + y^2 = z^2⟦/⟧ inline.
+          LaTeX delimiters: ⟦fg=#94e2d5 italic⟧x⟦/⟧⟦fg=#94e2d5⟧² + ⟦/⟧⟦fg=#94e2d5 italic⟧y⟦/⟧⟦fg=#94e2d5⟧² = ⟦/⟧⟦fg=#94e2d5 italic⟧z⟦/⟧⟦fg=#94e2d5⟧²⟦/⟧ inline.
 
-                                      ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\sum_{i=1}^{n} i^2 = \frac{n(n+1)(2n+1)}{6}⟦/⟧
+                                                 ⟦fg=#94e2d5⟧ ⟦/⟧⟦fg=#94e2d5 italic⟧n⟦/⟧⟦fg=#94e2d5⟧       ⟦/⟧⟦fg=#94e2d5 italic⟧n⟦/⟧⟦fg=#94e2d5⟧(⟦/⟧⟦fg=#94e2d5 italic⟧n⟦/⟧⟦fg=#94e2d5⟧+1)(2⟦/⟧⟦fg=#94e2d5 italic⟧n⟦/⟧⟦fg=#94e2d5⟧+1)⟦/⟧
+                                                 ⟦fg=#94e2d5⟧ ∑  ⟦/⟧⟦fg=#94e2d5 italic⟧i⟦/⟧⟦fg=#94e2d5⟧² = ────────────⟦/⟧
+                                                 ⟦fg=#94e2d5 italic⟧i⟦/⟧⟦fg=#94e2d5⟧=1           6⟦/⟧
 
-                                    ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧A = \begin{pmatrix} a & b \\ c & d \end{pmatrix}⟦/⟧
+                                                       ⟦fg=#94e2d5 italic⟧A⟦/⟧⟦fg=#94e2d5⟧ = ⎛⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧  ⟦/⟧⟦fg=#94e2d5 italic⟧b⟦/⟧⟦fg=#94e2d5⟧⎞⟦/⟧
+                                                       ⟦fg=#94e2d5⟧    ⎝⟦/⟧⟦fg=#94e2d5 italic⟧c⟦/⟧⟦fg=#94e2d5⟧  ⟦/⟧⟦fg=#94e2d5 italic⟧d⟦/⟧⟦fg=#94e2d5⟧⎠⟦/⟧
 
-                           ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧f(x) = \begin{cases} 1 & x > 0 \\ 0 & \text{otherwise} \end{cases}⟦/⟧
+                                                 ⟦fg=#94e2d5⟧       ⎧ 1  ⟦/⟧⟦fg=#94e2d5 italic⟧x⟦/⟧⟦fg=#94e2d5⟧ > 0⟦/⟧
+                                                 ⟦fg=#94e2d5 italic⟧f⟦/⟧⟦fg=#94e2d5⟧(⟦/⟧⟦fg=#94e2d5 italic⟧x⟦/⟧⟦fg=#94e2d5⟧) = ⎨⟦/⟧
+                                                 ⟦fg=#94e2d5⟧       ⎩ 0  ⟦/⟧otherwise
 
-          GitHub style: ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\sqrt{x^2+1}⟦/⟧.
+          GitHub style: ⟦fg=#94e2d5⟧√(⟦/⟧⟦fg=#94e2d5 italic⟧x⟦/⟧⟦fg=#94e2d5⟧²+1)⟦/⟧.
 
-          A long inline formula ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧a_1 + a_2 + a_3 + a_4 + a_5 + a_6 + a_7 + a_8 + a_9 + a_{10}⟦/⟧ wraps at
-          operators.
+          A long inline formula ⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₁ + ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₂ + ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₃ + ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₄ + ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₅ + ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₆ + ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₇ + ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₈ + ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₉ + ⟦/⟧⟦fg=#94e2d5 italic⟧a⟦/⟧⟦fg=#94e2d5⟧₁₀⟦/⟧ wraps at operators.
 
           Broken TeX: $\frac{a$ and a broken display:
 
