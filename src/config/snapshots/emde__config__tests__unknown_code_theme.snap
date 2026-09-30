@@ -1,0 +1,5 @@
+---
+source: src/config/tests.rs
+expression: setup.report(&loaded)
+---
+warning: ~/.config/emde/config.toml:2: theme.code: unknown code theme `OneHalfDrak` (did you mean `OneHalfDark`?)

@@ -1,0 +1,16 @@
+---
+source: src/config/tests.rs
+expression: setup.report(&loaded)
+---
+error: ~/.config/emde/config.toml: invalid value, ignoring [render]
+TOML parse error at line 2, column 13
+  |
+2 | max_width = "wide"
+  |             ^^^^^^
+invalid type: string "wide", expected u16
+error: ~/.config/emde/config.toml: invalid value, ignoring [math]
+TOML parse error at line 9, column 11
+  |
+9 | display = "3d"
+  |           ^^^^
+invalid value `3d`, expected `2d`, `linear` or `raw` (did you mean `2d`?)

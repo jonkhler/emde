@@ -1,0 +1,119 @@
+# mono: text attributes only, no colours.
+#
+# Bold, italic, underline, dim and reverse video mark the structure of the
+# document. emde picks this theme under NO_COLOR unless you chose a theme
+# yourself.
+
+name = "mono"
+# Code keeps the font styles of two-face's `ansi` theme; colours are not shown.
+code = "ansi"
+
+# Role names shared with the other built-in themes, so [style.*] overrides in
+# your config work with every theme. They all mean "no colour".
+[palette]
+text = "default"
+subtext = "default"
+muted = "default"
+surface = "default"
+base = "default"
+blue = "default"
+accent = "default"
+mauve = "default"
+teal = "default"
+green = "default"
+yellow = "default"
+peach = "default"
+red = "default"
+pink = "default"
+sky = "default"
+
+# Headings
+
+[style.heading]
+bold = true
+
+[style.h1]
+bold = true
+reverse = true
+
+[style.h5]
+bold = true
+italic = true
+
+[style.h6]
+bold = false
+italic = true
+
+# Inline text
+
+[style.emph]
+italic = true
+
+[style.strong]
+bold = true
+
+[style.strike]
+strikethrough = true
+
+[style.mark]
+reverse = true
+
+[style.kbd]
+bold = true
+
+[style.link]
+underline = "single"
+
+[style.link_url]
+underline = "none"
+dim = true
+
+[style.link_focus]
+reverse = true
+
+[style.footnote_ref]
+underline = "none"
+
+# Blocks
+
+[style.alert]
+bold = true
+
+[style.task_done]
+dim = true
+
+[style.image_alt]
+italic = true
+
+[style.image_caption]
+italic = true
+
+# Math
+
+[style.math_var]
+italic = true
+
+[style.math_error]
+underline = "curly"
+
+# Decorations and the pager
+
+[style.muted]
+dim = true
+
+[style.status]
+reverse = true
+
+[style.search_match]
+reverse = true
+
+[style.search_current]
+bold = true
+reverse = true
+
+[style.hint]
+bold = true
+reverse = true
+
+[style.toc_current]
+bold = true

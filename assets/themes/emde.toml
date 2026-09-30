@@ -1,0 +1,236 @@
+# emde: the default theme.
+#
+# Palettes: Catppuccin Mocha (dark) and Latte (light), MIT licence,
+# https://github.com/catppuccin/palette, under emde's role names.
+#
+# Theme files use the [palette] and [style.<element>] tables of the config
+# file (`emde --print-default-config` documents the colour syntax), plus:
+#   name      display name
+#   inherits  a theme to start from (built-in name, themes/NAME.toml, or path)
+#   code      code theme: one name, or { dark = "...", light = "..." }
+#
+# In styles, `base` is the page background (the terminal's own when emde can
+# detect it, else the palette's `base`) and `surface` is a panel colour
+# derived from it. The palette's `surface` entry is Catppuccin's surface0.
+
+name = "emde"
+code = { dark = "OneHalfDark", light = "OneHalfLight" }
+
+[palette.dark]
+text = "#cdd6f4"
+subtext = "#a6adc8"
+muted = "#6c7086"
+surface = "#313244"
+base = "#1e1e2e"
+blue = "#89b4fa"
+accent = "#89b4fa"
+mauve = "#cba6f7"
+teal = "#94e2d5"
+green = "#a6e3a1"
+yellow = "#f9e2af"
+peach = "#fab387"
+red = "#f38ba8"
+pink = "#f5c2e7"
+sky = "#89dceb"
+
+[palette.light]
+text = "#4c4f69"
+subtext = "#5c5f77"
+muted = "#8c8fa1"
+surface = "#ccd0da"
+base = "#eff1f5"
+blue = "#1e66f5"
+accent = "#1e66f5"
+mauve = "#8839ef"
+teal = "#179299"
+green = "#40a02b"
+yellow = "#df8e1d"
+peach = "#fe640b"
+red = "#d20f39"
+pink = "#ea76cb"
+sky = "#04a5e5"
+
+# Headings
+
+[style.heading]
+fg = "accent"
+bold = true
+
+# A full-width bar fading from accent to mauve.
+[style.h1]
+fg = "base"
+bg = "accent"
+bg_to = "mauve"
+bold = true
+
+[style.h2]
+fg = "mauve"
+bold = true
+
+[style.h3]
+fg = "teal"
+bold = true
+
+[style.h4]
+fg = "default"
+bold = true
+
+[style.h5]
+fg = "subtext"
+bold = true
+italic = true
+
+[style.h6]
+fg = "muted"
+italic = true
+
+[style.heading_rule]
+fg = "mauve"
+
+# Inline text
+
+[style.emph]
+italic = true
+
+[style.strong]
+bold = true
+
+[style.strike]
+fg = "muted"
+strikethrough = true
+
+[style.mark]
+bg = "yellow/30%"
+
+[style.kbd]
+fg = "text"
+bg = "surface"
+bold = true
+
+[style.link]
+fg = "accent"
+underline = "single"
+
+[style.link_url]
+fg = "muted"
+underline = "none"
+
+[style.link_focus]
+reverse = true
+
+[style.footnote_ref]
+underline = "none"
+
+# Code
+
+[style.code]
+fg = "peach"
+
+[style.code_inline]
+bg = "surface"
+
+[style.code_block]
+fg = "default"
+bg = "surface"
+
+# Blocks
+
+[style.quote]
+fg = "subtext"
+
+[style.alert]
+bold = true
+
+[style.alert_note]
+fg = "blue"
+
+[style.alert_tip]
+fg = "green"
+
+[style.alert_important]
+fg = "mauve"
+
+[style.alert_warning]
+fg = "yellow"
+
+[style.alert_caution]
+fg = "red"
+
+[style.list_marker]
+fg = "accent"
+
+[style.task_done]
+fg = "green"
+
+[style.task_todo]
+fg = "muted"
+
+[style.table_header]
+bg = "surface"
+bold = true
+
+# Zebra stripes: halfway between the page and Catppuccin's surface0.
+[dark.style.table_zebra]
+bg = "#313244/50%"
+
+[light.style.table_zebra]
+bg = "#ccd0da/50%"
+
+[style.footnote]
+fg = "subtext"
+
+[style.image_alt]
+italic = true
+
+[style.image_caption]
+fg = "subtext"
+italic = true
+
+# Math
+
+[style.math]
+fg = "teal"
+
+[style.math_var]
+italic = true
+
+[style.math_text]
+fg = "default"
+
+[style.math_error]
+fg = "red"
+underline = "curly"
+underline_color = "red"
+
+# Decorations and the pager
+
+[style.muted]
+fg = "muted"
+
+[style.status]
+fg = "subtext"
+bg = "surface"
+
+[style.status_msg]
+fg = "yellow"
+
+[style.search_match]
+fg = "base"
+bg = "yellow"
+
+[style.search_current]
+fg = "base"
+bg = "peach"
+bold = true
+
+[style.prompt]
+fg = "accent"
+
+[style.hint]
+fg = "base"
+bg = "accent"
+bold = true
+
+[style.toc_current]
+fg = "accent"
+bold = true

@@ -1,0 +1,224 @@
+# emde configuration
+#
+# This file lists every setting with its default value; `emde
+# --print-default-config` prints it. Copy the parts you want to change to
+# ~/.config/emde/config.toml (or $XDG_CONFIG_HOME/emde/config.toml, or the
+# file named by $EMDE_CONFIG or --config); keys you leave out keep these
+# values. `emde --check-config` reports unknown keys and invalid values.
+#
+# Settings are applied in layers, later ones winning:
+#   1. these defaults
+#   2. the theme and the themes it inherits (colours and styles)
+#   3. your config file
+#   4. each --set KEY=VALUE, e.g. `--set render.max_width=80`
+#   5. dedicated flags such as --theme and --width
+
+[theme]
+# emde, ansi, mono, a theme in ~/.config/emde/themes/NAME.toml, or a path.
+# Unless you choose one, emde uses `ansi` on 16-colour terminals and `mono`
+# under NO_COLOR.
+name = "emde"
+# Theme variant: auto (from the terminal's background colour; dark when it
+# cannot be detected), dark or light.
+background = "auto"
+# Code theme: auto (the theme's choice), a built-in name such as
+# "OneHalfDark", "Nord" or "ansi" (see `emde --list-code-themes`), or the
+# path of a .tmTheme file.
+code = "auto"
+
+# [palette]
+# Named colours for styles, merged key by key over the theme's palette.
+# [palette.dark] and [palette.light] apply to one variant only.
+# accent = "#89b4fa"
+# muted = "#6c7086"
+
+# [style.<element>]
+# Restyles one element. The table replaces the theme's style for that
+# element; fields you leave out come from the parent element (h1 → heading
+# → text). [dark.style.<element>] and [light.style.<element>] apply to one
+# variant only.
+#
+# Fields:
+#   fg, bg, underline_color   colours
+#   bg_to                     end colour of a background gradient (h1 bar)
+#   underline                 none, single, double, curly, dotted or dashed
+#                             (true means single, false none)
+#   bold, italic, dim, strikethrough, reverse, overline   true or false
+#
+# Colours: "#rrggbb", "#rgb", a palette name, an ANSI name (black, red,
+# green, yellow, blue, magenta, cyan, white, bright-black ... bright-white),
+# 0-255, "default" (the terminal's colour), "base" (the page background:
+# the terminal's own when emde can detect it, else the palette's `base`),
+# "surface" (a panel colour derived from `base`), or a tint "NAME/NN%" (NAME
+# mixed NN% over the page background, e.g. "yellow/30%").
+#
+# Elements:
+#   text heading h1 h2 h3 h4 h5 h6 heading_rule
+#   emph strong strike mark kbd link link_url link_focus link_ref footnote_ref
+#   code code_inline code_block code_label code_gutter
+#   quote quote_bar alert alert_note alert_tip alert_important alert_warning
+#   alert_caution list_marker task_done task_todo table_border table_header
+#   table_zebra rule footnote def_term front_matter_key front_matter_value html
+#   image_alt image_caption image_frame
+#   math math_var math_num math_op math_rel math_func math_text math_delim
+#   math_error
+#   muted status status_msg search_match search_current prompt hint toc
+#   toc_current
+#
+# Example:
+# [style.h1]
+# fg = "accent"
+# bold = true
+# underline = "curly"
+
+[render]
+# Total width in columns; 0 uses the terminal's width (80 when the output is
+# not a terminal).
+width = 0
+# Maximum width of the text column; 0 for no limit.
+max_width = 100
+# Columns kept free on both sides on a terminal.
+margin = 2
+# Text column on wide terminals: center or left.
+align = "center"
+# Images: auto (the best the terminal supports), kitty, iterm, sixel, blocks
+# (drawn with text characters) or none (a box with the alt text).
+images = "auto"
+# Inline math: unicode, ascii or raw (the TeX source).
+math = "unicode"
+# Colours: auto, always, never, truecolor, 256 or 16.
+color = "auto"
+# OSC 8 hyperlinks: auto, always or never.
+hyperlinks = "auto"
+# Numbered link references ([1]) where hyperlinks are off: auto, always or
+# never.
+link_refs = "auto"
+# Plain ASCII decorations only.
+ascii = false
+# Columns taken by East Asian "ambiguous" characters: 1, or 2 for terminals
+# and fonts that draw them wide.
+ambiguous_width = 1
+# Background gradients (the h1 bar): auto (24-bit colour only), always or
+# never.
+gradients = "auto"
+# Front matter: card (a key/value card), code (a code block) or hide.
+front_matter = "card"
+# Raw HTML: subset (common tags are rendered), strip (tags dropped, text
+# kept) or raw (shown as text).
+html = "subset"
+
+[heading]
+# h1: bar (a full-width bar), underline (styled text) or plain.
+h1 = "bar"
+# h2: rule (text over a heavy rule) or plain.
+h2 = "rule"
+# Prefix for each level, h1 to h6.
+markers = ["", "", "▎ ", "", "", ""]
+# Number the headings (1., 1.1., ...).
+numbers = false
+
+[code]
+# Wrap long lines; false cuts them off with ›.
+wrap = true
+# Line numbers.
+line_numbers = false
+# Tab stop width, 1 to 16.
+tab_width = 4
+# Language label.
+label = true
+# Larger code blocks are shown without highlighting.
+max_highlight_bytes = 524288
+# Look: auto (a panel with 256 colours or more, a frame below), panel, frame
+# or gutter.
+style = "auto"
+
+[code.aliases]
+# Extra fence languages (fence word = language), checked before the
+# built-in aliases:
+# sage = "python"
+# nu = "bash"
+
+[tables]
+# Stripe every other row (24-bit colour only).
+zebra = true
+
+[math]
+# Display math: 2d (stacked fractions, limits above and below), linear or
+# raw.
+display = "2d"
+# Variables: italic (italic text), unicode-italic (𝑥) or plain.
+letters = "italic"
+# Digit fractions: vulgar (½) or slash (1/2).
+fractions = "vulgar"
+# Super- and subscript characters: safe (well supported by fonts) or full.
+scripts = "safe"
+# \mathbf: sgr (bold text) or unicode (𝐱).
+bold = "sgr"
+# 2D formulas taller than this are shown as one line.
+max_height = 12
+# Recognise \( ... \) and \[ ... \] as math.
+tex_delimiters = true
+
+[images]
+# Text-mode images: half, quadrant, sextant, octant, or auto (sextant and
+# octant only on terminals that draw them themselves).
+blocks = "half"
+# Maximum figure height: rows (e.g. 20) or a share of the screen ("60%").
+max_height = "60%"
+# Download remote images (with curl).
+remote = false
+# Inside tmux: if-enabled (use passthrough only when allow-passthrough is on;
+# emde never changes tmux options) or never.
+tmux_passthrough = "if-enabled"
+# Images with more pixels are not decoded.
+max_pixels = 40_000_000
+
+[markdown]
+# $...$ and $$...$$ math.
+math = true
+# Turn bare URLs into links.
+linkify = true
+# Definition lists (a term line followed by ": definition").
+definition_lists = true
+# Curly quotes and dashes.
+smart_punctuation = false
+
+[glyphs]
+# List bullets by nesting depth (repeating).
+bullets = ["•", "◦", "‣", "⁃"]
+# Task markers: open, done.
+task = ["☐", "☒"]
+# Quote bar.
+quote = "▎"
+# Horizontal rule.
+rule = "─"
+# Table borders: rounded, light, heavy, double, ascii or none.
+table = "rounded"
+# Marks wrapped code lines.
+wrap_marker = "↳"
+# Alert icons: unicode, nerd (a Nerd Font) or ascii.
+icons = "unicode"
+
+[pager]
+# Built-in pager: auto (on a terminal, for documents taller than the
+# screen), always or never.
+enabled = "auto"
+# Mouse wheel scrolling and link clicks.
+mouse = true
+# Reload the document when the file changes.
+watch = true
+# Lines per mouse wheel step.
+scroll_lines = 3
+# Search case: smart (case-sensitive only with an uppercase letter),
+# sensitive or insensitive.
+search_case = "smart"
+# Opening links: auto (open or xdg-open locally, copy the URL over SSH),
+# never, or a command that gets the URL as its last argument.
+open = "auto"
+
+[terminal]
+# Ask the terminal once for its background colour, image support and cell
+# size.
+probe = true
+# Probe timeout in milliseconds; 0 is automatic (150 locally, 1000 over SSH).
+probe_timeout_ms = 0

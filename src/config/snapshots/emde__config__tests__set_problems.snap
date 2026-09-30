@@ -1,0 +1,18 @@
+---
+source: src/config/tests.rs
+expression: setup.report(&loaded)
+---
+error: --set render.max_width=abc: invalid value, ignoring this setting
+TOML parse error at line 1, column 20
+  |
+1 | render.max_width = "abc"
+  |                    ^^^^^
+invalid type: string "abc", expected u16
+error: --set render.margin: expected KEY=VALUE, e.g. `--set render.max_width=80`
+error: --set pager.mouse=maybe: invalid value, ignoring this setting
+TOML parse error at line 1, column 15
+  |
+1 | pager.mouse = "maybe"
+  |               ^^^^^^^
+invalid type: string "maybe", expected a boolean
+warning: --set render.colour=never: unknown key `render.colour` (did you mean `render.color`?)

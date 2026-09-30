@@ -1,0 +1,190 @@
+# ansi: the 16 terminal colours only.
+#
+# Every colour is one of the terminal's own ANSI colours, so documents follow
+# your terminal's colour scheme on dark and light backgrounds alike. Code uses
+# two-face's `ansi` theme for the same reason. emde picks this theme on
+# 16-colour terminals unless you chose a theme yourself.
+
+name = "ansi"
+code = "ansi"
+
+# Role names shared with the other built-in themes, so [style.*] overrides in
+# your config work with every theme. A name equal to its own key is the ANSI
+# colour of that name (`red = "red"`).
+[palette]
+text = "default"
+subtext = "default"
+muted = "bright-black"
+surface = "default"
+base = "default"
+blue = "blue"
+accent = "blue"
+mauve = "magenta"
+teal = "cyan"
+green = "green"
+yellow = "yellow"
+peach = "yellow"
+red = "red"
+pink = "bright-magenta"
+sky = "bright-cyan"
+
+# Headings
+
+[style.heading]
+fg = "accent"
+bold = true
+
+# Reverse video draws the bar in the accent colour.
+[style.h1]
+fg = "accent"
+bold = true
+reverse = true
+
+[style.h2]
+fg = "mauve"
+bold = true
+
+[style.h3]
+fg = "teal"
+bold = true
+
+[style.h4]
+fg = "default"
+bold = true
+
+[style.h5]
+fg = "default"
+bold = true
+italic = true
+
+[style.h6]
+fg = "muted"
+italic = true
+
+[style.heading_rule]
+fg = "mauve"
+
+# Inline text
+
+[style.emph]
+italic = true
+
+[style.strong]
+bold = true
+
+[style.strike]
+fg = "muted"
+strikethrough = true
+
+[style.mark]
+fg = "black"
+bg = "yellow"
+
+[style.kbd]
+bold = true
+
+[style.link]
+fg = "accent"
+underline = "single"
+
+[style.link_url]
+fg = "muted"
+underline = "none"
+
+[style.link_focus]
+reverse = true
+
+[style.footnote_ref]
+underline = "none"
+
+# Code
+
+[style.code]
+fg = "yellow"
+
+[style.code_block]
+fg = "default"
+
+# Blocks
+
+[style.alert]
+bold = true
+
+[style.alert_note]
+fg = "blue"
+
+[style.alert_tip]
+fg = "green"
+
+[style.alert_important]
+fg = "magenta"
+
+[style.alert_warning]
+fg = "yellow"
+
+[style.alert_caution]
+fg = "red"
+
+[style.list_marker]
+fg = "accent"
+
+[style.task_done]
+fg = "green"
+
+[style.task_todo]
+fg = "muted"
+
+[style.image_alt]
+italic = true
+
+[style.image_caption]
+fg = "muted"
+italic = true
+
+# Math
+
+[style.math]
+fg = "teal"
+
+[style.math_var]
+italic = true
+
+[style.math_text]
+fg = "default"
+
+[style.math_error]
+fg = "red"
+underline = "curly"
+underline_color = "red"
+
+# Decorations and the pager
+
+[style.muted]
+fg = "muted"
+
+[style.status]
+reverse = true
+
+[style.status_msg]
+fg = "yellow"
+
+[style.search_match]
+fg = "black"
+bg = "yellow"
+
+[style.search_current]
+fg = "black"
+bg = "bright-yellow"
+bold = true
+
+[style.prompt]
+fg = "accent"
+
+[style.hint]
+fg = "accent"
+bold = true
+reverse = true
+
+[style.toc_current]
+fg = "accent"
+bold = true
