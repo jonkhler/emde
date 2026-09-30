@@ -1,0 +1,11 @@
+---
+source: tests/sgr_snapshots.rs
+expression: out
+---
+Some em, strong, gone, `code`, a link[1] and a note¹.
+
+── Footnotes ───────────────────────────────────────────
+
+1. Note. ↑
+
+[1]: https://example.com/ä b

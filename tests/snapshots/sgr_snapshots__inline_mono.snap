@@ -1,0 +1,9 @@
+---
+source: tests/sgr_snapshots.rs
+expression: "bytes(INLINE, 60, &depth(ColorDepth::Mono))"
+---
+  Some \e[3mem\e[0m, \e[1mstrong\e[0m, \e[9mgone\e[0m, `code`, a \e]8;id=e1-0;https://example.com/%C3%A4%20b\e\\e[4mlink\e]8;;\e\\e[0m and a note¹.
+
+  ── Footnotes ───────────────────────────────────────────
+
+  1. Note. ↑

@@ -32,6 +32,27 @@ impl Expanded<'_> {
         src.saturating_add(added)
     }
 
+    /// Translate a byte offset in the expanded text back into the source
+    /// line (the inverse of [`Expanded::map_offset`]).
+    ///
+    /// Offsets inside a tab's expansion map to the tab itself.
+    pub fn source_offset(&self, expanded: u32) -> u32 {
+        // Tabs whose expansion ends at or before `expanded`.
+        let idx = self
+            .shifts
+            .partition_point(|&(after, added)| after.saturating_add(added) <= expanded);
+        let added = idx
+            .checked_sub(1)
+            .and_then(|i| self.shifts.get(i))
+            .map_or(0, |&(_, added)| added);
+        let src = expanded.saturating_sub(added);
+        // Inside the next tab's expansion: that tab.
+        match self.shifts.get(idx) {
+            Some(&(after, _)) => src.min(after.saturating_sub(1)),
+            None => src,
+        }
+    }
+
     /// Whether any tab was expanded.
     pub fn changed(&self) -> bool {
         !self.shifts.is_empty()
@@ -117,5 +138,23 @@ mod tests {
         assert_eq!(e.map_offset(2), 4); // b
         assert_eq!(e.map_offset(4), 8); // c
         assert_eq!(e.map_offset(5), 9); // end
+    }
+
+    #[test]
+    fn maps_offsets_back_to_the_source() {
+        // "a\tb\tc" with width 4 → "a   b   c"
+        let e = expand_tabs("a\tb\tc", 4, false);
+        let back: Vec<u32> = (0..=9).map(|x| e.source_offset(x)).collect();
+        //          a  ␠  ␠  ␠  b  ␠  ␠  ␠  c  end
+        assert_eq!(back, [0, 1, 1, 1, 2, 3, 3, 3, 4, 5]);
+        for src in 0..=5 {
+            assert_eq!(e.source_offset(e.map_offset(src)), src, "{src}");
+        }
+        let plain = expand_tabs("abc", 4, false);
+        assert_eq!(plain.source_offset(2), 2);
+        let lead = expand_tabs("\t\tx", 2, false);
+        assert_eq!(lead.text, "    x");
+        assert_eq!(lead.source_offset(3), 1);
+        assert_eq!(lead.source_offset(4), 2);
     }
 }

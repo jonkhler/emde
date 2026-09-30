@@ -1,0 +1,131 @@
+---
+source: tests/layout_snapshots.rs
+expression: "styled(\"kitchen-sink\", &caps, &[80])"
+---
+━━ width 80 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ⟦fg=idx243⟧┌──────────────────────────┐⟦/⟧
+  ⟦fg=idx243⟧│⟦/⟧ ⟦fg=idx243⟧title⟦/⟧   Kitchen Sink     ⟦fg=idx243⟧│⟦/⟧
+  ⟦fg=idx243⟧│⟦/⟧ ⟦fg=idx243⟧author⟦/⟧  emde             ⟦fg=idx243⟧│⟦/⟧
+  ⟦fg=idx243⟧│⟦/⟧ ⟦fg=idx243⟧tags⟦/⟧    [markdown, test] ⟦fg=idx243⟧│⟦/⟧
+  ⟦fg=idx243⟧└──────────────────────────┘⟦/⟧
+
+  ⟦fg=idx234 bg=idx111 bold⟧ Kitchen Sink                                                               ⟦/⟧
+
+  A paragraph with ⟦italic⟧emphasis⟦/⟧, ⟦bold⟧strong⟦/⟧, ⟦bold italic⟧both⟦/⟧, ⟦fg=idx243 strike⟧strikethrough⟦/⟧, ⟦fg=idx216 bg=idx236⟧ inline code ⟦/⟧, a
+  ⟦fg=idx111 ul link 0⟧link⟦/⟧, an autolink ⟦fg=idx111 ul link 1⟧https://example.org/path⟦/⟧, and a bare URL ⟦fg=idx111 ul link 4⟧https://www.rust-⟦/⟧
+  ⟦fg=idx111 ul link 4⟧lang.org/learn⟦/⟧. Hard break at the end of this line
+  and a backslash hard break
+  then more text. Footnote reference⟦fg=idx111 link 2⟧¹⟦/⟧ and another⟦fg=idx111 link 3⟧²⟦/⟧.
+
+  ⟦fg=idx183 bold⟧Headings⟦/⟧
+  ⟦fg=idx183 bold⟧━━━━━━━━────────────────────────────────────────────────────────────────────⟦/⟧
+
+  ⟦fg=idx116 bold⟧▎ Third level⟦/⟧
+
+  ⟦bold⟧Fourth level⟦/⟧
+
+  ⟦fg=idx146 bold italic⟧Fifth level⟦/⟧
+
+  ⟦fg=idx243 bold italic⟧Sixth level⟦/⟧
+
+  ⟦fg=idx183 bold⟧Lists⟦/⟧
+  ⟦fg=idx183 bold⟧━━━━━───────────────────────────────────────────────────────────────────────⟦/⟧
+
+  ⟦fg=idx111⟧•⟦/⟧ Tight item one
+  ⟦fg=idx111⟧•⟦/⟧ Tight item with ⟦bold⟧bold⟦/⟧
+    ⟦fg=idx111⟧◦⟦/⟧ Nested item
+      ⟦fg=idx111⟧‣⟦/⟧ Deeper item
+  ⟦fg=idx243⟧☐⟦/⟧ Unchecked task
+  ⟦fg=idx150⟧☒⟦/⟧ ⟦dim⟧Checked task⟦/⟧
+
+  ⟦fg=idx111⟧1.⟦/⟧ First
+
+  ⟦fg=idx111⟧2.⟦/⟧ Second
+
+     With a second paragraph.
+
+  ⟦fg=idx111⟧3.⟦/⟧ Third
+
+  ⟦fg=idx183 bold⟧Quotes and alerts⟦/⟧
+  ⟦fg=idx183 bold⟧━━━━━━━━━━━━━━━━━───────────────────────────────────────────────────────────⟦/⟧
+
+  ⟦fg=idx243⟧▎⟦/⟧ ⟦fg=idx146⟧A plain quote with a ⟦/⟧⟦fg=idx111 ul link 5⟧reference link⟦/⟧⟦fg=idx146⟧.⟦/⟧
+  ⟦fg=idx243⟧▎⟦/⟧
+  ⟦fg=idx243⟧▎⟦/⟧ ⟦fg=idx243⟧▎⟦/⟧ ⟦fg=idx146⟧A nested quote.⟦/⟧
+
+  ⟦fg=idx111⟧▎⟦/⟧ ⟦fg=idx111 bold⟧ⓘ Note⟦/⟧
+  ⟦fg=idx111⟧▎⟦/⟧ Notes carry an icon and a title.
+
+  ⟦fg=idx150⟧▎⟦/⟧ ⟦fg=idx150 bold⟧✦ Tip⟦/⟧
+  ⟦fg=idx150⟧▎⟦/⟧ A tip.
+
+  ⟦fg=idx183⟧▎⟦/⟧ ⟦fg=idx183 bold⟧❖ Important⟦/⟧
+  ⟦fg=idx183⟧▎⟦/⟧ Something important.
+
+  ⟦fg=idx223⟧▎⟦/⟧ ⟦fg=idx223 bold⟧▲ Warning⟦/⟧
+  ⟦fg=idx223⟧▎⟦/⟧ Careful: this is a ⟦italic⟧warning⟦/⟧.
+
+  ⟦fg=idx211⟧▎⟦/⟧ ⟦fg=idx211 bold⟧⊘ Caution⟦/⟧
+  ⟦fg=idx211⟧▎⟦/⟧ Mind the risks.
+
+  ⟦fg=idx183 bold⟧Code⟦/⟧
+  ⟦fg=idx183 bold⟧━━━━────────────────────────────────────────────────────────────────────────⟦/⟧
+
+  ⟦bg=idx236⟧ ⟦/⟧⟦fg=idx243 bg=idx236⟧hello.rs⟦/⟧⟦bg=idx236⟧                                                              ⟦/⟧⟦fg=idx243 bg=idx236⟧rust⟦/⟧⟦bg=idx236⟧ ⟦/⟧
+  ⟦bg=idx236⟧ ⟦/⟧⟦fg=idx183 bg=idx236 bold⟧fn⟦/⟧⟦bg=idx236⟧ main() {                                                                ⟦/⟧
+  ⟦bg=idx236⟧     println!(⟦/⟧⟦fg=idx150 bg=idx236⟧"Hello, {}!"⟦/⟧⟦bg=idx236⟧, ⟦/⟧⟦fg=idx150 bg=idx236⟧"world"⟦/⟧⟦bg=idx236⟧);                                       ⟦/⟧
+  ⟦bg=idx236⟧ }                                                                          ⟦/⟧
+  ⟦bg=idx236⟧                                                                            ⟦/⟧
+
+  ⟦bg=idx236⟧                                                                            ⟦/⟧
+  ⟦bg=idx236⟧ indented code block                                                        ⟦/⟧
+  ⟦bg=idx236⟧                                                                            ⟦/⟧
+
+  ⟦bg=idx236⟧                                                                       ⟦/⟧⟦fg=idx243 bg=idx236⟧diff⟦/⟧⟦bg=idx236⟧ ⟦/⟧
+  ⟦bg=idx238⟧ -old line                                                                  ⟦/⟧
+  ⟦bg=idx238⟧ +new line                                                                  ⟦/⟧
+  ⟦bg=idx236⟧                                                                            ⟦/⟧
+
+  ⟦fg=idx183 bold⟧Math⟦/⟧
+  ⟦fg=idx183 bold⟧━━━━────────────────────────────────────────────────────────────────────────⟦/⟧
+
+  Inline math ⟦fg=idx211 ul=curly ulc=idx211⟧e^{i\pi} + 1 = 0⟦/⟧ and ⟦fg=idx211 ul=curly ulc=idx211⟧x^2⟦/⟧, and money: $5 and $10, or $5-$10.
+
+                  ⟦fg=idx211 ul=curly ulc=idx211⟧\sum_{i=1}^{n} i^2 = \frac{n(n+1)(2n+1)}{6}⟦/⟧
+
+                ⟦fg=idx211 ul=curly ulc=idx211⟧A = \begin{pmatrix} a & b \\ c & d \end{pmatrix}⟦/⟧
+
+  ⟦fg=idx183 bold⟧Table⟦/⟧
+  ⟦fg=idx183 bold⟧━━━━━───────────────────────────────────────────────────────────────────────⟦/⟧
+
+  ⟦fg=idx243⟧╭───────────────────────┬────────┬───────╮⟦/⟧
+  ⟦fg=idx243⟧│⟦/⟧⟦bg=idx236 bold⟧ Left                  ⟦/⟧⟦fg=idx243⟧│⟦/⟧⟦bg=idx236 bold⟧ Center ⟦/⟧⟦fg=idx243⟧│⟦/⟧⟦bg=idx236 bold⟧ Right ⟦/⟧⟦fg=idx243⟧│⟦/⟧
+  ⟦fg=idx243⟧├───────────────────────┼────────┼───────┤⟦/⟧
+  ⟦fg=idx243⟧│⟦/⟧ ⟦fg=idx216 bg=idx236⟧ a ⟦/⟧                   ⟦fg=idx243⟧│⟦/⟧   ⟦bold⟧b⟦/⟧    ⟦fg=idx243⟧│⟦/⟧     ⟦fg=idx211 ul=curly ulc=idx211⟧c⟦/⟧ ⟦fg=idx243⟧│⟦/⟧
+  ⟦fg=idx243⟧│⟦/⟧ long cell with a ⟦fg=idx111 ul link 6⟧link⟦/⟧ ⟦fg=idx243⟧│⟦/⟧   x⟦fg=idx111 link 7⟧¹⟦/⟧   ⟦fg=idx243⟧│⟦/⟧     3 ⟦fg=idx243⟧│⟦/⟧
+  ⟦fg=idx243⟧╰───────────────────────┴────────┴───────╯⟦/⟧
+
+  ⟦fg=idx183 bold⟧Other blocks⟦/⟧
+  ⟦fg=idx183 bold⟧━━━━━━━━━━━━────────────────────────────────────────────────────────────────⟦/⟧
+
+  ⟦bold⟧Term⟦/⟧
+      Its definition.
+
+  ⟦fg=idx243⟧────────────────────────────────────────────────────────────────────────────⟦/⟧
+
+  ⟦fg=idx243⟧▾ ⟦/⟧⟦bold⟧Click to expand⟦/⟧
+    Hidden content with ⟦fg=idx189 bg=idx236 bold⟧ Ctrl ⟦/⟧+⟦fg=idx189 bg=idx236 bold⟧ C ⟦/⟧ and H₂O and x².
+
+                      Centred text, ⟦bg=idx240⟧marked⟦/⟧ and ⟦ul⟧underlined⟦/⟧.
+
+                                   ⟦fg=idx243⟧▣ ⟦/⟧⟦fg=idx243 italic⟧A figure⟦/⟧
+                                 ⟦fg=idx146 italic⟧Figure caption⟦/⟧
+
+  Text with an ⟦fg=idx243⟧▣ ⟦/⟧⟦fg=idx243 italic⟧inline image⟦/⟧ chip and a ⟦fg=idx111 ul link 8⟧▣ ⟦/⟧⟦fg=idx111 italic ul link 8⟧badge⟦/⟧ badge.
+
+  日本語のテキストと English mixed with emoji 👨‍👩‍👧 and ❤️.
+
+  ⟦fg=idx243⟧── ⟦/⟧⟦fg=idx146⟧Footnotes⟦/⟧⟦fg=idx243⟧ ───────────────────────────────────────────────────────────────⟦/⟧
+
+  ⟦fg=idx111⟧1.⟦/⟧ ⟦fg=idx146⟧The footnote text, with ⟦/⟧⟦fg=idx146 italic⟧emphasis⟦/⟧⟦fg=idx146⟧.⟦/⟧⟦fg=idx111 link 2⟧ ↑⟦/⟧⟦fg=idx111 link 7⟧ ↑²⟦/⟧
+  ⟦fg=idx111⟧2.⟦/⟧ ⟦fg=idx146⟧Second footnote.⟦/⟧⟦fg=idx111 link 3⟧ ↑⟦/⟧

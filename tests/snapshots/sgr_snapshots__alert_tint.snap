@@ -1,0 +1,6 @@
+---
+source: tests/sgr_snapshots.rs
+expression: "bytes(\"> [!WARNING]\\n> Mind the *gap*.\", 30, &Caps::full())"
+---
+  \e[38;2;249;226;175;48;2;48;47;58m▎\e[39m \e[1;38;2;249;226;175m▲ Warning\e[22;39m               \e[0m
+  \e[38;2;249;226;175;48;2;48;47;58m▎\e[39m Mind the \e[3mgap\e[23m.           \e[0m

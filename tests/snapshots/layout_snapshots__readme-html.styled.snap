@@ -1,0 +1,172 @@
+---
+source: tests/layout_snapshots.rs
+expression: "styled(\"readme-html\", & Caps :: full(), & WIDTHS)"
+---
+━━ width 24 ━━━━━━━━━━━━
+     ⟦fg=#6c7086⟧▣ ⟦/⟧⟦fg=#6c7086 italic⟧Project logo⟦/⟧
+
+  ⟦grad #89b4fa→#cba6f7 0..20⟧      ⟦fg=#1e1e2e bold⟧ Project⟦/⟧⟦/grad⟧
+
+    ⟦fg=#89b4fa ul link 0⟧▣ ⟦/⟧⟦fg=#89b4fa italic ul link 0⟧CI⟦/⟧ ⟦fg=#89b4fa ul link 1⟧▣ ⟦/⟧⟦fg=#89b4fa italic ul link 1⟧crates.io⟦/⟧
+     ⟦bold⟧A fast tool⟦/⟧ —
+    written in Rust.
+
+   ⟦fg=#89b4fa bold ul link 2⟧Install⟦/⟧ · ⟦fg=#89b4fa bold ul link 3⟧Usage⟦/⟧ ·
+          ⟦fg=#89b4fa bold ul link 4⟧FAQ⟦/⟧
+
+  ⟦fg=#cba6f7 bold⟧Installation⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#a286c8⟧──⟦/⟧⟦fg=#7c689b⟧──⟦/⟧⟦fg=#574b70⟧──⟦/⟧
+
+  ⟦bg=#2c2d3d⟧            ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧console⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦bg=#2c2d3d⟧ $ cargo install x  ⟦/⟧
+  ⟦bg=#2c2d3d⟧                    ⟦/⟧
+
+  ⟦fg=#cba6f7 bold⟧Usage⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#b494dc⟧──⟦/⟧⟦fg=#9d82c1⟧──⟦/⟧⟦fg=#8670a8⟧──⟦/⟧⟦fg=#71608e⟧──⟦/⟧⟦fg=#5c4f76⟧──⟦/⟧⟦fg=#483f5f⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+  Run ⟦fg=#fab387 bg=#2c2d3d⟧ x --help ⟦/⟧. See
+  the ⟦fg=#89b4fa ul link 5⟧guide⟦/⟧ or ⟦fg=#89b4fa ul link 6⟧the⟦/⟧
+  ⟦fg=#89b4fa ul link 6⟧directory⟦/⟧.
+
+  ⟦fg=#6c7086⟧▾ ⟦/⟧⟦bold⟧Advanced options⟦/⟧
+    ⟦fg=#6c7086⟧╭──────┬─────────╮⟦/⟧
+    ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Flag ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Meaning ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+    ⟦fg=#6c7086⟧├──────┼─────────┤⟦/⟧
+    ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#fab387 bg=#2c2d3d⟧ -v ⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧ verbose ⟦fg=#6c7086⟧│⟦/⟧
+    ⟦fg=#6c7086⟧╰──────┴─────────╯⟦/⟧
+
+  ⟦fg=#cba6f7 bold⟧Usage⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#b494dc⟧──⟦/⟧⟦fg=#9d82c1⟧──⟦/⟧⟦fg=#8670a8⟧──⟦/⟧⟦fg=#71608e⟧──⟦/⟧⟦fg=#5c4f76⟧──⟦/⟧⟦fg=#483f5f⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+  A second ⟦italic⟧Usage⟦/⟧
+  heading gets a de-
+  duplicated slug.
+
+     Centered text
+
+  cell one cell two
+
+  Line one
+  line twocontinued
+━━ width 40 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+             ⟦fg=#6c7086⟧▣ ⟦/⟧⟦fg=#6c7086 italic⟧Project logo⟦/⟧
+
+  ⟦grad #89b4fa→#cba6f7 0..36⟧              ⟦fg=#1e1e2e bold⟧ Project⟦/⟧⟦/grad⟧
+
+            ⟦fg=#89b4fa ul link 0⟧▣ ⟦/⟧⟦fg=#89b4fa italic ul link 0⟧CI⟦/⟧ ⟦fg=#89b4fa ul link 1⟧▣ ⟦/⟧⟦fg=#89b4fa italic ul link 1⟧crates.io⟦/⟧
+     ⟦bold⟧A fast tool⟦/⟧ — written in Rust.
+
+         ⟦fg=#89b4fa bold ul link 2⟧Install⟦/⟧ · ⟦fg=#89b4fa bold ul link 3⟧Usage⟦/⟧ · ⟦fg=#89b4fa bold ul link 4⟧FAQ⟦/⟧
+
+  ⟦fg=#cba6f7 bold⟧Installation⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#bd9be7⟧──⟦/⟧⟦fg=#b091d7⟧──⟦/⟧⟦fg=#a286c8⟧──⟦/⟧⟦fg=#957cb9⟧──⟦/⟧⟦fg=#8872aa⟧──⟦/⟧⟦fg=#7c689b⟧──⟦/⟧⟦fg=#6f5e8c⟧──⟦/⟧⟦fg=#63547e⟧──⟦/⟧⟦fg=#574b70⟧──⟦/⟧⟦fg=#4b4263⟧──⟦/⟧⟦fg=#403955⟧──⟦/⟧
+
+  ⟦bg=#2c2d3d⟧                            ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧console⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦bg=#2c2d3d⟧ $ cargo install x                  ⟦/⟧
+  ⟦bg=#2c2d3d⟧                                    ⟦/⟧
+
+  ⟦fg=#cba6f7 bold⟧Usage⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c09dea⟧──⟦/⟧⟦fg=#b595de⟧──⟦/⟧⟦fg=#aa8dd1⟧──⟦/⟧⟦fg=#a084c5⟧──⟦/⟧⟦fg=#957cb9⟧──⟦/⟧⟦fg=#8b74ad⟧──⟦/⟧⟦fg=#816ca1⟧──⟦/⟧⟦fg=#776495⟧──⟦/⟧⟦fg=#6d5c8a⟧──⟦/⟧⟦fg=#63547e⟧──⟦/⟧⟦fg=#594d73⟧──⟦/⟧⟦fg=#504568⟧──⟦/⟧⟦fg=#463e5d⟧──⟦/⟧⟦fg=#3d3753⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+  Run ⟦fg=#fab387 bg=#2c2d3d⟧ x --help ⟦/⟧. See the ⟦fg=#89b4fa ul link 5⟧guide⟦/⟧ or ⟦fg=#89b4fa ul link 6⟧the⟦/⟧
+  ⟦fg=#89b4fa ul link 6⟧directory⟦/⟧.
+
+  ⟦fg=#6c7086⟧▾ ⟦/⟧⟦bold⟧Advanced options⟦/⟧
+    ⟦fg=#6c7086⟧╭──────┬─────────╮⟦/⟧
+    ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Flag ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Meaning ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+    ⟦fg=#6c7086⟧├──────┼─────────┤⟦/⟧
+    ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#fab387 bg=#2c2d3d⟧ -v ⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧ verbose ⟦fg=#6c7086⟧│⟦/⟧
+    ⟦fg=#6c7086⟧╰──────┴─────────╯⟦/⟧
+
+  ⟦fg=#cba6f7 bold⟧Usage⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c09dea⟧──⟦/⟧⟦fg=#b595de⟧──⟦/⟧⟦fg=#aa8dd1⟧──⟦/⟧⟦fg=#a084c5⟧──⟦/⟧⟦fg=#957cb9⟧──⟦/⟧⟦fg=#8b74ad⟧──⟦/⟧⟦fg=#816ca1⟧──⟦/⟧⟦fg=#776495⟧──⟦/⟧⟦fg=#6d5c8a⟧──⟦/⟧⟦fg=#63547e⟧──⟦/⟧⟦fg=#594d73⟧──⟦/⟧⟦fg=#504568⟧──⟦/⟧⟦fg=#463e5d⟧──⟦/⟧⟦fg=#3d3753⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+  A second ⟦italic⟧Usage⟦/⟧ heading gets a de-
+  duplicated slug.
+
+             Centered text
+
+  cell one cell two
+
+  Line one
+  line twocontinued
+━━ width 80 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                                 ⟦fg=#6c7086⟧▣ ⟦/⟧⟦fg=#6c7086 italic⟧Project logo⟦/⟧
+
+  ⟦grad #89b4fa→#cba6f7 0..76⟧                                  ⟦fg=#1e1e2e bold⟧ Project⟦/⟧⟦/grad⟧
+
+                                ⟦fg=#89b4fa ul link 0⟧▣ ⟦/⟧⟦fg=#89b4fa italic ul link 0⟧CI⟦/⟧ ⟦fg=#89b4fa ul link 1⟧▣ ⟦/⟧⟦fg=#89b4fa italic ul link 1⟧crates.io⟦/⟧
+                         ⟦bold⟧A fast tool⟦/⟧ — written in Rust.
+
+                             ⟦fg=#89b4fa bold ul link 2⟧Install⟦/⟧ · ⟦fg=#89b4fa bold ul link 3⟧Usage⟦/⟧ · ⟦fg=#89b4fa bold ul link 4⟧FAQ⟦/⟧
+
+  ⟦fg=#cba6f7 bold⟧Installation⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c6a2f1⟧──⟦/⟧⟦fg=#c19eeb⟧──⟦/⟧⟦fg=#bc9ae5⟧──⟦/⟧⟦fg=#b696df⟧──⟦/⟧⟦fg=#b192d9⟧──⟦/⟧⟦fg=#ac8ed4⟧──⟦/⟧⟦fg=#a78ace⟧──⟦/⟧⟦fg=#a286c8⟧──⟦/⟧⟦fg=#9d82c2⟧──⟦/⟧⟦fg=#997fbd⟧──⟦/⟧⟦fg=#947bb7⟧──⟦/⟧⟦fg=#8f77b1⟧──⟦/⟧⟦fg=#8a73ac⟧──⟦/⟧⟦fg=#856fa6⟧──⟦/⟧⟦fg=#806ca0⟧──⟦/⟧⟦fg=#7c689b⟧──⟦/⟧⟦fg=#776495⟧──⟦/⟧⟦fg=#726190⟧──⟦/⟧⟦fg=#6d5d8b⟧──⟦/⟧⟦fg=#695985⟧──⟦/⟧⟦fg=#645680⟧──⟦/⟧⟦fg=#60527b⟧──⟦/⟧⟦fg=#5b4f75⟧──⟦/⟧⟦fg=#574b70⟧──⟦/⟧⟦fg=#52486b⟧──⟦/⟧⟦fg=#4e4466⟧──⟦/⟧⟦fg=#4a4161⟧──⟦/⟧⟦fg=#453d5c⟧──⟦/⟧⟦fg=#413a57⟧──⟦/⟧⟦fg=#3d3652⟧──⟦/⟧⟦fg=#39334d⟧──⟦/⟧
+
+  ⟦bg=#2c2d3d⟧                                                                    ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧console⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦bg=#2c2d3d⟧ $ cargo install x                                                          ⟦/⟧
+  ⟦bg=#2c2d3d⟧                                                                            ⟦/⟧
+
+  ⟦fg=#cba6f7 bold⟧Usage⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c6a2f2⟧──⟦/⟧⟦fg=#c29fec⟧──⟦/⟧⟦fg=#bd9be7⟧──⟦/⟧⟦fg=#b897e1⟧──⟦/⟧⟦fg=#b494dc⟧──⟦/⟧⟦fg=#af90d7⟧──⟦/⟧⟦fg=#aa8dd1⟧──⟦/⟧⟦fg=#a689cc⟧──⟦/⟧⟦fg=#a185c7⟧──⟦/⟧⟦fg=#9d82c1⟧──⟦/⟧⟦fg=#987ebc⟧──⟦/⟧⟦fg=#947bb7⟧──⟦/⟧⟦fg=#8f77b2⟧──⟦/⟧⟦fg=#8b74ad⟧──⟦/⟧⟦fg=#8670a8⟧──⟦/⟧⟦fg=#826da3⟧──⟦/⟧⟦fg=#7e6a9d⟧──⟦/⟧⟦fg=#796698⟧──⟦/⟧⟦fg=#756393⟧──⟦/⟧⟦fg=#71608e⟧──⟦/⟧⟦fg=#6d5c8a⟧──⟦/⟧⟦fg=#685985⟧──⟦/⟧⟦fg=#645680⟧──⟦/⟧⟦fg=#60527b⟧──⟦/⟧⟦fg=#5c4f76⟧──⟦/⟧⟦fg=#584c71⟧──⟦/⟧⟦fg=#54496d⟧──⟦/⟧⟦fg=#504568⟧──⟦/⟧⟦fg=#4c4263⟧──⟦/⟧⟦fg=#483f5f⟧──⟦/⟧⟦fg=#443c5a⟧──⟦/⟧⟦fg=#403956⟧──⟦/⟧⟦fg=#3c3651⟧──⟦/⟧⟦fg=#38334d⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+  Run ⟦fg=#fab387 bg=#2c2d3d⟧ x --help ⟦/⟧. See the ⟦fg=#89b4fa ul link 5⟧guide⟦/⟧ or ⟦fg=#89b4fa ul link 6⟧the directory⟦/⟧.
+
+  ⟦fg=#6c7086⟧▾ ⟦/⟧⟦bold⟧Advanced options⟦/⟧
+    ⟦fg=#6c7086⟧╭──────┬─────────╮⟦/⟧
+    ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Flag ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Meaning ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+    ⟦fg=#6c7086⟧├──────┼─────────┤⟦/⟧
+    ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#fab387 bg=#2c2d3d⟧ -v ⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧ verbose ⟦fg=#6c7086⟧│⟦/⟧
+    ⟦fg=#6c7086⟧╰──────┴─────────╯⟦/⟧
+
+  ⟦fg=#cba6f7 bold⟧Usage⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c6a2f2⟧──⟦/⟧⟦fg=#c29fec⟧──⟦/⟧⟦fg=#bd9be7⟧──⟦/⟧⟦fg=#b897e1⟧──⟦/⟧⟦fg=#b494dc⟧──⟦/⟧⟦fg=#af90d7⟧──⟦/⟧⟦fg=#aa8dd1⟧──⟦/⟧⟦fg=#a689cc⟧──⟦/⟧⟦fg=#a185c7⟧──⟦/⟧⟦fg=#9d82c1⟧──⟦/⟧⟦fg=#987ebc⟧──⟦/⟧⟦fg=#947bb7⟧──⟦/⟧⟦fg=#8f77b2⟧──⟦/⟧⟦fg=#8b74ad⟧──⟦/⟧⟦fg=#8670a8⟧──⟦/⟧⟦fg=#826da3⟧──⟦/⟧⟦fg=#7e6a9d⟧──⟦/⟧⟦fg=#796698⟧──⟦/⟧⟦fg=#756393⟧──⟦/⟧⟦fg=#71608e⟧──⟦/⟧⟦fg=#6d5c8a⟧──⟦/⟧⟦fg=#685985⟧──⟦/⟧⟦fg=#645680⟧──⟦/⟧⟦fg=#60527b⟧──⟦/⟧⟦fg=#5c4f76⟧──⟦/⟧⟦fg=#584c71⟧──⟦/⟧⟦fg=#54496d⟧──⟦/⟧⟦fg=#504568⟧──⟦/⟧⟦fg=#4c4263⟧──⟦/⟧⟦fg=#483f5f⟧──⟦/⟧⟦fg=#443c5a⟧──⟦/⟧⟦fg=#403956⟧──⟦/⟧⟦fg=#3c3651⟧──⟦/⟧⟦fg=#38334d⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+  A second ⟦italic⟧Usage⟦/⟧ heading gets a de-duplicated slug.
+
+                                 Centered text
+
+  cell one cell two
+
+  Line one
+  line twocontinued
+━━ width 120 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                                                     ⟦fg=#6c7086⟧▣ ⟦/⟧⟦fg=#6c7086 italic⟧Project logo⟦/⟧
+
+          ⟦grad #89b4fa→#cba6f7 0..100⟧                                              ⟦fg=#1e1e2e bold⟧ Project⟦/⟧⟦/grad⟧
+
+                                                    ⟦fg=#89b4fa ul link 0⟧▣ ⟦/⟧⟦fg=#89b4fa italic ul link 0⟧CI⟦/⟧ ⟦fg=#89b4fa ul link 1⟧▣ ⟦/⟧⟦fg=#89b4fa italic ul link 1⟧crates.io⟦/⟧
+                                             ⟦bold⟧A fast tool⟦/⟧ — written in Rust.
+
+                                                 ⟦fg=#89b4fa bold ul link 2⟧Install⟦/⟧ · ⟦fg=#89b4fa bold ul link 3⟧Usage⟦/⟧ · ⟦fg=#89b4fa bold ul link 4⟧FAQ⟦/⟧
+
+          ⟦fg=#cba6f7 bold⟧Installation⟦/⟧
+          ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c7a3f3⟧──⟦/⟧⟦fg=#c3a0ee⟧──⟦/⟧⟦fg=#c09dea⟧──⟦/⟧⟦fg=#bc9ae6⟧──⟦/⟧⟦fg=#b897e1⟧──⟦/⟧⟦fg=#b595dd⟧──⟦/⟧⟦fg=#b192d9⟧──⟦/⟧⟦fg=#ad8fd5⟧──⟦/⟧⟦fg=#aa8cd0⟧──⟦/⟧⟦fg=#a689cc⟧──⟦/⟧⟦fg=#a286c8⟧──⟦/⟧⟦fg=#9f84c4⟧──⟦/⟧⟦fg=#9b81c0⟧──⟦/⟧⟦fg=#987ebb⟧──⟦/⟧⟦fg=#947bb7⟧──⟦/⟧⟦fg=#9078b3⟧──⟦/⟧⟦fg=#8d76af⟧──⟦/⟧⟦fg=#8973ab⟧──⟦/⟧⟦fg=#8670a7⟧──⟦/⟧⟦fg=#826da3⟧──⟦/⟧⟦fg=#7f6b9f⟧──⟦/⟧⟦fg=#7c689b⟧──⟦/⟧⟦fg=#786597⟧──⟦/⟧⟦fg=#756393⟧──⟦/⟧⟦fg=#71608f⟧──⟦/⟧⟦fg=#6e5d8b⟧──⟦/⟧⟦fg=#6b5b87⟧──⟦/⟧⟦fg=#675883⟧──⟦/⟧⟦fg=#64557f⟧──⟦/⟧⟦fg=#61537c⟧──⟦/⟧⟦fg=#5d5078⟧──⟦/⟧⟦fg=#5a4e74⟧──⟦/⟧⟦fg=#574b70⟧──⟦/⟧⟦fg=#54486c⟧──⟦/⟧⟦fg=#504669⟧──⟦/⟧⟦fg=#4d4365⟧──⟦/⟧⟦fg=#4a4161⟧──⟦/⟧⟦fg=#473e5e⟧──⟦/⟧⟦fg=#443c5a⟧──⟦/⟧⟦fg=#413a56⟧──⟦/⟧⟦fg=#3e3753⟧──⟦/⟧⟦fg=#3a354f⟧──⟦/⟧⟦fg=#37324c⟧──⟦/⟧
+
+          ⟦bg=#2c2d3d⟧                                                                                            ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧console⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+          ⟦bg=#2c2d3d⟧ $ cargo install x                                                                                  ⟦/⟧
+          ⟦bg=#2c2d3d⟧                                                                                                    ⟦/⟧
+
+          ⟦fg=#cba6f7 bold⟧Usage⟦/⟧
+          ⟦fg=#cba6f7 bold⟧━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c7a3f3⟧──⟦/⟧⟦fg=#c4a1ef⟧──⟦/⟧⟦fg=#c09eeb⟧──⟦/⟧⟦fg=#bd9be7⟧──⟦/⟧⟦fg=#ba98e3⟧──⟦/⟧⟦fg=#b696df⟧──⟦/⟧⟦fg=#b393db⟧──⟦/⟧⟦fg=#af90d7⟧──⟦/⟧⟦fg=#ac8ed3⟧──⟦/⟧⟦fg=#a88bcf⟧──⟦/⟧⟦fg=#a588cb⟧──⟦/⟧⟦fg=#a286c7⟧──⟦/⟧⟦fg=#9e83c3⟧──⟦/⟧⟦fg=#9b80bf⟧──⟦/⟧⟦fg=#977ebb⟧──⟦/⟧⟦fg=#947bb7⟧──⟦/⟧⟦fg=#9179b4⟧──⟦/⟧⟦fg=#8d76b0⟧──⟦/⟧⟦fg=#8a73ac⟧──⟦/⟧⟦fg=#8771a8⟧──⟦/⟧⟦fg=#846ea4⟧──⟦/⟧⟦fg=#806ca1⟧──⟦/⟧⟦fg=#7d699d⟧──⟦/⟧⟦fg=#7a6799⟧──⟦/⟧⟦fg=#776495⟧──⟦/⟧⟦fg=#746292⟧──⟦/⟧⟦fg=#705f8e⟧──⟦/⟧⟦fg=#6d5d8a⟧──⟦/⟧⟦fg=#6a5a87⟧──⟦/⟧⟦fg=#675883⟧──⟦/⟧⟦fg=#64557f⟧──⟦/⟧⟦fg=#61537c⟧──⟦/⟧⟦fg=#5e5078⟧──⟦/⟧⟦fg=#5b4e75⟧──⟦/⟧⟦fg=#584c71⟧──⟦/⟧⟦fg=#54496e⟧──⟦/⟧⟦fg=#51476a⟧──⟦/⟧⟦fg=#4e4567⟧──⟦/⟧⟦fg=#4c4263⟧──⟦/⟧⟦fg=#494060⟧──⟦/⟧⟦fg=#463e5c⟧──⟦/⟧⟦fg=#433b59⟧──⟦/⟧⟦fg=#403955⟧──⟦/⟧⟦fg=#3d3752⟧──⟦/⟧⟦fg=#3a344f⟧──⟦/⟧⟦fg=#37324b⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+          Run ⟦fg=#fab387 bg=#2c2d3d⟧ x --help ⟦/⟧. See the ⟦fg=#89b4fa ul link 5⟧guide⟦/⟧ or ⟦fg=#89b4fa ul link 6⟧the directory⟦/⟧.
+
+          ⟦fg=#6c7086⟧▾ ⟦/⟧⟦bold⟧Advanced options⟦/⟧
+            ⟦fg=#6c7086⟧╭──────┬─────────╮⟦/⟧
+            ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Flag ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Meaning ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+            ⟦fg=#6c7086⟧├──────┼─────────┤⟦/⟧
+            ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#fab387 bg=#2c2d3d⟧ -v ⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧ verbose ⟦fg=#6c7086⟧│⟦/⟧
+            ⟦fg=#6c7086⟧╰──────┴─────────╯⟦/⟧
+
+          ⟦fg=#cba6f7 bold⟧Usage⟦/⟧
+          ⟦fg=#cba6f7 bold⟧━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c7a3f3⟧──⟦/⟧⟦fg=#c4a1ef⟧──⟦/⟧⟦fg=#c09eeb⟧──⟦/⟧⟦fg=#bd9be7⟧──⟦/⟧⟦fg=#ba98e3⟧──⟦/⟧⟦fg=#b696df⟧──⟦/⟧⟦fg=#b393db⟧──⟦/⟧⟦fg=#af90d7⟧──⟦/⟧⟦fg=#ac8ed3⟧──⟦/⟧⟦fg=#a88bcf⟧──⟦/⟧⟦fg=#a588cb⟧──⟦/⟧⟦fg=#a286c7⟧──⟦/⟧⟦fg=#9e83c3⟧──⟦/⟧⟦fg=#9b80bf⟧──⟦/⟧⟦fg=#977ebb⟧──⟦/⟧⟦fg=#947bb7⟧──⟦/⟧⟦fg=#9179b4⟧──⟦/⟧⟦fg=#8d76b0⟧──⟦/⟧⟦fg=#8a73ac⟧──⟦/⟧⟦fg=#8771a8⟧──⟦/⟧⟦fg=#846ea4⟧──⟦/⟧⟦fg=#806ca1⟧──⟦/⟧⟦fg=#7d699d⟧──⟦/⟧⟦fg=#7a6799⟧──⟦/⟧⟦fg=#776495⟧──⟦/⟧⟦fg=#746292⟧──⟦/⟧⟦fg=#705f8e⟧──⟦/⟧⟦fg=#6d5d8a⟧──⟦/⟧⟦fg=#6a5a87⟧──⟦/⟧⟦fg=#675883⟧──⟦/⟧⟦fg=#64557f⟧──⟦/⟧⟦fg=#61537c⟧──⟦/⟧⟦fg=#5e5078⟧──⟦/⟧⟦fg=#5b4e75⟧──⟦/⟧⟦fg=#584c71⟧──⟦/⟧⟦fg=#54496e⟧──⟦/⟧⟦fg=#51476a⟧──⟦/⟧⟦fg=#4e4567⟧──⟦/⟧⟦fg=#4c4263⟧──⟦/⟧⟦fg=#494060⟧──⟦/⟧⟦fg=#463e5c⟧──⟦/⟧⟦fg=#433b59⟧──⟦/⟧⟦fg=#403955⟧──⟦/⟧⟦fg=#3d3752⟧──⟦/⟧⟦fg=#3a344f⟧──⟦/⟧⟦fg=#37324b⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+          A second ⟦italic⟧Usage⟦/⟧ heading gets a de-duplicated slug.
+
+                                                     Centered text
+
+          cell one cell two
+
+          Line one
+          line twocontinued

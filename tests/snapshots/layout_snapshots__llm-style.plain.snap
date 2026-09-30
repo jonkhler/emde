@@ -1,0 +1,214 @@
+---
+source: tests/layout_snapshots.rs
+expression: "plain(\"llm-style\")"
+---
+━━ width 24 ━━━━━━━━━━━━
+Solving the
+quadratic equation
+────────────────────
+
+To solve
+ax^2 + bx + c = 0,
+use the quadratic
+formula:
+
+  x = \frac{-b \pm
+ \sqrt{b^2 - 4ac}}
+        {2a}
+
+▎ Steps
+
+1. Compute the
+   discriminant
+   \Delta = b^2 -
+   4ac.
+2. Check its sign:
+   ◦ If \Delta > 0:
+     two real roots.
+   ◦ If \Delta = 0:
+     one real root.
+   ◦ If \Delta < 0:
+     two complex
+     roots.
+3. Apply the formula
+   above.
+
+▎ Note: when a = 0
+▎ the equation is
+▎ linear, not
+▎ quadratic.
+
+▎ Example in Python
+
+┌───────── python ─┐
+│ import math      │
+│                  │
+│ def solve(a, b,  │
+│↳c):              │
+│     d = b * b -  │
+│↳4 * a * c        │
+│     if d < 0:    │
+│         return [ │
+│↳]                │
+│     return [(-b  │
+│↳+ s * math.sqrt( │
+│↳d)) / (2 * a) fo │
+│↳r s in (1, -1)]  │
+└──────────────────┘
+
+╭─────────┬────────╮
+│ Case    │ Roots  │
+├─────────┼────────┤
+│ \Delta  │ 2 real │
+│ > 0     │        │
+├─────────┼────────┤
+│ \Delta  │ 1 real │
+│ = 0     │        │
+├─────────┼────────┤
+│ \Delta  │ 2      │
+│ < 0     │ comple │
+│         │ x      │
+╰─────────┴────────╯
+
+────────────────────
+
+Summary: the
+discriminant decides
+everything. Let me
+know if you'd like a
+worked example! 🚀
+━━ width 40 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Solving the quadratic equation
+────────────────────────────────────
+
+To solve ax^2 + bx + c = 0, use the
+quadratic formula:
+
+ x = \frac{-b \pm \sqrt{b^2 - 4ac}}
+                {2a}
+
+▎ Steps
+
+1. Compute the discriminant
+   \Delta = b^2 - 4ac.
+2. Check its sign:
+   ◦ If \Delta > 0: two real roots.
+   ◦ If \Delta = 0: one real root.
+   ◦ If \Delta < 0: two complex
+     roots.
+3. Apply the formula above.
+
+▎ Note: when a = 0 the equation is
+▎ linear, not quadratic.
+
+▎ Example in Python
+
+┌───────────────────────── python ─┐
+│ import math                      │
+│                                  │
+│ def solve(a, b, c):              │
+│     d = b * b - 4 * a * c        │
+│     if d < 0:                    │
+│         return []                │
+│     return [(-b + s * math.sqrt( │
+│↳d)) / (2 * a) for s in (1, -1)]  │
+└──────────────────────────────────┘
+
+╭────────────┬───────────╮
+│ Case       │ Roots     │
+├────────────┼───────────┤
+│ \Delta > 0 │ 2 real    │
+│ \Delta = 0 │ 1 real    │
+│ \Delta < 0 │ 2 complex │
+╰────────────┴───────────╯
+
+────────────────────────────────────
+
+Summary: the discriminant decides
+everything. Let me know if you'd
+like a worked example! 🚀
+━━ width 80 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Solving the quadratic equation
+────────────────────────────────────────────────────────────────────────────
+
+To solve ax^2 + bx + c = 0, use the quadratic formula:
+
+                   x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}
+
+▎ Steps
+
+1. Compute the discriminant \Delta = b^2 - 4ac.
+2. Check its sign:
+   ◦ If \Delta > 0: two real roots.
+   ◦ If \Delta = 0: one real root.
+   ◦ If \Delta < 0: two complex roots.
+3. Apply the formula above.
+
+▎ Note: when a = 0 the equation is linear, not quadratic.
+
+▎ Example in Python
+
+┌───────────────────────────────────────────────────────────────── python ─┐
+│ import math                                                              │
+│                                                                          │
+│ def solve(a, b, c):                                                      │
+│     d = b * b - 4 * a * c                                                │
+│     if d < 0:                                                            │
+│         return []                                                        │
+│     return [(-b + s * math.sqrt(d)) / (2 * a) for s in (1, -1)]          │
+└──────────────────────────────────────────────────────────────────────────┘
+
+╭────────────┬───────────╮
+│ Case       │ Roots     │
+├────────────┼───────────┤
+│ \Delta > 0 │ 2 real    │
+│ \Delta = 0 │ 1 real    │
+│ \Delta < 0 │ 2 complex │
+╰────────────┴───────────╯
+
+────────────────────────────────────────────────────────────────────────────
+
+Summary: the discriminant decides everything. Let me know if you'd like a
+worked example! 🚀
+━━ width 120 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Solving the quadratic equation
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+To solve ax^2 + bx + c = 0, use the quadratic formula:
+
+                               x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}
+
+▎ Steps
+
+1. Compute the discriminant \Delta = b^2 - 4ac.
+2. Check its sign:
+   ◦ If \Delta > 0: two real roots.
+   ◦ If \Delta = 0: one real root.
+   ◦ If \Delta < 0: two complex roots.
+3. Apply the formula above.
+
+▎ Note: when a = 0 the equation is linear, not quadratic.
+
+▎ Example in Python
+
+┌───────────────────────────────────────────────────────────────────────────────────────── python ─┐
+│ import math                                                                                      │
+│                                                                                                  │
+│ def solve(a, b, c):                                                                              │
+│     d = b * b - 4 * a * c                                                                        │
+│     if d < 0:                                                                                    │
+│         return []                                                                                │
+│     return [(-b + s * math.sqrt(d)) / (2 * a) for s in (1, -1)]                                  │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+╭────────────┬───────────╮
+│ Case       │ Roots     │
+├────────────┼───────────┤
+│ \Delta > 0 │ 2 real    │
+│ \Delta = 0 │ 1 real    │
+│ \Delta < 0 │ 2 complex │
+╰────────────┴───────────╯
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+Summary: the discriminant decides everything. Let me know if you'd like a worked example! 🚀

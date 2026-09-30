@@ -1,0 +1,210 @@
+---
+source: tests/layout_snapshots.rs
+expression: "plain(\"readme-html\")"
+---
+━━ width 24 ━━━━━━━━━━━━
+   ▣ Project logo
+
+      Project
+════════════════════
+
+      ▣ CI[1]
+   ▣ crates.io[2]
+   A fast tool —
+  written in Rust.
+
+ Install · Usage ·
+       FAQ[3]
+
+[1]: https://
+     ci.example.com
+[2]: https://
+     crates.io/
+     crates/x
+[3]: docs/faq.md
+
+Installation
+────────────────────
+
+┌──────── console ─┐
+│ $ cargo install  │
+│↳x                │
+└──────────────────┘
+
+Usage
+────────────────────
+
+Run `x --help`. See
+the guide[4] or the
+directory[5].
+
+▾ Advanced options
+  ╭──────┬─────────╮
+  │ Flag │ Meaning │
+  ├──────┼─────────┤
+  │ `-v` │ verbose │
+  ╰──────┴─────────╯
+
+[4]: docs/guide.md#
+     getting-started
+[5]: docs/
+
+Usage
+────────────────────
+
+A second Usage
+heading gets a de-
+duplicated slug.
+
+   Centered text
+
+cell one cell two
+
+Line one
+line twocontinued
+━━ width 40 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+           ▣ Project logo
+
+              Project
+════════════════════════════════════
+
+       ▣ CI[1] ▣ crates.io[2]
+   A fast tool — written in Rust.
+
+      Install · Usage · FAQ[3]
+
+[1]: https://ci.example.com
+[2]: https://crates.io/crates/x
+[3]: docs/faq.md
+
+Installation
+────────────────────────────────────
+
+┌──────────────────────── console ─┐
+│ $ cargo install x                │
+└──────────────────────────────────┘
+
+Usage
+────────────────────────────────────
+
+Run `x --help`. See the guide[4] or
+the directory[5].
+
+▾ Advanced options
+  ╭──────┬─────────╮
+  │ Flag │ Meaning │
+  ├──────┼─────────┤
+  │ `-v` │ verbose │
+  ╰──────┴─────────╯
+
+[4]: docs/guide.md#getting-started
+[5]: docs/
+
+Usage
+────────────────────────────────────
+
+A second Usage heading gets a de-
+duplicated slug.
+
+           Centered text
+
+cell one cell two
+
+Line one
+line twocontinued
+━━ width 80 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                               ▣ Project logo
+
+                                  Project
+════════════════════════════════════════════════════════════════════════════
+
+                           ▣ CI[1] ▣ crates.io[2]
+                       A fast tool — written in Rust.
+
+                          Install · Usage · FAQ[3]
+
+[1]: https://ci.example.com
+[2]: https://crates.io/crates/x
+[3]: docs/faq.md
+
+Installation
+────────────────────────────────────────────────────────────────────────────
+
+┌──────────────────────────────────────────────────────────────── console ─┐
+│ $ cargo install x                                                        │
+└──────────────────────────────────────────────────────────────────────────┘
+
+Usage
+────────────────────────────────────────────────────────────────────────────
+
+Run `x --help`. See the guide[4] or the directory[5].
+
+▾ Advanced options
+  ╭──────┬─────────╮
+  │ Flag │ Meaning │
+  ├──────┼─────────┤
+  │ `-v` │ verbose │
+  ╰──────┴─────────╯
+
+[4]: docs/guide.md#getting-started
+[5]: docs/
+
+Usage
+────────────────────────────────────────────────────────────────────────────
+
+A second Usage heading gets a de-duplicated slug.
+
+                               Centered text
+
+cell one cell two
+
+Line one
+line twocontinued
+━━ width 120 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                                           ▣ Project logo
+
+                                              Project
+════════════════════════════════════════════════════════════════════════════════════════════════════
+
+                                       ▣ CI[1] ▣ crates.io[2]
+                                   A fast tool — written in Rust.
+
+                                      Install · Usage · FAQ[3]
+
+[1]: https://ci.example.com
+[2]: https://crates.io/crates/x
+[3]: docs/faq.md
+
+Installation
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+┌──────────────────────────────────────────────────────────────────────────────────────── console ─┐
+│ $ cargo install x                                                                                │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+Usage
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+Run `x --help`. See the guide[4] or the directory[5].
+
+▾ Advanced options
+  ╭──────┬─────────╮
+  │ Flag │ Meaning │
+  ├──────┼─────────┤
+  │ `-v` │ verbose │
+  ╰──────┴─────────╯
+
+[4]: docs/guide.md#getting-started
+[5]: docs/
+
+Usage
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+A second Usage heading gets a de-duplicated slug.
+
+                                           Centered text
+
+cell one cell two
+
+Line one
+line twocontinued

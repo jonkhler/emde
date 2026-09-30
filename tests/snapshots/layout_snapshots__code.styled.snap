@@ -1,0 +1,251 @@
+---
+source: tests/layout_snapshots.rs
+expression: "styled(\"code\", & Caps :: full(), & WIDTHS)"
+---
+━━ width 24 ━━━━━━━━━━━━
+  ⟦bg=#2c2d3d⟧               ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧rust⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦bg=#2c2d3d⟧ ⟦/⟧⟦fg=#cba6f7 bg=#2c2d3d bold⟧fn⟦/⟧⟦bg=#2c2d3d⟧ main() {        ⟦/⟧
+  ⟦bg=#2c2d3d⟧     ⟦/⟧⟦fg=#cba6f7 bg=#2c2d3d bold⟧let⟦/⟧⟦bg=#2c2d3d⟧ tab = ⟦/⟧⟦fg=#a6e3a1 bg=#2c2d3d⟧"ind⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦fg=#6c7086 bg=#2c2d3d⟧↳⟦/⟧⟦fg=#a6e3a1 bg=#2c2d3d⟧ented with a tab"⟦/⟧⟦bg=#2c2d3d⟧; ⟦/⟧
+  ⟦bg=#2c2d3d⟧     println!(⟦/⟧⟦fg=#a6e3a1 bg=#2c2d3d⟧"{}"⟦/⟧⟦bg=#2c2d3d⟧, ⟦/⟧
+  ⟦fg=#6c7086 bg=#2c2d3d⟧↳⟦/⟧⟦bg=#2c2d3d⟧ tab); ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d italic⟧// a commen⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦fg=#6c7086 bg=#2c2d3d⟧↳⟦/⟧⟦fg=#6c7086 bg=#2c2d3d italic⟧t⟦/⟧⟦bg=#2c2d3d⟧                  ⟦/⟧
+  ⟦bg=#2c2d3d⟧ }                  ⟦/⟧
+  ⟦bg=#2c2d3d⟧                    ⟦/⟧
+
+  ⟦bg=#2c2d3d⟧ ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧example.py⟦/⟧⟦bg=#2c2d3d⟧  ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧python⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦bg=#2c2d3d⟧ ⟦/⟧⟦fg=#cba6f7 bg=#2c2d3d bold⟧def⟦/⟧⟦bg=#2c2d3d⟧ greet(name):   ⟦/⟧
+  ⟦bg=#2c2d3d⟧     ⟦/⟧⟦fg=#cba6f7 bg=#2c2d3d bold⟧return⟦/⟧⟦bg=#2c2d3d⟧ f⟦/⟧⟦fg=#a6e3a1 bg=#2c2d3d⟧"Hello⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦fg=#6c7086 bg=#2c2d3d⟧↳⟦/⟧⟦fg=#a6e3a1 bg=#2c2d3d⟧, {name}!"⟦/⟧⟦bg=#2c2d3d⟧  ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d italic⟧# a co⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦fg=#6c7086 bg=#2c2d3d⟧↳⟦/⟧⟦fg=#6c7086 bg=#2c2d3d italic⟧mment that makes t⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦fg=#6c7086 bg=#2c2d3d⟧↳⟦/⟧⟦fg=#6c7086 bg=#2c2d3d italic⟧his line long enou⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦fg=#6c7086 bg=#2c2d3d⟧↳⟦/⟧⟦fg=#6c7086 bg=#2c2d3d italic⟧gh to wrap at eigh⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦fg=#6c7086 bg=#2c2d3d⟧↳⟦/⟧⟦fg=#6c7086 bg=#2c2d3d italic⟧ty⟦/⟧⟦bg=#2c2d3d⟧                 ⟦/⟧
+  ⟦bg=#2c2d3d⟧                    ⟦/⟧
+
+  ⟦bg=#2c2d3d⟧                 ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧js⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦bg=#2c2d3d⟧ ⟦/⟧⟦fg=#cba6f7 bg=#2c2d3d bold⟧const⟦/⟧⟦bg=#2c2d3d⟧ doubled = [⟦/⟧⟦fg=#fab387 bg=#2c2d3d⟧1⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦fg=#6c7086 bg=#2c2d3d⟧↳⟦/⟧⟦bg=#2c2d3d⟧, ⟦/⟧⟦fg=#fab387 bg=#2c2d3d⟧2⟦/⟧⟦bg=#2c2d3d⟧, ⟦/⟧⟦fg=#fab387 bg=#2c2d3d⟧3⟦/⟧⟦bg=#2c2d3d⟧].map((n) => ⟦/⟧
+  ⟦fg=#6c7086 bg=#2c2d3d⟧↳⟦/⟧⟦bg=#2c2d3d⟧ n * ⟦/⟧⟦fg=#fab387 bg=#2c2d3d⟧2⟦/⟧⟦bg=#2c2d3d⟧);           ⟦/⟧
+  ⟦bg=#2c2d3d⟧                    ⟦/⟧
+
+  ⟦bg=#2c2d3d⟧               ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧diff⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦bg=#2c2d3d⟧ --- a/file.txt     ⟦/⟧
+  ⟦bg=#2c2d3d⟧ +++ b/file.txt     ⟦/⟧
+  ⟦bg=#2c2d3d⟧ @@ -1,3 +1,3 @@    ⟦/⟧
+  ⟦bg=#2c2d3d⟧  unchanged line    ⟦/⟧
+  ⟦bg=#4d3d4f⟧ -removed line      ⟦/⟧
+  ⟦bg=#404a4f⟧ +added line        ⟦/⟧
+  ⟦bg=#2c2d3d⟧                    ⟦/⟧
+
+  ⟦bg=#2c2d3d⟧            ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧console⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦bg=#2c2d3d⟧ $ emde --help      ⟦/⟧
+  ⟦bg=#2c2d3d⟧                    ⟦/⟧
+
+  ⟦bg=#2c2d3d⟧                    ⟦/⟧
+  ⟦bg=#2c2d3d⟧ no language here   ⟦/⟧
+  ⟦bg=#2c2d3d⟧                    ⟦/⟧
+
+  ⟦bg=#2c2d3d⟧                    ⟦/⟧
+  ⟦bg=#2c2d3d⟧ indented code      ⟦/⟧
+  ⟦bg=#2c2d3d⟧ with two lines     ⟦/⟧
+  ⟦bg=#2c2d3d⟧                    ⟦/⟧
+
+  ⟦bg=#2c2d3d⟧            ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧mermaid⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦bg=#2c2d3d⟧ graph TD; A-->B;   ⟦/⟧
+  ⟦bg=#2c2d3d⟧                    ⟦/⟧
+
+  ⟦bg=#2c2d3d⟧           ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧markdown⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦bg=#2c2d3d⟧ ```nested          ⟦/⟧
+  ⟦bg=#2c2d3d⟧ fences             ⟦/⟧
+  ⟦bg=#2c2d3d⟧ ```                ⟦/⟧
+  ⟦bg=#2c2d3d⟧                    ⟦/⟧
+
+  ⟦bg=#2c2d3d⟧               ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧text⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦bg=#2c2d3d⟧ tabs:   one two    ⟦/⟧
+  ⟦fg=#6c7086 bg=#2c2d3d⟧↳⟦/⟧⟦bg=#2c2d3d⟧  three            ⟦/⟧
+  ⟦bg=#2c2d3d⟧ wide: 日本語のテキ ⟦/⟧
+  ⟦fg=#6c7086 bg=#2c2d3d⟧↳⟦/⟧⟦bg=#2c2d3d⟧スト and emoji 👍  ⟦/⟧
+  ⟦bg=#2c2d3d⟧                    ⟦/⟧
+
+  ⟦bg=#2c2d3d⟧                    ⟦/⟧
+  ⟦bg=#2c2d3d⟧                    ⟦/⟧
+  ⟦bg=#2c2d3d⟧                    ⟦/⟧
+━━ width 40 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ⟦bg=#2c2d3d⟧                               ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧rust⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦bg=#2c2d3d⟧ ⟦/⟧⟦fg=#cba6f7 bg=#2c2d3d bold⟧fn⟦/⟧⟦bg=#2c2d3d⟧ main() {                        ⟦/⟧
+  ⟦bg=#2c2d3d⟧     ⟦/⟧⟦fg=#cba6f7 bg=#2c2d3d bold⟧let⟦/⟧⟦bg=#2c2d3d⟧ tab = ⟦/⟧⟦fg=#a6e3a1 bg=#2c2d3d⟧"indented with a tab⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦fg=#6c7086 bg=#2c2d3d⟧↳⟦/⟧⟦fg=#a6e3a1 bg=#2c2d3d⟧"⟦/⟧⟦bg=#2c2d3d⟧;                                 ⟦/⟧
+  ⟦bg=#2c2d3d⟧     println!(⟦/⟧⟦fg=#a6e3a1 bg=#2c2d3d⟧"{}"⟦/⟧⟦bg=#2c2d3d⟧, tab); ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d italic⟧// a comm⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦fg=#6c7086 bg=#2c2d3d⟧↳⟦/⟧⟦fg=#6c7086 bg=#2c2d3d italic⟧ent⟦/⟧⟦bg=#2c2d3d⟧                                ⟦/⟧
+  ⟦bg=#2c2d3d⟧ }                                  ⟦/⟧
+  ⟦bg=#2c2d3d⟧                                    ⟦/⟧
+
+  ⟦bg=#2c2d3d⟧ ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧example.py⟦/⟧⟦bg=#2c2d3d⟧                  ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧python⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦bg=#2c2d3d⟧ ⟦/⟧⟦fg=#cba6f7 bg=#2c2d3d bold⟧def⟦/⟧⟦bg=#2c2d3d⟧ greet(name):                   ⟦/⟧
+  ⟦bg=#2c2d3d⟧     ⟦/⟧⟦fg=#cba6f7 bg=#2c2d3d bold⟧return⟦/⟧⟦bg=#2c2d3d⟧ f⟦/⟧⟦fg=#a6e3a1 bg=#2c2d3d⟧"Hello, {name}!"⟦/⟧⟦bg=#2c2d3d⟧  ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d italic⟧# a ⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦fg=#6c7086 bg=#2c2d3d⟧↳⟦/⟧⟦fg=#6c7086 bg=#2c2d3d italic⟧comment that makes this line long ⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦fg=#6c7086 bg=#2c2d3d⟧↳⟦/⟧⟦fg=#6c7086 bg=#2c2d3d italic⟧enough to wrap at eighty⟦/⟧⟦bg=#2c2d3d⟧           ⟦/⟧
+  ⟦bg=#2c2d3d⟧                                    ⟦/⟧
+
+  ⟦bg=#2c2d3d⟧                                 ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧js⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦bg=#2c2d3d⟧ ⟦/⟧⟦fg=#cba6f7 bg=#2c2d3d bold⟧const⟦/⟧⟦bg=#2c2d3d⟧ doubled = [⟦/⟧⟦fg=#fab387 bg=#2c2d3d⟧1⟦/⟧⟦bg=#2c2d3d⟧, ⟦/⟧⟦fg=#fab387 bg=#2c2d3d⟧2⟦/⟧⟦bg=#2c2d3d⟧, ⟦/⟧⟦fg=#fab387 bg=#2c2d3d⟧3⟦/⟧⟦bg=#2c2d3d⟧].map((n)  ⟦/⟧
+  ⟦fg=#6c7086 bg=#2c2d3d⟧↳⟦/⟧⟦bg=#2c2d3d⟧=> n * ⟦/⟧⟦fg=#fab387 bg=#2c2d3d⟧2⟦/⟧⟦bg=#2c2d3d⟧);                         ⟦/⟧
+  ⟦bg=#2c2d3d⟧                                    ⟦/⟧
+
+  ⟦bg=#2c2d3d⟧                               ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧diff⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦bg=#2c2d3d⟧ --- a/file.txt                     ⟦/⟧
+  ⟦bg=#2c2d3d⟧ +++ b/file.txt                     ⟦/⟧
+  ⟦bg=#2c2d3d⟧ @@ -1,3 +1,3 @@                    ⟦/⟧
+  ⟦bg=#2c2d3d⟧  unchanged line                    ⟦/⟧
+  ⟦bg=#4d3d4f⟧ -removed line                      ⟦/⟧
+  ⟦bg=#404a4f⟧ +added line                        ⟦/⟧
+  ⟦bg=#2c2d3d⟧                                    ⟦/⟧
+
+  ⟦bg=#2c2d3d⟧                            ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧console⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦bg=#2c2d3d⟧ $ emde --help                      ⟦/⟧
+  ⟦bg=#2c2d3d⟧                                    ⟦/⟧
+
+  ⟦bg=#2c2d3d⟧                                    ⟦/⟧
+  ⟦bg=#2c2d3d⟧ no language here                   ⟦/⟧
+  ⟦bg=#2c2d3d⟧                                    ⟦/⟧
+
+  ⟦bg=#2c2d3d⟧                                    ⟦/⟧
+  ⟦bg=#2c2d3d⟧ indented code                      ⟦/⟧
+  ⟦bg=#2c2d3d⟧ with two lines                     ⟦/⟧
+  ⟦bg=#2c2d3d⟧                                    ⟦/⟧
+
+  ⟦bg=#2c2d3d⟧                            ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧mermaid⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦bg=#2c2d3d⟧ graph TD; A-->B;                   ⟦/⟧
+  ⟦bg=#2c2d3d⟧                                    ⟦/⟧
+
+  ⟦bg=#2c2d3d⟧                           ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧markdown⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦bg=#2c2d3d⟧ ```nested                          ⟦/⟧
+  ⟦bg=#2c2d3d⟧ fences                             ⟦/⟧
+  ⟦bg=#2c2d3d⟧ ```                                ⟦/⟧
+  ⟦bg=#2c2d3d⟧                                    ⟦/⟧
+
+  ⟦bg=#2c2d3d⟧                               ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧text⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦bg=#2c2d3d⟧ tabs:   one two     three          ⟦/⟧
+  ⟦bg=#2c2d3d⟧ wide: 日本語のテキスト and emoji   ⟦/⟧
+  ⟦fg=#6c7086 bg=#2c2d3d⟧↳⟦/⟧⟦bg=#2c2d3d⟧👍                                 ⟦/⟧
+  ⟦bg=#2c2d3d⟧                                    ⟦/⟧
+
+  ⟦bg=#2c2d3d⟧                                    ⟦/⟧
+  ⟦bg=#2c2d3d⟧                                    ⟦/⟧
+  ⟦bg=#2c2d3d⟧                                    ⟦/⟧
+━━ width 80 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ⟦bg=#2c2d3d⟧                                                                       ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧rust⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦bg=#2c2d3d⟧ ⟦/⟧⟦fg=#cba6f7 bg=#2c2d3d bold⟧fn⟦/⟧⟦bg=#2c2d3d⟧ main() {                                                                ⟦/⟧
+  ⟦bg=#2c2d3d⟧     ⟦/⟧⟦fg=#cba6f7 bg=#2c2d3d bold⟧let⟦/⟧⟦bg=#2c2d3d⟧ tab = ⟦/⟧⟦fg=#a6e3a1 bg=#2c2d3d⟧"indented with a tab"⟦/⟧⟦bg=#2c2d3d⟧;                                       ⟦/⟧
+  ⟦bg=#2c2d3d⟧     println!(⟦/⟧⟦fg=#a6e3a1 bg=#2c2d3d⟧"{}"⟦/⟧⟦bg=#2c2d3d⟧, tab); ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d italic⟧// a comment⟦/⟧⟦bg=#2c2d3d⟧                                      ⟦/⟧
+  ⟦bg=#2c2d3d⟧ }                                                                          ⟦/⟧
+  ⟦bg=#2c2d3d⟧                                                                            ⟦/⟧
+
+  ⟦bg=#2c2d3d⟧ ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧example.py⟦/⟧⟦bg=#2c2d3d⟧                                                          ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧python⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦bg=#2c2d3d⟧ ⟦/⟧⟦fg=#cba6f7 bg=#2c2d3d bold⟧def⟦/⟧⟦bg=#2c2d3d⟧ greet(name):                                                           ⟦/⟧
+  ⟦bg=#2c2d3d⟧     ⟦/⟧⟦fg=#cba6f7 bg=#2c2d3d bold⟧return⟦/⟧⟦bg=#2c2d3d⟧ f⟦/⟧⟦fg=#a6e3a1 bg=#2c2d3d⟧"Hello, {name}!"⟦/⟧⟦bg=#2c2d3d⟧  ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d italic⟧# a comment that makes this line long enough⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦fg=#6c7086 bg=#2c2d3d⟧↳⟦/⟧⟦fg=#6c7086 bg=#2c2d3d italic⟧ to wrap at eighty⟦/⟧⟦bg=#2c2d3d⟧                                                         ⟦/⟧
+  ⟦bg=#2c2d3d⟧                                                                            ⟦/⟧
+
+  ⟦bg=#2c2d3d⟧                                                                         ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧js⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦bg=#2c2d3d⟧ ⟦/⟧⟦fg=#cba6f7 bg=#2c2d3d bold⟧const⟦/⟧⟦bg=#2c2d3d⟧ doubled = [⟦/⟧⟦fg=#fab387 bg=#2c2d3d⟧1⟦/⟧⟦bg=#2c2d3d⟧, ⟦/⟧⟦fg=#fab387 bg=#2c2d3d⟧2⟦/⟧⟦bg=#2c2d3d⟧, ⟦/⟧⟦fg=#fab387 bg=#2c2d3d⟧3⟦/⟧⟦bg=#2c2d3d⟧].map((n) => n * ⟦/⟧⟦fg=#fab387 bg=#2c2d3d⟧2⟦/⟧⟦bg=#2c2d3d⟧);                               ⟦/⟧
+  ⟦bg=#2c2d3d⟧                                                                            ⟦/⟧
+
+  ⟦bg=#2c2d3d⟧                                                                       ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧diff⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦bg=#2c2d3d⟧ --- a/file.txt                                                             ⟦/⟧
+  ⟦bg=#2c2d3d⟧ +++ b/file.txt                                                             ⟦/⟧
+  ⟦bg=#2c2d3d⟧ @@ -1,3 +1,3 @@                                                            ⟦/⟧
+  ⟦bg=#2c2d3d⟧  unchanged line                                                            ⟦/⟧
+  ⟦bg=#4d3d4f⟧ -removed line                                                              ⟦/⟧
+  ⟦bg=#404a4f⟧ +added line                                                                ⟦/⟧
+  ⟦bg=#2c2d3d⟧                                                                            ⟦/⟧
+
+  ⟦bg=#2c2d3d⟧                                                                    ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧console⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦bg=#2c2d3d⟧ $ emde --help                                                              ⟦/⟧
+  ⟦bg=#2c2d3d⟧                                                                            ⟦/⟧
+
+  ⟦bg=#2c2d3d⟧                                                                            ⟦/⟧
+  ⟦bg=#2c2d3d⟧ no language here                                                           ⟦/⟧
+  ⟦bg=#2c2d3d⟧                                                                            ⟦/⟧
+
+  ⟦bg=#2c2d3d⟧                                                                            ⟦/⟧
+  ⟦bg=#2c2d3d⟧ indented code                                                              ⟦/⟧
+  ⟦bg=#2c2d3d⟧ with two lines                                                             ⟦/⟧
+  ⟦bg=#2c2d3d⟧                                                                            ⟦/⟧
+
+  ⟦bg=#2c2d3d⟧                                                                    ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧mermaid⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦bg=#2c2d3d⟧ graph TD; A-->B;                                                           ⟦/⟧
+  ⟦bg=#2c2d3d⟧                                                                            ⟦/⟧
+
+  ⟦bg=#2c2d3d⟧                                                                   ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧markdown⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦bg=#2c2d3d⟧ ```nested                                                                  ⟦/⟧
+  ⟦bg=#2c2d3d⟧ fences                                                                     ⟦/⟧
+  ⟦bg=#2c2d3d⟧ ```                                                                        ⟦/⟧
+  ⟦bg=#2c2d3d⟧                                                                            ⟦/⟧
+
+  ⟦bg=#2c2d3d⟧                                                                       ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧text⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦bg=#2c2d3d⟧ tabs:   one two     three                                                  ⟦/⟧
+  ⟦bg=#2c2d3d⟧ wide: 日本語のテキスト and emoji 👍                                        ⟦/⟧
+  ⟦bg=#2c2d3d⟧                                                                            ⟦/⟧
+
+  ⟦bg=#2c2d3d⟧                                                                            ⟦/⟧
+  ⟦bg=#2c2d3d⟧                                                                            ⟦/⟧
+  ⟦bg=#2c2d3d⟧                                                                            ⟦/⟧
+━━ width 120 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          ⟦bg=#2c2d3d⟧                                                                                               ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧rust⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+          ⟦bg=#2c2d3d⟧ ⟦/⟧⟦fg=#cba6f7 bg=#2c2d3d bold⟧fn⟦/⟧⟦bg=#2c2d3d⟧ main() {                                                                                        ⟦/⟧
+          ⟦bg=#2c2d3d⟧     ⟦/⟧⟦fg=#cba6f7 bg=#2c2d3d bold⟧let⟦/⟧⟦bg=#2c2d3d⟧ tab = ⟦/⟧⟦fg=#a6e3a1 bg=#2c2d3d⟧"indented with a tab"⟦/⟧⟦bg=#2c2d3d⟧;                                                               ⟦/⟧
+          ⟦bg=#2c2d3d⟧     println!(⟦/⟧⟦fg=#a6e3a1 bg=#2c2d3d⟧"{}"⟦/⟧⟦bg=#2c2d3d⟧, tab); ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d italic⟧// a comment⟦/⟧⟦bg=#2c2d3d⟧                                                              ⟦/⟧
+          ⟦bg=#2c2d3d⟧ }                                                                                                  ⟦/⟧
+          ⟦bg=#2c2d3d⟧                                                                                                    ⟦/⟧
+
+          ⟦bg=#2c2d3d⟧ ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧example.py⟦/⟧⟦bg=#2c2d3d⟧                                                                                  ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧python⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+          ⟦bg=#2c2d3d⟧ ⟦/⟧⟦fg=#cba6f7 bg=#2c2d3d bold⟧def⟦/⟧⟦bg=#2c2d3d⟧ greet(name):                                                                                   ⟦/⟧
+          ⟦bg=#2c2d3d⟧     ⟦/⟧⟦fg=#cba6f7 bg=#2c2d3d bold⟧return⟦/⟧⟦bg=#2c2d3d⟧ f⟦/⟧⟦fg=#a6e3a1 bg=#2c2d3d⟧"Hello, {name}!"⟦/⟧⟦bg=#2c2d3d⟧  ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d italic⟧# a comment that makes this line long enough to wrap at eighty⟦/⟧⟦bg=#2c2d3d⟧       ⟦/⟧
+          ⟦bg=#2c2d3d⟧                                                                                                    ⟦/⟧
+
+          ⟦bg=#2c2d3d⟧                                                                                                 ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧js⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+          ⟦bg=#2c2d3d⟧ ⟦/⟧⟦fg=#cba6f7 bg=#2c2d3d bold⟧const⟦/⟧⟦bg=#2c2d3d⟧ doubled = [⟦/⟧⟦fg=#fab387 bg=#2c2d3d⟧1⟦/⟧⟦bg=#2c2d3d⟧, ⟦/⟧⟦fg=#fab387 bg=#2c2d3d⟧2⟦/⟧⟦bg=#2c2d3d⟧, ⟦/⟧⟦fg=#fab387 bg=#2c2d3d⟧3⟦/⟧⟦bg=#2c2d3d⟧].map((n) => n * ⟦/⟧⟦fg=#fab387 bg=#2c2d3d⟧2⟦/⟧⟦bg=#2c2d3d⟧);                                                       ⟦/⟧
+          ⟦bg=#2c2d3d⟧                                                                                                    ⟦/⟧
+
+          ⟦bg=#2c2d3d⟧                                                                                               ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧diff⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+          ⟦bg=#2c2d3d⟧ --- a/file.txt                                                                                     ⟦/⟧
+          ⟦bg=#2c2d3d⟧ +++ b/file.txt                                                                                     ⟦/⟧
+          ⟦bg=#2c2d3d⟧ @@ -1,3 +1,3 @@                                                                                    ⟦/⟧
+          ⟦bg=#2c2d3d⟧  unchanged line                                                                                    ⟦/⟧
+          ⟦bg=#4d3d4f⟧ -removed line                                                                                      ⟦/⟧
+          ⟦bg=#404a4f⟧ +added line                                                                                        ⟦/⟧
+          ⟦bg=#2c2d3d⟧                                                                                                    ⟦/⟧
+
+          ⟦bg=#2c2d3d⟧                                                                                            ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧console⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+          ⟦bg=#2c2d3d⟧ $ emde --help                                                                                      ⟦/⟧
+          ⟦bg=#2c2d3d⟧                                                                                                    ⟦/⟧
+
+          ⟦bg=#2c2d3d⟧                                                                                                    ⟦/⟧
+          ⟦bg=#2c2d3d⟧ no language here                                                                                   ⟦/⟧
+          ⟦bg=#2c2d3d⟧                                                                                                    ⟦/⟧
+
+          ⟦bg=#2c2d3d⟧                                                                                                    ⟦/⟧
+          ⟦bg=#2c2d3d⟧ indented code                                                                                      ⟦/⟧
+          ⟦bg=#2c2d3d⟧ with two lines                                                                                     ⟦/⟧
+          ⟦bg=#2c2d3d⟧                                                                                                    ⟦/⟧
+
+          ⟦bg=#2c2d3d⟧                                                                                            ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧mermaid⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+          ⟦bg=#2c2d3d⟧ graph TD; A-->B;                                                                                   ⟦/⟧
+          ⟦bg=#2c2d3d⟧                                                                                                    ⟦/⟧
+
+          ⟦bg=#2c2d3d⟧                                                                                           ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧markdown⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+          ⟦bg=#2c2d3d⟧ ```nested                                                                                          ⟦/⟧
+          ⟦bg=#2c2d3d⟧ fences                                                                                             ⟦/⟧
+          ⟦bg=#2c2d3d⟧ ```                                                                                                ⟦/⟧
+          ⟦bg=#2c2d3d⟧                                                                                                    ⟦/⟧
+
+          ⟦bg=#2c2d3d⟧                                                                                               ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧text⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+          ⟦bg=#2c2d3d⟧ tabs:   one two     three                                                                          ⟦/⟧
+          ⟦bg=#2c2d3d⟧ wide: 日本語のテキスト and emoji 👍                                                                ⟦/⟧
+          ⟦bg=#2c2d3d⟧                                                                                                    ⟦/⟧
+
+          ⟦bg=#2c2d3d⟧                                                                                                    ⟦/⟧
+          ⟦bg=#2c2d3d⟧                                                                                                    ⟦/⟧
+          ⟦bg=#2c2d3d⟧                                                                                                    ⟦/⟧

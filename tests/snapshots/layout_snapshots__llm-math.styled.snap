@@ -1,0 +1,158 @@
+---
+source: tests/layout_snapshots.rs
+expression: "styled(\"llm-math\", & Caps :: full(), & WIDTHS)"
+---
+━━ width 24 ━━━━━━━━━━━━
+  ⟦grad #89b4fa→#cba6f7 0..20⟧⟦fg=#1e1e2e bold⟧ Quadratic⟦/⟧⟦/grad⟧
+  ⟦grad #89b4fa→#cba6f7 0..20⟧⟦fg=#1e1e2e bold⟧ equations⟦/⟧⟦/grad⟧
+
+  The solutions of
+  ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧ax^2 + bx + c = 0⟦/⟧
+  are given by
+
+    ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x = \frac{-b \pm⟦/⟧
+   ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\sqrt{b^2 - 4ac}}⟦/⟧
+          ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧{2a}⟦/⟧
+
+  where ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧a \neq 0⟦/⟧. The
+  discriminant
+  ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta = b^2 - 4ac⟦/⟧
+  decides:
+
+  ⟦fg=#89b4fa⟧1.⟦/⟧ If ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta > 0⟦/⟧,
+     there are two
+     real roots ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x_1⟦/⟧
+     and ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x_2⟦/⟧.
+  ⟦fg=#89b4fa⟧2.⟦/⟧ If ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta = 0⟦/⟧,
+     there is one root
+     ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x = -\frac{b}{2a}⟦/⟧
+     .
+  ⟦fg=#89b4fa⟧3.⟦/⟧ If ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta < 0⟦/⟧,
+     the roots are
+     complex.
+
+  Subscripts that look
+  like emphasis:
+  ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x^{2}_{1}⟦/⟧ and
+  ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧y^{2}_{3}⟦/⟧.
+
+  GitHub style:
+  ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\sqrt{x^2+1}⟦/⟧ and
+  dollars: ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧E = mc^2⟦/⟧.
+
+  Prices stay prose:
+  it costs $5 and $10,
+  or $5-$10.
+
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧Inside a quote:⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\int_0^\infty e^{-⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧     ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x^2}\,dx =⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\frac{\sqrt{\pi}}⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧        ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧{2}⟦/⟧
+
+  Code keeps
+  delimiters:
+  ⟦fg=#fab387 bg=#2c2d3d⟧ \(not math\) ⟦/⟧.
+
+  An aligned block:
+
+  ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\begin{aligned} f(x)⟦/⟧
+   ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧&= x^2 \\ f'(x) &=⟦/⟧
+    ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧2x \end{aligned}⟦/⟧
+━━ width 40 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ⟦grad #89b4fa→#cba6f7 0..36⟧⟦fg=#1e1e2e bold⟧ Quadratic equations⟦/⟧⟦/grad⟧
+
+  The solutions of ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧ax^2 + bx + c = 0⟦/⟧
+  are given by
+
+   ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x = \frac{-b \pm \sqrt{b^2 - 4ac}}⟦/⟧
+                  ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧{2a}⟦/⟧
+
+  where ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧a \neq 0⟦/⟧. The discriminant
+  ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta = b^2 - 4ac⟦/⟧ decides:
+
+  ⟦fg=#89b4fa⟧1.⟦/⟧ If ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta > 0⟦/⟧, there are two real
+     roots ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x_1⟦/⟧ and ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x_2⟦/⟧.
+  ⟦fg=#89b4fa⟧2.⟦/⟧ If ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta = 0⟦/⟧, there is one root
+     ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x = -\frac{b}{2a}⟦/⟧.
+  ⟦fg=#89b4fa⟧3.⟦/⟧ If ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta < 0⟦/⟧, the roots are
+     complex.
+
+  Subscripts that look like emphasis:
+  ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x^{2}_{1}⟦/⟧ and ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧y^{2}_{3}⟦/⟧.
+
+  GitHub style: ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\sqrt{x^2+1}⟦/⟧ and
+  dollars: ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧E = mc^2⟦/⟧.
+
+  Prices stay prose: it costs $5 and
+  $10, or $5-$10.
+
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧Inside a quote:⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧    ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\int_0^\infty e^{-x^2}\,dx =⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧        ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\frac{\sqrt{\pi}}{2}⟦/⟧
+
+  Code keeps delimiters:
+  ⟦fg=#fab387 bg=#2c2d3d⟧ \(not math\) ⟦/⟧.
+
+  An aligned block:
+
+  ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\begin{aligned} f(x) &= x^2 \\ f'(x)⟦/⟧
+          ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧&= 2x \end{aligned}⟦/⟧
+━━ width 80 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ⟦grad #89b4fa→#cba6f7 0..76⟧⟦fg=#1e1e2e bold⟧ Quadratic equations⟦/⟧⟦/grad⟧
+
+  The solutions of ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧ax^2 + bx + c = 0⟦/⟧ are given by
+
+                     ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}⟦/⟧
+
+  where ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧a \neq 0⟦/⟧. The discriminant ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta = b^2 - 4ac⟦/⟧ decides:
+
+  ⟦fg=#89b4fa⟧1.⟦/⟧ If ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta > 0⟦/⟧, there are two real roots ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x_1⟦/⟧ and ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x_2⟦/⟧.
+  ⟦fg=#89b4fa⟧2.⟦/⟧ If ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta = 0⟦/⟧, there is one root ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x = -\frac{b}{2a}⟦/⟧.
+  ⟦fg=#89b4fa⟧3.⟦/⟧ If ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta < 0⟦/⟧, the roots are complex.
+
+  Subscripts that look like emphasis: ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x^{2}_{1}⟦/⟧ and ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧y^{2}_{3}⟦/⟧.
+
+  GitHub style: ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\sqrt{x^2+1}⟦/⟧ and dollars: ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧E = mc^2⟦/⟧.
+
+  Prices stay prose: it costs $5 and $10, or $5-$10.
+
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧Inside a quote:⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧             ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\int_0^\infty e^{-x^2}\,dx = \frac{\sqrt{\pi}}{2}⟦/⟧
+
+  Code keeps delimiters: ⟦fg=#fab387 bg=#2c2d3d⟧ \(not math\) ⟦/⟧.
+
+  An aligned block:
+
+            ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\begin{aligned} f(x) &= x^2 \\ f'(x) &= 2x \end{aligned}⟦/⟧
+━━ width 120 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          ⟦grad #89b4fa→#cba6f7 0..100⟧⟦fg=#1e1e2e bold⟧ Quadratic equations⟦/⟧⟦/grad⟧
+
+          The solutions of ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧ax^2 + bx + c = 0⟦/⟧ are given by
+
+                                         ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}⟦/⟧
+
+          where ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧a \neq 0⟦/⟧. The discriminant ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta = b^2 - 4ac⟦/⟧ decides:
+
+          ⟦fg=#89b4fa⟧1.⟦/⟧ If ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta > 0⟦/⟧, there are two real roots ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x_1⟦/⟧ and ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x_2⟦/⟧.
+          ⟦fg=#89b4fa⟧2.⟦/⟧ If ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta = 0⟦/⟧, there is one root ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x = -\frac{b}{2a}⟦/⟧.
+          ⟦fg=#89b4fa⟧3.⟦/⟧ If ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\Delta < 0⟦/⟧, the roots are complex.
+
+          Subscripts that look like emphasis: ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧x^{2}_{1}⟦/⟧ and ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧y^{2}_{3}⟦/⟧.
+
+          GitHub style: ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\sqrt{x^2+1}⟦/⟧ and dollars: ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧E = mc^2⟦/⟧.
+
+          Prices stay prose: it costs $5 and $10, or $5-$10.
+
+          ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧Inside a quote:⟦/⟧
+          ⟦fg=#6c7086⟧▎⟦/⟧
+          ⟦fg=#6c7086⟧▎⟦/⟧                         ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\int_0^\infty e^{-x^2}\,dx = \frac{\sqrt{\pi}}{2}⟦/⟧
+
+          Code keeps delimiters: ⟦fg=#fab387 bg=#2c2d3d⟧ \(not math\) ⟦/⟧.
+
+          An aligned block:
+
+                                ⟦fg=#f38ba8 ul=curly ulc=#f38ba8⟧\begin{aligned} f(x) &= x^2 \\ f'(x) &= 2x \end{aligned}⟦/⟧

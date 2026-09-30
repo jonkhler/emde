@@ -1,0 +1,188 @@
+---
+source: tests/layout_snapshots.rs
+expression: "styled(\"quotes-alerts\", & Caps :: full(), & WIDTHS)"
+---
+━━ width 24 ━━━━━━━━━━━━
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧A plain quote that⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧is long enough to⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧wrap onto several⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧lines, so every⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧wrapped line must⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧keep its bar.⟦/⟧
+
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧A quote with two⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧paragraphs.⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧The second⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧paragraph.⟦/⟧
+
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧Outer quote⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧Inner quote⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧Innermost⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧quote that⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧also wraps⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧when the⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧terminal is⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧narrow enough.⟦/⟧
+
+  ⟦fg=#89b4fa bg=#282b40⟧▎⟦/⟧⟦bg=#282b40⟧ ⟦/⟧⟦fg=#89b4fa bg=#282b40 bold⟧ⓘ Note⟦/⟧⟦bg=#282b40⟧            ⟦/⟧
+  ⟦fg=#89b4fa bg=#282b40⟧▎⟦/⟧⟦bg=#282b40⟧ Useful information⟦/⟧
+  ⟦fg=#89b4fa bg=#282b40⟧▎⟦/⟧⟦bg=#282b40⟧ that users should ⟦/⟧
+  ⟦fg=#89b4fa bg=#282b40⟧▎⟦/⟧⟦bg=#282b40⟧ know.             ⟦/⟧
+
+  ⟦fg=#a6e3a1 bg=#2a2f39⟧▎⟦/⟧⟦bg=#2a2f39⟧ ⟦/⟧⟦fg=#a6e3a1 bg=#2a2f39 bold⟧✦ Tip⟦/⟧⟦bg=#2a2f39⟧             ⟦/⟧
+  ⟦fg=#a6e3a1 bg=#2a2f39⟧▎⟦/⟧⟦bg=#2a2f39⟧ Helpful advice for⟦/⟧
+  ⟦fg=#a6e3a1 bg=#2a2f39⟧▎⟦/⟧⟦bg=#2a2f39⟧ doing things      ⟦/⟧
+  ⟦fg=#a6e3a1 bg=#2a2f39⟧▎⟦/⟧⟦bg=#2a2f39⟧ better.           ⟦/⟧
+
+  ⟦fg=#cba6f7 bg=#2d2a3f⟧▎⟦/⟧⟦bg=#2d2a3f⟧ ⟦/⟧⟦fg=#cba6f7 bg=#2d2a3f bold⟧❖ Important⟦/⟧⟦bg=#2d2a3f⟧       ⟦/⟧
+  ⟦fg=#cba6f7 bg=#2d2a3f⟧▎⟦/⟧⟦bg=#2d2a3f⟧ Key information   ⟦/⟧
+  ⟦fg=#cba6f7 bg=#2d2a3f⟧▎⟦/⟧⟦bg=#2d2a3f⟧ users need to     ⟦/⟧
+  ⟦fg=#cba6f7 bg=#2d2a3f⟧▎⟦/⟧⟦bg=#2d2a3f⟧ know.             ⟦/⟧
+
+  ⟦fg=#f9e2af bg=#302f3a⟧▎⟦/⟧⟦bg=#302f3a⟧ ⟦/⟧⟦fg=#f9e2af bg=#302f3a bold⟧▲ Warning⟦/⟧⟦bg=#302f3a⟧         ⟦/⟧
+  ⟦fg=#f9e2af bg=#302f3a⟧▎⟦/⟧⟦bg=#302f3a⟧ Urgent info that  ⟦/⟧
+  ⟦fg=#f9e2af bg=#302f3a⟧▎⟦/⟧⟦bg=#302f3a⟧ needs immediate   ⟦/⟧
+  ⟦fg=#f9e2af bg=#302f3a⟧▎⟦/⟧⟦bg=#302f3a⟧ attention, long   ⟦/⟧
+  ⟦fg=#f9e2af bg=#302f3a⟧▎⟦/⟧⟦bg=#302f3a⟧ enough to wrap at ⟦/⟧
+  ⟦fg=#f9e2af bg=#302f3a⟧▎⟦/⟧⟦bg=#302f3a⟧ small widths.     ⟦/⟧
+
+  ⟦fg=#f38ba8 bg=#312839⟧▎⟦/⟧⟦bg=#312839⟧ ⟦/⟧⟦fg=#f38ba8 bg=#312839 bold⟧⊘ Caution⟦/⟧⟦bg=#312839⟧         ⟦/⟧
+  ⟦fg=#f38ba8 bg=#312839⟧▎⟦/⟧⟦bg=#312839⟧ Advises about     ⟦/⟧
+  ⟦fg=#f38ba8 bg=#312839⟧▎⟦/⟧⟦bg=#312839⟧ risks or negative ⟦/⟧
+  ⟦fg=#f38ba8 bg=#312839⟧▎⟦/⟧⟦bg=#312839⟧ outcomes.         ⟦/⟧
+  ⟦fg=#f38ba8 bg=#312839⟧▎⟦/⟧⟦bg=#312839⟧                   ⟦/⟧
+  ⟦fg=#f38ba8 bg=#312839⟧▎⟦/⟧⟦bg=#312839⟧ ⟦/⟧⟦fg=#89b4fa bg=#312839⟧•⟦/⟧⟦bg=#312839⟧ with a list     ⟦/⟧
+  ⟦fg=#f38ba8 bg=#312839⟧▎⟦/⟧⟦bg=#312839⟧ ⟦/⟧⟦fg=#89b4fa bg=#312839⟧•⟦/⟧⟦bg=#312839⟧ inside the alert⟦/⟧
+
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧Quote with ⟦/⟧⟦fg=#fab387 bg=#2c2d3d⟧ code ⟦/⟧⟦fg=#a6adc8⟧,⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8 bold⟧bold⟦/⟧⟦fg=#a6adc8⟧ and a ⟦/⟧⟦fg=#89b4fa ul link 0⟧link⟦/⟧⟦fg=#a6adc8⟧.⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦bg=#2c2d3d⟧             ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧rust⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦bg=#2c2d3d⟧ ⟦/⟧⟦fg=#cba6f7 bg=#2c2d3d bold⟧let⟦/⟧⟦bg=#2c2d3d⟧ x = ⟦/⟧⟦fg=#fab387 bg=#2c2d3d⟧1⟦/⟧⟦bg=#2c2d3d⟧;       ⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦bg=#2c2d3d⟧                  ⟦/⟧
+━━ width 40 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧A plain quote that is long enough⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧to wrap onto several lines, so⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧every wrapped line must keep its⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧bar.⟦/⟧
+
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧A quote with two paragraphs.⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧The second paragraph.⟦/⟧
+
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧Outer quote⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧Inner quote⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧Innermost quote that also⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧wraps when the terminal is⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧narrow enough.⟦/⟧
+
+  ⟦fg=#89b4fa bg=#282b40⟧▎⟦/⟧⟦bg=#282b40⟧ ⟦/⟧⟦fg=#89b4fa bg=#282b40 bold⟧ⓘ Note⟦/⟧⟦bg=#282b40⟧                            ⟦/⟧
+  ⟦fg=#89b4fa bg=#282b40⟧▎⟦/⟧⟦bg=#282b40⟧ Useful information that users     ⟦/⟧
+  ⟦fg=#89b4fa bg=#282b40⟧▎⟦/⟧⟦bg=#282b40⟧ should know.                      ⟦/⟧
+
+  ⟦fg=#a6e3a1 bg=#2a2f39⟧▎⟦/⟧⟦bg=#2a2f39⟧ ⟦/⟧⟦fg=#a6e3a1 bg=#2a2f39 bold⟧✦ Tip⟦/⟧⟦bg=#2a2f39⟧                             ⟦/⟧
+  ⟦fg=#a6e3a1 bg=#2a2f39⟧▎⟦/⟧⟦bg=#2a2f39⟧ Helpful advice for doing things   ⟦/⟧
+  ⟦fg=#a6e3a1 bg=#2a2f39⟧▎⟦/⟧⟦bg=#2a2f39⟧ better.                           ⟦/⟧
+
+  ⟦fg=#cba6f7 bg=#2d2a3f⟧▎⟦/⟧⟦bg=#2d2a3f⟧ ⟦/⟧⟦fg=#cba6f7 bg=#2d2a3f bold⟧❖ Important⟦/⟧⟦bg=#2d2a3f⟧                       ⟦/⟧
+  ⟦fg=#cba6f7 bg=#2d2a3f⟧▎⟦/⟧⟦bg=#2d2a3f⟧ Key information users need to     ⟦/⟧
+  ⟦fg=#cba6f7 bg=#2d2a3f⟧▎⟦/⟧⟦bg=#2d2a3f⟧ know.                             ⟦/⟧
+
+  ⟦fg=#f9e2af bg=#302f3a⟧▎⟦/⟧⟦bg=#302f3a⟧ ⟦/⟧⟦fg=#f9e2af bg=#302f3a bold⟧▲ Warning⟦/⟧⟦bg=#302f3a⟧                         ⟦/⟧
+  ⟦fg=#f9e2af bg=#302f3a⟧▎⟦/⟧⟦bg=#302f3a⟧ Urgent info that needs immediate  ⟦/⟧
+  ⟦fg=#f9e2af bg=#302f3a⟧▎⟦/⟧⟦bg=#302f3a⟧ attention, long enough to wrap at ⟦/⟧
+  ⟦fg=#f9e2af bg=#302f3a⟧▎⟦/⟧⟦bg=#302f3a⟧ small widths.                     ⟦/⟧
+
+  ⟦fg=#f38ba8 bg=#312839⟧▎⟦/⟧⟦bg=#312839⟧ ⟦/⟧⟦fg=#f38ba8 bg=#312839 bold⟧⊘ Caution⟦/⟧⟦bg=#312839⟧                         ⟦/⟧
+  ⟦fg=#f38ba8 bg=#312839⟧▎⟦/⟧⟦bg=#312839⟧ Advises about risks or negative   ⟦/⟧
+  ⟦fg=#f38ba8 bg=#312839⟧▎⟦/⟧⟦bg=#312839⟧ outcomes.                         ⟦/⟧
+  ⟦fg=#f38ba8 bg=#312839⟧▎⟦/⟧⟦bg=#312839⟧                                   ⟦/⟧
+  ⟦fg=#f38ba8 bg=#312839⟧▎⟦/⟧⟦bg=#312839⟧ ⟦/⟧⟦fg=#89b4fa bg=#312839⟧•⟦/⟧⟦bg=#312839⟧ with a list                     ⟦/⟧
+  ⟦fg=#f38ba8 bg=#312839⟧▎⟦/⟧⟦bg=#312839⟧ ⟦/⟧⟦fg=#89b4fa bg=#312839⟧•⟦/⟧⟦bg=#312839⟧ inside the alert                ⟦/⟧
+
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧Quote with ⟦/⟧⟦fg=#fab387 bg=#2c2d3d⟧ code ⟦/⟧⟦fg=#a6adc8⟧, ⟦/⟧⟦fg=#a6adc8 bold⟧bold⟦/⟧⟦fg=#a6adc8⟧ and a⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#89b4fa ul link 0⟧link⟦/⟧⟦fg=#a6adc8⟧.⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦bg=#2c2d3d⟧                             ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧rust⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦bg=#2c2d3d⟧ ⟦/⟧⟦fg=#cba6f7 bg=#2c2d3d bold⟧let⟦/⟧⟦bg=#2c2d3d⟧ x = ⟦/⟧⟦fg=#fab387 bg=#2c2d3d⟧1⟦/⟧⟦bg=#2c2d3d⟧;                       ⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦bg=#2c2d3d⟧                                  ⟦/⟧
+━━ width 80 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧A plain quote that is long enough to wrap onto several lines, so every⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧wrapped line must keep its bar.⟦/⟧
+
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧A quote with two paragraphs.⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧The second paragraph.⟦/⟧
+
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧Outer quote⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧Inner quote⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧Innermost quote that also wraps when the terminal is narrow enough.⟦/⟧
+
+  ⟦fg=#89b4fa bg=#282b40⟧▎⟦/⟧⟦bg=#282b40⟧ ⟦/⟧⟦fg=#89b4fa bg=#282b40 bold⟧ⓘ Note⟦/⟧⟦bg=#282b40⟧                                                                    ⟦/⟧
+  ⟦fg=#89b4fa bg=#282b40⟧▎⟦/⟧⟦bg=#282b40⟧ Useful information that users should know.                                ⟦/⟧
+
+  ⟦fg=#a6e3a1 bg=#2a2f39⟧▎⟦/⟧⟦bg=#2a2f39⟧ ⟦/⟧⟦fg=#a6e3a1 bg=#2a2f39 bold⟧✦ Tip⟦/⟧⟦bg=#2a2f39⟧                                                                     ⟦/⟧
+  ⟦fg=#a6e3a1 bg=#2a2f39⟧▎⟦/⟧⟦bg=#2a2f39⟧ Helpful advice for doing things better.                                   ⟦/⟧
+
+  ⟦fg=#cba6f7 bg=#2d2a3f⟧▎⟦/⟧⟦bg=#2d2a3f⟧ ⟦/⟧⟦fg=#cba6f7 bg=#2d2a3f bold⟧❖ Important⟦/⟧⟦bg=#2d2a3f⟧                                                               ⟦/⟧
+  ⟦fg=#cba6f7 bg=#2d2a3f⟧▎⟦/⟧⟦bg=#2d2a3f⟧ Key information users need to know.                                       ⟦/⟧
+
+  ⟦fg=#f9e2af bg=#302f3a⟧▎⟦/⟧⟦bg=#302f3a⟧ ⟦/⟧⟦fg=#f9e2af bg=#302f3a bold⟧▲ Warning⟦/⟧⟦bg=#302f3a⟧                                                                 ⟦/⟧
+  ⟦fg=#f9e2af bg=#302f3a⟧▎⟦/⟧⟦bg=#302f3a⟧ Urgent info that needs immediate attention, long enough to wrap at small  ⟦/⟧
+  ⟦fg=#f9e2af bg=#302f3a⟧▎⟦/⟧⟦bg=#302f3a⟧ widths.                                                                   ⟦/⟧
+
+  ⟦fg=#f38ba8 bg=#312839⟧▎⟦/⟧⟦bg=#312839⟧ ⟦/⟧⟦fg=#f38ba8 bg=#312839 bold⟧⊘ Caution⟦/⟧⟦bg=#312839⟧                                                                 ⟦/⟧
+  ⟦fg=#f38ba8 bg=#312839⟧▎⟦/⟧⟦bg=#312839⟧ Advises about risks or negative outcomes.                                 ⟦/⟧
+  ⟦fg=#f38ba8 bg=#312839⟧▎⟦/⟧⟦bg=#312839⟧                                                                           ⟦/⟧
+  ⟦fg=#f38ba8 bg=#312839⟧▎⟦/⟧⟦bg=#312839⟧ ⟦/⟧⟦fg=#89b4fa bg=#312839⟧•⟦/⟧⟦bg=#312839⟧ with a list                                                             ⟦/⟧
+  ⟦fg=#f38ba8 bg=#312839⟧▎⟦/⟧⟦bg=#312839⟧ ⟦/⟧⟦fg=#89b4fa bg=#312839⟧•⟦/⟧⟦bg=#312839⟧ inside the alert                                                        ⟦/⟧
+
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧Quote with ⟦/⟧⟦fg=#fab387 bg=#2c2d3d⟧ code ⟦/⟧⟦fg=#a6adc8⟧, ⟦/⟧⟦fg=#a6adc8 bold⟧bold⟦/⟧⟦fg=#a6adc8⟧ and a ⟦/⟧⟦fg=#89b4fa ul link 0⟧link⟦/⟧⟦fg=#a6adc8⟧.⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦bg=#2c2d3d⟧                                                                     ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧rust⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦bg=#2c2d3d⟧ ⟦/⟧⟦fg=#cba6f7 bg=#2c2d3d bold⟧let⟦/⟧⟦bg=#2c2d3d⟧ x = ⟦/⟧⟦fg=#fab387 bg=#2c2d3d⟧1⟦/⟧⟦bg=#2c2d3d⟧;                                                               ⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦bg=#2c2d3d⟧                                                                          ⟦/⟧
+━━ width 120 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧A plain quote that is long enough to wrap onto several lines, so every wrapped line must keep its⟦/⟧
+          ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧bar.⟦/⟧
+
+          ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧A quote with two paragraphs.⟦/⟧
+          ⟦fg=#6c7086⟧▎⟦/⟧
+          ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧The second paragraph.⟦/⟧
+
+          ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧Outer quote⟦/⟧
+          ⟦fg=#6c7086⟧▎⟦/⟧
+          ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧Inner quote⟦/⟧
+          ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧
+          ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧Innermost quote that also wraps when the terminal is narrow enough.⟦/⟧
+
+          ⟦fg=#89b4fa bg=#282b40⟧▎⟦/⟧⟦bg=#282b40⟧ ⟦/⟧⟦fg=#89b4fa bg=#282b40 bold⟧ⓘ Note⟦/⟧⟦bg=#282b40⟧                                                                                            ⟦/⟧
+          ⟦fg=#89b4fa bg=#282b40⟧▎⟦/⟧⟦bg=#282b40⟧ Useful information that users should know.                                                        ⟦/⟧
+
+          ⟦fg=#a6e3a1 bg=#2a2f39⟧▎⟦/⟧⟦bg=#2a2f39⟧ ⟦/⟧⟦fg=#a6e3a1 bg=#2a2f39 bold⟧✦ Tip⟦/⟧⟦bg=#2a2f39⟧                                                                                             ⟦/⟧
+          ⟦fg=#a6e3a1 bg=#2a2f39⟧▎⟦/⟧⟦bg=#2a2f39⟧ Helpful advice for doing things better.                                                           ⟦/⟧
+
+          ⟦fg=#cba6f7 bg=#2d2a3f⟧▎⟦/⟧⟦bg=#2d2a3f⟧ ⟦/⟧⟦fg=#cba6f7 bg=#2d2a3f bold⟧❖ Important⟦/⟧⟦bg=#2d2a3f⟧                                                                                       ⟦/⟧
+          ⟦fg=#cba6f7 bg=#2d2a3f⟧▎⟦/⟧⟦bg=#2d2a3f⟧ Key information users need to know.                                                               ⟦/⟧
+
+          ⟦fg=#f9e2af bg=#302f3a⟧▎⟦/⟧⟦bg=#302f3a⟧ ⟦/⟧⟦fg=#f9e2af bg=#302f3a bold⟧▲ Warning⟦/⟧⟦bg=#302f3a⟧                                                                                         ⟦/⟧
+          ⟦fg=#f9e2af bg=#302f3a⟧▎⟦/⟧⟦bg=#302f3a⟧ Urgent info that needs immediate attention, long enough to wrap at small widths.                  ⟦/⟧
+
+          ⟦fg=#f38ba8 bg=#312839⟧▎⟦/⟧⟦bg=#312839⟧ ⟦/⟧⟦fg=#f38ba8 bg=#312839 bold⟧⊘ Caution⟦/⟧⟦bg=#312839⟧                                                                                         ⟦/⟧
+          ⟦fg=#f38ba8 bg=#312839⟧▎⟦/⟧⟦bg=#312839⟧ Advises about risks or negative outcomes.                                                         ⟦/⟧
+          ⟦fg=#f38ba8 bg=#312839⟧▎⟦/⟧⟦bg=#312839⟧                                                                                                   ⟦/⟧
+          ⟦fg=#f38ba8 bg=#312839⟧▎⟦/⟧⟦bg=#312839⟧ ⟦/⟧⟦fg=#89b4fa bg=#312839⟧•⟦/⟧⟦bg=#312839⟧ with a list                                                                                     ⟦/⟧
+          ⟦fg=#f38ba8 bg=#312839⟧▎⟦/⟧⟦bg=#312839⟧ ⟦/⟧⟦fg=#89b4fa bg=#312839⟧•⟦/⟧⟦bg=#312839⟧ inside the alert                                                                                ⟦/⟧
+
+          ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧Quote with ⟦/⟧⟦fg=#fab387 bg=#2c2d3d⟧ code ⟦/⟧⟦fg=#a6adc8⟧, ⟦/⟧⟦fg=#a6adc8 bold⟧bold⟦/⟧⟦fg=#a6adc8⟧ and a ⟦/⟧⟦fg=#89b4fa ul link 0⟧link⟦/⟧⟦fg=#a6adc8⟧.⟦/⟧
+          ⟦fg=#6c7086⟧▎⟦/⟧
+          ⟦fg=#6c7086⟧▎⟦/⟧ ⟦bg=#2c2d3d⟧                                                                                             ⟦/⟧⟦fg=#6c7086 bg=#2c2d3d⟧rust⟦/⟧⟦bg=#2c2d3d⟧ ⟦/⟧
+          ⟦fg=#6c7086⟧▎⟦/⟧ ⟦bg=#2c2d3d⟧ ⟦/⟧⟦fg=#cba6f7 bg=#2c2d3d bold⟧let⟦/⟧⟦bg=#2c2d3d⟧ x = ⟦/⟧⟦fg=#fab387 bg=#2c2d3d⟧1⟦/⟧⟦bg=#2c2d3d⟧;                                                                                       ⟦/⟧
+          ⟦fg=#6c7086⟧▎⟦/⟧ ⟦bg=#2c2d3d⟧                                                                                                  ⟦/⟧

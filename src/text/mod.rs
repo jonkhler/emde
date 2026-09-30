@@ -6,7 +6,10 @@
 //!   hard breaks and soft hyphens, plus [`wrap::split_runs`] to cut a styled
 //!   run list at the computed lines.
 //! * [`tabs`] — tab expansion for code lines.
+//! * [`linebreak`] — a fast path for UAX #14 break opportunities in
+//!   printable ASCII.
 
+pub mod linebreak;
 pub mod sanitize;
 pub mod tabs;
 pub mod width;

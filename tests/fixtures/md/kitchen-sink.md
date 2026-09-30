@@ -13,6 +13,16 @@ Hard break at the end of this line
 and a backslash hard break\
 then more text. Footnote reference[^note] and another[^2].
 
+## Headings
+
+### Third level
+
+#### Fourth level
+
+##### Fifth level
+
+###### Sixth level
+
 ## Lists
 
 - Tight item one
@@ -37,8 +47,17 @@ then more text. Footnote reference[^note] and another[^2].
 > [!NOTE]
 > Notes carry an icon and a title.
 
+> [!TIP]
+> A tip.
+
+> [!IMPORTANT]
+> Something important.
+
 > [!WARNING]
 > Careful: this is a *warning*.
+
+> [!CAUTION]
+> Mind the risks.
 
 ## Code
 
@@ -50,9 +69,14 @@ fn main() {
 
     indented code block
 
+```diff
+-old line
++new line
+```
+
 ## Math
 
-Inline math $e^{i\pi} + 1 = 0$ and money: $5 and $10, or $5-$10.
+Inline math $e^{i\pi} + 1 = 0$ and \(x^2\), and money: $5 and $10, or $5-$10.
 
 $$
 \sum_{i=1}^{n} i^2 = \frac{n(n+1)(2n+1)}{6}
@@ -83,9 +107,15 @@ Hidden content with <kbd>Ctrl</kbd>+<kbd>C</kbd> and H<sub>2</sub>O and x<sup>2<
 
 </details>
 
+<div align="center">
+
+Centred text, <mark>marked</mark> and <u>underlined</u>.
+
+</div>
+
 ![A figure](figure.png "Figure caption")
 
-Text with an ![inline image](chip.png) chip.
+Text with an ![inline image](chip.png) chip and a [![badge](badge.svg)](https://ci.example.com) badge.
 
 日本語のテキストと
 English mixed with emoji 👨‍👩‍👧 and ❤️.

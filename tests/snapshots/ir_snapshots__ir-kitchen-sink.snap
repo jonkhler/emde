@@ -1,5 +1,6 @@
 ---
 source: tests/ir_snapshots.rs
+assertion_line: 30
 expression: "dump(\"kitchen-sink\")"
 ---
 front matter Yaml: "title: Kitchen Sink\nauthor: emde\ntags: [markdown, test]\n"
@@ -10,7 +11,12 @@ h1 H0: "Kitchen Sink"
 para: "A paragraph with " "emphasis"[emph] ", " "strong"[strong] ", " "both"[emph,strong] ", " "strikethrough"[strike] ", " "inline code"[code] ", a " "link"[L0] ", an autolink " "https://example.org/path"[L1] ", and a bare URL " "https://www.rust-lang.org/learn"[L4] ". Hard break at the end of this line\nand a backslash hard break\nthen more text. Footnote reference" "1"[fn F0,L2] " and another" "2"[fn F1,L3] "."
   atoms 259..260 272..273
   breaks [97, 109, 138, 156]
-h2 H1: "Lists"
+h2 H1: "Headings"
+h3 H2: "Third level"
+h4 H3: "Fourth level"
+h5 H4: "Fifth level"
+h6 H5: "Sixth level"
+h2 H6: "Lists"
 list tight
   item
     para: "Tight item one"
@@ -34,24 +40,31 @@ list start=1 loose
     para: "With a second paragraph."
   item
     para: "Third"
-h2 H2: "Quotes and alerts"
+h2 H7: "Quotes and alerts"
 quote
   para: "A plain quote with a " "reference link"[L5] "."
   quote
     para: "A nested quote."
 quote Note
   para: "Notes carry an icon and a title."
+quote Tip
+  para: "A tip."
+quote Important
+  para: "Something important."
 quote Warning
   para: "Careful: this is a " "warning"[emph] "."
-h2 H3: "Code"
+quote Caution
+  para: "Mind the risks."
+h2 H8: "Code"
 code lang=rust title="hello.rs": "fn main() {\n\tprintln!(\"Hello, {}!\", \"world\");\n}"
 code: "indented code block"
-h2 H4: "Math"
-para: "Inline math " "e^{i\\pi} + 1 = 0"[math] " and money: $5 and $10, or $5-$10."
-  atoms 12..28
+code lang=diff: "-old line\n+new line"
+h2 H9: "Math"
+para: "Inline math " "e^{i\\pi} + 1 = 0"[math] " and " "x^2"[math] ", and money: $5 and $10, or $5-$10."
+  atoms 12..28 33..36
 math: "\\sum_{i=1}^{n} i^2 = \\frac{n(n+1)(2n+1)}{6}"
 math: "A = \\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}"
-h2 H5: "Table"
+h2 H10: "Table"
 table [Some(Left), Some(Center), Some(Right)]
   head 0: "Left"
   head 1: "Center"
@@ -64,7 +77,7 @@ table [Some(Left), Some(Center), Some(Right)]
   cell 1.1: "x" "1"[fn F0,L7]
     atoms 1..2
   cell 1.2: "3"
-h2 H6: "Other blocks"
+h2 H11: "Other blocks"
 deflist
   term: "Term"
     def
@@ -73,8 +86,10 @@ rule
 details: "Click to expand"
   para: "Hidden content with " "Ctrl"[kbd] "+" "C"[kbd] " and H" "2"[sub] "O and x" "2"[sup] "."
     atoms 20..24 25..26
+align Center
+  para: "Centred text, " "marked"[mark] " and " "underlined"[underline] "."
 figure I0
-para: "Text with an " "inline image"[img I1] " chip."
+para: "Text with an " "inline image"[img I1] " chip and a " "badge"[img I2,L8] " badge."
 para: "日本語のテキストと English mixed with emoji 👨\u{200d}👩\u{200d}👧 and ❤\u{fe0f}."
 footnotes
 L0 Inline "https://example.com" title="Example" -> External
@@ -85,22 +100,34 @@ L4 Bare "https://www.rust-lang.org/learn" -> External
 L5 Reference "https://example.net" -> External
 L6 Inline "#lists" -> Anchor("lists")
 L7 Footnote "#fn-note" -> Footnote(FootnoteId(0))
+L8 Inline "https://ci.example.com" -> External
 I0 src="figure.png" alt="A figure" title="Figure caption"
 I1 src="chip.png" alt="inline image"
+I2 src="badge.svg" alt="badge" link=L8
 H0 h1 "Kitchen Sink" #kitchen-sink parent=- top=1
-H1 h2 "Lists" #lists parent=H0 top=3
-H2 h2 "Quotes and alerts" #quotes-and-alerts parent=H0 top=6
-H3 h2 "Code" #code parent=H0 top=10
-H4 h2 "Math" #math parent=H0 top=13
-H5 h2 "Table" #table parent=H0 top=17
-H6 h2 "Other blocks" #other-blocks parent=H0 top=19
-anchor #code -> H3
+H1 h2 "Headings" #headings parent=H0 top=3
+H2 h3 "Third level" #third-level parent=H1 top=4
+H3 h4 "Fourth level" #fourth-level parent=H2 top=5
+H4 h5 "Fifth level" #fifth-level parent=H3 top=6
+H5 h6 "Sixth level" #sixth-level parent=H4 top=7
+H6 h2 "Lists" #lists parent=H0 top=8
+H7 h2 "Quotes and alerts" #quotes-and-alerts parent=H0 top=11
+H8 h2 "Code" #code parent=H0 top=18
+H9 h2 "Math" #math parent=H0 top=22
+H10 h2 "Table" #table parent=H0 top=26
+H11 h2 "Other blocks" #other-blocks parent=H0 top=28
+anchor #code -> H8
+anchor #fifth-level -> H4
+anchor #fourth-level -> H3
+anchor #headings -> H1
 anchor #kitchen-sink -> H0
-anchor #lists -> H1
-anchor #math -> H4
-anchor #other-blocks -> H6
-anchor #quotes-and-alerts -> H2
-anchor #table -> H5
+anchor #lists -> H6
+anchor #math -> H9
+anchor #other-blocks -> H11
+anchor #quotes-and-alerts -> H7
+anchor #sixth-level -> H5
+anchor #table -> H10
+anchor #third-level -> H2
 F0 [^note] refs=L2,L7
   para: "The footnote text, with " "emphasis"[emph] "."
 F1 [^2] refs=L3

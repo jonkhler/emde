@@ -1,0 +1,173 @@
+---
+source: tests/layout_snapshots.rs
+expression: "styled(\"headings\", & Caps :: full(), & WIDTHS)"
+---
+━━ width 24 ━━━━━━━━━━━━
+  ⟦grad #89b4fa→#cba6f7 0..20⟧⟦fg=#1e1e2e bold⟧ Heading level one⟦/⟧⟦/grad⟧
+
+  Text under the first
+  heading.
+
+  ⟦fg=#cba6f7 bold⟧Heading level two⟦/⟧
+  ⟦fg=#cba6f7 bold⟧with a ⟦/⟧⟦fg=#cba6f7 bold italic⟧styled⟦/⟧⟦fg=#cba6f7 bold⟧ word⟦/⟧
+  ⟦fg=#cba6f7 bold⟧and ⟦/⟧⟦fg=#fab387 bg=#2c2d3d bold⟧ code ⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧
+
+  ⟦fg=#94e2d5 bold⟧▎ Heading level⟦/⟧
+    ⟦fg=#94e2d5 bold⟧three⟦/⟧
+
+  ⟦bold⟧Heading level four⟦/⟧
+
+  ⟦fg=#a6adc8 bold italic⟧Heading level five⟦/⟧
+
+  ⟦fg=#6c7086 bold italic⟧Heading level six⟦/⟧
+
+  ⟦grad #89b4fa→#cba6f7 0..20⟧⟦fg=#1e1e2e bold⟧ A very long first-⟦/⟧⟦/grad⟧
+  ⟦grad #89b4fa→#cba6f7 0..20⟧⟦fg=#1e1e2e bold⟧ level heading that⟦/⟧⟦/grad⟧
+  ⟦grad #89b4fa→#cba6f7 0..20⟧⟦fg=#1e1e2e bold⟧ has to wrap across⟦/⟧⟦/grad⟧
+  ⟦grad #89b4fa→#cba6f7 0..20⟧⟦fg=#1e1e2e bold⟧ several lines at⟦/⟧⟦/grad⟧
+  ⟦grad #89b4fa→#cba6f7 0..20⟧⟦fg=#1e1e2e bold⟧ narrow widths⟦/⟧⟦/grad⟧
+
+  ⟦fg=#cba6f7 bold⟧Another second-level⟦/⟧
+  ⟦fg=#cba6f7 bold⟧heading that is long⟦/⟧
+  ⟦fg=#cba6f7 bold⟧enough to wrap onto⟦/⟧
+  ⟦fg=#cba6f7 bold⟧a second line⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━⟦/⟧
+
+  ⟦grad #89b4fa→#cba6f7 0..20⟧⟦fg=#1e1e2e bold⟧ Setext heading⟦/⟧⟦/grad⟧
+
+  ⟦fg=#cba6f7 bold⟧Setext level two⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#7c689b⟧──⟦/⟧
+
+  ⟦fg=#cba6f7 bold⟧Duplicate⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#aa8dd1⟧──⟦/⟧⟦fg=#8b74ad⟧──⟦/⟧⟦fg=#6d5c8a⟧──⟦/⟧⟦fg=#504568⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+  ⟦fg=#cba6f7 bold⟧Duplicate⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#aa8dd1⟧──⟦/⟧⟦fg=#8b74ad⟧──⟦/⟧⟦fg=#6d5c8a⟧──⟦/⟧⟦fg=#504568⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+  ⟦grad #89b4fa→#cba6f7 0..20⟧⟦fg=#1e1e2e bold⟧ ⟦/⟧⟦/grad⟧
+
+  ⟦fg=#cba6f7 bold⟧Trailing hashes⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#7c689b⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+  ⟦fg=#94e2d5 bold⟧▎ ⟦/⟧⟦fg=#89b4fa bold ul link 0⟧A linked heading⟦/⟧
+━━ width 40 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ⟦grad #89b4fa→#cba6f7 0..36⟧⟦fg=#1e1e2e bold⟧ Heading level one⟦/⟧⟦/grad⟧
+
+  Text under the first heading.
+
+  ⟦fg=#cba6f7 bold⟧Heading level two with a ⟦/⟧⟦fg=#cba6f7 bold italic⟧styled⟦/⟧⟦fg=#cba6f7 bold⟧ word⟦/⟧
+  ⟦fg=#cba6f7 bold⟧and ⟦/⟧⟦fg=#fab387 bg=#2c2d3d bold⟧ code ⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⟦/⟧
+
+  ⟦fg=#94e2d5 bold⟧▎ Heading level three⟦/⟧
+
+  ⟦bold⟧Heading level four⟦/⟧
+
+  ⟦fg=#a6adc8 bold italic⟧Heading level five⟦/⟧
+
+  ⟦fg=#6c7086 bold italic⟧Heading level six⟦/⟧
+
+  ⟦grad #89b4fa→#cba6f7 0..36⟧⟦fg=#1e1e2e bold⟧ A very long first-level heading⟦/⟧⟦/grad⟧
+  ⟦grad #89b4fa→#cba6f7 0..36⟧⟦fg=#1e1e2e bold⟧ that has to wrap across several⟦/⟧⟦/grad⟧
+  ⟦grad #89b4fa→#cba6f7 0..36⟧⟦fg=#1e1e2e bold⟧ lines at narrow widths⟦/⟧⟦/grad⟧
+
+  ⟦fg=#cba6f7 bold⟧Another second-level heading that is⟦/⟧
+  ⟦fg=#cba6f7 bold⟧long enough to wrap onto a second⟦/⟧
+  ⟦fg=#cba6f7 bold⟧line⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⟦/⟧
+
+  ⟦grad #89b4fa→#cba6f7 0..36⟧⟦fg=#1e1e2e bold⟧ Setext heading⟦/⟧⟦/grad⟧
+
+  ⟦fg=#cba6f7 bold⟧Setext level two⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#bb99e4⟧──⟦/⟧⟦fg=#aa8dd1⟧──⟦/⟧⟦fg=#9a80bf⟧──⟦/⟧⟦fg=#8b74ad⟧──⟦/⟧⟦fg=#7c689b⟧──⟦/⟧⟦fg=#6d5c8a⟧──⟦/⟧⟦fg=#5e5179⟧──⟦/⟧⟦fg=#504568⟧──⟦/⟧⟦fg=#423b58⟧──⟦/⟧
+
+  ⟦fg=#cba6f7 bold⟧Duplicate⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#be9ce8⟧──⟦/⟧⟦fg=#b292da⟧──⟦/⟧⟦fg=#a589cc⟧──⟦/⟧⟦fg=#997fbd⟧──⟦/⟧⟦fg=#8d76af⟧──⟦/⟧⟦fg=#816da2⟧──⟦/⟧⟦fg=#766394⟧──⟦/⟧⟦fg=#6a5a87⟧──⟦/⟧⟦fg=#5f527a⟧──⟦/⟧⟦fg=#54496d⟧──⟦/⟧⟦fg=#494060⟧──⟦/⟧⟦fg=#3f3854⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+  ⟦fg=#cba6f7 bold⟧Duplicate⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#be9ce8⟧──⟦/⟧⟦fg=#b292da⟧──⟦/⟧⟦fg=#a589cc⟧──⟦/⟧⟦fg=#997fbd⟧──⟦/⟧⟦fg=#8d76af⟧──⟦/⟧⟦fg=#816da2⟧──⟦/⟧⟦fg=#766394⟧──⟦/⟧⟦fg=#6a5a87⟧──⟦/⟧⟦fg=#5f527a⟧──⟦/⟧⟦fg=#54496d⟧──⟦/⟧⟦fg=#494060⟧──⟦/⟧⟦fg=#3f3854⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+  ⟦grad #89b4fa→#cba6f7 0..36⟧⟦fg=#1e1e2e bold⟧ ⟦/⟧⟦/grad⟧
+
+  ⟦fg=#cba6f7 bold⟧Trailing hashes⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#bb99e4⟧──⟦/⟧⟦fg=#aa8dd1⟧──⟦/⟧⟦fg=#9a80bf⟧──⟦/⟧⟦fg=#8b74ad⟧──⟦/⟧⟦fg=#7c689b⟧──⟦/⟧⟦fg=#6d5c8a⟧──⟦/⟧⟦fg=#5e5179⟧──⟦/⟧⟦fg=#504568⟧──⟦/⟧⟦fg=#423b58⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+  ⟦fg=#94e2d5 bold⟧▎ ⟦/⟧⟦fg=#89b4fa bold ul link 0⟧A linked heading⟦/⟧
+━━ width 80 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ⟦grad #89b4fa→#cba6f7 0..76⟧⟦fg=#1e1e2e bold⟧ Heading level one⟦/⟧⟦/grad⟧
+
+  Text under the first heading.
+
+  ⟦fg=#cba6f7 bold⟧Heading level two with a ⟦/⟧⟦fg=#cba6f7 bold italic⟧styled⟦/⟧⟦fg=#cba6f7 bold⟧ word and ⟦/⟧⟦fg=#fab387 bg=#2c2d3d bold⟧ code ⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#bf9de9⟧──⟦/⟧⟦fg=#b494dc⟧──⟦/⟧⟦fg=#a88bcf⟧──⟦/⟧⟦fg=#9d82c1⟧──⟦/⟧⟦fg=#9279b4⟧──⟦/⟧⟦fg=#8670a8⟧──⟦/⟧⟦fg=#7c689b⟧──⟦/⟧⟦fg=#71608e⟧──⟦/⟧⟦fg=#665782⟧──⟦/⟧⟦fg=#5c4f76⟧──⟦/⟧⟦fg=#52476a⟧──⟦/⟧⟦fg=#483f5f⟧──⟦/⟧⟦fg=#3e3753⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+  ⟦fg=#94e2d5 bold⟧▎ Heading level three⟦/⟧
+
+  ⟦bold⟧Heading level four⟦/⟧
+
+  ⟦fg=#a6adc8 bold italic⟧Heading level five⟦/⟧
+
+  ⟦fg=#6c7086 bold italic⟧Heading level six⟦/⟧
+
+  ⟦grad #89b4fa→#cba6f7 0..76⟧⟦fg=#1e1e2e bold⟧ A very long first-level heading that has to wrap across several lines at⟦/⟧⟦/grad⟧
+  ⟦grad #89b4fa→#cba6f7 0..76⟧⟦fg=#1e1e2e bold⟧ narrow widths⟦/⟧⟦/grad⟧
+
+  ⟦fg=#cba6f7 bold⟧Another second-level heading that is long enough to wrap onto a second line⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧─⟦/⟧
+
+  ⟦grad #89b4fa→#cba6f7 0..76⟧⟦fg=#1e1e2e bold⟧ Setext heading⟦/⟧⟦/grad⟧
+
+  ⟦fg=#cba6f7 bold⟧Setext level two⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c5a2f1⟧──⟦/⟧⟦fg=#c09dea⟧──⟦/⟧⟦fg=#bb99e4⟧──⟦/⟧⟦fg=#b595de⟧──⟦/⟧⟦fg=#b091d7⟧──⟦/⟧⟦fg=#aa8dd1⟧──⟦/⟧⟦fg=#a588cb⟧──⟦/⟧⟦fg=#a084c5⟧──⟦/⟧⟦fg=#9a80bf⟧──⟦/⟧⟦fg=#957cb9⟧──⟦/⟧⟦fg=#9078b3⟧──⟦/⟧⟦fg=#8b74ad⟧──⟦/⟧⟦fg=#8670a7⟧──⟦/⟧⟦fg=#816ca1⟧──⟦/⟧⟦fg=#7c689b⟧──⟦/⟧⟦fg=#776495⟧──⟦/⟧⟦fg=#72608f⟧──⟦/⟧⟦fg=#6d5c8a⟧──⟦/⟧⟦fg=#685884⟧──⟦/⟧⟦fg=#63547e⟧──⟦/⟧⟦fg=#5e5179⟧──⟦/⟧⟦fg=#594d73⟧──⟦/⟧⟦fg=#54496d⟧──⟦/⟧⟦fg=#504568⟧──⟦/⟧⟦fg=#4b4263⟧──⟦/⟧⟦fg=#463e5d⟧──⟦/⟧⟦fg=#423b58⟧──⟦/⟧⟦fg=#3d3753⟧──⟦/⟧⟦fg=#39334d⟧──⟦/⟧
+
+  ⟦fg=#cba6f7 bold⟧Duplicate⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c6a2f1⟧──⟦/⟧⟦fg=#c19eeb⟧──⟦/⟧⟦fg=#bc9ae6⟧──⟦/⟧⟦fg=#b796e0⟧──⟦/⟧⟦fg=#b293da⟧──⟦/⟧⟦fg=#ad8fd5⟧──⟦/⟧⟦fg=#a88bcf⟧──⟦/⟧⟦fg=#a487c9⟧──⟦/⟧⟦fg=#9f84c4⟧──⟦/⟧⟦fg=#9a80be⟧──⟦/⟧⟦fg=#957cb9⟧──⟦/⟧⟦fg=#9078b3⟧──⟦/⟧⟦fg=#8c75ae⟧──⟦/⟧⟦fg=#8771a8⟧──⟦/⟧⟦fg=#826da3⟧──⟦/⟧⟦fg=#7e6a9e⟧──⟦/⟧⟦fg=#796698⟧──⟦/⟧⟦fg=#756393⟧──⟦/⟧⟦fg=#705f8e⟧──⟦/⟧⟦fg=#6c5b89⟧──⟦/⟧⟦fg=#675883⟧──⟦/⟧⟦fg=#63547e⟧──⟦/⟧⟦fg=#5e5179⟧──⟦/⟧⟦fg=#5a4e74⟧──⟦/⟧⟦fg=#564a6f⟧──⟦/⟧⟦fg=#51476a⟧──⟦/⟧⟦fg=#4d4365⟧──⟦/⟧⟦fg=#494060⟧──⟦/⟧⟦fg=#453d5b⟧──⟦/⟧⟦fg=#413a56⟧──⟦/⟧⟦fg=#3d3652⟧──⟦/⟧⟦fg=#38334d⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+  ⟦fg=#cba6f7 bold⟧Duplicate⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c6a2f1⟧──⟦/⟧⟦fg=#c19eeb⟧──⟦/⟧⟦fg=#bc9ae6⟧──⟦/⟧⟦fg=#b796e0⟧──⟦/⟧⟦fg=#b293da⟧──⟦/⟧⟦fg=#ad8fd5⟧──⟦/⟧⟦fg=#a88bcf⟧──⟦/⟧⟦fg=#a487c9⟧──⟦/⟧⟦fg=#9f84c4⟧──⟦/⟧⟦fg=#9a80be⟧──⟦/⟧⟦fg=#957cb9⟧──⟦/⟧⟦fg=#9078b3⟧──⟦/⟧⟦fg=#8c75ae⟧──⟦/⟧⟦fg=#8771a8⟧──⟦/⟧⟦fg=#826da3⟧──⟦/⟧⟦fg=#7e6a9e⟧──⟦/⟧⟦fg=#796698⟧──⟦/⟧⟦fg=#756393⟧──⟦/⟧⟦fg=#705f8e⟧──⟦/⟧⟦fg=#6c5b89⟧──⟦/⟧⟦fg=#675883⟧──⟦/⟧⟦fg=#63547e⟧──⟦/⟧⟦fg=#5e5179⟧──⟦/⟧⟦fg=#5a4e74⟧──⟦/⟧⟦fg=#564a6f⟧──⟦/⟧⟦fg=#51476a⟧──⟦/⟧⟦fg=#4d4365⟧──⟦/⟧⟦fg=#494060⟧──⟦/⟧⟦fg=#453d5b⟧──⟦/⟧⟦fg=#413a56⟧──⟦/⟧⟦fg=#3d3652⟧──⟦/⟧⟦fg=#38334d⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+  ⟦grad #89b4fa→#cba6f7 0..76⟧⟦fg=#1e1e2e bold⟧ ⟦/⟧⟦/grad⟧
+
+  ⟦fg=#cba6f7 bold⟧Trailing hashes⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c5a2f1⟧──⟦/⟧⟦fg=#c09dea⟧──⟦/⟧⟦fg=#bb99e4⟧──⟦/⟧⟦fg=#b595de⟧──⟦/⟧⟦fg=#b091d7⟧──⟦/⟧⟦fg=#aa8dd1⟧──⟦/⟧⟦fg=#a588cb⟧──⟦/⟧⟦fg=#a084c5⟧──⟦/⟧⟦fg=#9a80bf⟧──⟦/⟧⟦fg=#957cb9⟧──⟦/⟧⟦fg=#9078b3⟧──⟦/⟧⟦fg=#8b74ad⟧──⟦/⟧⟦fg=#8670a7⟧──⟦/⟧⟦fg=#816ca1⟧──⟦/⟧⟦fg=#7c689b⟧──⟦/⟧⟦fg=#776495⟧──⟦/⟧⟦fg=#72608f⟧──⟦/⟧⟦fg=#6d5c8a⟧──⟦/⟧⟦fg=#685884⟧──⟦/⟧⟦fg=#63547e⟧──⟦/⟧⟦fg=#5e5179⟧──⟦/⟧⟦fg=#594d73⟧──⟦/⟧⟦fg=#54496d⟧──⟦/⟧⟦fg=#504568⟧──⟦/⟧⟦fg=#4b4263⟧──⟦/⟧⟦fg=#463e5d⟧──⟦/⟧⟦fg=#423b58⟧──⟦/⟧⟦fg=#3d3753⟧──⟦/⟧⟦fg=#39334d⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+  ⟦fg=#94e2d5 bold⟧▎ ⟦/⟧⟦fg=#89b4fa bold ul link 0⟧A linked heading⟦/⟧
+━━ width 120 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          ⟦grad #89b4fa→#cba6f7 0..100⟧⟦fg=#1e1e2e bold⟧ Heading level one⟦/⟧⟦/grad⟧
+
+          Text under the first heading.
+
+          ⟦fg=#cba6f7 bold⟧Heading level two with a ⟦/⟧⟦fg=#cba6f7 bold italic⟧styled⟦/⟧⟦fg=#cba6f7 bold⟧ word and ⟦/⟧⟦fg=#fab387 bg=#2c2d3d bold⟧ code ⟦/⟧
+          ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c5a1f0⟧──⟦/⟧⟦fg=#be9ce8⟧──⟦/⟧⟦fg=#b897e1⟧──⟦/⟧⟦fg=#b292da⟧──⟦/⟧⟦fg=#ac8ed3⟧──⟦/⟧⟦fg=#a589cc⟧──⟦/⟧⟦fg=#9f84c4⟧──⟦/⟧⟦fg=#997fbd⟧──⟦/⟧⟦fg=#937ab6⟧──⟦/⟧⟦fg=#8d76af⟧──⟦/⟧⟦fg=#8771a9⟧──⟦/⟧⟦fg=#816da2⟧──⟦/⟧⟦fg=#7c689b⟧──⟦/⟧⟦fg=#766394⟧──⟦/⟧⟦fg=#705f8e⟧──⟦/⟧⟦fg=#6a5a87⟧──⟦/⟧⟦fg=#655680⟧──⟦/⟧⟦fg=#5f527a⟧──⟦/⟧⟦fg=#5a4d73⟧──⟦/⟧⟦fg=#54496d⟧──⟦/⟧⟦fg=#4f4567⟧──⟦/⟧⟦fg=#494060⟧──⟦/⟧⟦fg=#443c5a⟧──⟦/⟧⟦fg=#3f3854⟧──⟦/⟧⟦fg=#3a344e⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+          ⟦fg=#94e2d5 bold⟧▎ Heading level three⟦/⟧
+
+          ⟦bold⟧Heading level four⟦/⟧
+
+          ⟦fg=#a6adc8 bold italic⟧Heading level five⟦/⟧
+
+          ⟦fg=#6c7086 bold italic⟧Heading level six⟦/⟧
+
+          ⟦grad #89b4fa→#cba6f7 0..100⟧⟦fg=#1e1e2e bold⟧ A very long first-level heading that has to wrap across several lines at narrow widths⟦/⟧⟦/grad⟧
+
+          ⟦fg=#cba6f7 bold⟧Another second-level heading that is long enough to wrap onto a second line⟦/⟧
+          ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#bd9be7⟧──⟦/⟧⟦fg=#b091d7⟧──⟦/⟧⟦fg=#a286c8⟧──⟦/⟧⟦fg=#957cb9⟧──⟦/⟧⟦fg=#8872aa⟧──⟦/⟧⟦fg=#7c689b⟧──⟦/⟧⟦fg=#6f5e8c⟧──⟦/⟧⟦fg=#63547e⟧──⟦/⟧⟦fg=#574b70⟧──⟦/⟧⟦fg=#4b4263⟧──⟦/⟧⟦fg=#403955⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+          ⟦grad #89b4fa→#cba6f7 0..100⟧⟦fg=#1e1e2e bold⟧ Setext heading⟦/⟧⟦/grad⟧
+
+          ⟦fg=#cba6f7 bold⟧Setext level two⟦/⟧
+          ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c7a3f2⟧──⟦/⟧⟦fg=#c3a0ee⟧──⟦/⟧⟦fg=#bf9de9⟧──⟦/⟧⟦fg=#bb9ae5⟧──⟦/⟧⟦fg=#b797e0⟧──⟦/⟧⟦fg=#b494dc⟧──⟦/⟧⟦fg=#b091d7⟧──⟦/⟧⟦fg=#ac8ed3⟧──⟦/⟧⟦fg=#a88bcf⟧──⟦/⟧⟦fg=#a488ca⟧──⟦/⟧⟦fg=#a085c6⟧──⟦/⟧⟦fg=#9d82c1⟧──⟦/⟧⟦fg=#997fbd⟧──⟦/⟧⟦fg=#957cb9⟧──⟦/⟧⟦fg=#9279b4⟧──⟦/⟧⟦fg=#8e76b0⟧──⟦/⟧⟦fg=#8a73ac⟧──⟦/⟧⟦fg=#8670a8⟧──⟦/⟧⟦fg=#836ea3⟧──⟦/⟧⟦fg=#7f6b9f⟧──⟦/⟧⟦fg=#7c689b⟧──⟦/⟧⟦fg=#786597⟧──⟦/⟧⟦fg=#746293⟧──⟦/⟧⟦fg=#71608e⟧──⟦/⟧⟦fg=#6d5d8a⟧──⟦/⟧⟦fg=#6a5a86⟧──⟦/⟧⟦fg=#665782⟧──⟦/⟧⟦fg=#63547e⟧──⟦/⟧⟦fg=#5f527a⟧──⟦/⟧⟦fg=#5c4f76⟧──⟦/⟧⟦fg=#584c72⟧──⟦/⟧⟦fg=#554a6e⟧──⟦/⟧⟦fg=#52476a⟧──⟦/⟧⟦fg=#4e4466⟧──⟦/⟧⟦fg=#4b4263⟧──⟦/⟧⟦fg=#483f5f⟧──⟦/⟧⟦fg=#443d5b⟧──⟦/⟧⟦fg=#413a57⟧──⟦/⟧⟦fg=#3e3753⟧──⟦/⟧⟦fg=#3b3550⟧──⟦/⟧⟦fg=#38324c⟧──⟦/⟧
+
+          ⟦fg=#cba6f7 bold⟧Duplicate⟦/⟧
+          ⟦fg=#cba6f7 bold⟧━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c7a3f3⟧──⟦/⟧⟦fg=#c4a0ef⟧──⟦/⟧⟦fg=#c09dea⟧──⟦/⟧⟦fg=#bc9be6⟧──⟦/⟧⟦fg=#b998e2⟧──⟦/⟧⟦fg=#b595de⟧──⟦/⟧⟦fg=#b292da⟧──⟦/⟧⟦fg=#ae8fd5⟧──⟦/⟧⟦fg=#aa8dd1⟧──⟦/⟧⟦fg=#a78acd⟧──⟦/⟧⟦fg=#a387c9⟧──⟦/⟧⟦fg=#a084c5⟧──⟦/⟧⟦fg=#9c82c1⟧──⟦/⟧⟦fg=#997fbd⟧──⟦/⟧⟦fg=#957cb9⟧──⟦/⟧⟦fg=#9279b5⟧──⟦/⟧⟦fg=#8e77b1⟧──⟦/⟧⟦fg=#8b74ad⟧──⟦/⟧⟦fg=#8771a9⟧──⟦/⟧⟦fg=#846fa5⟧──⟦/⟧⟦fg=#816ca1⟧──⟦/⟧⟦fg=#7d699d⟧──⟦/⟧⟦fg=#7a6799⟧──⟦/⟧⟦fg=#776495⟧──⟦/⟧⟦fg=#736191⟧──⟦/⟧⟦fg=#705f8d⟧──⟦/⟧⟦fg=#6d5c8a⟧──⟦/⟧⟦fg=#695a86⟧──⟦/⟧⟦fg=#665782⟧──⟦/⟧⟦fg=#63547e⟧──⟦/⟧⟦fg=#60527a⟧──⟦/⟧⟦fg=#5c4f77⟧──⟦/⟧⟦fg=#594d73⟧──⟦/⟧⟦fg=#564a6f⟧──⟦/⟧⟦fg=#53486c⟧──⟦/⟧⟦fg=#504568⟧──⟦/⟧⟦fg=#4d4364⟧──⟦/⟧⟦fg=#494161⟧──⟦/⟧⟦fg=#463e5d⟧──⟦/⟧⟦fg=#433c5a⟧──⟦/⟧⟦fg=#403956⟧──⟦/⟧⟦fg=#3d3753⟧──⟦/⟧⟦fg=#3a354f⟧──⟦/⟧⟦fg=#37324c⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+          ⟦fg=#cba6f7 bold⟧Duplicate⟦/⟧
+          ⟦fg=#cba6f7 bold⟧━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c7a3f3⟧──⟦/⟧⟦fg=#c4a0ef⟧──⟦/⟧⟦fg=#c09dea⟧──⟦/⟧⟦fg=#bc9be6⟧──⟦/⟧⟦fg=#b998e2⟧──⟦/⟧⟦fg=#b595de⟧──⟦/⟧⟦fg=#b292da⟧──⟦/⟧⟦fg=#ae8fd5⟧──⟦/⟧⟦fg=#aa8dd1⟧──⟦/⟧⟦fg=#a78acd⟧──⟦/⟧⟦fg=#a387c9⟧──⟦/⟧⟦fg=#a084c5⟧──⟦/⟧⟦fg=#9c82c1⟧──⟦/⟧⟦fg=#997fbd⟧──⟦/⟧⟦fg=#957cb9⟧──⟦/⟧⟦fg=#9279b5⟧──⟦/⟧⟦fg=#8e77b1⟧──⟦/⟧⟦fg=#8b74ad⟧──⟦/⟧⟦fg=#8771a9⟧──⟦/⟧⟦fg=#846fa5⟧──⟦/⟧⟦fg=#816ca1⟧──⟦/⟧⟦fg=#7d699d⟧──⟦/⟧⟦fg=#7a6799⟧──⟦/⟧⟦fg=#776495⟧──⟦/⟧⟦fg=#736191⟧──⟦/⟧⟦fg=#705f8d⟧──⟦/⟧⟦fg=#6d5c8a⟧──⟦/⟧⟦fg=#695a86⟧──⟦/⟧⟦fg=#665782⟧──⟦/⟧⟦fg=#63547e⟧──⟦/⟧⟦fg=#60527a⟧──⟦/⟧⟦fg=#5c4f77⟧──⟦/⟧⟦fg=#594d73⟧──⟦/⟧⟦fg=#564a6f⟧──⟦/⟧⟦fg=#53486c⟧──⟦/⟧⟦fg=#504568⟧──⟦/⟧⟦fg=#4d4364⟧──⟦/⟧⟦fg=#494161⟧──⟦/⟧⟦fg=#463e5d⟧──⟦/⟧⟦fg=#433c5a⟧──⟦/⟧⟦fg=#403956⟧──⟦/⟧⟦fg=#3d3753⟧──⟦/⟧⟦fg=#3a354f⟧──⟦/⟧⟦fg=#37324c⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+          ⟦grad #89b4fa→#cba6f7 0..100⟧⟦fg=#1e1e2e bold⟧ ⟦/⟧⟦/grad⟧
+
+          ⟦fg=#cba6f7 bold⟧Trailing hashes⟦/⟧
+          ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c7a3f2⟧──⟦/⟧⟦fg=#c3a0ee⟧──⟦/⟧⟦fg=#bf9de9⟧──⟦/⟧⟦fg=#bb9ae5⟧──⟦/⟧⟦fg=#b797e0⟧──⟦/⟧⟦fg=#b494dc⟧──⟦/⟧⟦fg=#b091d7⟧──⟦/⟧⟦fg=#ac8ed3⟧──⟦/⟧⟦fg=#a88bcf⟧──⟦/⟧⟦fg=#a488ca⟧──⟦/⟧⟦fg=#a085c6⟧──⟦/⟧⟦fg=#9d82c1⟧──⟦/⟧⟦fg=#997fbd⟧──⟦/⟧⟦fg=#957cb9⟧──⟦/⟧⟦fg=#9279b4⟧──⟦/⟧⟦fg=#8e76b0⟧──⟦/⟧⟦fg=#8a73ac⟧──⟦/⟧⟦fg=#8670a8⟧──⟦/⟧⟦fg=#836ea3⟧──⟦/⟧⟦fg=#7f6b9f⟧──⟦/⟧⟦fg=#7c689b⟧──⟦/⟧⟦fg=#786597⟧──⟦/⟧⟦fg=#746293⟧──⟦/⟧⟦fg=#71608e⟧──⟦/⟧⟦fg=#6d5d8a⟧──⟦/⟧⟦fg=#6a5a86⟧──⟦/⟧⟦fg=#665782⟧──⟦/⟧⟦fg=#63547e⟧──⟦/⟧⟦fg=#5f527a⟧──⟦/⟧⟦fg=#5c4f76⟧──⟦/⟧⟦fg=#584c72⟧──⟦/⟧⟦fg=#554a6e⟧──⟦/⟧⟦fg=#52476a⟧──⟦/⟧⟦fg=#4e4466⟧──⟦/⟧⟦fg=#4b4263⟧──⟦/⟧⟦fg=#483f5f⟧──⟦/⟧⟦fg=#443d5b⟧──⟦/⟧⟦fg=#413a57⟧──⟦/⟧⟦fg=#3e3753⟧──⟦/⟧⟦fg=#3b3550⟧──⟦/⟧⟦fg=#38324c⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+          ⟦fg=#94e2d5 bold⟧▎ ⟦/⟧⟦fg=#89b4fa bold ul link 0⟧A linked heading⟦/⟧

@@ -26,7 +26,8 @@
 //! # Performance
 //!
 //! Break opportunities are computed once per paragraph
-//! ([`break_opportunities`]). They do not depend on the width, so layout can
+//! ([`break_opportunities`]; printable ASCII takes a fast path with the same
+//! results, see [`super::linebreak`]). They do not depend on the width, so layout can
 //! keep them and re-wrap with [`wrap_with_breaks`] after a resize. A
 //! paragraph of printable ASCII is then filled from the break positions
 //! alone; other text is walked grapheme by grapheme, taking stretches of
@@ -39,6 +40,7 @@ use std::ops::Range;
 
 use unicode_linebreak::linebreaks;
 
+use super::linebreak::is_printable_ascii;
 use super::width::{grapheme_width, next_grapheme_end};
 
 /// The soft hyphen, `U+00AD`.
@@ -124,8 +126,9 @@ impl Wrapper {
         opts: WrapOptions,
         out: &mut Vec<Line>,
     ) {
-        break_opportunities(text, constraints.extra_breaks, &mut self.breaks);
-        wrap_with_breaks(text, &self.breaks, constraints.atoms, opts, out);
+        let ascii = is_printable_ascii(text.as_bytes());
+        breaks_into(text, ascii, constraints.extra_breaks, &mut self.breaks);
+        wrap_known(text, ascii, &self.breaks, constraints.atoms, opts, out);
     }
 }
 
@@ -134,8 +137,24 @@ impl Wrapper {
 /// a caller can keep them per paragraph and re-wrap with
 /// [`wrap_with_breaks`] when the width changes.
 pub fn break_opportunities(text: &str, extra: &[u32], out: &mut Vec<u32>) {
+    breaks_into(text, is_printable_ascii(text.as_bytes()), extra, out);
+}
+
+/// [`break_opportunities`] when it is known whether `text` is printable
+/// ASCII.
+fn breaks_into(text: &str, ascii: bool, extra: &[u32], out: &mut Vec<u32>) {
     out.clear();
     out.reserve(text.len() / 4 + extra.len() + 1);
+    if !text.is_empty() && ascii {
+        // Same result as `linebreaks`, several times faster.
+        super::linebreak::ascii_breaks(text.as_bytes(), out);
+        if !extra.is_empty() {
+            out.extend_from_slice(extra);
+            out.sort_unstable();
+            out.dedup();
+        }
+        return;
+    }
     let mut extra = extra.iter().copied().peekable();
     for (pos, _) in linebreaks(text) {
         let pos = to_u32(pos);
@@ -162,15 +181,25 @@ pub fn wrap_with_breaks(
     opts: WrapOptions,
     out: &mut Vec<Line>,
 ) {
+    let ascii = is_printable_ascii(text.as_bytes());
+    wrap_known(text, ascii, breaks, atoms, opts, out);
+}
+
+/// [`wrap_with_breaks`] when it is known whether `text` is printable ASCII.
+fn wrap_known(
+    text: &str,
+    ascii: bool,
+    breaks: &[u32],
+    atoms: &[Range<u32>],
+    opts: WrapOptions,
+    out: &mut Vec<Line>,
+) {
     out.clear();
     let widths = (
         usize::from(opts.first.max(1)),
         usize::from(opts.rest.max(1)),
     );
-    if atoms.is_empty()
-        && is_printable_ascii(text.as_bytes())
-        && wrap_ascii(text.as_bytes(), breaks, widths, out)
-    {
+    if atoms.is_empty() && ascii && wrap_ascii(text.as_bytes(), breaks, widths, out) {
         return;
     }
     out.clear();
@@ -621,11 +650,6 @@ impl Filler<'_> {
         self.in_ws = false;
         self.cand = None;
     }
-}
-
-/// Whether every byte is printable ASCII (`0x20..=0x7E`).
-fn is_printable_ascii(bytes: &[u8]) -> bool {
-    bytes.iter().all(|&b| (0x20..0x7f).contains(&b))
 }
 
 /// Whitespace that may end a line and is trimmed there: ASCII space, the

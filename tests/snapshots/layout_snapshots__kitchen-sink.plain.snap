@@ -1,0 +1,602 @@
+---
+source: tests/layout_snapshots.rs
+expression: "plain(\"kitchen-sink\")"
+---
+━━ width 24 ━━━━━━━━━━━━
+┌──────────────────┐
+│ title   Kitchen  │
+│         Sink     │
+│ author  emde     │
+│ tags    [markdow │
+│         n, test] │
+└──────────────────┘
+
+Kitchen Sink
+════════════════════
+
+A paragraph with
+emphasis, strong,
+both, strikethrough,
+`inline code`, a
+link[1], an autolink
+https://example.org/
+path, and a bare URL
+https://www.rust-
+lang.org/learn. Hard
+break at the end of
+this line
+and a backslash hard
+break
+then more text.
+Footnote reference¹
+and another².
+
+[1]: https://
+     example.com
+
+Headings
+────────────────────
+
+▎ Third level
+
+Fourth level
+
+Fifth level
+
+Sixth level
+
+Lists
+────────────────────
+
+• Tight item one
+• Tight item with
+  bold
+  ◦ Nested item
+    ‣ Deeper item
+☐ Unchecked task
+☒ Checked task
+
+1. First
+
+2. Second
+
+   With a second
+   paragraph.
+
+3. Third
+
+Quotes and alerts
+────────────────────
+
+▎ A plain quote with
+▎ a reference
+▎ link[2].
+▎
+▎ ▎ A nested quote.
+
+▎ ⓘ Note
+▎ Notes carry an
+▎ icon and a title.
+
+▎ ✦ Tip
+▎ A tip.
+
+▎ ❖ Important
+▎ Something
+▎ important.
+
+▎ ▲ Warning
+▎ Careful: this is a
+▎ warning.
+
+▎ ⊘ Caution
+▎ Mind the risks.
+
+[2]: https://
+     example.net
+
+Code
+────────────────────
+
+┌─ hello.r ─ rust ─┐
+│ fn main() {      │
+│     println!("He │
+│↳llo, {}!", "worl │
+│↳d");             │
+│ }                │
+└──────────────────┘
+
+┌──────────────────┐
+│ indented code bl │
+│↳ock              │
+└──────────────────┘
+
+┌─────────── diff ─┐
+│ -old line        │
+│ +new line        │
+└──────────────────┘
+
+Math
+────────────────────
+
+Inline math
+e^{i\pi} + 1 = 0 and
+x^2, and money: $5
+and $10, or $5-$10.
+
+\sum_{i=1}^{n} i^2 =
+\frac{n(n+1)(2n+1)}
+        {6}
+
+A = \begin{pmatrix}
+   a & b \\ c & d
+   \end{pmatrix}
+
+Table
+────────────────────
+
+Left: `a`
+Center: b
+Right: c
+────────
+Left: long cell with
+  a link
+Center: x¹
+Right: 3
+
+Other blocks
+────────────────────
+
+Term
+    Its definition.
+
+────────────────────
+
+▾ Click to expand
+  Hidden content
+  with [Ctrl]+[C]
+  and H₂O and x².
+
+Centred text, marked
+  and underlined.
+
+     ▣ A figure
+   Figure caption
+
+Text with an
+▣ inline image chip
+and a ▣ badge[3]
+badge.
+
+日本語のテキストと
+English mixed with
+emoji 👨‍👩‍👧 and ❤️.
+
+── Footnotes ───────
+
+1. The footnote
+   text, with
+   emphasis. ↑ ↑²
+2. Second footnote.
+   ↑
+
+[3]: https://
+     ci.example.com
+━━ width 40 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+┌──────────────────────────┐
+│ title   Kitchen Sink     │
+│ author  emde             │
+│ tags    [markdown, test] │
+└──────────────────────────┘
+
+Kitchen Sink
+════════════════════════════════════
+
+A paragraph with emphasis, strong,
+both, strikethrough, `inline code`,
+a link[1], an autolink https://
+example.org/path, and a bare URL
+https://www.rust-lang.org/learn.
+Hard break at the end of this line
+and a backslash hard break
+then more text. Footnote reference¹
+and another².
+
+[1]: https://example.com
+
+Headings
+────────────────────────────────────
+
+▎ Third level
+
+Fourth level
+
+Fifth level
+
+Sixth level
+
+Lists
+────────────────────────────────────
+
+• Tight item one
+• Tight item with bold
+  ◦ Nested item
+    ‣ Deeper item
+☐ Unchecked task
+☒ Checked task
+
+1. First
+
+2. Second
+
+   With a second paragraph.
+
+3. Third
+
+Quotes and alerts
+────────────────────────────────────
+
+▎ A plain quote with a reference
+▎ link[2].
+▎
+▎ ▎ A nested quote.
+
+▎ ⓘ Note
+▎ Notes carry an icon and a title.
+
+▎ ✦ Tip
+▎ A tip.
+
+▎ ❖ Important
+▎ Something important.
+
+▎ ▲ Warning
+▎ Careful: this is a warning.
+
+▎ ⊘ Caution
+▎ Mind the risks.
+
+[2]: https://example.net
+
+Code
+────────────────────────────────────
+
+┌─ hello.rs ──────────────── rust ─┐
+│ fn main() {                      │
+│     println!("Hello, {}!", "worl │
+│↳d");                             │
+│ }                                │
+└──────────────────────────────────┘
+
+┌──────────────────────────────────┐
+│ indented code block              │
+└──────────────────────────────────┘
+
+┌─────────────────────────── diff ─┐
+│ -old line                        │
+│ +new line                        │
+└──────────────────────────────────┘
+
+Math
+────────────────────────────────────
+
+Inline math e^{i\pi} + 1 = 0 and
+x^2, and money: $5 and $10, or $5-
+$10.
+
+ \sum_{i=1}^{n} i^2 = \frac{n(n+1)
+             (2n+1)}{6}
+
+ A = \begin{pmatrix} a & b \\ c & d
+           \end{pmatrix}
+
+Table
+────────────────────────────────────
+
+╭─────────────────┬────────┬───────╮
+│ Left            │ Center │ Right │
+├─────────────────┼────────┼───────┤
+│ `a`             │   b    │     c │
+├─────────────────┼────────┼───────┤
+│ long cell with  │   x¹   │     3 │
+│ a link          │        │       │
+╰─────────────────┴────────┴───────╯
+
+Other blocks
+────────────────────────────────────
+
+Term
+    Its definition.
+
+────────────────────────────────────
+
+▾ Click to expand
+  Hidden content with [Ctrl]+[C] and
+  H₂O and x².
+
+Centred text, marked and underlined.
+
+             ▣ A figure
+           Figure caption
+
+Text with an ▣ inline image chip and
+a ▣ badge[3] badge.
+
+日本語のテキストと English mixed
+with emoji 👨‍👩‍👧 and ❤️.
+
+── Footnotes ───────────────────────
+
+1. The footnote text, with emphasis.
+   ↑ ↑²
+2. Second footnote. ↑
+
+[3]: https://ci.example.com
+━━ width 80 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+┌──────────────────────────┐
+│ title   Kitchen Sink     │
+│ author  emde             │
+│ tags    [markdown, test] │
+└──────────────────────────┘
+
+Kitchen Sink
+════════════════════════════════════════════════════════════════════════════
+
+A paragraph with emphasis, strong, both, strikethrough, `inline code`, a
+link[1], an autolink https://example.org/path, and a bare URL https://
+www.rust-lang.org/learn. Hard break at the end of this line
+and a backslash hard break
+then more text. Footnote reference¹ and another².
+
+[1]: https://example.com
+
+Headings
+────────────────────────────────────────────────────────────────────────────
+
+▎ Third level
+
+Fourth level
+
+Fifth level
+
+Sixth level
+
+Lists
+────────────────────────────────────────────────────────────────────────────
+
+• Tight item one
+• Tight item with bold
+  ◦ Nested item
+    ‣ Deeper item
+☐ Unchecked task
+☒ Checked task
+
+1. First
+
+2. Second
+
+   With a second paragraph.
+
+3. Third
+
+Quotes and alerts
+────────────────────────────────────────────────────────────────────────────
+
+▎ A plain quote with a reference link[2].
+▎
+▎ ▎ A nested quote.
+
+▎ ⓘ Note
+▎ Notes carry an icon and a title.
+
+▎ ✦ Tip
+▎ A tip.
+
+▎ ❖ Important
+▎ Something important.
+
+▎ ▲ Warning
+▎ Careful: this is a warning.
+
+▎ ⊘ Caution
+▎ Mind the risks.
+
+[2]: https://example.net
+
+Code
+────────────────────────────────────────────────────────────────────────────
+
+┌─ hello.rs ──────────────────────────────────────────────────────── rust ─┐
+│ fn main() {                                                              │
+│     println!("Hello, {}!", "world");                                     │
+│ }                                                                        │
+└──────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────┐
+│ indented code block                                                      │
+└──────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────── diff ─┐
+│ -old line                                                                │
+│ +new line                                                                │
+└──────────────────────────────────────────────────────────────────────────┘
+
+Math
+────────────────────────────────────────────────────────────────────────────
+
+Inline math e^{i\pi} + 1 = 0 and x^2, and money: $5 and $10, or $5-$10.
+
+                \sum_{i=1}^{n} i^2 = \frac{n(n+1)(2n+1)}{6}
+
+              A = \begin{pmatrix} a & b \\ c & d \end{pmatrix}
+
+Table
+────────────────────────────────────────────────────────────────────────────
+
+╭───────────────────────┬────────┬───────╮
+│ Left                  │ Center │ Right │
+├───────────────────────┼────────┼───────┤
+│ `a`                   │   b    │     c │
+│ long cell with a link │   x¹   │     3 │
+╰───────────────────────┴────────┴───────╯
+
+Other blocks
+────────────────────────────────────────────────────────────────────────────
+
+Term
+    Its definition.
+
+────────────────────────────────────────────────────────────────────────────
+
+▾ Click to expand
+  Hidden content with [Ctrl]+[C] and H₂O and x².
+
+                    Centred text, marked and underlined.
+
+                                 ▣ A figure
+                               Figure caption
+
+Text with an ▣ inline image chip and a ▣ badge[3] badge.
+
+日本語のテキストと English mixed with emoji 👨‍👩‍👧 and ❤️.
+
+── Footnotes ───────────────────────────────────────────────────────────────
+
+1. The footnote text, with emphasis. ↑ ↑²
+2. Second footnote. ↑
+
+[3]: https://ci.example.com
+━━ width 120 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+┌──────────────────────────┐
+│ title   Kitchen Sink     │
+│ author  emde             │
+│ tags    [markdown, test] │
+└──────────────────────────┘
+
+Kitchen Sink
+════════════════════════════════════════════════════════════════════════════════════════════════════
+
+A paragraph with emphasis, strong, both, strikethrough, `inline code`, a link[1], an autolink
+https://example.org/path, and a bare URL https://www.rust-lang.org/learn. Hard break at the end of
+this line
+and a backslash hard break
+then more text. Footnote reference¹ and another².
+
+[1]: https://example.com
+
+Headings
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+▎ Third level
+
+Fourth level
+
+Fifth level
+
+Sixth level
+
+Lists
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+• Tight item one
+• Tight item with bold
+  ◦ Nested item
+    ‣ Deeper item
+☐ Unchecked task
+☒ Checked task
+
+1. First
+
+2. Second
+
+   With a second paragraph.
+
+3. Third
+
+Quotes and alerts
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+▎ A plain quote with a reference link[2].
+▎
+▎ ▎ A nested quote.
+
+▎ ⓘ Note
+▎ Notes carry an icon and a title.
+
+▎ ✦ Tip
+▎ A tip.
+
+▎ ❖ Important
+▎ Something important.
+
+▎ ▲ Warning
+▎ Careful: this is a warning.
+
+▎ ⊘ Caution
+▎ Mind the risks.
+
+[2]: https://example.net
+
+Code
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+┌─ hello.rs ──────────────────────────────────────────────────────────────────────────────── rust ─┐
+│ fn main() {                                                                                      │
+│     println!("Hello, {}!", "world");                                                             │
+│ }                                                                                                │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ indented code block                                                                              │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────────────────── diff ─┐
+│ -old line                                                                                        │
+│ +new line                                                                                        │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+Math
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+Inline math e^{i\pi} + 1 = 0 and x^2, and money: $5 and $10, or $5-$10.
+
+                            \sum_{i=1}^{n} i^2 = \frac{n(n+1)(2n+1)}{6}
+
+                          A = \begin{pmatrix} a & b \\ c & d \end{pmatrix}
+
+Table
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+╭───────────────────────┬────────┬───────╮
+│ Left                  │ Center │ Right │
+├───────────────────────┼────────┼───────┤
+│ `a`                   │   b    │     c │
+│ long cell with a link │   x¹   │     3 │
+╰───────────────────────┴────────┴───────╯
+
+Other blocks
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+Term
+    Its definition.
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+▾ Click to expand
+  Hidden content with [Ctrl]+[C] and H₂O and x².
+
+                                Centred text, marked and underlined.
+
+                                             ▣ A figure
+                                           Figure caption
+
+Text with an ▣ inline image chip and a ▣ badge[3] badge.
+
+日本語のテキストと English mixed with emoji 👨‍👩‍👧 and ❤️.
+
+── Footnotes ───────────────────────────────────────────────────────────────────────────────────────
+
+1. The footnote text, with emphasis. ↑ ↑²
+2. Second footnote. ↑
+
+[3]: https://ci.example.com

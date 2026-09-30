@@ -1,0 +1,5 @@
+---
+source: tests/sgr_snapshots.rs
+expression: out
+---
+  \e[4;38;2;137;180;250mx\e[0m \e[4;38;2;137;180;250my\e[0m \e]8;id=e1-2;mailto:a@b.org\e\\e[4;38;2;137;180;250mz\e]8;;\e\\e[0m

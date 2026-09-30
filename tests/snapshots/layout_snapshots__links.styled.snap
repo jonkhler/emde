@@ -1,0 +1,121 @@
+---
+source: tests/layout_snapshots.rs
+expression: "styled(\"links\", & Caps :: full(), & WIDTHS)"
+---
+━━ width 24 ━━━━━━━━━━━━
+  Inline ⟦fg=#89b4fa ul link 0⟧link⟦/⟧, with a
+  ⟦fg=#89b4fa ul link 1⟧title⟦/⟧.
+
+  Autolink ⟦fg=#89b4fa ul link 2⟧https://⟦/⟧
+  ⟦fg=#89b4fa ul link 2⟧example.org/a/b?c=d&⟦/⟧
+  ⟦fg=#89b4fa ul link 2⟧e=f#g⟦/⟧ and email
+  ⟦fg=#89b4fa ul link 3⟧someone@example.org⟦/⟧.
+
+  Bare URL ⟦fg=#89b4fa ul link 4⟧https://⟦/⟧
+  ⟦fg=#89b4fa ul link 4⟧www.rust-lang.org/⟦/⟧
+  ⟦fg=#89b4fa ul link 4⟧learn/get-started⟦/⟧
+  and ⟦fg=#89b4fa ul link 5⟧www.example.com/⟦/⟧
+  ⟦fg=#89b4fa ul link 5⟧path⟦/⟧.
+
+  A very long URL:
+  ⟦fg=#89b4fa ul link 6⟧https://example.com/⟦/⟧
+  ⟦fg=#89b4fa ul link 6⟧a/very/long/path/⟦/⟧
+  ⟦fg=#89b4fa ul link 6⟧that/keeps/going/⟦/⟧
+  ⟦fg=#89b4fa ul link 6⟧and/going/and/going?⟦/⟧
+  ⟦fg=#89b4fa ul link 6⟧with=query&and=more&⟦/⟧
+  ⟦fg=#89b4fa ul link 6⟧parameters=too#⟦/⟧
+  ⟦fg=#89b4fa ul link 6⟧fragment⟦/⟧
+
+  ⟦fg=#89b4fa ul link 7⟧Reference link⟦/⟧,
+  ⟦fg=#89b4fa ul link 8⟧collapsed⟦/⟧, and
+  ⟦fg=#89b4fa ul link 9⟧shortcut⟦/⟧.
+
+  ⟦fg=#89b4fa ul link 10⟧Anchor link⟦/⟧, a ⟦fg=#89b4fa ul link 11⟧local⟦/⟧
+  ⟦fg=#89b4fa ul link 11⟧file⟦/⟧ and ⟦fg=#89b4fa ul link 12⟧another⟦/⟧.
+
+        ⟦fg=#6c7086 link 13⟧▣ ⟦/⟧⟦fg=#89b4fa italic ul link 13⟧Badge⟦/⟧
+
+  Same URL twice: ⟦fg=#89b4fa ul link 14⟧one⟦/⟧
+  and ⟦fg=#89b4fa ul link 15⟧two⟦/⟧.
+
+  ⟦fg=#cba6f7 bold⟧Second section⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#957cb9⟧──⟦/⟧⟦fg=#63547e⟧──⟦/⟧
+
+  ⟦fg=#89b4fa ul link 16⟧Another⟦/⟧ link in a
+  new section.
+━━ width 40 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Inline ⟦fg=#89b4fa ul link 0⟧link⟦/⟧, with a ⟦fg=#89b4fa ul link 1⟧title⟦/⟧.
+
+  Autolink ⟦fg=#89b4fa ul link 2⟧https://example.org/a/b?c=⟦/⟧
+  ⟦fg=#89b4fa ul link 2⟧d&e=f#g⟦/⟧ and email
+  ⟦fg=#89b4fa ul link 3⟧someone@example.org⟦/⟧.
+
+  Bare URL ⟦fg=#89b4fa ul link 4⟧https://www.rust-lang.org/⟦/⟧
+  ⟦fg=#89b4fa ul link 4⟧learn/get-started⟦/⟧ and
+  ⟦fg=#89b4fa ul link 5⟧www.example.com/path⟦/⟧.
+
+  A very long URL: ⟦fg=#89b4fa ul link 6⟧https://⟦/⟧
+  ⟦fg=#89b4fa ul link 6⟧example.com/a/very/long/path/that/⟦/⟧
+  ⟦fg=#89b4fa ul link 6⟧keeps/going/and/going/and/going?⟦/⟧
+  ⟦fg=#89b4fa ul link 6⟧with=query&and=more&parameters=too#⟦/⟧
+  ⟦fg=#89b4fa ul link 6⟧fragment⟦/⟧
+
+  ⟦fg=#89b4fa ul link 7⟧Reference link⟦/⟧, ⟦fg=#89b4fa ul link 8⟧collapsed⟦/⟧, and
+  ⟦fg=#89b4fa ul link 9⟧shortcut⟦/⟧.
+
+  ⟦fg=#89b4fa ul link 10⟧Anchor link⟦/⟧, a ⟦fg=#89b4fa ul link 11⟧local file⟦/⟧ and
+  ⟦fg=#89b4fa ul link 12⟧another⟦/⟧.
+
+                ⟦fg=#6c7086 link 13⟧▣ ⟦/⟧⟦fg=#89b4fa italic ul link 13⟧Badge⟦/⟧
+
+  Same URL twice: ⟦fg=#89b4fa ul link 14⟧one⟦/⟧ and ⟦fg=#89b4fa ul link 15⟧two⟦/⟧.
+
+  ⟦fg=#cba6f7 bold⟧Second section⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#bc9ae6⟧──⟦/⟧⟦fg=#ad8fd5⟧──⟦/⟧⟦fg=#9f84c4⟧──⟦/⟧⟦fg=#9078b3⟧──⟦/⟧⟦fg=#826da3⟧──⟦/⟧⟦fg=#756393⟧──⟦/⟧⟦fg=#675883⟧──⟦/⟧⟦fg=#5a4e74⟧──⟦/⟧⟦fg=#4d4365⟧──⟦/⟧⟦fg=#413a56⟧──⟦/⟧
+
+  ⟦fg=#89b4fa ul link 16⟧Another⟦/⟧ link in a new section.
+━━ width 80 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Inline ⟦fg=#89b4fa ul link 0⟧link⟦/⟧, with a ⟦fg=#89b4fa ul link 1⟧title⟦/⟧.
+
+  Autolink ⟦fg=#89b4fa ul link 2⟧https://example.org/a/b?c=d&e=f#g⟦/⟧ and email ⟦fg=#89b4fa ul link 3⟧someone@example.org⟦/⟧.
+
+  Bare URL ⟦fg=#89b4fa ul link 4⟧https://www.rust-lang.org/learn/get-started⟦/⟧ and ⟦fg=#89b4fa ul link 5⟧www.example.com/⟦/⟧
+  ⟦fg=#89b4fa ul link 5⟧path⟦/⟧.
+
+  A very long URL: ⟦fg=#89b4fa ul link 6⟧https://example.com/a/very/long/path/that/keeps/going/and/⟦/⟧
+  ⟦fg=#89b4fa ul link 6⟧going/and/going?with=query&and=more&parameters=too#fragment⟦/⟧
+
+  ⟦fg=#89b4fa ul link 7⟧Reference link⟦/⟧, ⟦fg=#89b4fa ul link 8⟧collapsed⟦/⟧, and ⟦fg=#89b4fa ul link 9⟧shortcut⟦/⟧.
+
+  ⟦fg=#89b4fa ul link 10⟧Anchor link⟦/⟧, a ⟦fg=#89b4fa ul link 11⟧local file⟦/⟧ and ⟦fg=#89b4fa ul link 12⟧another⟦/⟧.
+
+                                    ⟦fg=#6c7086 link 13⟧▣ ⟦/⟧⟦fg=#89b4fa italic ul link 13⟧Badge⟦/⟧
+
+  Same URL twice: ⟦fg=#89b4fa ul link 14⟧one⟦/⟧ and ⟦fg=#89b4fa ul link 15⟧two⟦/⟧.
+
+  ⟦fg=#cba6f7 bold⟧Second section⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c6a2f1⟧──⟦/⟧⟦fg=#c09eeb⟧──⟦/⟧⟦fg=#bb9ae5⟧──⟦/⟧⟦fg=#b695de⟧──⟦/⟧⟦fg=#b191d8⟧──⟦/⟧⟦fg=#ab8dd2⟧──⟦/⟧⟦fg=#a689cc⟧──⟦/⟧⟦fg=#a185c6⟧──⟦/⟧⟦fg=#9c81c1⟧──⟦/⟧⟦fg=#977dbb⟧──⟦/⟧⟦fg=#9279b5⟧──⟦/⟧⟦fg=#8d75af⟧──⟦/⟧⟦fg=#8872a9⟧──⟦/⟧⟦fg=#836ea3⟧──⟦/⟧⟦fg=#7e6a9e⟧──⟦/⟧⟦fg=#796698⟧──⟦/⟧⟦fg=#746292⟧──⟦/⟧⟦fg=#6f5e8d⟧──⟦/⟧⟦fg=#6b5b87⟧──⟦/⟧⟦fg=#665782⟧──⟦/⟧⟦fg=#61537c⟧──⟦/⟧⟦fg=#5d5077⟧──⟦/⟧⟦fg=#584c72⟧──⟦/⟧⟦fg=#53486c⟧──⟦/⟧⟦fg=#4f4567⟧──⟦/⟧⟦fg=#4a4162⟧──⟦/⟧⟦fg=#463e5c⟧──⟦/⟧⟦fg=#413a57⟧──⟦/⟧⟦fg=#3d3752⟧──⟦/⟧⟦fg=#39334d⟧──⟦/⟧
+
+  ⟦fg=#89b4fa ul link 16⟧Another⟦/⟧ link in a new section.
+━━ width 120 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          Inline ⟦fg=#89b4fa ul link 0⟧link⟦/⟧, with a ⟦fg=#89b4fa ul link 1⟧title⟦/⟧.
+
+          Autolink ⟦fg=#89b4fa ul link 2⟧https://example.org/a/b?c=d&e=f#g⟦/⟧ and email ⟦fg=#89b4fa ul link 3⟧someone@example.org⟦/⟧.
+
+          Bare URL ⟦fg=#89b4fa ul link 4⟧https://www.rust-lang.org/learn/get-started⟦/⟧ and ⟦fg=#89b4fa ul link 5⟧www.example.com/path⟦/⟧.
+
+          A very long URL: ⟦fg=#89b4fa ul link 6⟧https://example.com/a/very/long/path/that/keeps/going/and/going/and/going?with=⟦/⟧
+          ⟦fg=#89b4fa ul link 6⟧query&and=more&parameters=too#fragment⟦/⟧
+
+          ⟦fg=#89b4fa ul link 7⟧Reference link⟦/⟧, ⟦fg=#89b4fa ul link 8⟧collapsed⟦/⟧, and ⟦fg=#89b4fa ul link 9⟧shortcut⟦/⟧.
+
+          ⟦fg=#89b4fa ul link 10⟧Anchor link⟦/⟧, a ⟦fg=#89b4fa ul link 11⟧local file⟦/⟧ and ⟦fg=#89b4fa ul link 12⟧another⟦/⟧.
+
+                                                        ⟦fg=#6c7086 link 13⟧▣ ⟦/⟧⟦fg=#89b4fa italic ul link 13⟧Badge⟦/⟧
+
+          Same URL twice: ⟦fg=#89b4fa ul link 14⟧one⟦/⟧ and ⟦fg=#89b4fa ul link 15⟧two⟦/⟧.
+
+          ⟦fg=#cba6f7 bold⟧Second section⟦/⟧
+          ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c7a3f3⟧──⟦/⟧⟦fg=#c3a0ee⟧──⟦/⟧⟦fg=#c09dea⟧──⟦/⟧⟦fg=#bc9ae5⟧──⟦/⟧⟦fg=#b897e1⟧──⟦/⟧⟦fg=#b494dd⟧──⟦/⟧⟦fg=#b091d8⟧──⟦/⟧⟦fg=#ad8ed4⟧──⟦/⟧⟦fg=#a98bd0⟧──⟦/⟧⟦fg=#a588cb⟧──⟦/⟧⟦fg=#a186c7⟧──⟦/⟧⟦fg=#9e83c3⟧──⟦/⟧⟦fg=#9a80be⟧──⟦/⟧⟦fg=#967dba⟧──⟦/⟧⟦fg=#937ab6⟧──⟦/⟧⟦fg=#8f77b2⟧──⟦/⟧⟦fg=#8c74ae⟧──⟦/⟧⟦fg=#8872a9⟧──⟦/⟧⟦fg=#846fa5⟧──⟦/⟧⟦fg=#816ca1⟧──⟦/⟧⟦fg=#7d699d⟧──⟦/⟧⟦fg=#7a6799⟧──⟦/⟧⟦fg=#766495⟧──⟦/⟧⟦fg=#736191⟧──⟦/⟧⟦fg=#6f5e8d⟧──⟦/⟧⟦fg=#6c5c89⟧──⟦/⟧⟦fg=#685985⟧──⟦/⟧⟦fg=#655681⟧──⟦/⟧⟦fg=#62547d⟧──⟦/⟧⟦fg=#5e5179⟧──⟦/⟧⟦fg=#5b4e75⟧──⟦/⟧⟦fg=#584c71⟧──⟦/⟧⟦fg=#54496d⟧──⟦/⟧⟦fg=#514669⟧──⟦/⟧⟦fg=#4e4466⟧──⟦/⟧⟦fg=#4a4162⟧──⟦/⟧⟦fg=#473f5e⟧──⟦/⟧⟦fg=#443c5a⟧──⟦/⟧⟦fg=#413a57⟧──⟦/⟧⟦fg=#3e3753⟧──⟦/⟧⟦fg=#3b354f⟧──⟦/⟧⟦fg=#38324c⟧──⟦/⟧
+
+          ⟦fg=#89b4fa ul link 16⟧Another⟦/⟧ link in a new section.

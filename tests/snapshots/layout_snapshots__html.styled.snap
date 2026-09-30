@@ -1,0 +1,142 @@
+---
+source: tests/layout_snapshots.rs
+expression: "styled(\"html\", & Caps :: full(), & WIDTHS)"
+---
+━━ width 24 ━━━━━━━━━━━━
+  ⟦fg=#6c7086⟧▾ ⟦/⟧⟦bold⟧Summary with bold⟦/⟧
+    Content inside
+    details.
+
+  ⟦fg=#6c7086⟧▾ ⟦/⟧⟦bold⟧Details⟦/⟧
+    No summary here.
+
+         ⟦fg=#6c7086⟧▣ ⟦/⟧⟦fg=#6c7086 italic⟧Logo⟦/⟧
+
+   Centered ⟦bold⟧markdown⟦/⟧
+   text inside a div.
+
+         Right aligned
+
+  Line one
+  line two
+  line three.
+
+  Press
+  ⟦fg=#cdd6f4 bg=#2c2d3d bold⟧ Ctrl ⟦/⟧+⟦fg=#cdd6f4 bg=#2c2d3d bold⟧ Shift ⟦/⟧+⟦fg=#cdd6f4 bg=#2c2d3d bold⟧ P ⟦/⟧.
+
+  H₂O, E = mc², 1ˢᵗ
+  and x[a].
+
+  ⟦bg=#575354⟧Marked⟦/⟧, ⟦ul⟧underlined⟦/⟧,
+  ⟦ul⟧inserted⟦/⟧, ⟦fg=#6c7086 strike⟧deleted⟦/⟧,
+  ⟦fg=#6c7086 strike⟧struck⟦/⟧.
+
+   Centered with the
+       center tag
+
+  ⟦fg=#89b4fa ul link 0⟧An HTML link⟦/⟧ and an
+  anchor.
+
+   ⟦fg=#6c7086⟧▣ ⟦/⟧⟦fg=#6c7086 italic⟧Picture fallback⟦/⟧
+
+  Unknown tags keep
+  their text.
+
+  cell cell two
+━━ width 40 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ⟦fg=#6c7086⟧▾ ⟦/⟧⟦bold⟧Summary with bold⟦/⟧
+    Content inside details.
+
+  ⟦fg=#6c7086⟧▾ ⟦/⟧⟦bold⟧Details⟦/⟧
+    No summary here.
+
+                 ⟦fg=#6c7086⟧▣ ⟦/⟧⟦fg=#6c7086 italic⟧Logo⟦/⟧
+
+  Centered ⟦bold⟧markdown⟦/⟧ text inside a div.
+
+                         Right aligned
+
+  Line one
+  line two
+  line three.
+
+  Press ⟦fg=#cdd6f4 bg=#2c2d3d bold⟧ Ctrl ⟦/⟧+⟦fg=#cdd6f4 bg=#2c2d3d bold⟧ Shift ⟦/⟧+⟦fg=#cdd6f4 bg=#2c2d3d bold⟧ P ⟦/⟧.
+
+  H₂O, E = mc², 1ˢᵗ and x[a].
+
+  ⟦bg=#575354⟧Marked⟦/⟧, ⟦ul⟧underlined⟦/⟧, ⟦ul⟧inserted⟦/⟧,
+  ⟦fg=#6c7086 strike⟧deleted⟦/⟧, ⟦fg=#6c7086 strike⟧struck⟦/⟧.
+
+      Centered with the center tag
+
+  ⟦fg=#89b4fa ul link 0⟧An HTML link⟦/⟧ and an anchor.
+
+           ⟦fg=#6c7086⟧▣ ⟦/⟧⟦fg=#6c7086 italic⟧Picture fallback⟦/⟧
+
+  Unknown tags keep their text.
+
+  cell cell two
+━━ width 80 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ⟦fg=#6c7086⟧▾ ⟦/⟧⟦bold⟧Summary with bold⟦/⟧
+    Content inside details.
+
+  ⟦fg=#6c7086⟧▾ ⟦/⟧⟦bold⟧Details⟦/⟧
+    No summary here.
+
+                                     ⟦fg=#6c7086⟧▣ ⟦/⟧⟦fg=#6c7086 italic⟧Logo⟦/⟧
+
+                      Centered ⟦bold⟧markdown⟦/⟧ text inside a div.
+
+                                                                 Right aligned
+
+  Line one
+  line two
+  line three.
+
+  Press ⟦fg=#cdd6f4 bg=#2c2d3d bold⟧ Ctrl ⟦/⟧+⟦fg=#cdd6f4 bg=#2c2d3d bold⟧ Shift ⟦/⟧+⟦fg=#cdd6f4 bg=#2c2d3d bold⟧ P ⟦/⟧.
+
+  H₂O, E = mc², 1ˢᵗ and x[a].
+
+  ⟦bg=#575354⟧Marked⟦/⟧, ⟦ul⟧underlined⟦/⟧, ⟦ul⟧inserted⟦/⟧, ⟦fg=#6c7086 strike⟧deleted⟦/⟧, ⟦fg=#6c7086 strike⟧struck⟦/⟧.
+
+                          Centered with the center tag
+
+  ⟦fg=#89b4fa ul link 0⟧An HTML link⟦/⟧ and an anchor.
+
+                               ⟦fg=#6c7086⟧▣ ⟦/⟧⟦fg=#6c7086 italic⟧Picture fallback⟦/⟧
+
+  Unknown tags keep their text.
+
+  cell cell two
+━━ width 120 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          ⟦fg=#6c7086⟧▾ ⟦/⟧⟦bold⟧Summary with bold⟦/⟧
+            Content inside details.
+
+          ⟦fg=#6c7086⟧▾ ⟦/⟧⟦bold⟧Details⟦/⟧
+            No summary here.
+
+                                                         ⟦fg=#6c7086⟧▣ ⟦/⟧⟦fg=#6c7086 italic⟧Logo⟦/⟧
+
+                                          Centered ⟦bold⟧markdown⟦/⟧ text inside a div.
+
+                                                                                                 Right aligned
+
+          Line one
+          line two
+          line three.
+
+          Press ⟦fg=#cdd6f4 bg=#2c2d3d bold⟧ Ctrl ⟦/⟧+⟦fg=#cdd6f4 bg=#2c2d3d bold⟧ Shift ⟦/⟧+⟦fg=#cdd6f4 bg=#2c2d3d bold⟧ P ⟦/⟧.
+
+          H₂O, E = mc², 1ˢᵗ and x[a].
+
+          ⟦bg=#575354⟧Marked⟦/⟧, ⟦ul⟧underlined⟦/⟧, ⟦ul⟧inserted⟦/⟧, ⟦fg=#6c7086 strike⟧deleted⟦/⟧, ⟦fg=#6c7086 strike⟧struck⟦/⟧.
+
+                                              Centered with the center tag
+
+          ⟦fg=#89b4fa ul link 0⟧An HTML link⟦/⟧ and an anchor.
+
+                                                   ⟦fg=#6c7086⟧▣ ⟦/⟧⟦fg=#6c7086 italic⟧Picture fallback⟦/⟧
+
+          Unknown tags keep their text.
+
+          cell cell two

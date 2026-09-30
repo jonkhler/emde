@@ -1,0 +1,423 @@
+---
+source: tests/layout_snapshots.rs
+expression: "styled(\"regressions\", & Caps :: full(), & WIDTHS)"
+---
+━━ width 24 ━━━━━━━━━━━━
+  ⟦grad #89b4fa→#cba6f7 0..20⟧⟦fg=#1e1e2e bold⟧ Regressions⟦/⟧⟦/grad⟧
+
+  ⟦fg=#cba6f7 bold⟧glamour 314: list⟦/⟧
+  ⟦fg=#cba6f7 bold⟧continuation indent⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧─⟦/⟧
+
+  ⟦fg=#89b4fa⟧•⟦/⟧ Lorem ipsum dolor
+    sit amet,
+    consectetur
+    adipiscing elit.
+    Nulla mattis
+    dignissim leo et
+    tempus. Cras sit
+    amet nisi id leo
+    eleifend iaculis
+    nec in lectus.
+    ⟦fg=#89b4fa⟧◦⟦/⟧ Cras quis ornare
+      mi, in
+      condimentum
+      tortor. Vivamus
+      id convallis
+      ligula. Morbi ac
+      commodo lacus,
+      in blandit
+      augue.
+
+  ⟦fg=#cba6f7 bold⟧glamour 172: quote⟦/⟧
+  ⟦fg=#cba6f7 bold⟧prefix after⟦/⟧
+  ⟦fg=#cba6f7 bold⟧wrapping⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧
+
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧The quick brown⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧fox jumps over the⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧lazy dog. The⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧quick brown fox⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧jumps over the⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧lazy dog. The⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧quick brown fox⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧jumps over the⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧lazy dog.⟦/⟧
+
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧The quick brown⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧fox jumps over the⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧lazy dog. The⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧quick brown fox⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧jumps over the⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧lazy dog. The⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧quick brown fox⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧jumps over the⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧lazy dog. The⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧quick brown fox⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧jumps over the⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧lazy dog.⟦/⟧
+
+  ⟦fg=#cba6f7 bold⟧glamour 149: wrapped⟦/⟧
+  ⟦fg=#cba6f7 bold⟧hyperlinks⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━⟦/⟧
+
+  See ⟦fg=#89b4fa ul link 0⟧https://⟦/⟧
+  ⟦fg=#89b4fa ul link 0⟧github.com/⟦/⟧
+  ⟦fg=#89b4fa ul link 0⟧ValveSoftware/steam-⟦/⟧
+  ⟦fg=#89b4fa ul link 0⟧for-linux/issues/⟦/⟧
+  ⟦fg=#89b4fa ul link 0⟧1234567890⟦/⟧ for the
+  details.
+
+  ⟦fg=#cba6f7 bold⟧glamour 84: two⟦/⟧
+  ⟦fg=#cba6f7 bold⟧trailing spaces⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#7c689b⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+  First line with two
+  trailing spaces
+  second line after a
+  hard break.
+
+  ⟦fg=#cba6f7 bold⟧glamour 454:⟦/⟧
+  ⟦fg=#cba6f7 bold⟧backgrounds fill the⟦/⟧
+  ⟦fg=#cba6f7 bold⟧line⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━⟦/⟧
+
+  ⟦bg=#2c2d3d⟧                    ⟦/⟧
+  ⟦bg=#2c2d3d⟧ short              ⟦/⟧
+  ⟦bg=#2c2d3d⟧                    ⟦/⟧
+
+  ⟦fg=#cba6f7 bold⟧glamour 315: inline⟦/⟧
+  ⟦fg=#cba6f7 bold⟧code in tables⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧─⟦/⟧
+
+  ⟦fg=#6c7086⟧╭─────────┬────────╮⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Command ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Meanin ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧         ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ g      ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧├─────────┼────────┤⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#fab387 bg=#2c2d3d⟧ git⟦/⟧    ⟦fg=#6c7086⟧│⟦/⟧ rewrit ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#fab387 bg=#2c2d3d⟧commit⟦/⟧  ⟦fg=#6c7086⟧│⟦/⟧ e the  ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#fab387 bg=#2c2d3d⟧--⟦/⟧      ⟦fg=#6c7086⟧│⟦/⟧ last   ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#fab387 bg=#2c2d3d⟧amend ⟦/⟧  ⟦fg=#6c7086⟧│⟦/⟧ commit ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧╰─────────┴────────╯⟦/⟧
+
+  ⟦fg=#cba6f7 bold⟧mdcat 43: footnote⟦/⟧
+  ⟦fg=#cba6f7 bold⟧in a table, and OSC⟦/⟧
+  ⟦fg=#cba6f7 bold⟧8 ids⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧─⟦/⟧
+
+  ⟦fg=#6c7086⟧╭─────────┬────────╮⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Berry   ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Number ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧         ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ of Rs  ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧├─────────┼────────┤⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧ Strawbe ⟦fg=#6c7086⟧│⟦/⟧ 2⟦fg=#89b4fa link 1⟧¹⟦/⟧     ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧ rry     ⟦fg=#6c7086⟧│⟦/⟧        ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧ Raspber ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧ 3      ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧ ry      ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧        ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧╰─────────┴────────╯⟦/⟧
+
+  ⟦fg=#cba6f7 bold⟧mdcat 301: ⟦/⟧⟦fg=#fab387 bg=#2c2d3d bold⟧ <br> ⟦/⟧⟦fg=#cba6f7 bold⟧ in⟦/⟧
+  ⟦fg=#cba6f7 bold⟧a table⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━⟦/⟧
+
+  ⟦bold⟧Port PoE⟦/⟧⟦fg=#6c7086⟧: ⟦/⟧8+
+  ⟦bold⟧Connection⟦/⟧⟦fg=#6c7086⟧: ⟦/⟧PoE
+    Splitter
+    G5 Left Rear
+    G5 Front Lawn
+  ⟦bold⟧Power⟦/⟧⟦fg=#6c7086⟧: ⟦/⟧3W PoE
+    4W PoE
+
+  ⟦fg=#cba6f7 bold⟧mdcat 302: task⟦/⟧
+  ⟦fg=#cba6f7 bold⟧lists with⟦/⟧
+  ⟦fg=#cba6f7 bold⟧paragraphs⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#7c689b⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+  ⟦fg=#6c7086⟧☐⟦/⟧ foo
+
+    ⟦fg=#6c7086⟧☐⟦/⟧ bar
+    ⟦fg=#6c7086⟧☐⟦/⟧ baz
+
+  ⟦fg=#6c7086⟧☐⟦/⟧ test
+
+    ⟦fg=#6c7086⟧☐⟦/⟧ test1
+    ⟦fg=#6c7086⟧☐⟦/⟧ test2
+
+  ⟦fg=#6c7086⟧── ⟦/⟧⟦fg=#a6adc8⟧Footnotes⟦/⟧⟦fg=#6c7086⟧ ───────⟦/⟧
+
+  ⟦fg=#89b4fa⟧1.⟦/⟧ ⟦fg=#89b4fa ul link 2⟧According to many⟦/⟧
+     ⟦fg=#89b4fa ul link 2⟧LLMs⟦/⟧⟦fg=#89b4fa link 1⟧ ↑⟦/⟧
+━━ width 40 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ⟦grad #89b4fa→#cba6f7 0..36⟧⟦fg=#1e1e2e bold⟧ Regressions⟦/⟧⟦/grad⟧
+
+  ⟦fg=#cba6f7 bold⟧glamour 314: list continuation⟦/⟧
+  ⟦fg=#cba6f7 bold⟧indent⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#957cb9⟧──⟦/⟧⟦fg=#63547e⟧──⟦/⟧
+
+  ⟦fg=#89b4fa⟧•⟦/⟧ Lorem ipsum dolor sit amet,
+    consectetur adipiscing elit. Nulla
+    mattis dignissim leo et tempus.
+    Cras sit amet nisi id leo eleifend
+    iaculis nec in lectus.
+    ⟦fg=#89b4fa⟧◦⟦/⟧ Cras quis ornare mi, in
+      condimentum tortor. Vivamus id
+      convallis ligula. Morbi ac
+      commodo lacus, in blandit augue.
+
+  ⟦fg=#cba6f7 bold⟧glamour 172: quote prefix after⟦/⟧
+  ⟦fg=#cba6f7 bold⟧wrapping⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#7c689b⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧The quick brown fox jumps over the⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧lazy dog. The quick brown fox⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧jumps over the lazy dog. The quick⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧brown fox jumps over the lazy dog.⟦/⟧
+
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧The quick brown fox jumps over the⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧lazy dog. The quick brown fox⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧jumps over the lazy dog. The quick⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧brown fox jumps over the lazy dog.⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧The quick brown fox jumps over the⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧lazy dog.⟦/⟧
+
+  ⟦fg=#cba6f7 bold⟧glamour 149: wrapped hyperlinks⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#7c689b⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+  See ⟦fg=#89b4fa ul link 0⟧https://github.com/⟦/⟧
+  ⟦fg=#89b4fa ul link 0⟧ValveSoftware/steam-for-linux/⟦/⟧
+  ⟦fg=#89b4fa ul link 0⟧issues/1234567890⟦/⟧ for the details.
+
+  ⟦fg=#cba6f7 bold⟧glamour 84: two trailing spaces⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#7c689b⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+  First line with two trailing spaces
+  second line after a hard break.
+
+  ⟦fg=#cba6f7 bold⟧glamour 454: backgrounds fill the⟦/⟧
+  ⟦fg=#cba6f7 bold⟧line⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+  ⟦bg=#2c2d3d⟧                                    ⟦/⟧
+  ⟦bg=#2c2d3d⟧ short                              ⟦/⟧
+  ⟦bg=#2c2d3d⟧                                    ⟦/⟧
+
+  ⟦fg=#cba6f7 bold⟧glamour 315: inline code in tables⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧
+
+  ⟦fg=#6c7086⟧╭─────────────────┬────────────────╮⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Command         ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Meaning        ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧├─────────────────┼────────────────┤⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#fab387 bg=#2c2d3d⟧ git commit --⟦/⟧  ⟦fg=#6c7086⟧│⟦/⟧ rewrite the    ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#fab387 bg=#2c2d3d⟧amend ⟦/⟧          ⟦fg=#6c7086⟧│⟦/⟧ last commit    ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧╰─────────────────┴────────────────╯⟦/⟧
+
+  ⟦fg=#cba6f7 bold⟧mdcat 43: footnote in a table, and⟦/⟧
+  ⟦fg=#cba6f7 bold⟧OSC 8 ids⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧
+
+  ⟦fg=#6c7086⟧╭────────────┬──────────────╮⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Berry      ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Number of Rs ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧├────────────┼──────────────┤⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧ Strawberry ⟦fg=#6c7086⟧│⟦/⟧ 2⟦fg=#89b4fa link 1⟧¹⟦/⟧           ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧ Raspberry  ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧ 3            ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧╰────────────┴──────────────╯⟦/⟧
+
+  ⟦fg=#cba6f7 bold⟧mdcat 301: ⟦/⟧⟦fg=#fab387 bg=#2c2d3d bold⟧ <br> ⟦/⟧⟦fg=#cba6f7 bold⟧ in a table⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#a286c8⟧──⟦/⟧⟦fg=#7c689b⟧──⟦/⟧⟦fg=#574b70⟧──⟦/⟧
+
+  ⟦fg=#6c7086⟧╭──────────┬──────────────┬────────╮⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Port PoE ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Connection   ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Power  ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧├──────────┼──────────────┼────────┤⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧ 8+       ⟦fg=#6c7086⟧│⟦/⟧ PoE Splitter ⟦fg=#6c7086⟧│⟦/⟧ 3W PoE ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧          ⟦fg=#6c7086⟧│⟦/⟧ G5 Left Rear ⟦fg=#6c7086⟧│⟦/⟧ 4W PoE ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧          ⟦fg=#6c7086⟧│⟦/⟧ G5 Front     ⟦fg=#6c7086⟧│⟦/⟧        ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧          ⟦fg=#6c7086⟧│⟦/⟧ Lawn         ⟦fg=#6c7086⟧│⟦/⟧        ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧╰──────────┴──────────────┴────────╯⟦/⟧
+
+  ⟦fg=#cba6f7 bold⟧mdcat 302: task lists with⟦/⟧
+  ⟦fg=#cba6f7 bold⟧paragraphs⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#aa8dd1⟧──⟦/⟧⟦fg=#8b74ad⟧──⟦/⟧⟦fg=#6d5c8a⟧──⟦/⟧⟦fg=#504568⟧──⟦/⟧
+
+  ⟦fg=#6c7086⟧☐⟦/⟧ foo
+
+    ⟦fg=#6c7086⟧☐⟦/⟧ bar
+    ⟦fg=#6c7086⟧☐⟦/⟧ baz
+
+  ⟦fg=#6c7086⟧☐⟦/⟧ test
+
+    ⟦fg=#6c7086⟧☐⟦/⟧ test1
+    ⟦fg=#6c7086⟧☐⟦/⟧ test2
+
+  ⟦fg=#6c7086⟧── ⟦/⟧⟦fg=#a6adc8⟧Footnotes⟦/⟧⟦fg=#6c7086⟧ ───────────────────────⟦/⟧
+
+  ⟦fg=#89b4fa⟧1.⟦/⟧ ⟦fg=#89b4fa ul link 2⟧According to many LLMs⟦/⟧⟦fg=#89b4fa link 1⟧ ↑⟦/⟧
+━━ width 80 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ⟦grad #89b4fa→#cba6f7 0..76⟧⟦fg=#1e1e2e bold⟧ Regressions⟦/⟧⟦/grad⟧
+
+  ⟦fg=#cba6f7 bold⟧glamour 314: list continuation indent⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c29fed⟧──⟦/⟧⟦fg=#ba99e3⟧──⟦/⟧⟦fg=#b192d9⟧──⟦/⟧⟦fg=#a98bcf⟧──⟦/⟧⟦fg=#a085c6⟧──⟦/⟧⟦fg=#987ebc⟧──⟦/⟧⟦fg=#9078b2⟧──⟦/⟧⟦fg=#8871a9⟧──⟦/⟧⟦fg=#806ba0⟧──⟦/⟧⟦fg=#786596⟧──⟦/⟧⟦fg=#705f8d⟧──⟦/⟧⟦fg=#685984⟧──⟦/⟧⟦fg=#60527b⟧──⟦/⟧⟦fg=#594d72⟧──⟦/⟧⟦fg=#51476a⟧──⟦/⟧⟦fg=#4a4161⟧──⟦/⟧⟦fg=#433b59⟧──⟦/⟧⟦fg=#3b3550⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+  ⟦fg=#89b4fa⟧•⟦/⟧ Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla mattis
+    dignissim leo et tempus. Cras sit amet nisi id leo eleifend iaculis nec in
+    lectus.
+    ⟦fg=#89b4fa⟧◦⟦/⟧ Cras quis ornare mi, in condimentum tortor. Vivamus id convallis ligula.
+      Morbi ac commodo lacus, in blandit augue.
+
+  ⟦fg=#cba6f7 bold⟧glamour 172: quote prefix after wrapping⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c29fec⟧──⟦/⟧⟦fg=#b998e2⟧──⟦/⟧⟦fg=#b091d7⟧──⟦/⟧⟦fg=#a78acd⟧──⟦/⟧⟦fg=#9e83c3⟧──⟦/⟧⟦fg=#957cb9⟧──⟦/⟧⟦fg=#8d75af⟧──⟦/⟧⟦fg=#846fa5⟧──⟦/⟧⟦fg=#7c689b⟧──⟦/⟧⟦fg=#736191⟧──⟦/⟧⟦fg=#6b5b88⟧──⟦/⟧⟦fg=#63547e⟧──⟦/⟧⟦fg=#5b4e75⟧──⟦/⟧⟦fg=#53486c⟧──⟦/⟧⟦fg=#4b4263⟧──⟦/⟧⟦fg=#433c5a⟧──⟦/⟧⟦fg=#3c3651⟧──⟦/⟧
+
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧The quick brown fox jumps over the lazy dog. The quick brown fox jumps⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧over the lazy dog. The quick brown fox jumps over the lazy dog.⟦/⟧
+
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧The quick brown fox jumps over the lazy dog. The quick brown fox jumps⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧over the lazy dog. The quick brown fox jumps over the lazy dog. The quick⟦/⟧
+  ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧brown fox jumps over the lazy dog.⟦/⟧
+
+  ⟦fg=#cba6f7 bold⟧glamour 149: wrapped hyperlinks⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c3a0ee⟧──⟦/⟧⟦fg=#bc9ae6⟧──⟦/⟧⟦fg=#b595dd⟧──⟦/⟧⟦fg=#ad8fd5⟧──⟦/⟧⟦fg=#a689cc⟧──⟦/⟧⟦fg=#9f84c4⟧──⟦/⟧⟦fg=#987ebb⟧──⟦/⟧⟦fg=#9078b3⟧──⟦/⟧⟦fg=#8973ab⟧──⟦/⟧⟦fg=#826da3⟧──⟦/⟧⟦fg=#7c689b⟧──⟦/⟧⟦fg=#756393⟧──⟦/⟧⟦fg=#6e5d8b⟧──⟦/⟧⟦fg=#675883⟧──⟦/⟧⟦fg=#61537c⟧──⟦/⟧⟦fg=#5a4e74⟧──⟦/⟧⟦fg=#54486c⟧──⟦/⟧⟦fg=#4d4365⟧──⟦/⟧⟦fg=#473e5e⟧──⟦/⟧⟦fg=#413a56⟧──⟦/⟧⟦fg=#3a354f⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+  See ⟦fg=#89b4fa ul link 0⟧https://github.com/ValveSoftware/steam-for-linux/issues/1234567890⟦/⟧ for
+  the details.
+
+  ⟦fg=#cba6f7 bold⟧glamour 84: two trailing spaces⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c3a0ee⟧──⟦/⟧⟦fg=#bc9ae6⟧──⟦/⟧⟦fg=#b595dd⟧──⟦/⟧⟦fg=#ad8fd5⟧──⟦/⟧⟦fg=#a689cc⟧──⟦/⟧⟦fg=#9f84c4⟧──⟦/⟧⟦fg=#987ebb⟧──⟦/⟧⟦fg=#9078b3⟧──⟦/⟧⟦fg=#8973ab⟧──⟦/⟧⟦fg=#826da3⟧──⟦/⟧⟦fg=#7c689b⟧──⟦/⟧⟦fg=#756393⟧──⟦/⟧⟦fg=#6e5d8b⟧──⟦/⟧⟦fg=#675883⟧──⟦/⟧⟦fg=#61537c⟧──⟦/⟧⟦fg=#5a4e74⟧──⟦/⟧⟦fg=#54486c⟧──⟦/⟧⟦fg=#4d4365⟧──⟦/⟧⟦fg=#473e5e⟧──⟦/⟧⟦fg=#413a56⟧──⟦/⟧⟦fg=#3a354f⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+  First line with two trailing spaces
+  second line after a hard break.
+
+  ⟦fg=#cba6f7 bold⟧glamour 454: backgrounds fill the line⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c29fed⟧──⟦/⟧⟦fg=#ba99e3⟧──⟦/⟧⟦fg=#b192d9⟧──⟦/⟧⟦fg=#a98bcf⟧──⟦/⟧⟦fg=#a085c6⟧──⟦/⟧⟦fg=#987ebc⟧──⟦/⟧⟦fg=#9078b2⟧──⟦/⟧⟦fg=#8871a9⟧──⟦/⟧⟦fg=#806ba0⟧──⟦/⟧⟦fg=#786596⟧──⟦/⟧⟦fg=#705f8d⟧──⟦/⟧⟦fg=#685984⟧──⟦/⟧⟦fg=#60527b⟧──⟦/⟧⟦fg=#594d72⟧──⟦/⟧⟦fg=#51476a⟧──⟦/⟧⟦fg=#4a4161⟧──⟦/⟧⟦fg=#433b59⟧──⟦/⟧⟦fg=#3b3550⟧──⟦/⟧
+
+  ⟦bg=#2c2d3d⟧                                                                            ⟦/⟧
+  ⟦bg=#2c2d3d⟧ short                                                                      ⟦/⟧
+  ⟦bg=#2c2d3d⟧                                                                            ⟦/⟧
+
+  ⟦fg=#cba6f7 bold⟧glamour 315: inline code in tables⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c3a0ee⟧──⟦/⟧⟦fg=#bb9ae5⟧──⟦/⟧⟦fg=#b494dc⟧──⟦/⟧⟦fg=#ac8ed3⟧──⟦/⟧⟦fg=#a488ca⟧──⟦/⟧⟦fg=#9d82c1⟧──⟦/⟧⟦fg=#957cb9⟧──⟦/⟧⟦fg=#8e76b0⟧──⟦/⟧⟦fg=#8670a8⟧──⟦/⟧⟦fg=#7f6b9f⟧──⟦/⟧⟦fg=#786597⟧──⟦/⟧⟦fg=#71608e⟧──⟦/⟧⟦fg=#6a5a86⟧──⟦/⟧⟦fg=#63547e⟧──⟦/⟧⟦fg=#5c4f76⟧──⟦/⟧⟦fg=#554a6e⟧──⟦/⟧⟦fg=#4e4466⟧──⟦/⟧⟦fg=#483f5f⟧──⟦/⟧⟦fg=#413a57⟧──⟦/⟧⟦fg=#3b3550⟧──⟦/⟧
+
+  ⟦fg=#6c7086⟧╭──────────────────────┬─────────────────────────╮⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Command              ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Meaning                 ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧├──────────────────────┼─────────────────────────┤⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#fab387 bg=#2c2d3d⟧ git commit --amend ⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧ rewrite the last commit ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧╰──────────────────────┴─────────────────────────╯⟦/⟧
+
+  ⟦fg=#cba6f7 bold⟧mdcat 43: footnote in a table, and OSC 8 ids⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c19eeb⟧──⟦/⟧⟦fg=#b696df⟧──⟦/⟧⟦fg=#ac8ed4⟧──⟦/⟧⟦fg=#a286c8⟧──⟦/⟧⟦fg=#997fbd⟧──⟦/⟧⟦fg=#8f77b1⟧──⟦/⟧⟦fg=#856fa6⟧──⟦/⟧⟦fg=#7c689b⟧──⟦/⟧⟦fg=#726190⟧──⟦/⟧⟦fg=#695985⟧──⟦/⟧⟦fg=#60527b⟧──⟦/⟧⟦fg=#574b70⟧──⟦/⟧⟦fg=#4e4466⟧──⟦/⟧⟦fg=#453d5c⟧──⟦/⟧⟦fg=#3d3652⟧──⟦/⟧
+
+  ⟦fg=#6c7086⟧╭────────────┬──────────────╮⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Berry      ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Number of Rs ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧├────────────┼──────────────┤⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧ Strawberry ⟦fg=#6c7086⟧│⟦/⟧ 2⟦fg=#89b4fa link 1⟧¹⟦/⟧           ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧ Raspberry  ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧ 3            ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧╰────────────┴──────────────╯⟦/⟧
+
+  ⟦fg=#cba6f7 bold⟧mdcat 301: ⟦/⟧⟦fg=#fab387 bg=#2c2d3d bold⟧ <br> ⟦/⟧⟦fg=#cba6f7 bold⟧ in a table⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c4a1ef⟧──⟦/⟧⟦fg=#bd9be7⟧──⟦/⟧⟦fg=#b696df⟧──⟦/⟧⟦fg=#b091d7⟧──⟦/⟧⟦fg=#a98cd0⟧──⟦/⟧⟦fg=#a286c8⟧──⟦/⟧⟦fg=#9c81c0⟧──⟦/⟧⟦fg=#957cb9⟧──⟦/⟧⟦fg=#8f77b1⟧──⟦/⟧⟦fg=#8872aa⟧──⟦/⟧⟦fg=#826da2⟧──⟦/⟧⟦fg=#7c689b⟧──⟦/⟧⟦fg=#756394⟧──⟦/⟧⟦fg=#6f5e8c⟧──⟦/⟧⟦fg=#695985⟧──⟦/⟧⟦fg=#63547e⟧──⟦/⟧⟦fg=#5d5077⟧──⟦/⟧⟦fg=#574b70⟧──⟦/⟧⟦fg=#514669⟧──⟦/⟧⟦fg=#4b4263⟧──⟦/⟧⟦fg=#453d5c⟧──⟦/⟧⟦fg=#403955⟧──⟦/⟧⟦fg=#3a344f⟧──⟦/⟧
+
+  ⟦fg=#6c7086⟧╭──────────┬───────────────┬────────╮⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Port PoE ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Connection    ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Power  ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧├──────────┼───────────────┼────────┤⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧ 8+       ⟦fg=#6c7086⟧│⟦/⟧ PoE Splitter  ⟦fg=#6c7086⟧│⟦/⟧ 3W PoE ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧          ⟦fg=#6c7086⟧│⟦/⟧ G5 Left Rear  ⟦fg=#6c7086⟧│⟦/⟧ 4W PoE ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧          ⟦fg=#6c7086⟧│⟦/⟧ G5 Front Lawn ⟦fg=#6c7086⟧│⟦/⟧        ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧╰──────────┴───────────────┴────────╯⟦/⟧
+
+  ⟦fg=#cba6f7 bold⟧mdcat 302: task lists with paragraphs⟦/⟧
+  ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c29fed⟧──⟦/⟧⟦fg=#ba99e3⟧──⟦/⟧⟦fg=#b192d9⟧──⟦/⟧⟦fg=#a98bcf⟧──⟦/⟧⟦fg=#a085c6⟧──⟦/⟧⟦fg=#987ebc⟧──⟦/⟧⟦fg=#9078b2⟧──⟦/⟧⟦fg=#8871a9⟧──⟦/⟧⟦fg=#806ba0⟧──⟦/⟧⟦fg=#786596⟧──⟦/⟧⟦fg=#705f8d⟧──⟦/⟧⟦fg=#685984⟧──⟦/⟧⟦fg=#60527b⟧──⟦/⟧⟦fg=#594d72⟧──⟦/⟧⟦fg=#51476a⟧──⟦/⟧⟦fg=#4a4161⟧──⟦/⟧⟦fg=#433b59⟧──⟦/⟧⟦fg=#3b3550⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+  ⟦fg=#6c7086⟧☐⟦/⟧ foo
+
+    ⟦fg=#6c7086⟧☐⟦/⟧ bar
+    ⟦fg=#6c7086⟧☐⟦/⟧ baz
+
+  ⟦fg=#6c7086⟧☐⟦/⟧ test
+
+    ⟦fg=#6c7086⟧☐⟦/⟧ test1
+    ⟦fg=#6c7086⟧☐⟦/⟧ test2
+
+  ⟦fg=#6c7086⟧── ⟦/⟧⟦fg=#a6adc8⟧Footnotes⟦/⟧⟦fg=#6c7086⟧ ───────────────────────────────────────────────────────────────⟦/⟧
+
+  ⟦fg=#89b4fa⟧1.⟦/⟧ ⟦fg=#89b4fa ul link 2⟧According to many LLMs⟦/⟧⟦fg=#89b4fa link 1⟧ ↑⟦/⟧
+━━ width 120 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          ⟦grad #89b4fa→#cba6f7 0..100⟧⟦fg=#1e1e2e bold⟧ Regressions⟦/⟧⟦/grad⟧
+
+          ⟦fg=#cba6f7 bold⟧glamour 314: list continuation indent⟦/⟧
+          ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c6a2f1⟧──⟦/⟧⟦fg=#c09eeb⟧──⟦/⟧⟦fg=#bb9ae5⟧──⟦/⟧⟦fg=#b695de⟧──⟦/⟧⟦fg=#b191d8⟧──⟦/⟧⟦fg=#ab8dd2⟧──⟦/⟧⟦fg=#a689cc⟧──⟦/⟧⟦fg=#a185c6⟧──⟦/⟧⟦fg=#9c81c1⟧──⟦/⟧⟦fg=#977dbb⟧──⟦/⟧⟦fg=#9279b5⟧──⟦/⟧⟦fg=#8d75af⟧──⟦/⟧⟦fg=#8872a9⟧──⟦/⟧⟦fg=#836ea3⟧──⟦/⟧⟦fg=#7e6a9e⟧──⟦/⟧⟦fg=#796698⟧──⟦/⟧⟦fg=#746292⟧──⟦/⟧⟦fg=#6f5e8d⟧──⟦/⟧⟦fg=#6b5b87⟧──⟦/⟧⟦fg=#665782⟧──⟦/⟧⟦fg=#61537c⟧──⟦/⟧⟦fg=#5d5077⟧──⟦/⟧⟦fg=#584c72⟧──⟦/⟧⟦fg=#53486c⟧──⟦/⟧⟦fg=#4f4567⟧──⟦/⟧⟦fg=#4a4162⟧──⟦/⟧⟦fg=#463e5c⟧──⟦/⟧⟦fg=#413a57⟧──⟦/⟧⟦fg=#3d3752⟧──⟦/⟧⟦fg=#39334d⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+          ⟦fg=#89b4fa⟧•⟦/⟧ Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla mattis dignissim leo et tempus.
+            Cras sit amet nisi id leo eleifend iaculis nec in lectus.
+            ⟦fg=#89b4fa⟧◦⟦/⟧ Cras quis ornare mi, in condimentum tortor. Vivamus id convallis ligula. Morbi ac commodo lacus,
+              in blandit augue.
+
+          ⟦fg=#cba6f7 bold⟧glamour 172: quote prefix after wrapping⟦/⟧
+          ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c5a2f1⟧──⟦/⟧⟦fg=#c09dea⟧──⟦/⟧⟦fg=#bb99e4⟧──⟦/⟧⟦fg=#b595de⟧──⟦/⟧⟦fg=#b091d7⟧──⟦/⟧⟦fg=#aa8dd1⟧──⟦/⟧⟦fg=#a588cb⟧──⟦/⟧⟦fg=#a084c5⟧──⟦/⟧⟦fg=#9a80bf⟧──⟦/⟧⟦fg=#957cb9⟧──⟦/⟧⟦fg=#9078b3⟧──⟦/⟧⟦fg=#8b74ad⟧──⟦/⟧⟦fg=#8670a7⟧──⟦/⟧⟦fg=#816ca1⟧──⟦/⟧⟦fg=#7c689b⟧──⟦/⟧⟦fg=#776495⟧──⟦/⟧⟦fg=#72608f⟧──⟦/⟧⟦fg=#6d5c8a⟧──⟦/⟧⟦fg=#685884⟧──⟦/⟧⟦fg=#63547e⟧──⟦/⟧⟦fg=#5e5179⟧──⟦/⟧⟦fg=#594d73⟧──⟦/⟧⟦fg=#54496d⟧──⟦/⟧⟦fg=#504568⟧──⟦/⟧⟦fg=#4b4263⟧──⟦/⟧⟦fg=#463e5d⟧──⟦/⟧⟦fg=#423b58⟧──⟦/⟧⟦fg=#3d3753⟧──⟦/⟧⟦fg=#39334d⟧──⟦/⟧
+
+          ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The⟦/⟧
+          ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧quick brown fox jumps over the lazy dog.⟦/⟧
+
+          ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The⟦/⟧
+          ⟦fg=#6c7086⟧▎⟦/⟧ ⟦fg=#a6adc8⟧quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.⟦/⟧
+
+          ⟦fg=#cba6f7 bold⟧glamour 149: wrapped hyperlinks⟦/⟧
+          ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c6a2f1⟧──⟦/⟧⟦fg=#c19eec⟧──⟦/⟧⟦fg=#bc9be6⟧──⟦/⟧⟦fg=#b897e1⟧──⟦/⟧⟦fg=#b393db⟧──⟦/⟧⟦fg=#ae90d6⟧──⟦/⟧⟦fg=#a98cd0⟧──⟦/⟧⟦fg=#a588cb⟧──⟦/⟧⟦fg=#a084c5⟧──⟦/⟧⟦fg=#9b81c0⟧──⟦/⟧⟦fg=#977dbb⟧──⟦/⟧⟦fg=#927ab5⟧──⟦/⟧⟦fg=#8e76b0⟧──⟦/⟧⟦fg=#8973ab⟧──⟦/⟧⟦fg=#856fa5⟧──⟦/⟧⟦fg=#806ba0⟧──⟦/⟧⟦fg=#7c689b⟧──⟦/⟧⟦fg=#776496⟧──⟦/⟧⟦fg=#736191⟧──⟦/⟧⟦fg=#6e5e8c⟧──⟦/⟧⟦fg=#6a5a87⟧──⟦/⟧⟦fg=#665781⟧──⟦/⟧⟦fg=#61537d⟧──⟦/⟧⟦fg=#5d5078⟧──⟦/⟧⟦fg=#594d73⟧──⟦/⟧⟦fg=#55496e⟧──⟦/⟧⟦fg=#514669⟧──⟦/⟧⟦fg=#4c4364⟧──⟦/⟧⟦fg=#48405f⟧──⟦/⟧⟦fg=#443c5b⟧──⟦/⟧⟦fg=#403956⟧──⟦/⟧⟦fg=#3c3651⟧──⟦/⟧⟦fg=#38334d⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+          See ⟦fg=#89b4fa ul link 0⟧https://github.com/ValveSoftware/steam-for-linux/issues/1234567890⟦/⟧ for the details.
+
+          ⟦fg=#cba6f7 bold⟧glamour 84: two trailing spaces⟦/⟧
+          ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c6a2f1⟧──⟦/⟧⟦fg=#c19eec⟧──⟦/⟧⟦fg=#bc9be6⟧──⟦/⟧⟦fg=#b897e1⟧──⟦/⟧⟦fg=#b393db⟧──⟦/⟧⟦fg=#ae90d6⟧──⟦/⟧⟦fg=#a98cd0⟧──⟦/⟧⟦fg=#a588cb⟧──⟦/⟧⟦fg=#a084c5⟧──⟦/⟧⟦fg=#9b81c0⟧──⟦/⟧⟦fg=#977dbb⟧──⟦/⟧⟦fg=#927ab5⟧──⟦/⟧⟦fg=#8e76b0⟧──⟦/⟧⟦fg=#8973ab⟧──⟦/⟧⟦fg=#856fa5⟧──⟦/⟧⟦fg=#806ba0⟧──⟦/⟧⟦fg=#7c689b⟧──⟦/⟧⟦fg=#776496⟧──⟦/⟧⟦fg=#736191⟧──⟦/⟧⟦fg=#6e5e8c⟧──⟦/⟧⟦fg=#6a5a87⟧──⟦/⟧⟦fg=#665781⟧──⟦/⟧⟦fg=#61537d⟧──⟦/⟧⟦fg=#5d5078⟧──⟦/⟧⟦fg=#594d73⟧──⟦/⟧⟦fg=#55496e⟧──⟦/⟧⟦fg=#514669⟧──⟦/⟧⟦fg=#4c4364⟧──⟦/⟧⟦fg=#48405f⟧──⟦/⟧⟦fg=#443c5b⟧──⟦/⟧⟦fg=#403956⟧──⟦/⟧⟦fg=#3c3651⟧──⟦/⟧⟦fg=#38334d⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+          First line with two trailing spaces
+          second line after a hard break.
+
+          ⟦fg=#cba6f7 bold⟧glamour 454: backgrounds fill the line⟦/⟧
+          ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c6a2f1⟧──⟦/⟧⟦fg=#c09eeb⟧──⟦/⟧⟦fg=#bb9ae5⟧──⟦/⟧⟦fg=#b695de⟧──⟦/⟧⟦fg=#b191d8⟧──⟦/⟧⟦fg=#ab8dd2⟧──⟦/⟧⟦fg=#a689cc⟧──⟦/⟧⟦fg=#a185c6⟧──⟦/⟧⟦fg=#9c81c1⟧──⟦/⟧⟦fg=#977dbb⟧──⟦/⟧⟦fg=#9279b5⟧──⟦/⟧⟦fg=#8d75af⟧──⟦/⟧⟦fg=#8872a9⟧──⟦/⟧⟦fg=#836ea3⟧──⟦/⟧⟦fg=#7e6a9e⟧──⟦/⟧⟦fg=#796698⟧──⟦/⟧⟦fg=#746292⟧──⟦/⟧⟦fg=#6f5e8d⟧──⟦/⟧⟦fg=#6b5b87⟧──⟦/⟧⟦fg=#665782⟧──⟦/⟧⟦fg=#61537c⟧──⟦/⟧⟦fg=#5d5077⟧──⟦/⟧⟦fg=#584c72⟧──⟦/⟧⟦fg=#53486c⟧──⟦/⟧⟦fg=#4f4567⟧──⟦/⟧⟦fg=#4a4162⟧──⟦/⟧⟦fg=#463e5c⟧──⟦/⟧⟦fg=#413a57⟧──⟦/⟧⟦fg=#3d3752⟧──⟦/⟧⟦fg=#39334d⟧──⟦/⟧
+
+          ⟦bg=#2c2d3d⟧                                                                                                    ⟦/⟧
+          ⟦bg=#2c2d3d⟧ short                                                                                              ⟦/⟧
+          ⟦bg=#2c2d3d⟧                                                                                                    ⟦/⟧
+
+          ⟦fg=#cba6f7 bold⟧glamour 315: inline code in tables⟦/⟧
+          ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c6a2f1⟧──⟦/⟧⟦fg=#c19eeb⟧──⟦/⟧⟦fg=#bc9ae6⟧──⟦/⟧⟦fg=#b796e0⟧──⟦/⟧⟦fg=#b293da⟧──⟦/⟧⟦fg=#ad8fd5⟧──⟦/⟧⟦fg=#a88bcf⟧──⟦/⟧⟦fg=#a487c9⟧──⟦/⟧⟦fg=#9f84c4⟧──⟦/⟧⟦fg=#9a80be⟧──⟦/⟧⟦fg=#957cb9⟧──⟦/⟧⟦fg=#9078b3⟧──⟦/⟧⟦fg=#8c75ae⟧──⟦/⟧⟦fg=#8771a8⟧──⟦/⟧⟦fg=#826da3⟧──⟦/⟧⟦fg=#7e6a9e⟧──⟦/⟧⟦fg=#796698⟧──⟦/⟧⟦fg=#756393⟧──⟦/⟧⟦fg=#705f8e⟧──⟦/⟧⟦fg=#6c5b89⟧──⟦/⟧⟦fg=#675883⟧──⟦/⟧⟦fg=#63547e⟧──⟦/⟧⟦fg=#5e5179⟧──⟦/⟧⟦fg=#5a4e74⟧──⟦/⟧⟦fg=#564a6f⟧──⟦/⟧⟦fg=#51476a⟧──⟦/⟧⟦fg=#4d4365⟧──⟦/⟧⟦fg=#494060⟧──⟦/⟧⟦fg=#453d5b⟧──⟦/⟧⟦fg=#413a56⟧──⟦/⟧⟦fg=#3d3652⟧──⟦/⟧⟦fg=#38334d⟧──⟦/⟧
+
+          ⟦fg=#6c7086⟧╭──────────────────────┬─────────────────────────╮⟦/⟧
+          ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Command              ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Meaning                 ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+          ⟦fg=#6c7086⟧├──────────────────────┼─────────────────────────┤⟦/⟧
+          ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#fab387 bg=#2c2d3d⟧ git commit --amend ⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧ rewrite the last commit ⟦fg=#6c7086⟧│⟦/⟧
+          ⟦fg=#6c7086⟧╰──────────────────────┴─────────────────────────╯⟦/⟧
+
+          ⟦fg=#cba6f7 bold⟧mdcat 43: footnote in a table, and OSC 8 ids⟦/⟧
+          ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c5a1f0⟧──⟦/⟧⟦fg=#bf9de9⟧──⟦/⟧⟦fg=#b998e3⟧──⟦/⟧⟦fg=#b494dc⟧──⟦/⟧⟦fg=#ae8fd5⟧──⟦/⟧⟦fg=#a88bcf⟧──⟦/⟧⟦fg=#a286c8⟧──⟦/⟧⟦fg=#9d82c1⟧──⟦/⟧⟦fg=#977ebb⟧──⟦/⟧⟦fg=#9279b4⟧──⟦/⟧⟦fg=#8c75ae⟧──⟦/⟧⟦fg=#8670a8⟧──⟦/⟧⟦fg=#816ca1⟧──⟦/⟧⟦fg=#7c689b⟧──⟦/⟧⟦fg=#766495⟧──⟦/⟧⟦fg=#71608e⟧──⟦/⟧⟦fg=#6c5b88⟧──⟦/⟧⟦fg=#665782⟧──⟦/⟧⟦fg=#61537c⟧──⟦/⟧⟦fg=#5c4f76⟧──⟦/⟧⟦fg=#574b70⟧──⟦/⟧⟦fg=#52476a⟧──⟦/⟧⟦fg=#4d4364⟧──⟦/⟧⟦fg=#483f5f⟧──⟦/⟧⟦fg=#433b59⟧──⟦/⟧⟦fg=#3e3753⟧──⟦/⟧⟦fg=#39344e⟧──⟦/⟧
+
+          ⟦fg=#6c7086⟧╭────────────┬──────────────╮⟦/⟧
+          ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Berry      ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Number of Rs ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+          ⟦fg=#6c7086⟧├────────────┼──────────────┤⟦/⟧
+          ⟦fg=#6c7086⟧│⟦/⟧ Strawberry ⟦fg=#6c7086⟧│⟦/⟧ 2⟦fg=#89b4fa link 1⟧¹⟦/⟧           ⟦fg=#6c7086⟧│⟦/⟧
+          ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧ Raspberry  ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#272839⟧ 3            ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+          ⟦fg=#6c7086⟧╰────────────┴──────────────╯⟦/⟧
+
+          ⟦fg=#cba6f7 bold⟧mdcat 301: ⟦/⟧⟦fg=#fab387 bg=#2c2d3d bold⟧ <br> ⟦/⟧⟦fg=#cba6f7 bold⟧ in a table⟦/⟧
+          ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c6a2f2⟧──⟦/⟧⟦fg=#c29fec⟧──⟦/⟧⟦fg=#bd9be7⟧──⟦/⟧⟦fg=#b998e2⟧──⟦/⟧⟦fg=#b494dd⟧──⟦/⟧⟦fg=#b091d7⟧──⟦/⟧⟦fg=#ab8dd2⟧──⟦/⟧⟦fg=#a78acd⟧──⟦/⟧⟦fg=#a286c8⟧──⟦/⟧⟦fg=#9e83c3⟧──⟦/⟧⟦fg=#9a7fbe⟧──⟦/⟧⟦fg=#957cb9⟧──⟦/⟧⟦fg=#9179b4⟧──⟦/⟧⟦fg=#8d75af⟧──⟦/⟧⟦fg=#8872aa⟧──⟦/⟧⟦fg=#846fa5⟧──⟦/⟧⟦fg=#806ba0⟧──⟦/⟧⟦fg=#7c689b⟧──⟦/⟧⟦fg=#776596⟧──⟦/⟧⟦fg=#736191⟧──⟦/⟧⟦fg=#6f5e8c⟧──⟦/⟧⟦fg=#6b5b88⟧──⟦/⟧⟦fg=#675883⟧──⟦/⟧⟦fg=#63547e⟧──⟦/⟧⟦fg=#5f5179⟧──⟦/⟧⟦fg=#5b4e75⟧──⟦/⟧⟦fg=#574b70⟧──⟦/⟧⟦fg=#53486c⟧──⟦/⟧⟦fg=#4f4567⟧──⟦/⟧⟦fg=#4b4263⟧──⟦/⟧⟦fg=#473f5e⟧──⟦/⟧⟦fg=#433c5a⟧──⟦/⟧⟦fg=#403955⟧──⟦/⟧⟦fg=#3c3651⟧──⟦/⟧⟦fg=#38334c⟧──⟦/⟧
+
+          ⟦fg=#6c7086⟧╭──────────┬───────────────┬────────╮⟦/⟧
+          ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Port PoE ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Connection    ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Power  ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
+          ⟦fg=#6c7086⟧├──────────┼───────────────┼────────┤⟦/⟧
+          ⟦fg=#6c7086⟧│⟦/⟧ 8+       ⟦fg=#6c7086⟧│⟦/⟧ PoE Splitter  ⟦fg=#6c7086⟧│⟦/⟧ 3W PoE ⟦fg=#6c7086⟧│⟦/⟧
+          ⟦fg=#6c7086⟧│⟦/⟧          ⟦fg=#6c7086⟧│⟦/⟧ G5 Left Rear  ⟦fg=#6c7086⟧│⟦/⟧ 4W PoE ⟦fg=#6c7086⟧│⟦/⟧
+          ⟦fg=#6c7086⟧│⟦/⟧          ⟦fg=#6c7086⟧│⟦/⟧ G5 Front Lawn ⟦fg=#6c7086⟧│⟦/⟧        ⟦fg=#6c7086⟧│⟦/⟧
+          ⟦fg=#6c7086⟧╰──────────┴───────────────┴────────╯⟦/⟧
+
+          ⟦fg=#cba6f7 bold⟧mdcat 302: task lists with paragraphs⟦/⟧
+          ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#cba6f7⟧──⟦/⟧⟦fg=#c6a2f1⟧──⟦/⟧⟦fg=#c09eeb⟧──⟦/⟧⟦fg=#bb9ae5⟧──⟦/⟧⟦fg=#b695de⟧──⟦/⟧⟦fg=#b191d8⟧──⟦/⟧⟦fg=#ab8dd2⟧──⟦/⟧⟦fg=#a689cc⟧──⟦/⟧⟦fg=#a185c6⟧──⟦/⟧⟦fg=#9c81c1⟧──⟦/⟧⟦fg=#977dbb⟧──⟦/⟧⟦fg=#9279b5⟧──⟦/⟧⟦fg=#8d75af⟧──⟦/⟧⟦fg=#8872a9⟧──⟦/⟧⟦fg=#836ea3⟧──⟦/⟧⟦fg=#7e6a9e⟧──⟦/⟧⟦fg=#796698⟧──⟦/⟧⟦fg=#746292⟧──⟦/⟧⟦fg=#6f5e8d⟧──⟦/⟧⟦fg=#6b5b87⟧──⟦/⟧⟦fg=#665782⟧──⟦/⟧⟦fg=#61537c⟧──⟦/⟧⟦fg=#5d5077⟧──⟦/⟧⟦fg=#584c72⟧──⟦/⟧⟦fg=#53486c⟧──⟦/⟧⟦fg=#4f4567⟧──⟦/⟧⟦fg=#4a4162⟧──⟦/⟧⟦fg=#463e5c⟧──⟦/⟧⟦fg=#413a57⟧──⟦/⟧⟦fg=#3d3752⟧──⟦/⟧⟦fg=#39334d⟧──⟦/⟧⟦fg=#343048⟧─⟦/⟧
+
+          ⟦fg=#6c7086⟧☐⟦/⟧ foo
+
+            ⟦fg=#6c7086⟧☐⟦/⟧ bar
+            ⟦fg=#6c7086⟧☐⟦/⟧ baz
+
+          ⟦fg=#6c7086⟧☐⟦/⟧ test
+
+            ⟦fg=#6c7086⟧☐⟦/⟧ test1
+            ⟦fg=#6c7086⟧☐⟦/⟧ test2
+
+          ⟦fg=#6c7086⟧── ⟦/⟧⟦fg=#a6adc8⟧Footnotes⟦/⟧⟦fg=#6c7086⟧ ───────────────────────────────────────────────────────────────────────────────────────⟦/⟧
+
+          ⟦fg=#89b4fa⟧1.⟦/⟧ ⟦fg=#89b4fa ul link 2⟧According to many LLMs⟦/⟧⟦fg=#89b4fa link 1⟧ ↑⟦/⟧
