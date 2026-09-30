@@ -1,0 +1,11 @@
+---
+source: src/config/tests.rs
+expression: setup.report(&loaded)
+---
+warning: ~/.config/emde/config.toml:1: unknown key `colour` (did you mean `render.color`?)
+warning: ~/.config/emde/config.toml:3: unknown key `rendr` (did you mean `render`?)
+warning: ~/.config/emde/config.toml:7: unknown key `render.max_widht` (did you mean `render.max_width`?)
+warning: ~/.config/emde/config.toml:8: unknown key `render.line_numbers` (did you mean `code.line_numbers`?)
+warning: ~/.config/emde/config.toml:10: unknown key `style.h7` (did you mean `style.h1`?)
+warning: ~/.config/emde/config.toml:14: unknown key `style.h1.bolt` (did you mean `style.h1.bold`?)
+warning: ~/.config/emde/config.toml:16: unknown key `dark.palette` (did you mean `palette.dark`?)

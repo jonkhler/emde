@@ -4,11 +4,26 @@
 //! The resolved [`Theme`] is the contract between configuration (which builds
 //! it from theme files, `[palette]` and `[style.*]` overrides) and layout
 //! (which only calls [`Theme::style`] / [`Theme::gradient`]).
+//!
+//! Theme files are TOML (`assets/themes/*.toml` for the built-ins,
+//! `~/.config/emde/themes/NAME.toml` for the user's):
+//!
+//! * `color`: colour values (`#rrggbb`, names, tints) and palette resolution;
+//! * `spec`: the `[palette]`, `[style.<element>]` and `code` tables;
+//! * `chain`: lookup and `inherits` chains;
+//! * `build`: resolving theme data into a [`Theme`] for one variant;
+//! * [`builtin`]: the embedded `emde`, `ansi` and `mono` themes.
 
+pub(crate) mod build;
+pub mod builtin;
+pub(crate) mod chain;
+pub(crate) mod color;
 pub mod element;
+pub(crate) mod spec;
 
 use std::collections::BTreeMap;
 
+pub use chain::{MAX_DEPTH, ThemeInfo, list_themes};
 pub use element::Element;
 
 use crate::color::{adjust_lightness, is_dark, mix_oklab};
@@ -23,6 +38,17 @@ pub enum Variant {
 }
 
 impl Variant {
+    /// Both variants, in [`Variant::index`] order.
+    pub const ALL: [Variant; 2] = [Variant::Dark, Variant::Light];
+
+    /// Index into per-variant tables (`Dark` = 0, `Light` = 1).
+    pub const fn index(self) -> usize {
+        match self {
+            Variant::Dark => 0,
+            Variant::Light => 1,
+        }
+    }
+
     /// The variant suited to a terminal background colour.
     pub fn for_background(bg: Rgb) -> Variant {
         if is_dark(bg) {
@@ -34,7 +60,7 @@ impl Variant {
 }
 
 /// A fully resolved theme.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Theme {
     /// Theme name (for `--doctor` and diagnostics).
     pub name: String,
@@ -335,5 +361,156 @@ mod tests {
         let mocha = Theme::fallback(Variant::Dark, None);
         assert!(mocha.surface > mocha.base);
         assert!(Theme::test().gradient(Element::H1).is_some());
+    }
+
+    fn builtin_theme(name: &str) -> chain::LoadedTheme {
+        let mut diags = Vec::new();
+        let t = chain::load(
+            name,
+            None,
+            "",
+            &crate::config::ConfigEnv::default(),
+            &mut diags,
+        );
+        assert!(diags.is_empty(), "{name}: {diags:?}");
+        t
+    }
+
+    /// Compare two themes element by element for a readable failure.
+    fn assert_same(built: &Theme, expected: &Theme, what: &str) {
+        assert_eq!(built.name, expected.name, "{what}: name");
+        assert_eq!(built.variant, expected.variant, "{what}: variant");
+        assert_eq!(built.palette, expected.palette, "{what}: palette");
+        assert_eq!(built.base, expected.base, "{what}: base");
+        assert_eq!(built.surface, expected.surface, "{what}: surface");
+        assert_eq!(built.code_theme, expected.code_theme, "{what}: code theme");
+        for &e in Element::ALL {
+            assert_eq!(
+                built.style(e),
+                expected.style(e),
+                "{what}: style of {}",
+                e.name()
+            );
+            assert_eq!(
+                built.gradient(e),
+                expected.gradient(e),
+                "{what}: gradient of {}",
+                e.name()
+            );
+        }
+        assert_eq!(built, expected, "{what}");
+    }
+
+    #[test]
+    fn emde_toml_is_exactly_the_fallback_theme() {
+        let emde = builtin_theme("emde");
+        let backgrounds = [
+            None,
+            Some(Rgb(0, 0, 0)),
+            Some(Rgb(255, 255, 255)),
+            Some(Rgb(0x1e, 0x1e, 0x2e)),
+            Some(Rgb(0xef, 0xf1, 0xf5)),
+            Some(Rgb(0x28, 0x2c, 0x34)),
+            Some(Rgb(0xfd, 0xf6, 0xe3)),
+        ];
+        for variant in Variant::ALL {
+            for bg in backgrounds {
+                let (built, problems) = build::build(&emde.name, &emde.patch, variant, bg);
+                assert!(problems.is_empty(), "{problems:?}");
+                assert_same(
+                    &built,
+                    &Theme::fallback(variant, bg),
+                    &format!("{variant:?} on {bg:?}"),
+                );
+            }
+        }
+        let (test, _) = build::build(
+            &emde.name,
+            &emde.patch,
+            Variant::Dark,
+            Some(Rgb(0x1e, 0x1e, 0x2e)),
+        );
+        assert_same(&test, &Theme::test(), "test theme");
+    }
+
+    fn colours(t: &Theme) -> Vec<(&'static str, Color)> {
+        Element::ALL
+            .iter()
+            .flat_map(|&e| {
+                let s = t.style(e);
+                [
+                    (e.name(), s.fg),
+                    (e.name(), s.bg),
+                    (e.name(), s.underline_color),
+                ]
+            })
+            .collect()
+    }
+
+    #[test]
+    fn ansi_theme_uses_only_the_16_colours() {
+        let ansi = builtin_theme("ansi");
+        for variant in Variant::ALL {
+            for bg in [None, Some(Rgb(0, 0, 0)), Some(Rgb(255, 255, 255))] {
+                let (t, problems) = build::build(&ansi.name, &ansi.patch, variant, bg);
+                assert!(problems.is_empty(), "{problems:?}");
+                for (name, c) in colours(&t) {
+                    assert!(
+                        matches!(c, Color::Default | Color::Ansi(0..=15)),
+                        "{name}: {c:?}"
+                    );
+                }
+                assert!(t.palette.is_empty(), "no 24-bit palette entries");
+                assert_eq!(t.code_theme, "ansi");
+                assert!(Element::ALL.iter().all(|&e| t.gradient(e).is_none()));
+            }
+        }
+    }
+
+    #[test]
+    fn mono_theme_has_no_colours() {
+        let mono = builtin_theme("mono");
+        for variant in Variant::ALL {
+            let (t, problems) = build::build(&mono.name, &mono.patch, variant, Some(Rgb(9, 9, 9)));
+            assert!(problems.is_empty(), "{problems:?}");
+            for (name, c) in colours(&t) {
+                assert_eq!(c, Color::Default, "{name}");
+            }
+            assert!(
+                t.style(Element::H1)
+                    .attrs
+                    .contains(Attrs::BOLD | Attrs::REVERSE)
+            );
+            assert!(t.style(Element::Emph).attrs.contains(Attrs::ITALIC));
+            assert_eq!(t.style(Element::Link).underline, Underline::Single);
+            assert!(
+                t.style(Element::Rule).attrs.contains(Attrs::DIM),
+                "decorations are dim"
+            );
+            assert_eq!(t.style(Element::H6).attrs, Attrs::ITALIC);
+        }
+    }
+
+    #[test]
+    fn built_in_themes_share_palette_names() {
+        let names = |t: &chain::LoadedTheme| -> Vec<Vec<String>> {
+            t.patch
+                .palette
+                .iter()
+                .map(|p| p.keys().cloned().collect())
+                .collect()
+        };
+        let emde = names(&builtin_theme("emde"));
+        assert_eq!(names(&builtin_theme("ansi")), emde);
+        assert_eq!(names(&builtin_theme("mono")), emde);
+    }
+
+    #[test]
+    fn variant_indices() {
+        for (i, v) in Variant::ALL.iter().enumerate() {
+            assert_eq!(v.index(), i);
+        }
+        assert_eq!(Variant::for_background(Rgb(0, 0, 0)), Variant::Dark);
+        assert_eq!(Variant::for_background(Rgb(250, 250, 250)), Variant::Light);
     }
 }

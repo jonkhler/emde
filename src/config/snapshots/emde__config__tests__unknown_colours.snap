@@ -1,0 +1,10 @@
+---
+source: src/config/tests.rs
+expression: setup.report(&loaded)
+---
+warning: ~/.config/emde/config.toml:2: palette.link: unknown colour `acent` (did you mean `accent`?)
+warning: ~/.config/emde/config.toml:3: palette colours refer to each other in a loop: loop_a → loop_b → loop_a
+warning: ~/.config/emde/config.toml:5: palette.self: unknown colour `self` (a name equal to its key must be an ANSI colour)
+warning: ~/.config/emde/config.toml:11: style.h1.fg: unknown colour `acent` (did you mean `accent`?)
+warning: ~/.config/emde/config.toml:14: style.h2.fg: unknown colour `only_light` in the dark palette
+warning: ~/.config/emde/config.toml:17: dark.style.h3.bg: unknown colour `surfce` (did you mean `surface`?)
