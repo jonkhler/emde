@@ -67,3 +67,14 @@ inline  a b; c d
 inline  [1 2 3; 4 5 6]
 ▸ │⎡1  2 │ 3⎤│
   │⎣4  5 │ 6⎦│
+
+── \begin{pmatrix} a+b & c \\ d & e \end{pmatrix}
+inline  (a + b, c; d, e)
+▸ │⎛a + b  c⎞│
+  │⎝  d    e⎠│
+
+── \begin{array}{c||c} a & b \\ \hline c & d \end{array}
+inline  a b; c d
+  │a ││ b│
+▸ │──┼┼──│
+  │c ││ d│

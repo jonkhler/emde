@@ -8,7 +8,8 @@
 //!    under the first one (else indented by two columns, else none), within
 //!    the same limits;
 //! 3. the linear form, wrapped at top-level operators
-//!    ([`MathDisplay::Lines`]).
+//!    ([`MathDisplay::Lines`]); a multi-row block (`aligned`, `gathered`, a
+//!    bare `\\`) keeps one line per row, each wrapped on its own.
 //!
 //! Parse errors never get here: the caller shows raw TeX. With
 //! [`MathOptions::ambiguous_wide`] the 2D steps are skipped, because box
@@ -25,11 +26,12 @@
 //!   `e^{-x^2}` is `e` under a raised `−x²`;
 //! * delimiters grow with `⎛⎜⎝`-style pieces (`⎰⎱` for two-row braces);
 //!   `\big`-style delimiters grow to the height of their row;
-//! * radicals are `√` under a `▁` vinculum, taller ones a `╱` diagonal with a
+//! * radicals are `√` under a `▁` vinculum (left out over one character
+//!   that nothing follows directly: `√x`), taller ones a `╱` diagonal with a
 //!   `╲` foot;
 //! * matrices have two columns between cells and no gap between one-row
 //!   rows; cases always leave a row between rows, so the brace gets a real
-//!   `⎨`;
+//!   `⎨`; array rules side by side (`||`) touch;
 //! * braces over and under are `╭─┴─╮` and `╰─┬─╯`;
 //! * a `\tag` makes the box `avail` wide: the formula centred, the tag flush
 //!   right on the baseline row (or below when they do not fit side by side).
@@ -37,11 +39,11 @@
 use crate::adapter::MAX_DEPTH;
 use crate::ast::{Accent, Align, Atom, Brace, Column, Formula, Grid, GridKind, Limits, Node};
 use crate::boxes::{Cell, MBox};
-use crate::linear::{self, Attrs, Ctx, Frag, Linear};
+use crate::linear::{self, Attrs, Ctx, Frag, Linear, ScriptText};
 use crate::spacing::{self, Class};
 use crate::style;
 use crate::tables;
-use crate::width::{str_width, to_u16};
+use crate::width::{is_zero_width, str_width, to_u16};
 use crate::{MathDisplay, MathLine, MathOptions, MathRole, MathSpan};
 
 /// Lay out display math within `avail` columns.
@@ -62,11 +64,18 @@ pub(crate) fn render(formula: &Formula, opts: &MathOptions, avail: u16) -> MathD
 }
 
 /// Step 3: the linear form, wrapped to `avail` columns at its break hints.
+/// A multi-row block (`aligned`, `gathered`, a bare `\\`) keeps its rows,
+/// each wrapped on its own.
 fn lines(formula: &Formula, opts: &MathOptions, avail: usize) -> Vec<MathLine> {
     let cjk = opts.ambiguous_wide;
     let lin = Linear { opts };
-    let line = lin.frag(&formula.body, Ctx::top()).into_line(cjk);
-    let mut out = wrap(&line, avail, cjk);
+    let rows = lin
+        .rows(&formula.body)
+        .unwrap_or_else(|| vec![lin.frag(&formula.body, Ctx::top())]);
+    let mut out: Vec<MathLine> = rows
+        .into_iter()
+        .flat_map(|row| wrap(&row.into_line(cjk), avail, cjk))
+        .collect();
     if let Some(tag) = &formula.tag {
         let tag_width = str_width(tag, cjk);
         match out.last_mut() {
@@ -117,8 +126,9 @@ pub(crate) fn wrap(line: &MathLine, avail: usize, cjk: bool) -> Vec<MathLine> {
     );
     cuts.push(len);
     cuts.dedup();
-    // Each piece's width, and the width of its trailing spaces (dropped when
-    // a line ends there).
+    // Each piece's width, and its width without the trailing whitespace
+    // that is dropped where a line ends (measured in columns: whitespace
+    // such as U+00A0 is wider in bytes).
     let pieces: Vec<(usize, usize)> = cuts
         .windows(2)
         .map(|w| {
@@ -126,8 +136,7 @@ pub(crate) fn wrap(line: &MathLine, avail: usize, cjk: bool) -> Vec<MathLine> {
                 [a, b] => line.text.get(a..b).unwrap_or(""),
                 _ => "",
             };
-            let trailing = text.len() - text.trim_end().len();
-            (str_width(text, cjk), trailing)
+            (str_width(text, cjk), str_width(text.trim_end(), cjk))
         })
         .collect();
     let mut out = Vec::new();
@@ -136,16 +145,14 @@ pub(crate) fn wrap(line: &MathLine, avail: usize, cjk: bool) -> Vec<MathLine> {
         // As many pieces as fit, and at least one.
         let mut width = 0;
         let mut last = first;
-        for (k, &(w, trailing)) in pieces.iter().enumerate().skip(first) {
-            let shown = width + w - trailing;
-            if k > first && shown > avail {
+        for (k, &(full, trimmed)) in pieces.iter().enumerate().skip(first) {
+            // A piece of only whitespace always fits: it is dropped where a
+            // line ends.
+            if k > first && trimmed > 0 && width + trimmed > avail {
                 break;
             }
-            width += w;
+            width += full;
             last = k;
-            if shown > avail {
-                break;
-            }
         }
         let start = cuts.get(first).copied().unwrap_or(len);
         let end = cuts.get(last + 1).copied().unwrap_or(len);
@@ -380,7 +387,9 @@ impl Layout<'_> {
             } => self.scripts(base, sub.as_deref(), sup.as_deref(), *limits, ctx)?,
             Node::Accent { base, accent } => self.accent(node, base, *accent, ctx)?,
             Node::Fenced { open, close, body } => {
-                let inner = self.node(body, ctx)?;
+                // The closing delimiter follows the body, not what follows
+                // the fence.
+                let inner = self.node(body, ctx.followed_by(false))?;
                 self.fence(*open, inner, *close)?
             }
             Node::Grid(grid) => self.grid(grid, ctx)?,
@@ -449,8 +458,9 @@ impl Layout<'_> {
             {
                 stretchy.push((parts.len(), *ch));
             }
+            let followed = linear::followed(items, &spacing, i).unwrap_or(ctx.followed);
             parts.push(Part {
-                b: self.node(item, ctx)?,
+                b: self.node(item, ctx.followed_by(followed))?,
                 gap,
                 class: spacing.classes.get(i).copied().flatten(),
             });
@@ -526,11 +536,10 @@ impl Layout<'_> {
     }
 
     fn script(&self, node: &Node, sup: bool, ctx: Ctx) -> Option<Script> {
-        if let Some(mapped) = self.lin.script_unicode(node, sup, ctx) {
-            return Some(Script::Unicode(self.text(&mapped)?));
-        }
-        let frag = self.lin.frag(node, ctx.tight());
-        Some(Script::Raised(self.script_box(node, &frag, ctx)?))
+        Some(match self.lin.script_text(node, sup, ctx) {
+            ScriptText::Unicode(mapped) => Script::Unicode(self.text(&mapped)?),
+            ScriptText::Linear(frag) => Script::Raised(self.script_box(node, &frag, ctx)?),
+        })
     }
 
     /// Limits above/below, the labels of braces and oversets: the content in
@@ -568,7 +577,7 @@ impl Layout<'_> {
                 self.integral(n, upper, lower)
             }
             _ => {
-                let b = self.node(base, ctx)?;
+                let b = self.node(base, ctx.followed_by(true))?;
                 let sub = each(sub, |s| self.script(s, false, ctx))?;
                 let sup = each(sup, |s| self.script(s, true, ctx))?;
                 attach(b, sub, sup)
@@ -600,31 +609,28 @@ impl Layout<'_> {
 
     fn root(&self, radicand: &Node, index: Option<&Node>, ctx: Ctx) -> Option<MBox> {
         let body = self.node(radicand, ctx.tight())?;
-        let index_node = index;
-        let index = index.map(|i| self.lin.frag(i, ctx.tight()));
-        let text = index.as_ref().map(|i| i.text.as_str());
         let delim = Attrs::role(MathRole::Delim);
-        let (sign, index) = match text {
-            None | Some("" | "2") => ('√', None),
-            Some("3") if body.h == 1 => ('∛', None),
-            Some("4") if body.h == 1 => ('∜', None),
+        // `∛` and `∜` only fit a one-row radicand; taller ones draw the index.
+        let (sign, index) = match linear::plain_radical(index) {
+            Some('√') => ('√', None),
+            Some(sign) if body.h == 1 => (sign, None),
             _ => ('√', index),
         };
         // The index: superscript characters when they all map, else linear.
-        let index = match (&index, index_node) {
-            (Some(i), Some(node)) => Some(match self.lin.script_unicode(node, true, ctx) {
-                Some(mapped) => (self.text(&mapped)?, true),
-                None => (self.text(i)?, false),
+        let index = match index {
+            Some(node) => Some(match self.lin.script_text(node, true, ctx) {
+                ScriptText::Unicode(mapped) => (self.text(&mapped)?, true),
+                ScriptText::Linear(frag) => (self.text(&frag)?, false),
             }),
-            _ => None,
+            None => None,
         };
         if body.h == 1 {
-            // A one-character radicand needs no vinculum: `√π`, `ⁿ√x`.
+            // A one-character radicand needs no vinculum (`√π`, `ⁿ√x`), unless
+            // something follows it directly: `√2π` would read as `√(2π)`.
             let raised_index = index.as_ref().is_some_and(|(_, unicode)| !unicode);
-            let (iw, rows) = match &index {
-                Some((b, _)) => (b.w, if body.w == 1 && !raised_index { 1 } else { 2 }),
-                None => (0, if body.w == 1 { 1 } else { 2 }),
-            };
+            let short = body.w == 1 && !raised_index && !ctx.followed;
+            let iw = index.as_ref().map_or(0, |(b, _)| b.w);
+            let rows = if short { 1 } else { 2 };
             let row = rows - 1;
             let mut out = MBox::blank(iw + 1 + body.w, rows, row)?;
             if let Some((b, unicode)) = &index {
@@ -663,7 +669,10 @@ impl Layout<'_> {
     fn accent(&self, node: &Node, base: &Node, accent: Accent, ctx: Ctx) -> Option<MBox> {
         let b = self.node(base, ctx)?;
         let line_accent = matches!(accent.ch, '‾' | '→' | '←' | '↔' | '⇒' | '↼' | '⇀');
-        if b.h == 1 && (b.w <= 1 || !line_accent || accent.under) {
+        // A combining mark typed after a symbol stays on it, whatever its
+        // height; it has no row form of its own.
+        let typed = is_zero_width(accent.ch);
+        if typed || (b.h == 1 && (b.w <= 1 || !line_accent || accent.under)) {
             // Combining marks, as in the linear form.
             return self.text(&self.lin.frag(node, ctx));
         }
@@ -743,6 +752,7 @@ impl Layout<'_> {
         // Cells are spaced normally, except in `\substack` (always in limits).
         let cell_ctx = Ctx {
             tight: ctx.tight && matches!(grid.kind, GridKind::Substack(_)),
+            followed: false,
             ..ctx
         };
         let aligned = grid.kind == GridKind::Aligned;
@@ -996,7 +1006,10 @@ fn column_slots(grid: &Grid, ncols: usize) -> Vec<Slot> {
             }
             Column::Cells(_) => {}
             Column::Rule { dashed } => {
-                if !slots.is_empty() {
+                // Rules side by side (`||`) touch.
+                if matches!(slots.as_slice(), [.., Slot::Rule(_), Slot::Gap(_)]) {
+                    slots.pop();
+                } else if !slots.is_empty() {
                     slots.push(Slot::Gap(1));
                 }
                 slots.push(Slot::Rule(*dashed));
@@ -1299,5 +1312,76 @@ mod tests {
         }
         assert_eq!(wrap(&line, 80, false), std::slice::from_ref(&line));
         assert_eq!(wrap(&line, 0, false).len(), 3);
+    }
+
+    /// Trailing whitespace is measured in columns: U+00A0 is two bytes but
+    /// one column, and subtracting its byte length from a width underflowed
+    /// (a panic in debug builds).
+    #[test]
+    fn wrap_measures_trailing_whitespace_in_columns() {
+        let line = crate::inline("aaaa+\\char\"A0", &MathOptions::default());
+        assert_eq!(line.text, "aaaa + \u{A0}");
+        let parts = wrap(&line, 3, false);
+        let text: Vec<&str> = parts.iter().map(|l| l.text.as_str()).collect();
+        // The whitespace-only piece stays on the line it ends.
+        assert_eq!(text, ["aaaa +"]);
+        assert!(matches!(
+            public_display("aaaa+\\char\"A0", &MathOptions::default(), 3),
+            MathDisplay::Lines(_)
+        ));
+    }
+
+    #[test]
+    fn multi_row_blocks_fall_back_row_by_row() {
+        let lines =
+            |tex: &str, avail: u16| match public_display(tex, &MathOptions::default(), avail) {
+                MathDisplay::Lines(lines) => lines.into_iter().map(|l| l.text).collect::<Vec<_>>(),
+                other => panic!("{tex}: {other:?}"),
+            };
+        assert_eq!(
+            lines(
+                r"\begin{aligned} f(x) &= a+b+c+d \\ &= e+f+g+h \end{aligned}",
+                12
+            ),
+            ["f(x) = a +", "b + c + d", "= e + f +", "g + h"]
+        );
+        assert_eq!(
+            lines(r"a + b + c = d \\ e = f", 12),
+            ["a + b + c =", "d", "e = f"]
+        );
+        // The tag follows the last row.
+        assert_eq!(
+            lines(r"a + b + c = d \\ e = f \tag{2}", 12),
+            ["a + b + c =", "d", "e = f  (2)"]
+        );
+    }
+
+    #[test]
+    fn one_character_radicands_get_a_vinculum_when_followed() {
+        assert_eq!(rows(r"\sqrt{2}\pi", 80), [" ▁", "√2π"]);
+        assert_eq!(rows(r"\sqrt{x}^2", 80), [" ▁²", "√x"]);
+        assert_eq!(rows(r"\sqrt{2} + x", 80), ["√2 + x"]);
+        assert_eq!(rows(r"2\sqrt{2}", 80), ["2√2"]);
+    }
+
+    #[test]
+    fn adjacent_array_rules_touch() {
+        assert_eq!(
+            rows(r"\begin{array}{c||c} a & b \\ \hline c & d \end{array}", 80),
+            ["a ││ b", "──┼┼──", "c ││ d"]
+        );
+    }
+
+    #[test]
+    fn typed_combining_marks_share_their_base_cell() {
+        assert_eq!(rows("x\u{301} + 1", 80), ["x\u{301} + 1"]);
+        assert_eq!(rows("a =\u{338} b", 80), ["a ≠ b"]);
+        let b = public_display_box("x\u{301}", 80).unwrap();
+        assert_eq!(b.width, 1);
+        // On a base that is already two rows tall (found by proptest).
+        let b = public_display_box("\\vec{\u{1F468}}\u{200D}", 80).unwrap();
+        for row in &b.rows {
+            assert_eq!(str_width(&row.text, false), usize::from(b.width));
+        }
     }
 }

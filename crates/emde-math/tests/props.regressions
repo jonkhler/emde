@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 3e491b0b176caa34416e4d28a8ab5f355c1d1b6e3aa37e874eb21978e6a08641 # shrinks to tex = "\\vec👨\u{200d}", opts = MathOptions { letters: Italic, scripts: Safe, fractions: Vulgar, bold: Sgr, ambiguous_wide: false, max_height: 3 }, avail = 2

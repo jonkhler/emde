@@ -37,7 +37,7 @@ inline  →ᶠ
 ▸ │──→│
 
 ── \xleftarrow[g]{f}
-inline  ←_gᶠ
+inline  ←_(g)ᶠ
   │ f │
 ▸ │←──│
   │ g │

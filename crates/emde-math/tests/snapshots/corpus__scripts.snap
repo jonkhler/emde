@@ -83,3 +83,29 @@ inline  x_N + yₘₐₓ
 inline  x^(1/2)
   │ 1/2│
 ▸ │x   │
+
+── \nabla_\theta J(\theta)
+inline  ∇_(θ)J(θ)
+▸ │∇ J(θ)│
+  │ θ    │
+
+── x_\alpha y_\beta
+inline  x_(α)yᵦ
+▸ │x yᵦ│
+  │ α  │
+
+── x_N^2
+inline  x_(N)²
+▸ │x²│
+  │ N│
+
+── \frac{a}{b}^2
+inline  (a/b)²
+  │a²│
+▸ │─ │
+  │b │
+
+── \sqrt{x}^2
+inline  (√x)²
+  │ ▁²│
+▸ │√x │

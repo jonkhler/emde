@@ -71,7 +71,7 @@ inline  Attention(Q, K, V) = softmax(QKᵀ/√(dₖ))V
   │                            ⎝√dₖ⎠ │
 
 ── \theta \leftarrow \theta - \eta \nabla_\theta J(\theta)
-inline  θ ← θ − η∇_θJ(θ)
+inline  θ ← θ − η∇_(θ)J(θ)
 ▸ │θ ← θ − η∇ J(θ)│
   │          θ    │
 

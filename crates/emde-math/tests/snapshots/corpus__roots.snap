@@ -53,3 +53,13 @@ inline  √(x₁²+x₂²)
 inline  x^(1/π)
   │π ▁│
 ▸ │ √x│
+
+── \sqrt{2}\pi
+inline  √(2)π
+  │ ▁ │
+▸ │√2π│
+
+── \sqrt{(a+b)}
+inline  √(a+b)
+  │ ▁▁▁▁▁│
+▸ │√(a+b)│

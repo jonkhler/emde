@@ -13,12 +13,19 @@
 //! * `\mathscr` becomes `\mathcal`: Unicode has a single script alphabet.
 //! * `\sqrt[…]` gets its index braced, `\sqrt[{…}]`: pulldown-latex emits a
 //!   multi-token index as loose elements, which breaks the root's arity.
+//! * `%` comments are removed (up to the end of the line), so that one at the
+//!   end cannot swallow the `\end{gathered}` added after it.
 //! * The result is trimmed.
 //!
 //! Input over [`MAX_INPUT`] bytes is rejected, and so is a run of more than
 //! [`MAX_CHAIN`] control words: pulldown-latex recurses once for every
 //! command that takes another command as its argument (`\hat\hat\hat x`), and
-//! a stack overflow cannot be caught.
+//! a stack overflow cannot be caught. Nesting deeper than [`MAX_NESTING`]
+//! groups, environments and `\left…\right` pairs is rejected before parsing:
+//! the adapter would refuse it anyway, and pulldown-latex takes quadratic
+//! time to scan it.
+
+use crate::width::sanitize;
 
 /// Formulas longer than this (in bytes) are shown raw.
 pub(crate) const MAX_INPUT: usize = 4096;
@@ -27,6 +34,12 @@ pub(crate) const MAX_INPUT: usize = 4096;
 /// digits; pulldown-latex overflows a 2 MiB stack at about 130 nested
 /// arguments in unoptimised builds.
 pub(crate) const MAX_CHAIN: usize = 64;
+
+/// The deepest nesting of groups, environments and `\left…\right` pairs
+/// accepted. Each level takes two of the adapter's
+/// [`MAX_DEPTH`](crate::adapter::MAX_DEPTH) levels, so anything deeper could
+/// not be built anyway.
+pub(crate) const MAX_NESTING: usize = crate::adapter::MAX_DEPTH / 2;
 
 /// Why the pre-pass refused a formula.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -55,7 +68,10 @@ pub(crate) fn prepare(tex: &str) -> Result<Prepared, Rejected> {
         return Err(Rejected::TooDeep);
     }
     let mut rw = Rewriter::default();
-    let body = rw.rewrite(tex, true);
+    let body = rw.rewrite(tex, true, 0);
+    if rw.deepest > MAX_NESTING {
+        return Err(Rejected::TooDeep);
+    }
     let body = body.trim();
     let tex = match (rw.top_newline, rw.top_alignment) {
         (_, true) => format!("\\begin{{aligned}}{body}\\end{{aligned}}"),
@@ -74,38 +90,51 @@ struct Rewriter {
     top_newline: bool,
     /// A `&` in the same position.
     top_alignment: bool,
+    /// The deepest nesting seen (see [`MAX_NESTING`]).
+    deepest: usize,
 }
 
 /// Nesting while scanning, to tell whether `\\` and `&` are at the top level.
 #[derive(Default)]
 struct Depth {
+    /// The nesting around the piece being scanned (a root index).
+    outer: usize,
     braces: usize,
     environments: usize,
     fences: usize,
 }
 
 impl Depth {
+    /// Outside any group, environment or `\left…\right` of this piece.
     fn top(&self) -> bool {
-        self.braces == 0 && self.environments == 0 && self.fences == 0
+        self.braces + self.environments + self.fences == 0
+    }
+
+    /// The nesting of the formula at this point.
+    fn total(&self) -> usize {
+        self.outer + self.braces + self.environments + self.fences
     }
 }
 
 impl Rewriter {
-    /// Rewrite `src`. `top` is false for nested pieces (a root index), whose
-    /// `\\` and `&` never count as top-level.
-    fn rewrite(&mut self, src: &str, top: bool) -> String {
+    /// Rewrite `src`, which sits `outer` levels deep. `top` is false for
+    /// nested pieces (a root index), whose `\\` and `&` never count as
+    /// top-level.
+    fn rewrite(&mut self, src: &str, top: bool, outer: usize) -> String {
         let mut out = String::with_capacity(src.len() + 16);
-        let mut depth = Depth::default();
+        let mut depth = Depth {
+            outer,
+            ..Depth::default()
+        };
         let mut pos = 0;
         while let Some(c) = src.get(pos..).and_then(|s| s.chars().next()) {
             match c {
-                '%' => {
-                    let end = src[pos..].find('\n').map_or(src.len(), |i| pos + i + 1);
-                    out.push_str(&src[pos..end]);
-                    pos = end;
-                }
+                // A comment runs to the end of the line; the line break stays
+                // as whitespace, so the tokens around it stay apart.
+                '%' => pos = src[pos..].find('\n').map_or(src.len(), |i| pos + i),
                 '{' => {
                     depth.braces += 1;
+                    self.deepest = self.deepest.max(depth.total());
                     out.push(c);
                     pos += 1;
                 }
@@ -144,8 +173,16 @@ impl Rewriter {
             "operatorname" if peek_star(src, next).is_some() => {
                 next = peek_star(src, next).unwrap_or(next);
                 let (arg, end) = argument(src, next);
+                // `\operatorname*x` has a one-token argument; braced, it cannot
+                // run into the command name.
                 out.push_str("\\operatorname");
-                out.push_str(arg);
+                if arg.starts_with('{') {
+                    out.push_str(arg);
+                } else {
+                    out.push('{');
+                    out.push_str(arg);
+                    out.push('}');
+                }
                 out.push_str("\\limits ");
                 end
             }
@@ -172,7 +209,7 @@ impl Rewriter {
             }
             "sqrt" => {
                 out.push_str("\\sqrt");
-                self.root_index(src, next, out)
+                self.root_index(src, next, depth.total(), out)
             }
             _ => {
                 match name {
@@ -183,14 +220,16 @@ impl Rewriter {
                     "\\" | "cr" => self.top_newline |= top && depth.top(),
                     _ => {}
                 }
+                self.deepest = self.deepest.max(depth.total());
                 out.push_str(&src[pos..next]);
                 next
             }
         }
     }
 
-    /// After `\sqrt`: brace a bracketed index, rewriting inside it too.
-    fn root_index(&mut self, src: &str, pos: usize, out: &mut String) -> usize {
+    /// After `\sqrt`, `outer` levels deep: brace a bracketed index, rewriting
+    /// inside it too.
+    fn root_index(&mut self, src: &str, pos: usize, outer: usize, out: &mut String) -> usize {
         let start = skip_space(src, pos);
         if !src[start..].starts_with('[') {
             return pos;
@@ -198,7 +237,7 @@ impl Rewriter {
         let Some(close) = matching(src, start, '[', ']') else {
             return pos;
         };
-        let index = self.rewrite(&src[start + 1..close], false);
+        let index = self.rewrite(&src[start + 1..close], false, outer + 1);
         let trimmed = index.trim();
         let braced =
             trimmed.starts_with('{') && matching(trimmed, 0, '{', '}') == Some(trimmed.len() - 1);
@@ -274,14 +313,15 @@ fn matching(src: &str, open: usize, left: char, right: char) -> Option<usize> {
     None
 }
 
-/// `(1)` for `\tag{1}`, `A` for `\tag*{A}`; `None` when empty.
+/// `(1)` for `\tag{1}`, `A` for `\tag*{A}`; `None` when empty. The tag is
+/// shown as written (without `$` signs), with whitespace collapsed and
+/// control characters replaced.
 fn format_tag(arg: &str, star: bool) -> Option<String> {
     let inner = arg
         .strip_prefix('{')
         .and_then(|a| a.strip_suffix('}'))
         .unwrap_or(arg);
-    let text: String = inner.split_whitespace().collect::<Vec<_>>().join(" ");
-    let text = text.replace('$', "");
+    let text = sanitize(&inner.replace('$', ""));
     let text = text.trim();
     if text.is_empty() {
         None
@@ -386,6 +426,11 @@ mod tests {
         assert_eq!(tag(r"x \tag{ $\ast$ }"), Some(r"(\ast)".into()));
         assert_eq!(tag(r"x \tag{}"), None);
         assert_eq!(tag(r"x \tag"), None);
+        // Control characters cannot reach the output.
+        assert_eq!(
+            tag("x \\tag{a\u{1b}[31m\tb}"),
+            Some("(a\u{FFFD}[31m b)".into())
+        );
     }
 
     #[test]
@@ -426,9 +471,49 @@ mod tests {
     }
 
     #[test]
-    fn comments_are_opaque() {
-        assert_eq!(tex("a % \\\\ & \\tag{9}\n+ b"), "a % \\\\ & \\tag{9}\n+ b");
+    fn comments_are_removed() {
+        // Nothing in a comment counts: no newline, alignment or tag.
+        assert_eq!(tex("a % \\\\ & \\tag{9}\n+ b"), "a \n+ b");
         assert_eq!(tag("a % \\tag{9}\n"), None);
+        // The line break stays, so the tokens around it stay apart.
+        assert_eq!(tex("\\alpha%\nb"), "\\alpha\nb");
+        assert_eq!(tex(r"50\% x"), r"50\% x");
+        // A comment at the end cannot swallow the added `\end{gathered}`.
+        assert_eq!(
+            tex(r"a \\ b % note"),
+            r"\begin{gathered}a \\ b\end{gathered}"
+        );
+    }
+
+    #[test]
+    fn operatorname_star_braces_a_bare_argument() {
+        assert_eq!(tex(r"\operatorname*a_x"), r"\operatorname{a}\limits _x");
+        assert_eq!(
+            tex(r"\operatorname* {op}_x"),
+            r"\operatorname{op}\limits _x"
+        );
+    }
+
+    #[test]
+    fn deep_nesting_is_rejected_before_parsing() {
+        let nested = |n: usize| format!("{}x{}", "{".repeat(n), "}".repeat(n));
+        assert!(prepare(&nested(MAX_NESTING)).is_ok());
+        assert_eq!(prepare(&nested(MAX_NESTING + 1)), Err(Rejected::TooDeep));
+        let fences = |n: usize| format!("{}x{}", r"\left(".repeat(n), r"\right)".repeat(n));
+        assert_eq!(prepare(&fences(MAX_NESTING + 1)), Err(Rejected::TooDeep));
+        let envs = |n: usize| {
+            format!(
+                "{}x{}",
+                r"\begin{matrix}".repeat(n),
+                r"\end{matrix}".repeat(n)
+            )
+        };
+        assert_eq!(prepare(&envs(MAX_NESTING + 1)), Err(Rejected::TooDeep));
+        // Root indices count with what surrounds them.
+        let roots = |n: usize| format!("{}x{}", r"\sqrt[".repeat(n), "]{y}".repeat(n));
+        assert_eq!(prepare(&roots(MAX_NESTING + 1)), Err(Rejected::TooDeep));
+        // Sequential groups are not nested.
+        assert!(prepare(&"{x}".repeat(MAX_NESTING * 4)).is_ok());
     }
 
     #[test]

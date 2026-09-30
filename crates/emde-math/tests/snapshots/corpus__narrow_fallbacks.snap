@@ -55,3 +55,18 @@ lines
 inline  E = mc²  (1)
 ▸ │ E = mc² │
   │      (1)│
+
+@ width 12
+── \begin{aligned} f(x) &= a+b+c+d \\ &= e+f+g+h \end{aligned}
+inline  f(x) = a + b + c + d = e + f + g + h
+lines
+  │f(x) = a +│
+  │b + c + d│
+  │= e + f +│
+  │g + h│
+
+@ width 3
+── aaaa+\char"A0
+inline  aaaa +  
+lines
+  │aaaa +│

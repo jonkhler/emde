@@ -32,7 +32,8 @@ use pulldown_latex::{Parser, Storage};
 use crate::ast::{
     Accent, Align, Atom, Brace, BraceShape, Column, Font, Grid, GridKind, Limits, Node, Side,
 };
-use crate::width::sanitize;
+use crate::tables::{self, NEGATION_MARK};
+use crate::width::{is_zero_width, sanitize};
 
 /// The deepest nesting of elements accepted; deeper formulas are shown raw
 /// (it also bounds the renderers' recursion).
@@ -179,7 +180,7 @@ impl<'e, 'a> Builder<'e, 'a> {
                     self.pos += 1;
                     items.push(Node::Space(1));
                 }
-                _ => items.push(self.element()?),
+                _ => push_item(&mut items, self.element()?),
             }
         };
         self.leave();
@@ -374,6 +375,50 @@ impl<'e, 'a> Builder<'e, 'a> {
             }
         };
         Ok(classify_script(base, sub, sup, position, mark))
+    }
+}
+
+/// Append `node` to a row. A combining mark (or other zero-width character)
+/// typed after a symbol arrives as an ordinary character of its own; it
+/// attaches to that symbol, so that it stays in the symbol's cell: `x`
+/// followed by U+0301 is the accented `x́` (and `e` composes to `é`), and a
+/// relation keeps its class (`=` followed by U+0338, as decomposed text
+/// spells `≠`, composes to `≠`).
+fn push_item(items: &mut Vec<Node>, node: Node) {
+    let Node::Atom(Atom::Ord(mark)) = node else {
+        items.push(node);
+        return;
+    };
+    if !is_zero_width(mark) {
+        items.push(node);
+        return;
+    }
+    match items.last_mut() {
+        Some(Node::Atom(Atom::Rel(rel))) => {
+            let mut chars = rel.chars();
+            let negated = match (chars.next(), chars.next()) {
+                (Some(c), None) if mark == NEGATION_MARK => tables::negate(c),
+                _ => None,
+            };
+            match negated {
+                Some(c) => *rel = c.to_string(),
+                None => rel.push(mark),
+            }
+        }
+        Some(
+            prev @ (Node::Atom(Atom::Ord(_) | Atom::Num(_) | Atom::Text(_)) | Node::Accent { .. }),
+        ) => {
+            let base = std::mem::replace(prev, Node::empty());
+            *prev = Node::Accent {
+                base: Box::new(base),
+                accent: Accent {
+                    ch: mark,
+                    wide: false,
+                    under: false,
+                },
+            };
+        }
+        _ => items.push(node),
     }
 }
 
@@ -921,6 +966,52 @@ mod tests {
             row(vec![Node::Atom(Atom::Func("arg max".into()))])
         );
         assert_eq!(tree(r"\phi\varphi").items(), [ord('ϕ'), ord('φ')]);
+    }
+
+    #[test]
+    fn typed_combining_marks_attach_to_the_symbol_before() {
+        let accent = |base: Node, ch: char| Node::Accent {
+            base: Box::new(base),
+            accent: Accent {
+                ch,
+                wide: false,
+                under: false,
+            },
+        };
+        assert_eq!(tree("x\u{301}"), row(vec![accent(ord('x'), '\u{301}')]));
+        assert_eq!(
+            tree("x\u{302}\u{301}"),
+            row(vec![accent(accent(ord('x'), '\u{302}'), '\u{301}')])
+        );
+        // Decomposed negations compose; other marks stay on the relation.
+        assert_eq!(
+            tree("=\u{338}"),
+            row(vec![Node::Atom(Atom::Rel("≠".into()))])
+        );
+        assert_eq!(
+            tree("\\le\u{338}"),
+            row(vec![Node::Atom(Atom::Rel("≰".into()))])
+        );
+        assert_eq!(
+            tree("\\preceq\u{338}"),
+            row(vec![Node::Atom(Atom::Rel("⪯\u{338}".into()))])
+        );
+        assert_eq!(
+            tree("=\u{301}"),
+            row(vec![Node::Atom(Atom::Rel("=\u{301}".into()))])
+        );
+        // With nothing to sit on, a mark stays on its own.
+        assert_eq!(
+            tree("(\u{301}"),
+            row(vec![
+                Node::Atom(Atom::Delim {
+                    ch: '(',
+                    side: Side::Open,
+                    sized: false
+                }),
+                ord('\u{301}'),
+            ])
+        );
     }
 
     #[test]

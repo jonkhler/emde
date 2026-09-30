@@ -1,16 +1,16 @@
 //! Property tests: `inline` and `display` never panic, and their output keeps
 //! the documented invariants for any input, width and options.
 //!
-//! * Every line's spans are non-empty, contiguous and cover its text, and its
-//!   `width` is `unicode-width`'s width of the text; breaks are increasing
-//!   character boundaries.
+//! * Every line's spans are non-empty, contiguous and cover its text, the
+//!   text has no control characters, and its `width` is `unicode-width`'s
+//!   width of the text; breaks are increasing character boundaries.
 //! * Every box has `height` rows and `baseline < height`, fits `avail`
 //!   columns and `max_height` rows, and every row is exactly `width` columns
 //!   by `unicode-width`.
 //!
 //! Inputs are arbitrary strings, random soups of TeX tokens (mostly parse
-//! errors, some odd but valid formulas), and generated valid formulas that
-//! reach every 2D construction.
+//! errors, some odd but valid formulas), generated valid formulas that
+//! reach every 2D construction, and deeply nested chains of constructions.
 
 use emde_math::{
     Bold, Fractions, Letters, MathDisplay, MathLine, MathOptions, ScriptSet, display, inline,
@@ -40,6 +40,11 @@ fn check_line(line: &MathLine, opts: &MathOptions) -> Result<(), TestCaseError> 
         prev = end;
     }
     prop_assert_eq!(prev, len, "spans do not cover the text: {:?}", line);
+    prop_assert!(
+        !line.text.chars().any(char::is_control),
+        "control character in {:?}",
+        line.text
+    );
     let mut prev = 0usize;
     for &b in &line.breaks {
         let b = b as usize;
@@ -221,6 +226,16 @@ fn token() -> impl Strategy<Value = &'static str> {
         r"\def",
         r"\hspace{1e9em}",
         r"\kern-3em",
+        "\\char\"A0",
+        r"\char32",
+        "\u{338}",
+        "%\n",
+        r"\sqrt{2}",
+        r"\tag{",
+        r"\text{",
+        "\u{1b}",
+        "\u{85}",
+        "\t",
     ])
 }
 
@@ -310,6 +325,35 @@ fn expression() -> impl Strategy<Value = String> {
     })
 }
 
+/// Deeply nested formulas: a chain of constructions, each around the next,
+/// down to the parser's depth limit. Rendering must stay fast at any depth
+/// (nested scripts once took time exponential in the depth).
+fn nesting() -> impl Strategy<Value = String> {
+    let pairs: Vec<(&'static str, &'static str)> = vec![
+        (r"\frac{", "}{y}"),
+        (r"\frac{x}{", "}"),
+        ("{", "}^{2}"),
+        (r"\pi^{", "}"),
+        (r"\pi_{", "}"),
+        (r"\sqrt{", "}"),
+        (r"\sqrt[\pi^{", "}]{y}"),
+        (r"\hat{", "}"),
+        (r"\overline{", "}"),
+        (r"\left(", r"\right)"),
+        (r"\overset{", "}{=}"),
+        (r"\underbrace{", "}_{n}"),
+        (r"\mathbf{", "}"),
+        (r"\not{", "}"),
+        (r"\begin{pmatrix}", r"\end{pmatrix}"),
+        (r"\begin{aligned} a &= ", r"\end{aligned}"),
+    ];
+    prop::collection::vec(prop::sample::select(pairs), 1..48).prop_map(|chain| {
+        let open: String = chain.iter().map(|(o, _)| *o).collect();
+        let close: String = chain.iter().rev().map(|(_, c)| *c).collect();
+        format!(r"{open}\pi x{close}")
+    })
+}
+
 proptest! {
     #![proptest_config(ProptestConfig {
         // At least 512 cases; `PROPTEST_CASES` can ask for more.
@@ -332,6 +376,11 @@ proptest! {
 
     #[test]
     fn valid_formulas(tex in formula(), opts in options(), avail in 0u16..160) {
+        check(&tex, &opts, avail)?;
+    }
+
+    #[test]
+    fn deeply_nested_formulas(tex in nesting(), opts in options(), avail in 0u16..160) {
         check(&tex, &opts, avail)?;
     }
 

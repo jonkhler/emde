@@ -239,6 +239,11 @@ corpus!(
         r"\Gamma^\lambda_{\mu\nu}",
         r"x_N + y_{\max}",
         r"x^{1/2}",
+        r"\nabla_\theta J(\theta)",
+        r"x_\alpha y_\beta",
+        r"x_N^2",
+        r"\frac{a}{b}^2",
+        r"\sqrt{x}^2",
     ]
 );
 
@@ -256,6 +261,8 @@ corpus!(
         r"\sqrt{1+\sqrt{2}}",
         r"\sqrt{x_1^2 + x_2^2}",
         r"\sqrt[\pi]{x}",
+        r"\sqrt{2}\pi",
+        r"\sqrt{(a+b)}",
     ]
 );
 
@@ -388,6 +395,8 @@ corpus!(
         r"A = \begin{pmatrix} a & b \\ c & d \end{pmatrix}",
         r"\begin{array}{c|c} a & b \\ \hline c & d \end{array}",
         r"\left[\begin{array}{cc|c} 1 & 2 & 3 \\ 4 & 5 & 6 \end{array}\right]",
+        r"\begin{pmatrix} a+b & c \\ d & e \end{pmatrix}",
+        r"\begin{array}{c||c} a & b \\ \hline c & d \end{array}",
     ]
 );
 
@@ -404,6 +413,9 @@ corpus!(
         r"x &= 1 \\ y &= 2",
         r"\begin{equation} E = mc^2 \end{equation}",
         r"\begin{split} a &= b + c \\ &= d \end{split}",
+        r"\begin{aligned} x &= 1 & y &= 2 \end{aligned}",
+        r"\begin{aligned} a + b &= c \\ &\quad + d \end{aligned}",
+        r"a = b \\ c = d % trailing comment",
     ]
 );
 
@@ -524,6 +536,8 @@ corpus!(
         r"x = \text{größer}",
         r"α + β = γ",
         r"\text{naïve} \cdot 2",
+        "x\u{301} = e\u{301}",
+        "a =\u{338} b",
     ]
 );
 
@@ -537,6 +551,11 @@ fn narrow_fallbacks() {
         (r"f(x) = a_0 + a_1 x + a_2 x^2 + a_3 x^3 + a_4 x^4", 20),
         (r"\frac{aaaa+bbbb}{c} + d", 6),
         (r"E = mc^2 \tag{1}", 9),
+        (
+            r"\begin{aligned} f(x) &= a+b+c+d \\ &= e+f+g+h \end{aligned}",
+            12,
+        ),
+        ("aaaa+\\char\"A0", 3),
     ];
     let out: Vec<String> = cases
         .iter()

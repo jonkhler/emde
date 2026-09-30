@@ -43,10 +43,11 @@ impl Glyph {
         len: 0,
     };
 
+    /// A one-character glyph; a zero-width character gets a no-break space
+    /// to sit on, so that the cell is one column wide.
     pub(crate) fn new(c: char) -> Glyph {
-        let mut glyph = Glyph::EMPTY;
-        glyph.push(c);
-        glyph
+        let mut buf = [0; 4];
+        Glyph::from_cluster(c.encode_utf8(&mut buf))
     }
 
     /// A cluster as a glyph; an orphan mark gets a no-break space to sit on.
@@ -446,6 +447,14 @@ mod tests {
             MBox::blank(0, 1, 0).unwrap().to_math_box(false).rows.len(),
             1
         );
+    }
+
+    #[test]
+    fn single_character_cells_are_one_column() {
+        // A zero-width character sits on a no-break space.
+        let row = MBox::row_of(&['\u{200D}', 'x'], Attrs::PLAIN).unwrap();
+        assert_eq!(rows(&row), ["\u{A0}\u{200D}x"]);
+        assert_eq!(str_width(&rows(&row)[0], false), 2);
     }
 
     #[test]

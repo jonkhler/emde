@@ -62,6 +62,30 @@ pub(crate) fn styled(alphabet: Alphabet, c: char) -> Option<char> {
     lookup(alphabet.table(), c)
 }
 
+/// The plain character behind a math italic, bold or bold italic one (the
+/// alphabets that [`Letters::UnicodeItalic`](crate::Letters::UnicodeItalic)
+/// and [`Bold::Unicode`](crate::Bold::Unicode) produce), and whether it is
+/// bold: `𝑥` is `('x', false)`, `𝐱` is `('x', true)`.
+pub(crate) fn unstyled(c: char) -> Option<(char, bool)> {
+    // Everything these alphabets hold is at ℎ U+210E or above.
+    if u32::from(c) < 0x210E {
+        return None;
+    }
+    [
+        (Alphabet::Italic, false),
+        (Alphabet::Bold, true),
+        (Alphabet::BoldItalic, true),
+    ]
+    .into_iter()
+    .find_map(|(alphabet, bold)| {
+        alphabet
+            .table()
+            .iter()
+            .find(|&&(_, styled)| styled == c)
+            .map(|&(base, _)| (base, bold))
+    })
+}
+
 /// The precomposed form of `base` followed by the combining `mark`.
 pub(crate) fn compose(base: char, mark: char) -> Option<char> {
     compose::ACCENTED
@@ -101,9 +125,10 @@ pub(crate) static ACCENT_MARKS: [(char, char); 12] = [
 const OVERLINE: char = '\u{305}';
 
 /// The combining mark for `accent` on a base of `clusters` characters, if
-/// there is one.
+/// there is one. A combining mark typed after a symbol is its own mark.
 pub(crate) fn accent_mark(accent: Accent, clusters: usize) -> Option<char> {
     match (accent.ch, accent.under) {
+        (c, _) if crate::width::is_zero_width(c) => Some(c),
         ('‾', false) if clusters > 1 => Some(OVERLINE),
         ('_', _) => Some('\u{332}'),
         ('→', true) => Some('\u{20EF}'),
@@ -466,6 +491,21 @@ mod tests {
             }
         }
         assert_eq!(Alphabet::ALL.len(), 9);
+    }
+
+    #[test]
+    fn unstyled_reverses_the_option_alphabets() {
+        assert_eq!(unstyled('𝑥'), Some(('x', false)));
+        assert_eq!(unstyled('ℎ'), Some(('h', false)));
+        assert_eq!(unstyled('𝛼'), Some(('α', false)));
+        assert_eq!(unstyled('𝐱'), Some(('x', true)));
+        assert_eq!(unstyled('𝟐'), Some(('2', true)));
+        assert_eq!(unstyled('𝒙'), Some(('x', true)));
+        // Font alphabets are not options: they have no scripts.
+        assert_eq!(unstyled('ℝ'), None);
+        assert_eq!(unstyled('𝒜'), None);
+        assert_eq!(unstyled('x'), None);
+        assert_eq!(unstyled('→'), None);
     }
 
     #[test]

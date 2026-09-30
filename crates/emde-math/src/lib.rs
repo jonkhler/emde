@@ -242,9 +242,10 @@ pub fn inline(tex: &str, opts: &MathOptions) -> MathLine {
 /// [`MathOptions::max_height`] rows (a formula too wide for one row may be
 /// split before its top-level relations), else [`MathDisplay::Lines`] with
 /// the linear form wrapped at top-level operators (a piece with no break
-/// that fits stays too wide). Formulas that do not parse are
-/// [`MathDisplay::Raw`]. A `\tag` makes the box `avail` columns wide, with
-/// the formula centred and the tag flush right.
+/// that fits stays too wide; a multi-row block such as `aligned` keeps a
+/// line per row). Formulas that do not parse are [`MathDisplay::Raw`]. A
+/// `\tag` makes the box `avail` columns wide, with the formula centred and
+/// the tag flush right.
 ///
 /// ```
 /// use emde_math::{MathDisplay, MathOptions, display};

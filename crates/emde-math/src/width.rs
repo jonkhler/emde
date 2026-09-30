@@ -40,19 +40,22 @@ pub(crate) fn clusters(s: &str, cjk: bool) -> impl Iterator<Item = (&str, usize)
         let mut chars = rest.char_indices();
         let (_, first) = chars.next()?;
         let mut end = first.len_utf8();
-        let mut width = str_width(&rest[..end], cjk);
         for (i, c) in chars {
             let next = i + c.len_utf8();
-            let joined = str_width(&rest[..next], cjk);
-            if !is_zero_width(c) && joined >= width + str_width(&rest[i..next], cjk) {
+            // A zero-width character always attaches (without measuring, so
+            // a pile of marks costs linear time). Anything else joins when
+            // the whole measures less than its parts.
+            if !is_zero_width(c)
+                && str_width(&rest[..next], cjk)
+                    >= str_width(&rest[..i], cjk) + str_width(&rest[i..next], cjk)
+            {
                 break;
             }
             end = next;
-            width = joined;
         }
         let (cluster, tail) = rest.split_at(end);
         rest = tail;
-        Some((cluster, width))
+        Some((cluster, str_width(cluster, cjk)))
     })
 }
 
@@ -143,6 +146,15 @@ mod tests {
         // Emoji presentation selector widens its base.
         assert_eq!(str_width("\u{263A}\u{FE0F}", false), 2);
         assert_eq!(clusters("\u{263A}\u{FE0F}", false).count(), 1);
+    }
+
+    #[test]
+    fn piles_of_marks_stay_one_cluster() {
+        let pile = format!("a{}b", "\u{301}".repeat(200));
+        let got: Vec<_> = clusters(&pile, false)
+            .map(|(c, w)| (c.chars().count(), w))
+            .collect();
+        assert_eq!(got, [(201, 1), (1, 1)]);
     }
 
     #[test]
