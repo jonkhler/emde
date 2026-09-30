@@ -514,3 +514,72 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+mod props {
+    use proptest::prelude::*;
+
+    use super::*;
+
+    proptest! {
+        #[test]
+        fn chunking_invariants(len in 0usize..20_000, tmux in any::<bool>()) {
+            let data = vec![b'Q'; len];
+            let pass = if tmux { Passthrough::Tmux } else { Passthrough::Direct };
+            let out = chunked("a=t,i=1,q=2", &data, pass);
+            let direct = if tmux {
+                // Undo the wrapping: every command is one complete DCS.
+                let text = String::from_utf8(out).unwrap();
+                let parts: Vec<&str> = text.split_inclusive("\x1b\\\x1b\\").collect();
+                prop_assert!(parts.iter().all(|p| p.starts_with("\x1bPtmux;")));
+                parts
+                    .iter()
+                    .map(|p| p["\x1bPtmux;".len()..p.len() - 2].replace("\x1b\x1b", "\x1b"))
+                    .collect::<String>()
+                    .into_bytes()
+            } else {
+                out
+            };
+            let text = String::from_utf8(direct).unwrap();
+            let cmds: Vec<&str> = text.split_terminator("\x1b\\").collect();
+            prop_assert_eq!(cmds.len(), len.div_ceil(CHUNK).max(1));
+            let mut payload = 0;
+            for (i, cmd) in cmds.iter().enumerate() {
+                let body = cmd.strip_prefix("\x1b_G").unwrap();
+                let (keys, data) = body.split_once(';').unwrap();
+                let last = i + 1 == cmds.len();
+                let m = if last { "m=0" } else { "m=1" };
+                if i == 0 {
+                    prop_assert_eq!(keys, format!("a=t,i=1,q=2,{m}"));
+                } else {
+                    prop_assert_eq!(keys, format!("{m},q=2"));
+                }
+                if !last {
+                    prop_assert_eq!(data.len(), CHUNK);
+                }
+                prop_assert!(data.len() <= CHUNK);
+                payload += data.len();
+            }
+            prop_assert_eq!(payload, len);
+        }
+
+        #[test]
+        fn tmux_wrap_round_trips(seq in proptest::collection::vec(any::<u8>(), 0..200)) {
+            let wrapped = super::super::tmux::wrap(&seq);
+            let inner = &wrapped[b"\x1bPtmux;".len()..wrapped.len() - 2];
+            let mut unwrapped = Vec::new();
+            let mut escape = false;
+            for &b in inner {
+                if b == 0x1b && !escape {
+                    escape = true;
+                    continue;
+                }
+                prop_assert!(!escape || b == 0x1b, "a lone ESC inside the wrapper");
+                escape = false;
+                unwrapped.push(b);
+            }
+            prop_assert!(!escape);
+            prop_assert_eq!(unwrapped, seq);
+        }
+    }
+}

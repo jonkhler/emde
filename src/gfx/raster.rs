@@ -794,3 +794,114 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+mod props {
+    use proptest::prelude::*;
+
+    use super::*;
+
+    /// Deterministic pseudo-random bytes (SplitMix64).
+    fn bytes(seed: u64, len: usize) -> Vec<u8> {
+        let mut z = seed;
+        (0..len)
+            .map(|_| {
+                z = z.wrapping_add(0x9e37_79b9_7f4a_7c15);
+                let mut x = z;
+                x = (x ^ (x >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+                x = (x ^ (x >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+                (x >> 56) as u8
+            })
+            .collect()
+    }
+
+    const SETS: [BlockGlyphSet; 4] = [
+        BlockGlyphSet::Half,
+        BlockGlyphSet::Quadrant,
+        BlockGlyphSet::Sextant,
+        BlockGlyphSet::Octant,
+    ];
+
+    const DEPTHS: [ColorDepth; 5] = [
+        ColorDepth::None,
+        ColorDepth::Mono,
+        ColorDepth::Ansi16,
+        ColorDepth::Ansi256,
+        ColorDepth::TrueColor,
+    ];
+
+    fn depth_colour_ok(depth: ColorDepth, c: Color) -> bool {
+        match (depth, c) {
+            (_, Color::Default) => true,
+            (ColorDepth::TrueColor, Color::Rgb(_)) => true,
+            (ColorDepth::Ansi256, Color::Indexed(i)) => i >= 16,
+            (ColorDepth::Ansi16, Color::Ansi(i)) => i < 16,
+            _ => false,
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn rasterize_is_total_and_well_formed(
+            w in 0u32..14,
+            h in 0u32..14,
+            extra in 0usize..3,
+            seed in any::<u64>(),
+            cols in 0u16..9,
+            rows in 0u16..6,
+            set in 0usize..4,
+            depth in 0usize..5,
+            bg in proptest::option::of(any::<(u8, u8, u8)>()),
+        ) {
+            // `extra` > 0 makes the buffer length inconsistent (invalid image).
+            let len = (w * h * 4) as usize + extra;
+            let img = Rgba { width: w, height: h, pixels: bytes(seed, len) };
+            let (set, depth) = (SETS[set], DEPTHS[depth]);
+            let bg = bg.map(|(r, g, b)| Rgb(r, g, b));
+            let r = rasterize(&img, cols, rows, set, bg, depth);
+            prop_assert_eq!((r.cols, r.rows), (cols, rows));
+            prop_assert_eq!(r.cells.len(), usize::from(rows));
+            let glyphs: Vec<char> = (0..1u16 << glyphs::subpixels(set))
+                .map(|m| glyphs::glyph(set, m as u8))
+                .collect();
+            for row in &r.cells {
+                prop_assert_eq!(row.len(), usize::from(cols));
+                for c in row {
+                    prop_assert!(glyphs.contains(&c.ch), "{:?} not in {:?}", c.ch, set);
+                    if c.ch == ' ' {
+                        prop_assert_eq!(c.fg, Color::Default);
+                    } else {
+                        prop_assert!(c.fg != c.bg, "{:?}", c);
+                    }
+                    prop_assert!(depth_colour_ok(depth, c.fg), "{:?} at {:?}", c, depth);
+                    prop_assert!(depth_colour_ok(depth, c.bg), "{:?} at {:?}", c, depth);
+                }
+            }
+            if depth < ColorDepth::Ansi16 || extra > 0 {
+                prop_assert_eq!(r, Raster::blank(cols, rows));
+            }
+        }
+
+        #[test]
+        fn resize_gives_a_valid_image(
+            w in 0u32..20,
+            h in 0u32..20,
+            seed in any::<u64>(),
+            tw in 0u32..24,
+            th in 0u32..24,
+        ) {
+            let img = Rgba { width: w, height: h, pixels: bytes(seed, (w * h * 4) as usize) };
+            let out = crate::gfx::resize(&img, tw, th);
+            prop_assert_eq!((out.width, out.height), (tw, th));
+            prop_assert!(out.is_valid());
+            // Resizing to the same size is the identity for opaque pixels.
+            if (tw, th) == (w, h) {
+                for (a, b) in img.pixels.as_chunks::<4>().0.iter().zip(out.pixels.as_chunks::<4>().0) {
+                    if a[3] == 255 {
+                        prop_assert_eq!(a, b);
+                    }
+                }
+            }
+        }
+    }
+}
