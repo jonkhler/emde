@@ -1,0 +1,99 @@
+---
+source: src/term/doctor.rs
+expression: "Scenario::users_session().json()"
+---
+{
+  "terminal": {
+    "identity": "iTerm2 3.6.9",
+    "tty": true,
+    "tmux": true,
+    "ssh": true,
+    "size": [214, 54],
+    "cell_px": null
+  },
+  "color": "truecolor",
+  "hyperlinks": true,
+  "styled_underline": true,
+  "sync": true,
+  "background": {
+    "rgb": "#1e1e2e",
+    "variant": "dark"
+  },
+  "graphics": "blocks",
+  "block_glyphs": "half",
+  "tmux": {
+    "version": "3.4",
+    "client_termtype": "iTerm2 3.6.9",
+    "client_termname": "xterm-256color",
+    "features": ["256", "bpaste", "ccolour", "clipboard", "hyperlinks", "cstyle", "extkeys", "focus", "margins", "mouse", "osc7", "rectfill", "RGB", "sixel", "strikethrough", "sync", "title", "usstyle"],
+    "cell": null,
+    "passthrough": "off",
+    "set_clipboard": "external"
+  },
+  "probe": {
+    "status": "complete",
+    "elapsed_us": 2000,
+    "wrapped": false,
+    "replies": {
+      "kitty_ok": false,
+      "outer_kitty_ok": false,
+      "xtversion": "tmux 3.4",
+      "cell_px": [16, 32],
+      "text_area_px": [3424, 1728],
+      "size_cells": [214, 54],
+      "background": "#1e1e2e",
+      "da1": [1, 2, 4],
+      "outer_dsr_seen": false,
+      "tmux_own_da1_sixel": true
+    }
+  },
+  "reasons": [
+    {
+      "topic": "color",
+      "detail": "in tmux"
+    },
+    {
+      "topic": "hyperlinks",
+      "detail": "tmux ≥ 3.4"
+    },
+    {
+      "topic": "tmux",
+      "detail": "tmux 3.4, passthrough off, client cell 0x0"
+    },
+    {
+      "topic": "ssh",
+      "detail": "SSH_CONNECTION"
+    },
+    {
+      "topic": "terminal",
+      "detail": "client_termtype"
+    },
+    {
+      "topic": "background",
+      "detail": "tmux OSC 11"
+    },
+    {
+      "topic": "cell",
+      "detail": "client cell 0x0"
+    },
+    {
+      "topic": "graphics",
+      "detail": "kitty/iterm ✗ passthrough off · sixel ✗ client cell 0x0"
+    },
+    {
+      "topic": "blocks",
+      "detail": "blocks = half"
+    }
+  ],
+  "tips": ["`set -g allow-passthrough on` → kitty Unicode placeholders via iTerm2: real pixels that scroll with the text"],
+  "env": {
+    "COLUMNS": "214",
+    "LC_TERMINAL": "iTerm2",
+    "LC_TERMINAL_VERSION": "3.6.9",
+    "SSH_CONNECTION": "(set)",
+    "TERM": "tmux-256color",
+    "TERM_PROGRAM": "tmux",
+    "TERM_PROGRAM_VERSION": "3.4",
+    "TMUX": "/tmp/tmux-1001/default,443340,2"
+  }
+}

@@ -6,6 +6,7 @@
 
 pub mod caps;
 pub mod color;
+pub mod doctor;
 pub mod env;
 pub mod probe;
 pub mod tmux;

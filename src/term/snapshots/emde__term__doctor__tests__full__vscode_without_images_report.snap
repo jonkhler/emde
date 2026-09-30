@@ -1,0 +1,8 @@
+---
+source: src/term/doctor.rs
+expression: s.report()
+---
+ terminal  xterm.js(6.0.0) in VS Code 1.105.0, 150×50   colour truecolor   background dark (OSC 11)
+ links     OSC 8 ✓   underline curly ✓   images blocks(half) — kitty ✗ no a=q reply · sixel ✗ DA1 without 4
+ probe     answered in 27 ms   cell size unknown (no size reply)
+ tip       VS Code: enable `terminal.integrated.enableImages` for real pixels (kitty graphics), then run `emde --doctor --reprobe`

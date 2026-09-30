@@ -254,6 +254,7 @@ dependencies = [
  "proptest",
  "pulldown-cmark",
  "resvg",
+ "rustix",
  "serde",
  "serde_ignored",
  "signal-hook",

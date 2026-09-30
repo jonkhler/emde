@@ -1,0 +1,7 @@
+---
+source: src/term/doctor.rs
+expression: s.report()
+---
+ terminal  kitty   colour off   background unknown (not probed, no COLORFGBG)
+ links     OSC 8 ✗   underline curly ✗   images none — no escape sequences
+ probe     skipped (stdout is not a terminal)   cell size unknown (not probed)

@@ -1,0 +1,112 @@
+---
+source: src/term/probe.rs
+expression: table
+---
+kitty (in_tmux=false, wrapped=false)
+  xtversion   kitty(0.49.1)
+  cell_px     17x36
+  text_area   2720x1800
+  size_cells  160x50
+  cell_size   17x36
+  background  #1e1e2e
+  da1         62;52
+  flags       kitty_ok done
+ghostty (in_tmux=false, wrapped=false)
+  xtversion   ghostty 1.3.1
+  cell_px     18x38
+  text_area   2880x1900
+  size_cells  160x50
+  cell_size   18x38
+  background  #282c34
+  da1         62;22;52
+  flags       kitty_ok done
+iterm2 (in_tmux=false, wrapped=false)
+  xtversion   iTerm2 3.6.9
+  cell_px     -
+  text_area   1712x864
+  size_cells  214x54
+  cell_size   8x16
+  background  #1e1e2e
+  da1         62;1;2;4;6;22;28
+  flags       kitty_ok done
+iterm2 via tmux (in_tmux=true, wrapped=true)
+  xtversion   tmux 3.4
+  cell_px     16x32
+  text_area   3424x1728
+  size_cells  214x54
+  cell_size   16x32
+  background  #1e1e2e
+  da1         1;2;4
+  flags       outer_kitty_ok outer_dsr_seen tmux_own_da1_sixel done
+wezterm (in_tmux=false, wrapped=false)
+  xtversion   WezTerm 20240203-110809-5046fc22
+  cell_px     10x20
+  text_area   1600x1000
+  size_cells  160x50
+  cell_size   10x20
+  background  #1f1f28
+  da1         65;4;6;18;22
+  flags       kitty_ok done
+vscode images (in_tmux=false, wrapped=false)
+  xtversion   xterm.js(6.0.0)
+  cell_px     8x17
+  text_area   1200x850
+  size_cells  150x50
+  cell_size   8x17
+  background  #1e1e1e
+  da1         62;4;9;22
+  flags       kitty_ok done
+vscode plain (in_tmux=false, wrapped=false)
+  xtversion   xterm.js(6.0.0)
+  cell_px     -
+  text_area   -
+  size_cells  150x50
+  cell_size   -
+  background  #1e1e1e
+  da1         1;2
+  flags       done
+foot (in_tmux=false, wrapped=false)
+  xtversion   foot(1.20.2)
+  cell_px     10x20
+  text_area   1600x1000
+  size_cells  160x50
+  cell_size   10x20
+  background  #242424
+  da1         62;4;22;28
+  flags       done
+xterm (in_tmux=false, wrapped=false)
+  xtversion   XTerm(390)
+  cell_px     9x17
+  text_area   720x408
+  size_cells  80x24
+  cell_size   9x17
+  background  #ffffff
+  da1         64;1;2;6;9;15;16;17;18;21;22;28
+  flags       done
+xterm vt340 (in_tmux=false, wrapped=false)
+  xtversion   XTerm(390)
+  cell_px     9x17
+  text_area   720x408
+  size_cells  80x24
+  cell_size   9x17
+  background  #ffffff
+  da1         63;1;2;4;6;9;15;16;22;28
+  flags       done
+tmux local (in_tmux=true, wrapped=false)
+  xtversion   tmux 3.4
+  cell_px     16x32
+  text_area   1920x1280
+  size_cells  120x40
+  cell_size   16x32
+  background  -
+  da1         1;2;4
+  flags       tmux_own_da1_sixel done
+user session (in_tmux=true, wrapped=false)
+  xtversion   tmux 3.4
+  cell_px     16x32
+  text_area   3424x1728
+  size_cells  214x54
+  cell_size   16x32
+  background  #1e1e2e
+  da1         1;2;4
+  flags       tmux_own_da1_sixel done

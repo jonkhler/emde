@@ -1,0 +1,8 @@
+---
+source: src/term/doctor.rs
+expression: "Scenario::users_session().report()"
+---
+ terminal  tmux 3.4 → iTerm2 3.6.9, 214×54, SSH   colour truecolor (in tmux)   background dark (tmux OSC 11)
+ links     OSC 8 ✓   underline curly ✓   images blocks(half) — kitty/iterm ✗ passthrough off · sixel ✗ client cell 0x0
+ probe     tmux answered in 2 ms   cell size unknown (client cell 0x0)
+ tip       `set -g allow-passthrough on` → kitty Unicode placeholders via iTerm2: real pixels that scroll with the text

@@ -52,6 +52,8 @@ filedescriptor = "0.8"
 linkify = "0.11"
 memchr = "2"
 pulldown-cmark = { version = "0.13.4", default-features = false }
+# Probe foreground check (tcgetpgrp/getpgrp); crossterm already builds these features.
+rustix = { version = "1", default-features = false, features = ["std", "termios", "process"] }
 serde = { version = "1", features = ["derive"] }
 serde_ignored = "0.1"
 signal-hook = "0.3"
