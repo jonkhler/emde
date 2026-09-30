@@ -279,11 +279,11 @@ impl Builder<'_> {
         let [left, mid, right] = ends;
         let h = self.deco.table.horizontal;
         self.begin();
-        self.put(left, style, None);
+        self.put_glyph(left, style);
         for (i, &w) in widths.iter().enumerate() {
             self.repeat(h, w.saturating_add(2), style);
             let junction = if i + 1 == widths.len() { right } else { mid };
-            self.put(junction, style, None);
+            self.put_glyph(junction, style);
         }
         self.end(LineKind::Table, Fill::None, off);
     }
@@ -314,7 +314,7 @@ impl Builder<'_> {
             .max(1);
         for v in 0..height {
             self.begin();
-            self.put(b.vertical, border, None);
+            self.put_glyph(b.vertical, border);
             for (c, &w) in widths.iter().enumerate() {
                 if let Some(bg) = stripe {
                     self.push_ctx(Ctx {
@@ -342,7 +342,7 @@ impl Builder<'_> {
                 if stripe.is_some() {
                     self.pop_ctx();
                 }
-                self.put(b.vertical, border, None);
+                self.put_glyph(b.vertical, border);
             }
             self.end(LineKind::Table, Fill::None, off);
         }

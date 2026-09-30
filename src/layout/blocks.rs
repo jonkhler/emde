@@ -646,7 +646,7 @@ impl Builder<'_> {
             let rows = kl.len().max(vl.len());
             for r in 0..rows {
                 self.begin();
-                self.put(b.vertical, border, None);
+                self.put_glyph(b.vertical, border);
                 self.put(" ", StyleId(0), None);
                 let start = self.cols();
                 self.cell_line(k, &kl, &kp, r);
@@ -656,7 +656,7 @@ impl Builder<'_> {
                 self.cell_line(v, &vl, &vp, r);
                 let used = self.cols() - start;
                 self.spaces(value_w.saturating_sub(used) + 1, StyleId(0));
-                self.put(b.vertical, border, None);
+                self.put_glyph(b.vertical, border);
                 self.end(LineKind::Text, Fill::None, off);
             }
         }

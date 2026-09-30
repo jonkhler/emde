@@ -62,6 +62,8 @@ pub(super) struct Inputs<'a> {
 pub(super) struct Seg {
     pub(super) text: String,
     pub(super) style: StyleId,
+    /// Display width (measured when the level is pushed).
+    cols: u16,
 }
 
 impl Seg {
@@ -69,6 +71,7 @@ impl Seg {
         Seg {
             text: text.into(),
             style,
+            cols: 0,
         }
     }
 }
@@ -353,17 +356,18 @@ impl<'a> Builder<'a> {
         let ctx = self.ctx_now();
         for seg in first.iter_mut().chain(rest.iter_mut()) {
             seg.style = self.sty.in_ctx(seg.style, ctx);
+            seg.cols = to_u16(str_width(&seg.text, self.amb));
         }
-        let amb = self.amb;
-        let width_of = |segs: &[Seg]| -> u16 {
-            to_u16(segs.iter().map(|s| str_width(&s.text, amb)).sum::<usize>())
-        };
+        let width_of =
+            |segs: &[Seg]| -> u16 { segs.iter().fold(0u16, |acc, s| acc.saturating_add(s.cols)) };
         let width = width_of(&first).max(width_of(&rest));
         let plain = self.sty.in_ctx(StyleId(0), ctx);
         for segs in [&mut first, &mut rest] {
             let w = width_of(segs);
             if w < width {
-                segs.push(Seg::new(" ".repeat(usize::from(width - w)), plain));
+                let mut pad = Seg::new(" ".repeat(usize::from(width - w)), plain);
+                pad.cols = width - w;
+                segs.push(pad);
             }
         }
         self.levels.push(Level {
@@ -492,7 +496,7 @@ impl<'a> Builder<'a> {
                 &level.rest
             };
             for seg in segs {
-                self.put_prefix(&seg.text, seg.style, &mut skip);
+                self.put_prefix(seg, &mut skip);
             }
         }
         self.levels = levels;
@@ -510,9 +514,10 @@ impl<'a> Builder<'a> {
     }
 
     /// Append a prefix segment, dropping the first `skip` columns.
-    fn put_prefix(&mut self, text: &str, style: StyleId, skip: &mut u16) {
+    fn put_prefix(&mut self, seg: &Seg, skip: &mut u16) {
+        let (text, style) = (seg.text.as_str(), seg.style);
         if *skip == 0 {
-            self.put_raw(text, style, None, SpanFlags::empty());
+            self.put_raw_cols(text, Some(seg.cols), style, None, SpanFlags::empty());
             return;
         }
         let mut pos = 0;
@@ -606,10 +611,27 @@ impl<'a> Builder<'a> {
         self.put_raw(text, style, link, flags);
     }
 
+    /// Append a decoration whose width is known (`cols`), in `style` (with
+    /// the current context): borders and rules need no measuring.
+    pub(super) fn put_known(&mut self, text: &str, cols: u16, style: StyleId) {
+        let ctx = self.ctx_now();
+        let style = self.sty.in_ctx(style, ctx);
+        self.put_raw_cols(text, Some(cols), style, None, SpanFlags::empty());
+    }
+
+    /// A one-column border glyph (every [`super::deco::Borders`] piece).
+    pub(super) fn put_glyph(&mut self, glyph: &str, style: StyleId) {
+        self.put_known(glyph, 1, style);
+    }
+
     /// `n` spaces in `style` (with the current context).
     pub(super) fn spaces(&mut self, n: u16, style: StyleId) {
-        if n > 0 {
-            self.put(&" ".repeat(usize::from(n)), style, None);
+        const SPACES: &str = "                                                                ";
+        let mut left = n;
+        while left > 0 {
+            let take = left.min(SPACES.len() as u16);
+            self.put_known(SPACES.get(..usize::from(take)).unwrap_or(""), take, style);
+            left -= take;
         }
     }
 
@@ -618,7 +640,7 @@ impl<'a> Builder<'a> {
         let w = to_u16(str_width(glyph, self.amb)).max(1);
         let n = cols / w;
         if n > 0 {
-            self.put(&glyph.repeat(usize::from(n)), style, None);
+            self.put_known(&glyph.repeat(usize::from(n)), n * w, style);
         }
         self.spaces(cols - n * w, style);
     }
@@ -631,12 +653,24 @@ impl<'a> Builder<'a> {
         link: Option<LinkId>,
         flags: SpanFlags,
     ) {
+        self.put_raw_cols(text, None, style, link, flags);
+    }
+
+    /// [`Builder::put_raw`] with the width given when it is known.
+    fn put_raw_cols(
+        &mut self,
+        text: &str,
+        known: Option<u16>,
+        style: StyleId,
+        link: Option<LinkId>,
+        flags: SpanFlags,
+    ) {
         if text.is_empty() {
             return;
         }
         let limit = self.out.measure;
         let room = limit.saturating_sub(self.cur.cols);
-        let full = str_width(text, self.amb);
+        let full = known.map_or_else(|| str_width(text, self.amb), usize::from);
         let (text, cols) = if full <= usize::from(room) {
             (text, to_u16(full))
         } else {

@@ -306,6 +306,40 @@ mod tests {
     }
 
     #[test]
+    fn border_pieces_are_one_column() {
+        use crate::text::str_width;
+        for set in [
+            TableBorder::Rounded,
+            TableBorder::Light,
+            TableBorder::Heavy,
+            TableBorder::Double,
+            TableBorder::Ascii,
+            TableBorder::None,
+        ] {
+            for ascii in [false, true] {
+                let b = Borders::table(set, ascii);
+                for piece in [
+                    b.top_left,
+                    b.top_right,
+                    b.bottom_left,
+                    b.bottom_right,
+                    b.horizontal,
+                    b.vertical,
+                    b.down,
+                    b.up,
+                    b.right,
+                    b.left,
+                    b.cross,
+                ] {
+                    assert_eq!(str_width(piece, false), 1, "{set:?} {piece:?}");
+                }
+            }
+        }
+        let d = Deco::new(&RenderOptions::default());
+        assert_eq!(str_width(d.gutter, false), 1);
+    }
+
+    #[test]
     fn table_border_none_is_spaces() {
         let mut opts = RenderOptions::default();
         opts.glyphs.table = TableBorder::None;

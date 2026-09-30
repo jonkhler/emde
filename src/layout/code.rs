@@ -247,11 +247,11 @@ impl Builder<'_> {
             Mode::Bare => return,
             Mode::Frame => {
                 let v = self.deco.frame.vertical;
-                self.put(v, look.frame, None);
+                self.put_glyph(v, look.frame);
             }
             Mode::Gutter => {
                 let bar = self.deco.gutter;
-                self.put(bar, look.frame, None);
+                self.put_glyph(bar, look.frame);
             }
         }
         if continued {
@@ -288,7 +288,7 @@ impl Builder<'_> {
                 let used = self.cols() - start;
                 self.spaces(width.saturating_sub(used).saturating_sub(1), StyleId(0));
                 let v = self.deco.frame.vertical;
-                self.put(v, look.frame, None);
+                self.put_glyph(v, look.frame);
                 Fill::None
             }
             Mode::Gutter | Mode::Bare => Fill::None,
@@ -338,12 +338,12 @@ impl Builder<'_> {
                 let b = self.deco.frame;
                 self.begin();
                 let start = self.cols();
-                self.put(b.top_left, look.frame, None);
+                self.put_glyph(b.top_left, look.frame);
                 let label_w = label
                     .as_deref()
                     .map_or(0, |l| to_u16(str_width(l, amb)) + 3);
                 if let Some(t) = &title {
-                    self.put(b.horizontal, look.frame, None);
+                    self.put_glyph(b.horizontal, look.frame);
                     self.put(" ", look.frame, None);
                     let room = width.saturating_sub(label_w + 6);
                     let (t, _) = cut_to_cols(t, room, amb);
@@ -357,9 +357,9 @@ impl Builder<'_> {
                     self.put(" ", look.frame, None);
                     self.put(l, look.label, None);
                     self.put(" ", look.frame, None);
-                    self.put(b.horizontal, look.frame, None);
+                    self.put_glyph(b.horizontal, look.frame);
                 }
-                self.put(b.top_right, look.frame, None);
+                self.put_glyph(b.top_right, look.frame);
                 self.end(LineKind::Text, Fill::None, off);
             }
         }
@@ -382,9 +382,9 @@ impl Builder<'_> {
             Mode::Frame => {
                 let b = self.deco.frame;
                 self.begin();
-                self.put(b.bottom_left, look.frame, None);
+                self.put_glyph(b.bottom_left, look.frame);
                 self.repeat(b.horizontal, width.saturating_sub(2), look.frame);
-                self.put(b.bottom_right, look.frame, None);
+                self.put_glyph(b.bottom_right, look.frame);
                 self.end(LineKind::Text, Fill::None, off);
             }
         }

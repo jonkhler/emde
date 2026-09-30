@@ -129,7 +129,7 @@ impl Builder<'_> {
             } else {
                 (b.vertical, b.vertical)
             };
-            self.put(left, frame, None);
+            self.put_known(left, u16::from(!left.is_empty()), frame);
             let edge = boxed && (row == 0 || row + 1 == rows);
             if edge {
                 self.repeat(b.horizontal, inner, frame);
@@ -141,7 +141,7 @@ impl Builder<'_> {
             } else {
                 self.spaces(inner, StyleId(0));
             }
-            self.put(right, frame, None);
+            self.put_known(right, u16::from(!right.is_empty()), frame);
             let kind = LineKind::Image { placement, row };
             self.end(kind, Fill::None, off);
         }

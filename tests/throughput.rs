@@ -1,7 +1,11 @@
 //! Throughput on a generated 10 MB prose document (source → parse → layout
 //! → bytes), per stage and end to end. The target is ≥ 50 MB/s.
 //!
-//! Ignored by default; run it optimised:
+//! Also here, for tuning: the cost of break finding and wrapping alone,
+//! stage times on the fixture documents (all together and one by one), and
+//! the fixed cost of small layouts.
+//!
+//! Ignored by default; run them optimised:
 //!
 //! ```sh
 //! cargo test --release --test throughput -- --ignored --nocapture
@@ -213,4 +217,112 @@ fn wrapping_costs() {
         mbs(n, t_breaks),
         mbs(n, t_wrap)
     );
+}
+
+#[test]
+#[ignore = "benchmark: cargo test --release --test throughput -- --ignored --nocapture"]
+fn fixture_mix_stages() {
+    let md: String = common::FIXTURES
+        .iter()
+        .map(|n| common::fixture(n))
+        .collect();
+    let theme = Theme::test();
+    let opts = RenderOptions::default();
+    let caps = Caps::plain();
+    let mut best = [f64::MAX; 4];
+    for _ in 0..50 {
+        let t0 = Instant::now();
+        let source = Source::from_bytes(md.as_bytes().to_vec(), Origin::Memory);
+        let doc = parse_source(&source, &ParseOptions::default());
+        let t1 = Instant::now();
+        let l = layout(&doc, 80, &theme, &caps, &opts, &PlainHighlighter, &NoImages);
+        let t2 = Instant::now();
+        let bytes = to_bytes(&doc, &l, &RenderConfig::from_caps(&caps));
+        let t3 = Instant::now();
+        assert!(!bytes.is_empty());
+        for (b, t) in best.iter_mut().zip([
+            (t1 - t0).as_secs_f64(),
+            (t2 - t1).as_secs_f64(),
+            (t3 - t2).as_secs_f64(),
+            (t3 - t0).as_secs_f64(),
+        ]) {
+            *b = b.min(t);
+        }
+    }
+    let _ = writeln!(
+        std::io::stdout(),
+        "{} bytes: parse {:.3} ms, layout {:.3} ms, render {:.3} ms, total {:.3} ms",
+        md.len(),
+        best[0] * 1e3,
+        best[1] * 1e3,
+        best[2] * 1e3,
+        best[3] * 1e3
+    );
+}
+
+#[test]
+#[ignore = "benchmark: cargo test --release --test throughput -- --ignored --nocapture"]
+fn per_fixture_stages() {
+    let theme = Theme::test();
+    let opts = RenderOptions::default();
+    let caps = Caps::plain();
+    let mut report = String::new();
+    for name in common::FIXTURES {
+        let md = common::fixture(name);
+        let mut best = [f64::MAX; 2];
+        for _ in 0..50 {
+            let t0 = Instant::now();
+            let doc = parse_source(&Source::from_text(&md), &ParseOptions::default());
+            let t1 = Instant::now();
+            let l = layout(&doc, 80, &theme, &caps, &opts, &PlainHighlighter, &NoImages);
+            let t2 = Instant::now();
+            assert!(l.len() < usize::MAX);
+            best[0] = best[0].min((t1 - t0).as_secs_f64());
+            best[1] = best[1].min((t2 - t1).as_secs_f64());
+        }
+        report.push_str(&format!(
+            "{name:>14} {:>6} B: parse {:>7.1} µs, layout {:>7.1} µs\n",
+            md.len(),
+            best[0] * 1e6,
+            best[1] * 1e6
+        ));
+    }
+    let _ = std::io::stdout().write_all(report.as_bytes());
+}
+
+#[test]
+#[ignore = "benchmark: cargo test --release --test throughput -- --ignored --nocapture"]
+fn code_block_costs() {
+    use emde::options::CodeStyle;
+    let theme = Theme::test();
+    let mut report = String::new();
+    let cases = [
+        ("one line", "```\nx\n```\n"),
+        ("paragraph", "hello world\n"),
+        ("10 lines", "```\na\nb\nc\nd\ne\nf\ng\nh\ni\nj\n```\n"),
+    ];
+    for (label, md) in cases {
+        let doc = parse_source(&Source::from_text(md), &ParseOptions::default());
+        for (style_label, style) in [
+            ("frame", CodeStyle::Frame),
+            ("panel", CodeStyle::Panel),
+            ("gutter", CodeStyle::Gutter),
+        ] {
+            let mut opts = RenderOptions::default();
+            opts.code.style = style;
+            for caps in [Caps::plain(), Caps::full()] {
+                let t = Instant::now();
+                for _ in 0..2000 {
+                    let l = layout(&doc, 80, &theme, &caps, &opts, &PlainHighlighter, &NoImages);
+                    assert!(l.len() < 1000);
+                }
+                let us = t.elapsed().as_secs_f64() / 2000.0 * 1e6;
+                report.push_str(&format!(
+                    "{label:>10} {style_label:>6} tty={}: {us:.1} µs\n",
+                    caps.is_tty
+                ));
+            }
+        }
+    }
+    let _ = std::io::stdout().write_all(report.as_bytes());
 }
