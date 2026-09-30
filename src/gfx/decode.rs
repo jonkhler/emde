@@ -337,6 +337,55 @@ mod tests {
         assert!(decode(&fake_jpeg, 100).is_err());
     }
 
+    /// The plan's budget (§10): a 1 MP JPEG decoded and drawn as 100×40
+    /// half blocks in at most 15 ms (release build, on the image worker).
+    #[test]
+    #[ignore = "timing; run with --release -- --ignored --nocapture"]
+    #[allow(clippy::print_stderr)]
+    fn timing_one_megapixel_jpeg_to_half_blocks() {
+        use crate::gfx::raster::rasterize;
+        use crate::style::Rgb;
+        use crate::term::{BlockGlyphSet, ColorDepth};
+
+        // A smooth photo-like pattern, so the JPEG has typical entropy.
+        let (w, h) = (1000u32, 1000u32);
+        let mut rgb = Vec::with_capacity((w * h * 3) as usize);
+        for y in 0..h {
+            for x in 0..w {
+                let wave = (x as f32 / 37.0).sin() * 60.0 + (y as f32 / 23.0).cos() * 60.0;
+                rgb.extend_from_slice(&[(wave + 128.0) as u8, (x / 4) as u8, (y / 4) as u8]);
+            }
+        }
+        let mut jpeg = Vec::new();
+        JpegEncoder::new_with_quality(&mut jpeg, 85)
+            .write_image(&rgb, w, h, ExtendedColorType::Rgb8)
+            .unwrap();
+        let run = || {
+            let img = decode(&jpeg, 40_000_000).unwrap();
+            let bg = Some(Rgb(30, 30, 46));
+            rasterize(
+                &img,
+                100,
+                40,
+                BlockGlyphSet::Half,
+                bg,
+                ColorDepth::TrueColor,
+            )
+        };
+        let _ = run(); // warm the tables
+        let n = 10;
+        let start = std::time::Instant::now();
+        for _ in 0..n {
+            std::hint::black_box(run());
+        }
+        let per = start.elapsed() / n;
+        eprintln!(
+            "1 MP JPEG ({} bytes) → 100×40 half blocks: {per:?}",
+            jpeg.len()
+        );
+        assert!(per.as_millis() <= 15, "{per:?} per image");
+    }
+
     #[test]
     fn corrupted_bytes_never_panic() {
         // Flip bytes all over valid files; every result must be Ok or Err.

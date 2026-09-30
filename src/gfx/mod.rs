@@ -25,7 +25,8 @@
 //!      every frame;
 //!    * iTerm2: [`iterm::inline_image`] of the original file or a PNG
 //!      ([`png::encode`]);
-//!    * sixel: [`sixel::encode`] of the image [`resize`]d to its cell box.
+//!    * sixel: [`sixel::encode`] of the image composited and scaled to its
+//!      cell box with [`resize_onto`].
 //!
 //! # Redraw rules (plan §7)
 //!
@@ -70,7 +71,7 @@ mod r#gen {
 use std::ops::Range;
 use std::time::Duration;
 
-pub use resample::resize;
+pub use resample::{resize, resize_onto};
 
 use crate::style::Rgb;
 use crate::term::Graphics;
@@ -103,11 +104,13 @@ impl Rgba {
         image.is_valid().then_some(image)
     }
 
-    /// An image filled with one colour, or `None` if its buffer size does
-    /// not fit in memory addresses.
+    /// An image filled with one colour, or `None` if its buffer cannot be
+    /// allocated.
     pub fn filled(width: u32, height: u32, rgba: [u8; 4]) -> Option<Rgba> {
         let len = Rgba::byte_len(width, height)?;
-        let pixels = rgba.iter().copied().cycle().take(len).collect();
+        let mut pixels = Vec::new();
+        pixels.try_reserve_exact(len).ok()?;
+        pixels.extend(rgba.iter().copied().cycle().take(len));
         Some(Rgba {
             width,
             height,
@@ -115,12 +118,14 @@ impl Rgba {
         })
     }
 
-    /// The buffer length of a `width × height` image, if it fits in `usize`.
+    /// The buffer length of a `width × height` image, if a buffer that long
+    /// can exist (at most `isize::MAX` bytes).
     pub fn byte_len(width: u32, height: u32) -> Option<usize> {
-        usize::try_from(width)
+        let len = usize::try_from(width)
             .ok()?
             .checked_mul(usize::try_from(height).ok()?)?
-            .checked_mul(4)
+            .checked_mul(4)?;
+        isize::try_from(len).is_ok().then_some(len)
     }
 
     /// Whether the buffer length matches the size.
@@ -176,7 +181,9 @@ impl Rgba {
 
     /// The image composited onto an opaque `background`, so every pixel is
     /// opaque. Blending happens on sRGB values, as browsers do, so
-    /// anti-aliased edges look the way the image's author intended.
+    /// anti-aliased edges look the way the image's author intended. To
+    /// composite and scale in one go, use [`resize_onto`], which blends
+    /// before it averages.
     pub fn flatten(&self, background: Rgb) -> Rgba {
         if !self.is_valid() {
             return Rgba::default();
@@ -184,12 +191,9 @@ impl Rgba {
         let bg = [background.0, background.1, background.2];
         let mut pixels = self.pixels.clone();
         for [r, g, b, a] in pixels.as_chunks_mut::<4>().0 {
-            let alpha = u32::from(*a);
-            if alpha != 255 {
+            if *a != 255 {
                 for (c, under) in [r, g, b].into_iter().zip(bg) {
-                    let mixed =
-                        (u32::from(*c) * alpha + u32::from(under) * (255 - alpha) + 127) / 255;
-                    *c = u8::try_from(mixed).unwrap_or(u8::MAX);
+                    *c = blend_srgb(*c, under, *a);
                 }
                 *a = 255;
             }
@@ -200,6 +204,14 @@ impl Rgba {
             pixels,
         }
     }
+}
+
+/// `c` over `under` at opacity `alpha`, blended on sRGB values and
+/// rounded to the nearest byte.
+pub(crate) fn blend_srgb(c: u8, under: u8, alpha: u8) -> u8 {
+    let a = u32::from(alpha);
+    let mixed = (u32::from(c) * a + u32::from(under) * (255 - a) + 127) / 255;
+    u8::try_from(mixed).unwrap_or(u8::MAX)
 }
 
 /// How escape sequences reach the terminal.
@@ -342,6 +354,26 @@ mod tests {
         assert_eq!(odd.flatten(Rgb(1, 2, 3)), Rgba::default());
         assert_eq!(Rgba::byte_len(u32::MAX, u32::MAX), None);
         assert_eq!(Rgba::byte_len(3, 2), Some(24));
+        // Fits in `usize` but not in any allocation (over `isize::MAX`).
+        assert_eq!(Rgba::byte_len(u32::MAX, 1 << 30), None);
+        assert_eq!(Rgba::filled(u32::MAX, 1 << 30, [0; 4]), None);
+    }
+
+    #[test]
+    fn srgb_blending() {
+        assert_eq!(blend_srgb(200, 10, 255), 200);
+        assert_eq!(blend_srgb(200, 10, 0), 10);
+        assert_eq!(blend_srgb(255, 0, 128), 128);
+        assert_eq!(blend_srgb(0, 255, 128), 127);
+        for (c, under, a) in [(0, 0, 77), (255, 255, 1), (9, 250, 200)] {
+            let exact =
+                (f64::from(c) * f64::from(a) + f64::from(under) * f64::from(255 - a)) / 255.0;
+            assert_eq!(
+                blend_srgb(c, under, a),
+                exact.round() as u8,
+                "{c} {under} {a}"
+            );
+        }
     }
 
     #[test]

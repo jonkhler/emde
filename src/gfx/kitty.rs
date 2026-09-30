@@ -218,6 +218,11 @@ fn command(keys: &str, passthrough: Passthrough) -> Vec<u8> {
 /// written, so any column range stands on its own (and iTerm2 3.6.9, which
 /// draws nothing without the third one, works). `None` if the row or a
 /// column is not below [`MAX_CELLS`].
+///
+/// The row is `cols.len()` columns wide. Count it that way rather than with
+/// a Unicode width function: U+10EEEE is East Asian Ambiguous, so a
+/// double-width measure of ambiguous characters would count every cell
+/// twice.
 pub fn placeholder_row(id: ImageId, row: u16, cols: Range<u16>) -> Option<String> {
     let row_mark = diacritic(row)?;
     let high = diacritic(u16::from(id.high_byte()))?;
@@ -241,18 +246,27 @@ pub fn placeholder_row(id: ImageId, row: u16, cols: Range<u16>) -> Option<String
 /// (`a=p`), without moving the cursor (`C=1`). `crop` selects source pixel
 /// rows (`y`, `h`) for a partly visible image; see
 /// [`super::size::visible_pixel_rows`]. Re-sending the same `placement` id
-/// replaces the previous placement without flicker; use a non-zero id.
+/// replaces the previous placement without flicker (placement id 0 would
+/// add a new placement every time instead, hence [`NonZeroU32`]).
+///
+/// The result is empty when there is nothing to show: no cells, or an
+/// empty crop. kitty reads `c=0`, `r=0` and `h=0` as "the image's own
+/// size", so such a placement would cover far more than intended; delete
+/// the placement instead ([`delete`]).
 pub fn place(
     id: ImageId,
-    placement: u32,
+    placement: NonZeroU32,
     cols: u16,
     rows: u16,
     crop: Option<Range<u32>>,
     passthrough: Passthrough,
 ) -> Vec<u8> {
+    if cols == 0 || rows == 0 || crop.as_ref().is_some_and(Range::is_empty) {
+        return Vec::new();
+    }
     let mut keys = format!("a=p,i={},p={placement},c={cols},r={rows}", id.get());
     if let Some(crop) = crop {
-        let height = crop.end.saturating_sub(crop.start);
+        let height = crop.end - crop.start;
         let _ = write!(keys, ",y={},h={height}", crop.start);
     }
     keys.push_str(",C=1,q=2");
@@ -266,7 +280,7 @@ pub enum Deletion {
     /// (`d=i`).
     Placements,
     /// One placement of the image (`d=i` with `p=`).
-    Placement(u32),
+    Placement(NonZeroU32),
     /// The placements and the image data (`d=I`), e.g. on exit.
     Image,
 }
@@ -294,6 +308,10 @@ mod tests {
 
     fn id(raw: u32) -> ImageId {
         ImageId::new(raw).unwrap()
+    }
+
+    fn p(raw: u32) -> NonZeroU32 {
+        NonZeroU32::new(raw).unwrap()
     }
 
     /// Split a byte stream of APC commands into their `(keys, payload)`.
@@ -404,7 +422,7 @@ mod tests {
             transmit_placeholder(id(9), &png, 10, 5, Passthrough::Direct)
         );
         for cmd in [
-            place(id(9), 1, 2, 3, None, Passthrough::Tmux),
+            place(id(9), p(1), 2, 3, None, Passthrough::Tmux),
             delete(id(9), Deletion::Image, Passthrough::Tmux),
         ] {
             assert!(cmd.starts_with(b"\x1bPtmux;\x1b\x1b_G"), "{cmd:?}");
@@ -461,19 +479,27 @@ mod tests {
     #[test]
     fn classic_placement_and_deletion() {
         assert_eq!(
-            place(id(5), 1, 40, 10, None, Passthrough::Direct),
+            place(id(5), p(1), 40, 10, None, Passthrough::Direct),
             b"\x1b_Ga=p,i=5,p=1,c=40,r=10,C=1,q=2\x1b\\"
         );
         assert_eq!(
-            place(id(5), 1, 40, 4, Some(96..224), Passthrough::Direct),
+            place(id(5), p(1), 40, 4, Some(96..224), Passthrough::Direct),
             b"\x1b_Ga=p,i=5,p=1,c=40,r=4,y=96,h=128,C=1,q=2\x1b\\"
         );
+        // Nothing to show writes nothing: `c=0`, `r=0` or `h=0` would mean
+        // the image's full size to kitty.
+        assert!(place(id(5), p(1), 0, 4, None, Passthrough::Direct).is_empty());
+        assert!(place(id(5), p(1), 40, 0, None, Passthrough::Direct).is_empty());
+        assert!(place(id(5), p(1), 40, 4, Some(96..96), Passthrough::Direct).is_empty());
+        #[allow(clippy::reversed_empty_ranges)]
+        let backwards = place(id(5), p(1), 40, 4, Some(96..90), Passthrough::Tmux);
+        assert!(backwards.is_empty());
         assert_eq!(
             delete(id(5), Deletion::Placements, Passthrough::Direct),
             b"\x1b_Ga=d,d=i,i=5,q=2\x1b\\"
         );
         assert_eq!(
-            delete(id(5), Deletion::Placement(3), Passthrough::Direct),
+            delete(id(5), Deletion::Placement(p(3)), Passthrough::Direct),
             b"\x1b_Ga=d,d=i,i=5,p=3,q=2\x1b\\"
         );
         assert_eq!(
@@ -504,7 +530,7 @@ mod tests {
         let cmds = [
             transmit_placeholder(id(3), &[1; 5000], 2, 2, Passthrough::Direct),
             transmit(id(3), &[1; 10], Passthrough::Direct),
-            place(id(3), 1, 2, 2, Some(0..4), Passthrough::Direct),
+            place(id(3), p(1), 2, 2, Some(0..4), Passthrough::Direct),
             delete(id(3), Deletion::Placements, Passthrough::Direct),
         ];
         for bytes in cmds {

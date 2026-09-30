@@ -25,7 +25,10 @@
 //! `#{client_termtype}` inside), see [`Identity::has_placeholders`].
 //!
 //! Blocks need colour: without at least 16 colours, images are shown as
-//! alt text only. Pixels need a terminal: piped output gets blocks.
+//! alt text only. Pixels need a terminal: piped output gets blocks. Output
+//! that must carry no escape sequences at all ([`ColorDepth::None`]: a pipe,
+//! `TERM=dumb`) gets alt text whatever the mode, since every graphics path,
+//! placeholders included, is made of escape sequences.
 
 use std::cmp::Ordering;
 
@@ -157,7 +160,10 @@ pub struct Facts {
     pub sixel: bool,
     /// The terminal reported its cell size in pixels.
     pub cell_px_known: bool,
-    /// Present inside tmux.
+    /// Present inside tmux: whenever tmux sits between emde and the
+    /// terminal, also when `$TMUX` is missing (e.g. after `sudo`) but
+    /// XTVERSION answered `tmux …`, since the direct rules would then send
+    /// pixels that tmux misplaces or drops.
     pub tmux: Option<TmuxFacts>,
 }
 
@@ -219,6 +225,10 @@ impl Facts {
 pub fn choose(mode: ImageMode, f: &Facts) -> Decision {
     match mode {
         ImageMode::None => decision(Graphics::None, "alt text: images off".into()),
+        _ if f.color == ColorDepth::None => decision(
+            Graphics::None,
+            "alt text: output takes no escape sequences".into(),
+        ),
         ImageMode::Blocks => blocks(f, "requested"),
         _ if !f.is_tty => blocks(f, "output is not a terminal"),
         ImageMode::Kitty => forced_kitty(f),
@@ -534,6 +544,43 @@ mod tests {
         assert_eq!(d.graphics, Graphics::Blocks);
         assert_eq!(d.reason.detail, "blocks: output is not a terminal");
         assert_eq!(choose(ImageMode::None, &tty()).graphics, Graphics::None);
+    }
+
+    #[test]
+    fn no_escape_sequences_means_alt_text_in_every_mode() {
+        // `TERM=dumb` on a terminal that still answered the probe: even a
+        // forced pixel mode must not write escape sequences.
+        let dumb = Facts {
+            color: ColorDepth::None,
+            identity: Some("kitty(0.40.1)".into()),
+            kitty_ok: true,
+            sixel: true,
+            cell_px_known: true,
+            ..tty()
+        };
+        for mode in [
+            ImageMode::Auto,
+            ImageMode::Kitty,
+            ImageMode::Iterm,
+            ImageMode::Sixel,
+            ImageMode::Blocks,
+            ImageMode::None,
+        ] {
+            let d = choose(mode, &dumb);
+            assert_eq!(d.graphics, Graphics::None, "{mode:?}");
+            assert!(d.reason.detail.starts_with("alt text"), "{d:?}");
+        }
+        // NO_COLOR (mono) still gets pixels: images are content, not
+        // decoration; only blocks need colours.
+        let mono = Facts {
+            color: ColorDepth::Mono,
+            ..dumb
+        };
+        assert_eq!(
+            choose(ImageMode::Auto, &mono).graphics,
+            Graphics::KittyPlaceholders
+        );
+        assert_eq!(choose(ImageMode::Blocks, &mono).graphics, Graphics::None);
     }
 
     #[test]

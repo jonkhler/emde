@@ -13,15 +13,20 @@
 //!   and split where the summed squared error of the two groups is smallest
 //!   (prefix sums make every split O(1)). Each group's colour is its average
 //!   in linear light. The foreground is always the smaller group (on a tie,
-//!   the one holding the top-left sub-pixel), so glyphs never ink more than
-//!   half a cell and a flat cell is a plain space.
+//!   the one holding the top-left sub-pixel), so a fully covered cell never
+//!   inks more than half of it and a flat cell is a plain space. Where the
+//!   image leaves sub-pixels uncovered, the glyph inks exactly the covered
+//!   ones, in their average colour.
 //!
 //! Fully transparent sub-pixels become [`Color::Default`], letting the
-//! terminal's background show. With a known background, partly transparent
-//! pixels are blended onto it (on sRGB values, as browsers do); without one,
-//! sub-pixels at least half opaque keep their own colour and the rest are
-//! transparent. A cell whose two colours end up equal after mapping to the
-//! terminal's palette becomes a space on that background.
+//! terminal's background show. With a known background, every pixel is
+//! blended onto it (on sRGB values, as browsers do) *before* the
+//! linear-light average, so sub-pixels that are only partly covered by the
+//! image mix like light, and only sub-pixels the image does not cover at all
+//! stay transparent. Without a known background, sub-pixels at least half
+//! covered keep the image's own colour and the rest are transparent. A cell
+//! whose two colours end up equal after mapping to the terminal's palette
+//! becomes a space on that background.
 //!
 //! The output is deterministic: the same input always gives the same cells.
 
@@ -29,7 +34,7 @@ use std::collections::HashMap;
 
 use super::Rgba;
 use super::glyphs;
-use super::resample::{self, LinearImage};
+use super::resample::{self, Blend, LinearImage};
 use crate::color;
 use crate::style::{Color, Rgb};
 use crate::term::{BlockGlyphSet, ColorDepth};
@@ -112,8 +117,12 @@ pub fn rasterize(
     }
     let (sx, sy) = glyphs::grid(glyphs);
     let (sx, sy) = (usize::from(sx), usize::from(sy));
-    let grid = resample::resample(img, usize::from(cols) * sx, usize::from(rows) * sy);
-    let subs = composite(&grid, background);
+    let blend = match background {
+        Some(Rgb(r, g, b)) => Blend::Onto([r, g, b]),
+        None => Blend::Premultiplied,
+    };
+    let grid = resample::resample(img, usize::from(cols) * sx, usize::from(rows) * sy, blend);
+    let subs = composite(&grid, background.is_some());
     let mut palette = Palette::new(depth);
     let width = grid.width;
     let mut cell_subs = Vec::with_capacity(sx * sy);
@@ -157,35 +166,30 @@ impl Sub {
     }
 }
 
-/// Alpha below which a sub-pixel counts as fully transparent when the
+/// Coverage below which a sub-pixel counts as fully transparent when the
 /// background is known (it would round to alpha 0 in 8 bits).
 const CLEAR_ALPHA: f32 = 0.5 / 255.0;
 
-/// Alpha from which a sub-pixel counts as opaque when the background is
+/// Coverage from which a sub-pixel counts as opaque when the background is
 /// unknown.
 const OPAQUE_ALPHA: f32 = 0.5;
 
-/// Composite the resampled grid: blend onto the known background, or
-/// threshold alpha when the background is unknown.
-fn composite(grid: &LinearImage, background: Option<Rgb>) -> Vec<Sub> {
+/// Turn the resampled grid into sub-pixels. With a known background the
+/// grid was composited onto it before averaging ([`Blend::Onto`]), so any
+/// covered sub-pixel is solid; otherwise the grid is premultiplied and
+/// coverage is thresholded.
+fn composite(grid: &LinearImage, composited: bool) -> Vec<Sub> {
     grid.pixels
         .iter()
         .map(|&px| {
-            let a = px[3];
-            match background {
-                Some(bg) if a >= CLEAR_ALPHA => {
-                    let [r, g, b, _] = LinearImage::to_srgba(px);
-                    let blend = |c: u8, under: u8| {
-                        let v = f32::from(c) * a + f32::from(under) * (1.0 - a);
-                        (v.clamp(0.0, 255.0) + 0.5) as u8
-                    };
-                    Sub::solid([blend(r, bg.0), blend(g, bg.1), blend(b, bg.2)])
-                }
-                None if a >= OPAQUE_ALPHA => {
-                    let [r, g, b, _] = LinearImage::to_srgba(px);
-                    Sub::solid([r, g, b])
-                }
-                _ => Sub::Clear,
+            let [r, g, b, a] = px;
+            if composited && a >= CLEAR_ALPHA {
+                Sub::solid([r, g, b].map(resample::linear_to_srgb))
+            } else if !composited && a >= OPAQUE_ALPHA {
+                let [r, g, b, _] = LinearImage::to_srgba(px);
+                Sub::solid([r, g, b])
+            } else {
+                Sub::Clear
             }
         })
         .collect()
@@ -573,6 +577,54 @@ mod tests {
     }
 
     #[test]
+    fn partial_coverage_mixes_as_light_on_a_known_background() {
+        // The top sub-pixel averages a white and a clear pixel on black:
+        // half the light of white, sRGB 188. Blending the averaged alpha on
+        // sRGB values would give 128 and dim every antialiased edge.
+        let black = Some(Rgb(0, 0, 0));
+        let img = image(2, 2, &[WHITE, CLEAR, WHITE, WHITE]);
+        let r = rasterize(
+            &img,
+            1,
+            1,
+            BlockGlyphSet::Half,
+            black,
+            ColorDepth::TrueColor,
+        );
+        let grey = Color::Rgb(Rgb(188, 188, 188));
+        assert_eq!(r.cells[0][0], cell('▀', grey, rgb(WHITE)));
+        // Sub-pixels the image does not cover still show the terminal's own
+        // background.
+        let img = image(2, 2, &[CLEAR, CLEAR, WHITE, CLEAR]);
+        let r = rasterize(
+            &img,
+            1,
+            1,
+            BlockGlyphSet::Half,
+            black,
+            ColorDepth::TrueColor,
+        );
+        assert_eq!(r.cells[0][0], cell('▄', grey, Color::Default));
+        // The same in a two-colour split: covered sub-pixels are composited,
+        // the uncovered one stays transparent.
+        let img = image(
+            4,
+            2,
+            &[WHITE, CLEAR, CLEAR, CLEAR, WHITE, WHITE, WHITE, WHITE],
+        );
+        let r = rasterize(
+            &img,
+            1,
+            1,
+            BlockGlyphSet::Quadrant,
+            black,
+            ColorDepth::TrueColor,
+        );
+        assert_eq!(r.cells[0][0].ch, '▙');
+        assert_eq!(r.cells[0][0].bg, Color::Default);
+    }
+
+    #[test]
     fn gradient_downscale() {
         // A horizontal black → white gradient, 64 px wide, as 4 half-block
         // cells: brightness must increase monotonically across cells.
@@ -763,8 +815,8 @@ mod tests {
         }
     }
 
-    /// 1 MP → 100×40 cells: half blocks within the plan's 15 ms budget
-    /// (release build); the other glyph sets are reported for comparison.
+    /// 1 MP → 100×40 cells within the plan's 15 ms budget (release build).
+    /// The budget is set for half blocks; the finer sets meet it too.
     #[test]
     #[ignore = "timing; run with --release -- --ignored --nocapture"]
     #[allow(clippy::print_stderr)]
@@ -788,9 +840,7 @@ mod tests {
             }
             let per = start.elapsed() / n;
             eprintln!("rasterize 1 MP → 100×40 {name}: {per:?}");
-            if set == BlockGlyphSet::Half {
-                assert!(per.as_millis() <= 15, "{per:?} per raster");
-            }
+            assert!(per.as_millis() <= 15, "{name}: {per:?} per raster");
         }
     }
 }

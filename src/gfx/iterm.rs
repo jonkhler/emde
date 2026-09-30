@@ -45,26 +45,32 @@ pub fn inline_image(data: &[u8], cols: u16, rows: u16, opts: Options) -> Option<
         "inline=1;size={};width={cols};height={rows};preserveAspectRatio=1",
         data.len()
     );
-    let payload = b64::encode(data);
-    let mut seq = Vec::with_capacity(args.len() + payload.len() + 16);
-    seq.extend_from_slice(b"\x1b]1337;File=");
+    // The single sequence's length, known before encoding anything.
+    let single = FILE.len() + args.len() + 1 + b64::encoded_len(data.len()) + 1;
+    let len = match opts.passthrough {
+        Passthrough::Direct => single,
+        // The wrapper, plus the OSC's one ESC doubled (base64 has none).
+        Passthrough::Tmux => single + tmux::wrapped_len(b"") + 1,
+    };
+    if len > MAX_SEQUENCE {
+        return opts
+            .multipart
+            .then(|| multipart(&args, &b64::encode(data), opts.passthrough));
+    }
+    let mut seq = Vec::with_capacity(single);
+    seq.extend_from_slice(FILE);
     seq.extend_from_slice(args.as_bytes());
     seq.push(b':');
-    seq.extend_from_slice(&payload);
+    b64::encode_into(data, &mut seq);
     seq.push(0x07);
-    let len = match opts.passthrough {
-        Passthrough::Direct => seq.len(),
-        Passthrough::Tmux => tmux::wrapped_len(&seq),
-    };
-    if len <= MAX_SEQUENCE {
-        return Some(match opts.passthrough {
-            Passthrough::Direct => seq,
-            Passthrough::Tmux => tmux::wrap(&seq),
-        });
-    }
-    opts.multipart
-        .then(|| multipart(&args, &payload, opts.passthrough))
+    Some(match opts.passthrough {
+        Passthrough::Direct => seq,
+        Passthrough::Tmux => tmux::wrap(&seq),
+    })
 }
+
+/// Opening of the single-sequence form.
+const FILE: &[u8] = b"\x1b]1337;File=";
 
 /// The multipart form: a header, the base64 in [`PART_BYTES`] parts, and an
 /// end marker, each its own sequence.
@@ -115,6 +121,27 @@ mod tests {
             b"\x1bPtmux;\x1b\x1b]1337;File=inline=1;size=6;width=1;height=1;\
               preserveAspectRatio=1:R0lGODlh\x07\x1b\\"
         );
+    }
+
+    #[test]
+    fn predicted_length_is_exact() {
+        // The size check runs before encoding; it must agree with the bytes.
+        for n in [0usize, 1, 2, 3, 100, 4097] {
+            for passthrough in [Passthrough::Direct, Passthrough::Tmux] {
+                let opts = Options {
+                    passthrough,
+                    ..DIRECT
+                };
+                let out = inline_image(&vec![7u8; n], 3, 2, opts).unwrap();
+                let args = format!("inline=1;size={n};width=3;height=2;preserveAspectRatio=1");
+                let single = FILE.len() + args.len() + 2 + b64::encoded_len(n);
+                let want = match passthrough {
+                    Passthrough::Direct => single,
+                    Passthrough::Tmux => single + tmux::wrapped_len(b"") + 1,
+                };
+                assert_eq!(out.len(), want, "{n} {passthrough:?}");
+            }
+        }
     }
 
     /// The largest payload whose single sequence still fits, for `opts`.

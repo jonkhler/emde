@@ -2,8 +2,10 @@
 //! kitty or iTerm2 graphics, and for tmux's own sixel support.
 //!
 //! Sixel draws pixels 1:1 at the cursor, so the image must already be
-//! scaled to its cell box (see [`super::resize`]). It is composited onto the
-//! background first: tmux 3.4 drops transparency. The palette has 128
+//! scaled to its cell box and composited onto the background (tmux 3.4
+//! drops transparency): [`super::resize_onto`] does both, blending each
+//! pixel before it averages. Crop that image with [`crop_rows`] and
+//! [`Rgba::crop_rows`] for partly visible figures. The palette has 128
 //! colours with light dithering; output that exceeds the byte cap (tmux
 //! 3.4 discards strings over 1 MiB) is retried with 64 colours, and if it
 //! still does not fit the image is shown as blocks.
@@ -19,6 +21,12 @@ use crate::style::Rgb;
 /// The largest sixel sequence tmux 3.4 accepts.
 pub const TMUX_MAX_BYTES: usize = 1 << 20;
 
+/// The most sixel images to keep on screen inside tmux (plan §7). tmux 3.4
+/// keeps only 10 sixel images for the whole server and silently frees the
+/// oldest; staying at 6 leaves room for other panes. Show further images as
+/// blocks.
+pub const TMUX_MAX_VISIBLE: usize = 6;
+
 /// Palette sizes tried in turn until the output fits.
 const PALETTES: [u16; 2] = [128, 64];
 
@@ -29,9 +37,11 @@ const DIFFUSION: f32 = 0.5;
 /// Height of one sixel band in pixels.
 pub const BAND: u32 = 6;
 
-/// Encode `img` as a sixel sequence (`ESC P … ESC \`), composited onto
-/// `background`. `None` if it cannot be encoded within `max_bytes` even
-/// with the smaller palette, or the image is empty or invalid.
+/// Encode `img` as a sixel sequence (`ESC P … ESC \`). Pixels that are not
+/// opaque are composited onto `background` first (for an image from
+/// [`super::resize_onto`] there are none). `None` if it cannot be encoded
+/// within `max_bytes` even with the smaller palette, or the image is empty
+/// or invalid.
 pub fn encode(img: &Rgba, background: Rgb, max_bytes: usize) -> Option<Vec<u8>> {
     if img.is_empty() {
         return None;
@@ -178,6 +188,21 @@ mod tests {
         assert_eq!(crop_rows(100, 20, 3..3), None);
         assert_eq!(crop_rows(100, 4, 0..1), None, "less than one band");
         assert_eq!(crop_rows(100, 0, 0..4), None);
+    }
+
+    #[test]
+    fn composite_scale_crop_encode() {
+        // The pipeline a pager runs: composite and scale once (cached),
+        // then crop and encode the visible rows.
+        let mut img = gradient(64, 128);
+        for a in img.pixels.iter_mut().skip(3).step_by(4) {
+            *a = 100;
+        }
+        let scaled = crate::gfx::resize_onto(&img, 32, 64, Rgb(0, 0, 0));
+        assert!(!scaled.has_alpha());
+        let rows = crop_rows(scaled.height, 16, 1..3).unwrap();
+        let out = encode(&scaled.crop_rows(rows), Rgb(0, 0, 0), TMUX_MAX_BYTES).unwrap();
+        assert_eq!(raster_size(&out), (32, 30));
     }
 
     #[test]
