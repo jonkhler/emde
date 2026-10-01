@@ -1,0 +1,56 @@
+# nord: Nord's arctic blues; the light variant uses emde's light colours, as Nord has none.
+# Source: Nord by Sven Greb (https://github.com/nordtheme/nord), MIT licence.
+#
+# Nord's Polar Night, Snow Storm, Frost and Aurora colours under emde's role
+# names. Nord has no light palette of its own, so the light variant keeps
+# emde's (Catppuccin Latte), with the colours that are too faint for text on
+# a light page darkened to WCAG contrast 4.5:1 (3:1 for `muted`).
+#
+# Colours marked "darkened" or "lightened" are the upstream colour with only
+# its OKLab lightness moved, so that text drawn in it has a WCAG contrast of
+# at least 4.5:1 against `base` and `surface` (3:1 for decorations).
+
+name = "nord"
+inherits = "emde"
+code = { dark = "Nord", light = "OneHalfLight" }
+
+[palette.dark]
+text = "#eceff4"     # nord6
+subtext = "#d8dee9"  # nord4
+muted = "#727c9a"    # nord3 #4c566a, lightened
+surface = "#3b4252"  # nord1
+base = "#2e3440"     # nord0
+blue = "#81a1c1"     # nord9
+accent = "#8ac2d2"   # nord8 #88c0d0, lightened
+mauve = "#b690af"    # nord15 #b48ead, lightened
+teal = "#8fbcbb"     # nord7
+green = "#a3be8c"    # nord14
+yellow = "#ebcb8b"   # nord13
+peach = "#e89f83"    # nord12 #d08770, lightened
+red = "#e1827b"      # nord11 #bf616a, lightened
+pink = "#b48ead"     # nord15
+sky = "#88c0d0"      # nord8
+
+# Catppuccin Latte colours (emde's light palette), darkened for contrast;
+# the others are emde's own.
+[palette.light]
+muted = "#88899b"    # overlay1 #8c8fa1
+blue = "#1a62f1"     # blue #1e66f5
+accent = "#0e56e5"   # blue #1e66f5
+teal = "#007a82"     # teal #179299
+green = "#1e7e00"    # green #40a02b
+yellow = "#975200"   # yellow #df8e1d
+peach = "#c02600"    # peach #fe640b
+
+# The smallest headings: italic `subtext` (`muted` is for decorations), and
+# not bold, unlike h5.
+[style.h6]
+fg = "subtext"
+bold = false
+italic = true
+
+[dark.style.table_zebra]
+bg = "#3b4252/50%"
+
+[light.style.table_zebra]
+bg = "#ccd0da/50%"

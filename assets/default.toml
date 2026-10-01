@@ -14,7 +14,9 @@
 #   5. dedicated flags such as --theme and --width
 
 [theme]
-# emde, ansi, mono, a theme in ~/.config/emde/themes/NAME.toml, or a path.
+# A built-in theme (emde, ansi, mono, dracula, gruvbox, nord, solarized,
+# tokyonight; `emde --list-themes`), a theme in
+# ~/.config/emde/themes/NAME.toml, or a path.
 # Unless you choose one, emde uses `ansi` on 16-colour terminals and `mono`
 # under NO_COLOR.
 name = "emde"

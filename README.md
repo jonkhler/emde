@@ -48,8 +48,9 @@ emde README.md
   fetched when you ask (`--remote-images`).
 - **Themes.** The default theme has Catppuccin colours for dark and light
   backgrounds and picks the variant from the terminal's background colour.
-  `ansi` follows your terminal's colour scheme and `mono` uses text
-  attributes only. Every element can be restyled in a TOML file, and
+  `dracula`, `gruvbox`, `nord`, `solarized` and `tokyonight` bring those
+  colour schemes (with readable contrast), `ansi` follows your terminal's
+  colour scheme and `mono` uses text attributes only. Every element can be restyled in a TOML file, and
   24-bit colours are converted for 256- and 16-colour terminals.
 - **Clickable links** (OSC 8) where the terminal supports them, numbered
   references (`docs[1]`) where it does not.
@@ -292,6 +293,23 @@ emde reads `~/.config/emde/config.toml` (the same on Linux and macOS), or
 file exists. `--config PATH` or `$EMDE_CONFIG` name another file, and
 `--no-config` reads none. Themes go in `~/.config/emde/themes/NAME.toml`.
 
+The built-in themes are `emde` (the default), `dracula`, `gruvbox`, `nord`,
+`solarized`, `tokyonight`, `ansi` and `mono`; each has a dark and a light
+variant, chosen from the terminal's background colour. `emde --list-themes`
+lists them with your own:
+
+```sh
+emde --theme gruvbox notes.md                  # one run
+emde --theme nord --background light notes.md  # and the light variant
+```
+
+or, in the config file:
+
+```toml
+[theme]
+name = "solarized"
+```
+
 Everything is optional: a key you leave out keeps its default. For example,
 an accent colour of your own, and level-1 headings as bold accent text with
 a curly underline:
@@ -444,7 +462,12 @@ emde bundles syntax definitions and code themes from
 used with [syntect](https://github.com/trishume/syntect). They come under
 MIT, BSD and Apache licences whose notices `emde --credits` prints. The
 default theme uses the [Catppuccin](https://github.com/catppuccin/palette)
-palettes (MIT).
+palettes (MIT). The other built-in themes use the palettes of
+[Dracula](https://draculatheme.com) (MIT),
+[gruvbox](https://github.com/morhetz/gruvbox) (MIT),
+[Nord](https://github.com/nordtheme/nord) (MIT),
+[Solarized](https://github.com/altercation/solarized) (MIT) and
+[Tokyo Night](https://github.com/folke/tokyonight.nvim) (Apache-2.0).
 
 emde is released under the [MIT licence](LICENSE). Every dependency is
 under a permissive licence, checked by `cargo deny`.

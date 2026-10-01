@@ -74,7 +74,7 @@ pub struct Cli {
     #[arg(long, value_enum, value_name = "WHERE", help_heading = "Geometry")]
     pub align: Option<AlignArg>,
 
-    /// Theme: emde, ansi, mono, a name from ~/.config/emde/themes, or a path.
+    /// Theme: a built-in one (`--list-themes`), a name from ~/.config/emde/themes, or a path.
     #[arg(short = 't', long, value_name = "NAME|PATH", help_heading = "Theming")]
     pub theme: Option<String>,
 

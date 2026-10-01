@@ -1,0 +1,60 @@
+# gruvbox: gruvbox's warm retro colours, dark and light.
+# Source: gruvbox by Pavel Pertsev (https://github.com/morhetz/gruvbox), MIT licence.
+#
+# The dark variant uses gruvbox's dark background with its bright colours,
+# the light variant the light background with its faded colours.
+#
+# Colours marked "darkened" or "lightened" are the upstream colour with only
+# its OKLab lightness moved, so that text drawn in it has a WCAG contrast of
+# at least 4.5:1 against `base` and `surface` (3:1 for decorations).
+
+name = "gruvbox"
+inherits = "emde"
+code = { dark = "gruvbox-dark", light = "gruvbox-light" }
+
+[palette.dark]
+text = "#ebdbb2"     # fg1
+subtext = "#bdae93"  # fg3
+muted = "#928374"    # gray
+surface = "#3c3836"  # bg1
+base = "#282828"     # bg0
+blue = "#83a598"     # bright blue
+accent = "#85a79a"   # bright blue, lightened
+mauve = "#d3869b"    # bright purple
+teal = "#8ec07c"     # bright aqua
+green = "#b8bb26"    # bright green
+yellow = "#fabd2f"   # bright yellow
+peach = "#fe8019"    # bright orange
+red = "#ff4f3a"      # bright red #fb4934, lightened
+pink = "#d3869b"     # bright purple
+sky = "#83a598"      # bright blue
+
+[palette.light]
+text = "#3c3836"     # fg1
+subtext = "#665c54"  # fg3
+muted = "#928374"    # gray
+surface = "#ebdbb2"  # bg1
+base = "#fbf1c7"     # bg0
+blue = "#076678"     # faded blue
+accent = "#076678"   # faded blue
+mauve = "#8f3f71"    # faded purple
+teal = "#407956"     # faded aqua #427b58, darkened
+green = "#757000"    # faded green #79740e, darkened
+yellow = "#855a00"   # faded yellow #b57614, darkened
+peach = "#af3a03"    # faded orange
+red = "#9d0006"      # faded red
+pink = "#8f3f71"     # faded purple
+sky = "#076678"      # faded blue
+
+# The smallest headings: italic `subtext` (`muted` is for decorations), and
+# not bold, unlike h5.
+[style.h6]
+fg = "subtext"
+bold = false
+italic = true
+
+[dark.style.table_zebra]
+bg = "#3c3836/50%"
+
+[light.style.table_zebra]
+bg = "#ebdbb2/50%"

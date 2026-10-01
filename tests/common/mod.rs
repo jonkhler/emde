@@ -50,15 +50,18 @@ pub fn parse(md: &str) -> Document {
 
 /// Lay out with the frozen test theme, the fake highlighter and no images.
 pub fn lay_out(doc: &Document, width: u16, caps: &Caps, opts: &RenderOptions) -> Layout {
-    layout(
-        doc,
-        width,
-        &Theme::test(),
-        caps,
-        opts,
-        &FakeHighlighter,
-        &NoImages,
-    )
+    lay_out_themed(doc, width, &Theme::test(), caps, opts)
+}
+
+/// Lay out with `theme`, the fake highlighter and no images.
+pub fn lay_out_themed(
+    doc: &Document,
+    width: u16,
+    theme: &Theme,
+    caps: &Caps,
+    opts: &RenderOptions,
+) -> Layout {
+    layout(doc, width, theme, caps, opts, &FakeHighlighter, &NoImages)
 }
 
 /// A highlighter with fixed colours for a few languages: keywords, strings,

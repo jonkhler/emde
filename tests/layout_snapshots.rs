@@ -6,12 +6,14 @@
 //! * `<name>.styled` — a truecolor terminal with OSC 8 and styled
 //!   underlines, as style tags ([`emde::render::debug_text`]).
 //!
-//! `kitchen-sink` is also rendered for 256 and 16 colours. Each width
-//! starts with a ruler exactly that wide.
+//! `kitchen-sink` is also rendered for 256 and 16 colours, and in both
+//! variants of a built-in palette theme. Each width starts with a ruler
+//! exactly that wide.
 
 mod common;
 
-use common::{FIXTURES, WIDTHS, fixture, lay_out, parse};
+use common::{FIXTURES, WIDTHS, fixture, lay_out, lay_out_themed, parse};
+use emde::config::{LoadOptions, build_theme, load};
 use emde::options::RenderOptions;
 use emde::render::{debug_text, plain_text};
 use emde::term::{Caps, ColorDepth};
@@ -108,4 +110,34 @@ fn kitchen_sink_at_lower_depths() {
             styled("kitchen-sink", &caps, &[80])
         );
     }
+}
+
+/// A built-in theme that inherits `emde` with a palette of its own, in both
+/// variants: the colours come from its palette, the structure from `emde`.
+#[test]
+fn kitchen_sink_in_gruvbox() {
+    let doc = parse(&fixture("kitchen-sink"));
+    let caps = Caps::full();
+    let mut out = String::new();
+    for background in ["dark", "light"] {
+        let loaded = load(&LoadOptions {
+            no_config: true,
+            set: vec![
+                "theme.name=gruvbox".into(),
+                format!("theme.background={background}"),
+            ],
+            ..LoadOptions::default()
+        });
+        assert!(loaded.diagnostics.is_empty(), "{:?}", loaded.diagnostics);
+        let theme = build_theme(&loaded.config, None, caps.color);
+        assert_eq!(theme.name, "gruvbox");
+        out.push_str(&format!(
+            "━━ {background}, code theme {}\n",
+            theme.code_theme
+        ));
+        out.push_str(&ruler(80));
+        let layout = lay_out_themed(&doc, 80, &theme, &caps, &RenderOptions::default());
+        out.push_str(&debug_text(&layout, caps.color, caps.styled_underline));
+    }
+    insta::assert_snapshot!("kitchen-sink.gruvbox", out);
 }

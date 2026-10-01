@@ -301,7 +301,9 @@ fn theme_list_names_builtins_and_files() {
     let dir = std::env::temp_dir().join(format!("emde-app-themes-{}", std::process::id()));
     let themes = dir.join("emde").join("themes");
     std::fs::create_dir_all(&themes).unwrap();
-    std::fs::write(themes.join("nord.toml"), "name = \"nord\"\n").unwrap();
+    std::fs::write(themes.join("arctic.toml"), "name = \"arctic\"\n").unwrap();
+    // A file named like a built-in theme is shadowed by it.
+    std::fs::write(themes.join("nord.toml"), "name = \"mine\"\n").unwrap();
     let load = LoadOptions {
         env: ConfigEnv {
             xdg_config_home: Some(dir.clone()),
@@ -319,9 +321,12 @@ fn theme_list_names_builtins_and_files() {
     assert!(
         lines
             .iter()
-            .any(|l| l.starts_with("nord") && l.ends_with("nord.toml")),
+            .any(|l| l.starts_with("arctic") && l.ends_with("arctic.toml")),
         "{text}"
     );
+    let nord: Vec<&&str> = lines.iter().filter(|l| l.starts_with("nord")).collect();
+    assert_eq!(nord.len(), 1, "{text}");
+    assert!(nord[0].ends_with("built-in"), "{text}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

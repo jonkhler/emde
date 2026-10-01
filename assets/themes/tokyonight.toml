@@ -1,0 +1,65 @@
+# tokyonight: Tokyo Night: the Night style (dark) and the Day style (light).
+# Source: tokyonight.nvim by Folke Lemaitre (https://github.com/folke/tokyonight.nvim), Apache-2.0 licence.
+#
+# The dark variant is the Night style, the light one the Day style. Code
+# blocks use Catppuccin, whose syntax colours are the closest of the
+# built-in code themes (`emde --list-code-themes`).
+#
+# Colours marked "darkened" or "lightened" are the upstream colour with only
+# its OKLab lightness moved, so that text drawn in it has a WCAG contrast of
+# at least 4.5:1 against `base` and `surface` (3:1 for decorations).
+
+name = "tokyonight"
+inherits = "emde"
+code = { dark = "Catppuccin Mocha", light = "Catppuccin Latte" }
+
+[palette.dark]
+text = "#c0caf5"     # fg
+subtext = "#a9b1d6"  # fg_dark
+muted = "#737aa2"    # dark5
+surface = "#292e42"  # bg_highlight
+base = "#1a1b26"     # bg
+blue = "#7aa2f7"     # blue
+accent = "#7aa2f7"   # blue
+mauve = "#bb9af7"    # magenta
+teal = "#73daca"     # green1
+green = "#9ece6a"    # green
+yellow = "#e0af68"   # yellow
+peach = "#ff9e64"    # orange
+red = "#f7768e"      # red
+pink = "#9d7cd8"     # purple
+sky = "#7dcfff"      # cyan
+
+[palette.light]
+text = "#3154b3"     # fg #3760bf, darkened
+subtext = "#495a80"  # fg_dark #6172b0, darkened
+muted = "#68709a"    # dark5
+surface = "#c4c8da"  # bg_highlight
+base = "#e1e2e7"     # bg
+blue = "#105fcb"     # blue #2e7de9, darkened
+accent = "#0255c1"   # blue #2e7de9, darkened
+mauve = "#8936d3"    # magenta #9854f1, darkened
+teal = "#007261"     # teal #118c74, darkened
+green = "#506d31"    # green #587539, darkened
+yellow = "#725628"   # yellow #8c6c3e, darkened
+peach = "#8d4800"    # orange #b15c00, darkened
+red = "#b6333b"      # red1 #c64343, darkened
+pink = "#7847bd"     # purple
+sky = "#007197"      # cyan
+
+# The smallest headings: italic `subtext` (`muted` is for decorations), and
+# not bold, unlike h5.
+[style.h6]
+fg = "subtext"
+bold = false
+italic = true
+
+# A lighter highlight than emde's, so the text on it stays readable.
+[light.style.mark]
+bg = "yellow/10%"
+
+[dark.style.table_zebra]
+bg = "#292e42/50%"
+
+[light.style.table_zebra]
+bg = "#c4c8da/50%"
