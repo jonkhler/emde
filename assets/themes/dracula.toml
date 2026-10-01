@@ -1,0 +1,63 @@
+# dracula: Dracula (dark) and its light variant, Alucard.
+# Source: Dracula (https://draculatheme.com/spec, https://github.com/dracula/dracula-theme), MIT licence.
+#
+# Dracula has no blue: blue roles (headings, links, notes) are purple. It
+# has one text colour, so `subtext` (quotes, footnotes, the status bar) is
+# its comment colour lightened. Alucard has no code theme of its own; code
+# uses Coldark-Cold, the most legible light code theme on its page.
+#
+# Colours marked "darkened" or "lightened" are the upstream colour with only
+# its OKLab lightness moved, so that text drawn in it has a WCAG contrast of
+# at least 4.5:1 against `base` and `surface` (3:1 for decorations).
+
+name = "dracula"
+inherits = "emde"
+code = { dark = "Dracula", light = "Coldark-Cold" }
+
+[palette.dark]
+text = "#f8f8f2"     # foreground
+subtext = "#82a5e2"  # comment #6272a4, lightened
+muted = "#6f81be"    # comment #6272a4, lightened
+surface = "#44475a"  # selection
+base = "#282a36"     # background
+blue = "#bd93f9"     # purple
+accent = "#bd93f9"   # purple
+mauve = "#ff79c6"    # pink
+teal = "#8be9fd"     # cyan
+green = "#50fa7b"    # green
+yellow = "#f1fa8c"   # yellow
+peach = "#ffb86c"    # orange
+red = "#ff7168"      # red #ff5555, lightened
+pink = "#ff79c6"     # pink
+sky = "#8be9fd"      # cyan
+
+# Alucard.
+[palette.light]
+text = "#1f1f1f"     # foreground
+subtext = "#6c664b"  # comment
+muted = "#6c664b"    # comment
+surface = "#cfcfde"  # selection
+base = "#fffbeb"     # background
+blue = "#644ac9"     # purple
+accent = "#644ac9"   # purple
+mauve = "#a3144d"    # pink
+teal = "#036a96"     # cyan
+green = "#14710a"    # green
+yellow = "#7c6600"   # yellow #846e15, darkened
+peach = "#a34d14"    # orange
+red = "#c53424"      # red #cb3a2a, darkened
+pink = "#a3144d"     # pink
+sky = "#036a96"      # cyan
+
+# The smallest headings: italic `subtext` (`muted` is for decorations), and
+# not bold, unlike h5.
+[style.h6]
+fg = "subtext"
+bold = false
+italic = true
+
+[dark.style.table_zebra]
+bg = "#44475a/50%"
+
+[light.style.table_zebra]
+bg = "#cfcfde/50%"

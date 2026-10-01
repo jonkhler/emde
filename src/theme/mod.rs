@@ -12,7 +12,8 @@
 //! * `spec`: the `[palette]`, `[style.<element>]` and `code` tables;
 //! * `chain`: lookup and `inherits` chains;
 //! * `build`: resolving theme data into a [`Theme`] for one variant;
-//! * [`builtin`]: the embedded `emde`, `ansi` and `mono` themes.
+//! * [`builtin`]: the embedded themes: `emde`, `ansi` and `mono`, and the
+//!   palettes built on `emde` (`nord`, `gruvbox`, …).
 
 pub(crate) mod build;
 pub mod builtin;
@@ -502,8 +503,178 @@ mod tests {
                 .collect()
         };
         let emde = names(&builtin_theme("emde"));
-        assert_eq!(names(&builtin_theme("ansi")), emde);
-        assert_eq!(names(&builtin_theme("mono")), emde);
+        for name in builtin::names() {
+            assert_eq!(names(&builtin_theme(name)), emde, "{name}");
+        }
+    }
+
+    /// The built-in themes that inherit `emde` and bring a palette of their own.
+    fn palette_themes() -> impl Iterator<Item = &'static str> {
+        builtin::names().filter(|n| ![builtin::DEFAULT, builtin::ANSI, builtin::MONO].contains(n))
+    }
+
+    #[test]
+    fn palette_themes_resolve_for_both_variants() {
+        let emde = builtin_theme("emde");
+        assert_eq!(palette_themes().count(), 5);
+        for name in palette_themes() {
+            let loaded = builtin_theme(name);
+            for variant in Variant::ALL {
+                for bg in [None, Some(Rgb(0, 0, 0)), Some(Rgb(255, 255, 255))] {
+                    let (t, problems) = build::build(&loaded.name, &loaded.patch, variant, bg);
+                    assert!(problems.is_empty(), "{name} {variant:?}: {problems:?}");
+                    assert_eq!(t.name, name);
+                    assert_eq!(t.variant, variant);
+                    assert_eq!(
+                        t.palette.len(),
+                        MOCHA.len(),
+                        "{name}: every role is a colour"
+                    );
+                    assert!(t.gradient(Element::H1).is_some(), "{name}: the h1 bar");
+                    // The palette's own page colour, unless the terminal's is known.
+                    let own = t.color("base");
+                    assert_eq!(Some(t.base), bg.or(own), "{name} {variant:?}");
+                    if cfg!(feature = "highlight") {
+                        assert!(
+                            crate::highlight::list_code_themes().contains(&t.code_theme.as_str()),
+                            "{name} {variant:?}: unknown code theme `{}`",
+                            t.code_theme
+                        );
+                    }
+                }
+            }
+            // Its dark palette is its own; light keeps emde's only where it
+            // has none upstream (nord), and then only some colours change.
+            let (dark, _) = build::build(name, &loaded.patch, Variant::Dark, None);
+            let (emde_dark, _) = build::build("emde", &emde.patch, Variant::Dark, None);
+            assert_ne!(dark.base, emde_dark.base, "{name}");
+            let (light, _) = build::build(name, &loaded.patch, Variant::Light, None);
+            let (emde_light, _) = build::build("emde", &emde.patch, Variant::Light, None);
+            assert_eq!(
+                light.base == emde_light.base,
+                name == "nord",
+                "{name}: light falls back to emde's palette only for nord"
+            );
+            assert_ne!(dark.code_theme, light.code_theme, "{name}");
+        }
+    }
+
+    /// Decorations need WCAG contrast 3:1; everything else is read as text
+    /// and needs 4.5:1.
+    const DECORATIONS: &[Element] = &[
+        Element::HeadingRule,
+        Element::Strike,
+        Element::LinkUrl,
+        Element::LinkRef,
+        Element::CodeLabel,
+        Element::CodeGutter,
+        Element::QuoteBar,
+        Element::ListMarker,
+        Element::TaskDone,
+        Element::TaskTodo,
+        Element::TableBorder,
+        Element::Rule,
+        Element::FrontMatterKey,
+        Element::Html,
+        Element::ImageAlt,
+        Element::ImageFrame,
+        Element::Muted,
+    ];
+
+    /// Every element whose colours are less than the WCAG minimum apart, on
+    /// the variant's own page colour: `(element, contrast, minimum)`. The
+    /// terminal's default foreground is taken to be the palette's `text`,
+    /// a gradient bar is checked at both ends, code labels and gutters on
+    /// the code panel, and alerts (title and text) on their tint.
+    fn contrast_failures(t: &Theme) -> Vec<(&'static str, f32, f32)> {
+        let text = t.color("text").unwrap_or(t.base);
+        let rgb = |c: Color, default: Rgb| match c {
+            Color::Rgb(c) => Some(c),
+            Color::Default => Some(default),
+            Color::Ansi(_) | Color::Indexed(_) => None,
+        };
+        let mut out = Vec::new();
+        for &e in Element::ALL {
+            let s = t.style(e);
+            let min = if DECORATIONS.contains(&e) { 3.0 } else { 4.5 };
+            let Some(fg) = rgb(s.fg, text) else { continue };
+            let mut backgrounds: Vec<Rgb> = rgb(s.bg, t.base).into_iter().collect();
+            if let Some((_, Color::Rgb(to))) = t.gradient(e) {
+                backgrounds.push(to);
+            }
+            if matches!(e, Element::CodeLabel | Element::CodeGutter) {
+                backgrounds.extend(rgb(t.style(Element::CodeBlock).bg, t.base));
+            }
+            for bg in backgrounds {
+                let ratio = crate::color::contrast(fg, bg);
+                if ratio < min {
+                    out.push((e.name(), ratio, min));
+                }
+            }
+        }
+        // Alerts are drawn on a tint of their colour (layout's ALERT_TINT).
+        for e in [
+            Element::AlertNote,
+            Element::AlertTip,
+            Element::AlertImportant,
+            Element::AlertWarning,
+            Element::AlertCaution,
+        ] {
+            let Some(fg) = rgb(t.style(e).fg, text) else {
+                continue;
+            };
+            let tint = mix_oklab(t.base, fg, crate::layout::blocks::ALERT_TINT);
+            for (what, c) in [(e.name(), fg), ("text on an alert", text)] {
+                let ratio = crate::color::contrast(c, tint);
+                if ratio < 4.5 {
+                    out.push((what, ratio, 4.5));
+                }
+            }
+        }
+        out
+    }
+
+    #[test]
+    fn palette_themes_have_readable_contrast() {
+        for name in palette_themes() {
+            let loaded = builtin_theme(name);
+            for variant in Variant::ALL {
+                // The palette's page colour, and the terminal's when it is
+                // pure black or white.
+                let terminal = match variant {
+                    Variant::Dark => Rgb(0, 0, 0),
+                    Variant::Light => Rgb(255, 255, 255),
+                };
+                for bg in [None, Some(terminal)] {
+                    let (t, _) = build::build(name, &loaded.patch, variant, bg);
+                    let failures = contrast_failures(&t);
+                    assert!(
+                        failures.is_empty(),
+                        "{name} {variant:?} on {bg:?}: {failures:?}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn the_contrast_check_finds_faint_colours() {
+        // Catppuccin Latte's yellow and peach are too light for text on its
+        // own page colour, which is why the light palettes darken theirs.
+        let latte = Theme::fallback(Variant::Light, None);
+        let failures = contrast_failures(&latte);
+        assert!(failures.iter().any(|f| f.0 == "code"), "{failures:?}");
+        assert!(failures.iter().any(|f| f.0 == "alert_warning"));
+        assert!(failures.iter().any(|f| f.0 == "alert_tip"), "on its tint");
+        let mocha = Theme::fallback(Variant::Dark, None);
+        let failures = contrast_failures(&mocha);
+        // Mocha's overlay0 is faint on the code panel, and as a heading.
+        assert!(
+            failures
+                .iter()
+                .all(|f| ["h6", "code_label", "code_gutter"].contains(&f.0)),
+            "{failures:?}"
+        );
     }
 
     #[test]

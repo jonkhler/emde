@@ -148,7 +148,8 @@ draws it (`—`: as its parent).
 `--theme NAME`, or `name` in `[theme]`, picks a theme: a built-in one, a
 file `NAME.toml` in a themes directory (`$XDG_CONFIG_HOME/emde/themes/` when
 `XDG_CONFIG_HOME` is set, then `~/.config/emde/themes/`), or the path of a
-theme file. `emde --list-themes` lists them. Unless you choose a theme, emde
+theme file (a file named like a built-in theme, such as `nord.toml`, is
+only used by its path). `emde --list-themes` lists them. Unless you choose a theme, emde
 uses `ansi` on 16-colour terminals and `mono` when colours are off
 (`NO_COLOR`).
 
@@ -158,11 +159,24 @@ Each theme has a dark and a light variant. `background` in `[theme]`
 chooses one; `auto` asks the terminal for its background colour (or reads
 `COLORFGBG`) and uses dark when it cannot tell.
 
+`dracula`, `gruvbox`, `nord`, `solarized` and `tokyonight` are the
+`emde` theme with the palette of the well-known colour scheme (each file in
+`assets/themes/` names its source and licence) and a matching code theme.
+Where a colour of the original is too faint to read as text, only its
+lightness is changed, so that text has a WCAG contrast of at least 4.5:1
+against the theme's page colour (3:1 for decorations such as rules and
+borders); the files mark those colours. Nord has no light palette, so the
+light variant of `nord` uses emde's light colours (made darker where they
+are too faint). The themes do not paint the page: body text keeps the
+terminal's own colours, so they look best with the matching terminal
+colour scheme.
+
 ### The palette
 
 The colours of the default theme, by name, in its two variants. All the
 built-in themes have these names (in `ansi` they are ANSI colours, in
-`mono` the terminal's own), so styles that use them work with every theme.
+`mono` the terminal's own, in the others the colours of their palette), so
+styles that use them work with every theme.
 
 {{palette}}
 

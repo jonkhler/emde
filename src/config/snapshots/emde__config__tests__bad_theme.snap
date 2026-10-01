@@ -2,4 +2,4 @@
 source: src/config/tests.rs
 expression: setup.report(&loaded)
 ---
-error: ~/.config/emde/config.toml:2: unknown theme `nrod` (available: emde, ansi, mono); using the built-in `emde` theme
+error: ~/.config/emde/config.toml:2: unknown theme `nrod` (did you mean `nord`?); using the built-in `emde` theme

@@ -488,7 +488,7 @@ fn config_seeds(root: &Path, docs: &Docs) -> Result<Vec<Vec<u8>>, String> {
             "heading.markers=[\"# \", \"## \", \"\", \"\", \"\", \"\"]",
         ]),
     ];
-    for theme in ["emde", "ansi", "mono"] {
+    for theme in emde::theme::builtin::names() {
         seeds.push(parts(&[
             use_a,
             &read(&format!("assets/themes/{theme}.toml"))?,

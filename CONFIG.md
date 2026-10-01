@@ -66,7 +66,7 @@ Every key, with its default and the option that also sets it, if any.
 
 | Key | Default | Description |
 |---|---|---|
-| `name` | `"emde"` | emde, ansi, mono, a theme in \~/.config/emde/themes/NAME.toml, or a path. Unless you choose one, emde uses `ansi` on 16-colour terminals and `mono` under NO\_COLOR. Flag: `--theme`, `-t`. |
+| `name` | `"emde"` | A built-in theme (emde, ansi, mono, dracula, gruvbox, nord, solarized, tokyonight; `emde --list-themes`), a theme in \~/.config/emde/themes/NAME.toml, or a path. Unless you choose one, emde uses `ansi` on 16-colour terminals and `mono` under NO\_COLOR. Flag: `--theme`, `-t`. |
 | `background` | `"auto"` | Theme variant: auto (from the terminal's background colour; dark when it cannot be detected), dark or light. Flag: `--background`. |
 | `code` | `"auto"` | Code theme: auto (the theme's choice), a built-in name such as "OneHalfDark", "Nord" or "ansi" (see `emde --list-code-themes`), or the path of a .tmTheme file. Flag: `--code-theme`. |
 
@@ -145,7 +145,7 @@ nu = "bash"
 | `max_height` | `"60%"` | Maximum figure height: rows (e.g. 20) or a share of the screen ("60%"). |
 | `remote` | `false` | Download remote images (with curl). Flag: `--remote-images` (true). |
 | `tmux_passthrough` | `"if-enabled"` | Inside tmux: if-enabled (use passthrough only when allow-passthrough is on; emde never changes tmux options) or never. |
-| `max_pixels` | `40_000_000` | Images with more pixels are not decoded. |
+| `max_pixels` | `40_000_000` | Images with more pixels are not decoded (SVG images, which are drawn at the size of their figure, are drawn at most this large). |
 
 ### `[markdown]`
 
@@ -382,7 +382,8 @@ draws it (`—`: as its parent).
 `--theme NAME`, or `name` in `[theme]`, picks a theme: a built-in one, a
 file `NAME.toml` in a themes directory (`$XDG_CONFIG_HOME/emde/themes/` when
 `XDG_CONFIG_HOME` is set, then `~/.config/emde/themes/`), or the path of a
-theme file. `emde --list-themes` lists them. Unless you choose a theme, emde
+theme file (a file named like a built-in theme, such as `nord.toml`, is
+only used by its path). `emde --list-themes` lists them. Unless you choose a theme, emde
 uses `ansi` on 16-colour terminals and `mono` when colours are off
 (`NO_COLOR`).
 
@@ -391,16 +392,34 @@ uses `ansi` on 16-colour terminals and `mono` when colours are off
 | `emde` | The default theme. |
 | `ansi` | The 16 terminal colours only. |
 | `mono` | Text attributes only, no colours. |
+| `dracula` | Dracula (dark) and its light variant, Alucard. |
+| `gruvbox` | Gruvbox's warm retro colours, dark and light. |
+| `nord` | Nord's arctic blues; the light variant uses emde's light colours, as Nord has none. |
+| `solarized` | Solarized dark and light, with its accents adjusted for contrast. |
+| `tokyonight` | Tokyo Night: the Night style (dark) and the Day style (light). |
 
 Each theme has a dark and a light variant. `background` in `[theme]`
 chooses one; `auto` asks the terminal for its background colour (or reads
 `COLORFGBG`) and uses dark when it cannot tell.
 
+`dracula`, `gruvbox`, `nord`, `solarized` and `tokyonight` are the
+`emde` theme with the palette of the well-known colour scheme (each file in
+`assets/themes/` names its source and licence) and a matching code theme.
+Where a colour of the original is too faint to read as text, only its
+lightness is changed, so that text has a WCAG contrast of at least 4.5:1
+against the theme's page colour (3:1 for decorations such as rules and
+borders); the files mark those colours. Nord has no light palette, so the
+light variant of `nord` uses emde's light colours (made darker where they
+are too faint). The themes do not paint the page: body text keeps the
+terminal's own colours, so they look best with the matching terminal
+colour scheme.
+
 ### The palette
 
 The colours of the default theme, by name, in its two variants. All the
 built-in themes have these names (in `ansi` they are ANSI colours, in
-`mono` the terminal's own), so styles that use them work with every theme.
+`mono` the terminal's own, in the others the colours of their palette), so
+styles that use them work with every theme.
 
 | Name | Dark | Light |
 |---|---|---|

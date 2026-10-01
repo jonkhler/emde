@@ -1,0 +1,66 @@
+# solarized: Solarized dark and light, with its accents adjusted for contrast.
+# Source: Solarized by Ethan Schoonover (https://github.com/altercation/solarized), MIT licence.
+#
+# Dark: base03 page, base1 and base0 text, base01 decorations. Light: base3
+# page, base01 and base00 text, base1 decorations. Solarized's accents are
+# the same in both and deliberately soft, so most of them are lightened (on
+# dark) or darkened (on light) to be readable as text.
+#
+# Colours marked "darkened" or "lightened" are the upstream colour with only
+# its OKLab lightness moved, so that text drawn in it has a WCAG contrast of
+# at least 4.5:1 against `base` and `surface` (3:1 for decorations).
+
+name = "solarized"
+inherits = "emde"
+code = { dark = "Solarized (dark)", light = "Solarized (light)" }
+
+[palette.dark]
+text = "#93a1a1"     # base1
+subtext = "#8ea2a4"  # base0 #839496, lightened
+muted = "#6c8289"    # base01 #586e75, lightened
+surface = "#073642"  # base02
+base = "#002b36"     # base03
+blue = "#3a9fe6"     # blue #268bd2, lightened
+accent = "#40a5ec"   # blue #268bd2, lightened
+mauve = "#7e95e8"    # violet #6c71c4, lightened
+teal = "#2aa198"     # cyan
+green = "#8aa316"    # green #859900, lightened
+yellow = "#c3971d"   # yellow #b58900, lightened
+peach = "#f97944"    # orange #cb4b16, lightened
+red = "#ff665f"      # red #dc322f, lightened
+pink = "#d33682"     # magenta
+sky = "#2aa198"      # cyan
+
+[palette.light]
+text = "#546a71"     # base01 #586e75, darkened
+subtext = "#546a72"  # base00 #657b83, darkened
+muted = "#7c8484"    # base1 #93a1a1, darkened
+surface = "#eee8d5"  # base2
+base = "#fdf6e3"     # base3
+blue = "#006bb2"     # blue #268bd2, darkened
+accent = "#0069b0"   # blue #268bd2, darkened
+mauve = "#5d61a6"    # violet #6c71c4, darkened
+teal = "#007e7f"     # cyan #2aa198, darkened
+green = "#686d00"    # green #859900, darkened
+yellow = "#806300"   # yellow #b58900, darkened
+peach = "#b93900"    # orange #cb4b16, darkened
+red = "#ca1f1d"      # red #dc322f, darkened
+pink = "#d33682"     # magenta
+sky = "#2aa198"      # cyan
+
+# The smallest headings: italic `subtext` (`muted` is for decorations), and
+# not bold, unlike h5.
+[style.h6]
+fg = "subtext"
+bold = false
+italic = true
+
+# A lighter highlight than emde's, so the text on it stays readable.
+[style.mark]
+bg = "yellow/10%"
+
+[dark.style.table_zebra]
+bg = "#073642/50%"
+
+[light.style.table_zebra]
+bg = "#eee8d5/50%"

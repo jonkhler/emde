@@ -417,25 +417,82 @@ fn the_gallery_in_blocks() {
         .unwrap();
     assert!(o.status.success());
     let shown = text(&o).replace('\x1b', "\\e");
-    insta::assert_snapshot!(shown);
+    // With the `svg` feature the logo is drawn; without it, its alt text.
+    if cfg!(feature = "svg") {
+        insta::assert_snapshot!("the_gallery_in_blocks_with_svg", shown);
+    } else {
+        insta::assert_snapshot!(shown);
+    }
     let err = String::from_utf8_lossy(&o.stderr);
     let problems: Vec<&str> = err.lines().collect();
-    assert_eq!(problems.len(), 6, "{err}");
+    let svg = cfg!(feature = "svg");
+    assert_eq!(problems.len(), if svg { 5 } else { 6 }, "{err}");
     for what in [
         "missing.png:",
         "empty.png: not a PNG, JPEG, GIF or WebP image",
         "not-an-image.png: not a PNG",
-        "logo.svg: SVG images are not supported",
         "remote.png: remote images are off",
         "truncated.png: cannot decode image",
     ] {
         assert!(err.contains(what), "{what}: {err}");
+    }
+    assert_eq!(
+        err.contains("logo.svg: SVG images are not supported"),
+        !svg,
+        "{err}"
+    );
+}
+
+/// The red 16×16 logo through every graphics path: drawn, never its alt
+/// text.
+#[cfg(feature = "svg")]
+#[test]
+fn svg_figures_through_every_path() {
+    let logo = "![An SVG logo](logo.svg)";
+    let shows = |args: &[&str], env: &[(&str, &str)]| {
+        let mut all = vec!["--color=truecolor", "-w", "40"];
+        all.extend_from_slice(args);
+        let o = show(logo, &all, env);
+        assert!(o.status.success());
+        let out = text(&o);
+        assert!(!unstyled(&out).contains("▣"), "{args:?}: {out:?}");
+        out
+    };
+    // 16×16 px at 8×16 px cells: 2×1 cells of solid red (spaces on red);
+    // sixel draws it at 12×12, the box in whole bands of six rows.
+    let blocks = shows(&["--images", "blocks"], &[]);
+    assert!(blocks.contains("\x1b[48;2;255;0;0m  \x1b[0m"), "{blocks:?}");
+    let ghostty = [
+        ("TERM_PROGRAM", "ghostty"),
+        ("TERM_PROGRAM_VERSION", "1.3.1"),
+    ];
+    let kitty = shows(&["--images", "kitty"], &ghostty);
+    let commands = kitty_commands(&kitty);
+    assert_eq!(commands.len(), 1, "{kitty:?}");
+    assert!(commands[0].contains(",f=100,t=d,c=2,r=1,q=2,m=0;iVBORw0KGgo"));
+    let iterm = shows(&["--images", "iterm"], &[("TERM_PROGRAM", "iTerm.app")]);
+    assert!(
+        iterm.contains("\x1b]1337;File=inline=1;size=") && iterm.contains("width=2;height=1;"),
+        "{iterm:?}"
+    );
+    if cfg!(feature = "sixel") {
+        let sixel = shows(&["--images", "sixel"], &[]);
+        assert!(
+            sixel.contains("\x1bP") && sixel.contains("q\"1;1;12;12"),
+            "{sixel:?}"
+        );
     }
 }
 
 /// Serve `body` for `/ok.png` and 404 for anything else, on a local port,
 /// for `requests` requests.
 fn serve(body: Vec<u8>, requests: usize) -> u16 {
+    serve_at("/ok.png", body, requests)
+}
+
+/// Serve `body` for `path` and 404 for anything else, on a local port, for
+/// `requests` requests.
+fn serve_at(path: &'static str, body: Vec<u8>, requests: usize) -> u16 {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let port = listener.local_addr().unwrap().port();
     std::thread::spawn(move || {
@@ -444,7 +501,7 @@ fn serve(body: Vec<u8>, requests: usize) -> u16 {
             let mut request = [0u8; 2048];
             let n = stream.read(&mut request).unwrap_or(0);
             let head = String::from_utf8_lossy(&request[..n]).into_owned();
-            let response = if head.starts_with("GET /ok.png ") {
+            let response = if head.starts_with(&format!("GET {path} ")) {
                 let mut r = format!(
                     "HTTP/1.1 200 OK\r\nContent-Type: image/png\r\nContent-Length: {}\r\n\
                      Connection: close\r\n\r\n",
@@ -523,6 +580,57 @@ fn remote_images_are_fetched_with_curl_when_allowed() {
         .unwrap();
     assert!(unstyled(&text(&o)).contains("▣ remote"));
     let _ = std::fs::remove_file(&doc);
+}
+
+/// A badge served like shields.io's: an SVG at a URL without `.svg`, found
+/// by its content, and only with `--remote-images`.
+#[cfg(feature = "svg")]
+#[test]
+fn remote_svg_badges_are_recognised_by_their_content() {
+    if Command::new("curl")
+        .arg("--version")
+        .stdout(Stdio::null())
+        .status()
+        .is_err()
+    {
+        return;
+    }
+    let badge = b"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"16\">\
+                  <rect width=\"32\" height=\"16\" fill=\"#00ff00\"/></svg>"
+        .to_vec();
+    let port = serve_at("/badge/build-passing-green", badge, 1);
+    let doc = scratch_file("badge");
+    std::fs::write(
+        &doc,
+        format!("![build](http://127.0.0.1:{port}/badge/build-passing-green)\n"),
+    )
+    .unwrap();
+    let mut cmd = emde(&[]);
+    for var in ["http_proxy", "HTTP_PROXY", "all_proxy", "ALL_PROXY"] {
+        cmd.env_remove(var);
+    }
+    let o = cmd
+        .env("NO_PROXY", "127.0.0.1")
+        .env("no_proxy", "127.0.0.1")
+        .args([
+            "--color=truecolor",
+            "--images",
+            "blocks",
+            "--remote-images",
+            "-v",
+        ])
+        .arg(&doc)
+        .output()
+        .unwrap();
+    let _ = std::fs::remove_file(&doc);
+    let out = text(&o);
+    // 32×16 px: 4×1 cells of solid green.
+    assert!(out.contains("\x1b[48;2;0;255;0m    \x1b[0m"), "{out:?}");
+    assert!(
+        o.stderr.is_empty(),
+        "{}",
+        String::from_utf8_lossy(&o.stderr)
+    );
 }
 
 /// The screen after `bytes` as a terminal shows them: `rows` × 40 cells,

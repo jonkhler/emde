@@ -312,7 +312,16 @@ fn doctor_report_without_a_terminal() {
 fn lists_and_credits() {
     let o = run(emde().arg("--list-themes"));
     let themes = stdout(&o);
-    for name in ["emde", "ansi", "mono"] {
+    for name in [
+        "emde",
+        "ansi",
+        "mono",
+        "dracula",
+        "gruvbox",
+        "nord",
+        "solarized",
+        "tokyonight",
+    ] {
         assert!(
             themes
                 .lines()

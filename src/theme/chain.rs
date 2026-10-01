@@ -1,6 +1,6 @@
 //! Finding themes and following `inherits`.
 //!
-//! A theme reference is a built-in name (`emde`, `ansi`, `mono`), the name
+//! A theme reference is a built-in name (`emde`, `nord`, …), the name
 //! of `NAME.toml` in a themes directory, or a path (relative paths are
 //! relative to the file that names them). A theme's `inherits` chain may be
 //! at most [`MAX_DEPTH`] themes long and must not loop; the files are merged
@@ -341,7 +341,12 @@ mod tests {
             let t = load_ok(name, &env);
             assert_eq!(t.name, name);
             assert!(!t.fell_back);
-            assert_eq!(t.docs.len(), 1);
+            // `emde`, `ansi` and `mono` stand alone; the others inherit `emde`.
+            let standalone = [builtin::DEFAULT, builtin::ANSI, builtin::MONO].contains(&name);
+            assert_eq!(t.docs.len(), if standalone { 1 } else { 2 }, "{name}");
+            for doc in &t.docs[1..] {
+                assert_eq!(doc.value.name.as_deref(), Some(builtin::DEFAULT), "{name}");
+            }
         }
     }
 
@@ -362,8 +367,9 @@ mod tests {
         assert_eq!(t.name, "plain", "file stem when the theme has no name");
 
         let listed = list_themes(&env);
-        assert_eq!(listed.len(), 4);
-        assert_eq!(listed[3].name, "nordish");
+        let builtins = builtin::names().count();
+        assert_eq!(listed.len(), builtins + 1);
+        assert_eq!(listed[builtins].name, "nordish");
         assert!(listed[0].path.is_none());
     }
 
@@ -478,7 +484,13 @@ mod tests {
         let mut diags = Vec::new();
         let t = load("zzzzzz", None, "x", &env, &mut diags);
         assert_eq!(t.name, "emde");
-        assert!(diags[0].message.contains("available: emde, ansi, mono"));
+        assert!(
+            diags[0]
+                .message
+                .contains("available: emde, ansi, mono, dracula, gruvbox, nord"),
+            "{}",
+            diags[0].message
+        );
 
         let mut diags = Vec::new();
         let t = load("./missing.toml", Some(d.path()), "x", &env, &mut diags);

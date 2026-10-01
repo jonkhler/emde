@@ -1,0 +1,266 @@
+---
+source: tests/layout_snapshots.rs
+expression: out
+---
+━━ dark, code theme gruvbox-dark
+━━ width 80 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ⟦fg=#928374⟧┌──────────────────────────┐⟦/⟧
+  ⟦fg=#928374⟧│⟦/⟧ ⟦fg=#928374⟧title⟦/⟧   Kitchen Sink     ⟦fg=#928374⟧│⟦/⟧
+  ⟦fg=#928374⟧│⟦/⟧ ⟦fg=#928374⟧author⟦/⟧  emde             ⟦fg=#928374⟧│⟦/⟧
+  ⟦fg=#928374⟧│⟦/⟧ ⟦fg=#928374⟧tags⟦/⟧    [markdown, test] ⟦fg=#928374⟧│⟦/⟧
+  ⟦fg=#928374⟧└──────────────────────────┘⟦/⟧
+
+  ⟦grad #85a79a→#d3869b 0..76⟧⟦fg=#282828 bold⟧ Kitchen Sink⟦/⟧⟦/grad⟧
+
+  A paragraph with ⟦italic⟧emphasis⟦/⟧, ⟦bold⟧strong⟦/⟧, ⟦bold italic⟧both⟦/⟧, ⟦fg=#928374 strike⟧strikethrough⟦/⟧, ⟦fg=#fe8019 bg=#373737⟧ inline code ⟦/⟧, a
+  ⟦fg=#85a79a ul link 0⟧link⟦/⟧, an autolink ⟦fg=#85a79a ul link 1⟧https://example.org/path⟦/⟧, and a bare URL ⟦fg=#85a79a ul link 4⟧https://www.rust-⟦/⟧
+  ⟦fg=#85a79a ul link 4⟧lang.org/learn⟦/⟧. Hard break at the end of this line
+  and a backslash hard break
+  then more text. Footnote reference⟦fg=#85a79a link 2⟧¹⟦/⟧ and another⟦fg=#85a79a link 3⟧²⟦/⟧.
+
+  ⟦fg=#d3869b bold⟧Headings⟦/⟧
+  ⟦fg=#d3869b bold⟧━━━━━━━━⟦/⟧⟦fg=#d3869b⟧──⟦/⟧⟦fg=#ce8398⟧──⟦/⟧⟦fg=#ca8195⟧──⟦/⟧⟦fg=#c57e92⟧──⟦/⟧⟦fg=#c07c8e⟧──⟦/⟧⟦fg=#bc7a8b⟧──⟦/⟧⟦fg=#b77788⟧──⟦/⟧⟦fg=#b27585⟧──⟦/⟧⟦fg=#ae7282⟧──⟦/⟧⟦fg=#a9707f⟧──⟦/⟧⟦fg=#a56d7c⟧──⟦/⟧⟦fg=#a06b79⟧──⟦/⟧⟦fg=#9c6876⟧──⟦/⟧⟦fg=#976673⟧──⟦/⟧⟦fg=#936470⟧──⟦/⟧⟦fg=#8f616d⟧──⟦/⟧⟦fg=#8a5f6a⟧──⟦/⟧⟦fg=#865c67⟧──⟦/⟧⟦fg=#815a64⟧──⟦/⟧⟦fg=#7d5861⟧──⟦/⟧⟦fg=#79555e⟧──⟦/⟧⟦fg=#74535b⟧──⟦/⟧⟦fg=#705159⟧──⟦/⟧⟦fg=#6c4e56⟧──⟦/⟧⟦fg=#684c53⟧──⟦/⟧⟦fg=#644a50⟧──⟦/⟧⟦fg=#5f474d⟧──⟦/⟧⟦fg=#5b454a⟧──⟦/⟧⟦fg=#574348⟧──⟦/⟧⟦fg=#534045⟧──⟦/⟧⟦fg=#4f3e42⟧──⟦/⟧⟦fg=#4b3c40⟧──⟦/⟧⟦fg=#473a3d⟧──⟦/⟧⟦fg=#43373a⟧──⟦/⟧
+
+  ⟦fg=#8ec07c bold⟧▎ Third level⟦/⟧
+
+  ⟦bold⟧Fourth level⟦/⟧
+
+  ⟦fg=#bdae93 bold italic⟧Fifth level⟦/⟧
+
+  ⟦fg=#bdae93 italic⟧Sixth level⟦/⟧
+
+  ⟦fg=#d3869b bold⟧Lists⟦/⟧
+  ⟦fg=#d3869b bold⟧━━━━━⟦/⟧⟦fg=#d3869b⟧──⟦/⟧⟦fg=#ce8498⟧──⟦/⟧⟦fg=#ca8195⟧──⟦/⟧⟦fg=#c57f92⟧──⟦/⟧⟦fg=#c17c8f⟧──⟦/⟧⟦fg=#bc7a8c⟧──⟦/⟧⟦fg=#b87789⟧──⟦/⟧⟦fg=#b37586⟧──⟦/⟧⟦fg=#af7383⟧──⟦/⟧⟦fg=#ab7080⟧──⟦/⟧⟦fg=#a66e7d⟧──⟦/⟧⟦fg=#a26c7a⟧──⟦/⟧⟦fg=#9d6977⟧──⟦/⟧⟦fg=#996774⟧──⟦/⟧⟦fg=#956571⟧──⟦/⟧⟦fg=#90626e⟧──⟦/⟧⟦fg=#8c606b⟧──⟦/⟧⟦fg=#885e69⟧──⟦/⟧⟦fg=#845b66⟧──⟦/⟧⟦fg=#7f5963⟧──⟦/⟧⟦fg=#7b5760⟧──⟦/⟧⟦fg=#77545d⟧──⟦/⟧⟦fg=#73525a⟧──⟦/⟧⟦fg=#6f5058⟧──⟦/⟧⟦fg=#6b4e55⟧──⟦/⟧⟦fg=#674b52⟧──⟦/⟧⟦fg=#63494f⟧──⟦/⟧⟦fg=#5e474d⟧──⟦/⟧⟦fg=#5a454a⟧──⟦/⟧⟦fg=#574247⟧──⟦/⟧⟦fg=#534045⟧──⟦/⟧⟦fg=#4f3e42⟧──⟦/⟧⟦fg=#4b3c3f⟧──⟦/⟧⟦fg=#473a3d⟧──⟦/⟧⟦fg=#43373a⟧──⟦/⟧⟦fg=#3f3537⟧─⟦/⟧
+
+  ⟦fg=#85a79a⟧•⟦/⟧ Tight item one
+  ⟦fg=#85a79a⟧•⟦/⟧ Tight item with ⟦bold⟧bold⟦/⟧
+    ⟦fg=#85a79a⟧◦⟦/⟧ Nested item
+      ⟦fg=#85a79a⟧‣⟦/⟧ Deeper item
+  ⟦fg=#928374⟧☐⟦/⟧ Unchecked task
+  ⟦fg=#b8bb26⟧☒⟦/⟧ ⟦dim⟧Checked task⟦/⟧
+
+  ⟦fg=#85a79a⟧1.⟦/⟧ First
+
+  ⟦fg=#85a79a⟧2.⟦/⟧ Second
+
+     With a second paragraph.
+
+  ⟦fg=#85a79a⟧3.⟦/⟧ Third
+
+  ⟦fg=#d3869b bold⟧Quotes and alerts⟦/⟧
+  ⟦fg=#d3869b bold⟧━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#d3869b⟧──⟦/⟧⟦fg=#cd8397⟧──⟦/⟧⟦fg=#c88094⟧──⟦/⟧⟦fg=#c37d90⟧──⟦/⟧⟦fg=#bd7a8c⟧──⟦/⟧⟦fg=#b87789⟧──⟦/⟧⟦fg=#b27485⟧──⟦/⟧⟦fg=#ad7281⟧──⟦/⟧⟦fg=#a86f7e⟧──⟦/⟧⟦fg=#a26c7a⟧──⟦/⟧⟦fg=#9d6977⟧──⟦/⟧⟦fg=#986673⟧──⟦/⟧⟦fg=#936370⟧──⟦/⟧⟦fg=#8d616c⟧──⟦/⟧⟦fg=#885e69⟧──⟦/⟧⟦fg=#835b65⟧──⟦/⟧⟦fg=#7e5862⟧──⟦/⟧⟦fg=#79555f⟧──⟦/⟧⟦fg=#74535b⟧──⟦/⟧⟦fg=#6f5058⟧──⟦/⟧⟦fg=#6a4d54⟧──⟦/⟧⟦fg=#654a51⟧──⟦/⟧⟦fg=#60484e⟧──⟦/⟧⟦fg=#5b454b⟧──⟦/⟧⟦fg=#574247⟧──⟦/⟧⟦fg=#524044⟧──⟦/⟧⟦fg=#4d3d41⟧──⟦/⟧⟦fg=#483a3e⟧──⟦/⟧⟦fg=#44383b⟧──⟦/⟧⟦fg=#3f3537⟧─⟦/⟧
+
+  ⟦fg=#928374⟧▎⟦/⟧ ⟦fg=#bdae93⟧A plain quote with a ⟦/⟧⟦fg=#85a79a ul link 5⟧reference link⟦/⟧⟦fg=#bdae93⟧.⟦/⟧
+  ⟦fg=#928374⟧▎⟦/⟧
+  ⟦fg=#928374⟧▎⟦/⟧ ⟦fg=#928374⟧▎⟦/⟧ ⟦fg=#bdae93⟧A nested quote.⟦/⟧
+
+  ⟦fg=#83a598 bg=#303332⟧▎⟦/⟧⟦bg=#303332⟧ ⟦/⟧⟦fg=#83a598 bg=#303332 bold⟧ⓘ Note⟦/⟧⟦bg=#303332⟧                                                                    ⟦/⟧
+  ⟦fg=#83a598 bg=#303332⟧▎⟦/⟧⟦bg=#303332⟧ Notes carry an icon and a title.                                          ⟦/⟧
+
+  ⟦fg=#b8bb26 bg=#34352c⟧▎⟦/⟧⟦bg=#34352c⟧ ⟦/⟧⟦fg=#b8bb26 bg=#34352c bold⟧✦ Tip⟦/⟧⟦bg=#34352c⟧                                                                     ⟦/⟧
+  ⟦fg=#b8bb26 bg=#34352c⟧▎⟦/⟧⟦bg=#34352c⟧ A tip.                                                                    ⟦/⟧
+
+  ⟦fg=#d3869b bg=#373132⟧▎⟦/⟧⟦bg=#373132⟧ ⟦/⟧⟦fg=#d3869b bg=#373132 bold⟧❖ Important⟦/⟧⟦bg=#373132⟧                                                               ⟦/⟧
+  ⟦fg=#d3869b bg=#373132⟧▎⟦/⟧⟦bg=#373132⟧ Something important.                                                      ⟦/⟧
+
+  ⟦fg=#fabd2f bg=#3a352d⟧▎⟦/⟧⟦bg=#3a352d⟧ ⟦/⟧⟦fg=#fabd2f bg=#3a352d bold⟧▲ Warning⟦/⟧⟦bg=#3a352d⟧                                                                 ⟦/⟧
+  ⟦fg=#fabd2f bg=#3a352d⟧▎⟦/⟧⟦bg=#3a352d⟧ Careful: this is a ⟦/⟧⟦bg=#3a352d italic⟧warning⟦/⟧⟦bg=#3a352d⟧.                                               ⟦/⟧
+
+  ⟦fg=#ff6954 bg=#3c2f2d⟧▎⟦/⟧⟦bg=#3c2f2d⟧ ⟦/⟧⟦fg=#ff6954 bg=#3c2f2d bold⟧⊘ Caution⟦/⟧⟦bg=#3c2f2d⟧                                                                 ⟦/⟧
+  ⟦fg=#ff6954 bg=#3c2f2d⟧▎⟦/⟧⟦bg=#3c2f2d⟧ Mind the risks.                                                           ⟦/⟧
+
+  ⟦fg=#d3869b bold⟧Code⟦/⟧
+  ⟦fg=#d3869b bold⟧━━━━⟦/⟧⟦fg=#d3869b⟧──⟦/⟧⟦fg=#cf8498⟧──⟦/⟧⟦fg=#ca8195⟧──⟦/⟧⟦fg=#c67f92⟧──⟦/⟧⟦fg=#c17d8f⟧──⟦/⟧⟦fg=#bd7a8c⟧──⟦/⟧⟦fg=#b97889⟧──⟦/⟧⟦fg=#b47686⟧──⟦/⟧⟦fg=#b07383⟧──⟦/⟧⟦fg=#ac7181⟧──⟦/⟧⟦fg=#a76f7e⟧──⟦/⟧⟦fg=#a36c7b⟧──⟦/⟧⟦fg=#9f6a78⟧──⟦/⟧⟦fg=#9b6875⟧──⟦/⟧⟦fg=#966572⟧──⟦/⟧⟦fg=#92636f⟧──⟦/⟧⟦fg=#8e616d⟧──⟦/⟧⟦fg=#8a5f6a⟧──⟦/⟧⟦fg=#865c67⟧──⟦/⟧⟦fg=#825a64⟧──⟦/⟧⟦fg=#7e5862⟧──⟦/⟧⟦fg=#79565f⟧──⟦/⟧⟦fg=#75535c⟧──⟦/⟧⟦fg=#715159⟧──⟦/⟧⟦fg=#6d4f57⟧──⟦/⟧⟦fg=#694d54⟧──⟦/⟧⟦fg=#654b51⟧──⟦/⟧⟦fg=#62484f⟧──⟦/⟧⟦fg=#5e464c⟧──⟦/⟧⟦fg=#5a4449⟧──⟦/⟧⟦fg=#564247⟧──⟦/⟧⟦fg=#524044⟧──⟦/⟧⟦fg=#4e3e42⟧──⟦/⟧⟦fg=#4a3c3f⟧──⟦/⟧⟦fg=#47393d⟧──⟦/⟧⟦fg=#43373a⟧──⟦/⟧
+
+  ⟦bg=#373737⟧ ⟦/⟧⟦fg=#928374 bg=#373737⟧hello.rs⟦/⟧⟦bg=#373737⟧                                                              ⟦/⟧⟦fg=#928374 bg=#373737⟧rust⟦/⟧⟦bg=#373737⟧ ⟦/⟧
+  ⟦bg=#373737⟧ ⟦/⟧⟦fg=#cba6f7 bg=#373737 bold⟧fn⟦/⟧⟦bg=#373737⟧ main() {                                                                ⟦/⟧
+  ⟦bg=#373737⟧     println!(⟦/⟧⟦fg=#a6e3a1 bg=#373737⟧"Hello, {}!"⟦/⟧⟦bg=#373737⟧, ⟦/⟧⟦fg=#a6e3a1 bg=#373737⟧"world"⟦/⟧⟦bg=#373737⟧);                                       ⟦/⟧
+  ⟦bg=#373737⟧ }                                                                          ⟦/⟧
+  ⟦bg=#373737⟧                                                                            ⟦/⟧
+
+  ⟦bg=#373737⟧                                                                            ⟦/⟧
+  ⟦bg=#373737⟧ indented code block                                                        ⟦/⟧
+  ⟦bg=#373737⟧                                                                            ⟦/⟧
+
+  ⟦bg=#373737⟧                                                                       ⟦/⟧⟦fg=#928374 bg=#373737⟧diff⟦/⟧⟦bg=#373737⟧ ⟦/⟧
+  ⟦bg=#59423e⟧ -old line                                                                  ⟦/⟧
+  ⟦bg=#4c4d3b⟧ +new line                                                                  ⟦/⟧
+  ⟦bg=#373737⟧                                                                            ⟦/⟧
+
+  ⟦fg=#d3869b bold⟧Math⟦/⟧
+  ⟦fg=#d3869b bold⟧━━━━⟦/⟧⟦fg=#d3869b⟧──⟦/⟧⟦fg=#cf8498⟧──⟦/⟧⟦fg=#ca8195⟧──⟦/⟧⟦fg=#c67f92⟧──⟦/⟧⟦fg=#c17d8f⟧──⟦/⟧⟦fg=#bd7a8c⟧──⟦/⟧⟦fg=#b97889⟧──⟦/⟧⟦fg=#b47686⟧──⟦/⟧⟦fg=#b07383⟧──⟦/⟧⟦fg=#ac7181⟧──⟦/⟧⟦fg=#a76f7e⟧──⟦/⟧⟦fg=#a36c7b⟧──⟦/⟧⟦fg=#9f6a78⟧──⟦/⟧⟦fg=#9b6875⟧──⟦/⟧⟦fg=#966572⟧──⟦/⟧⟦fg=#92636f⟧──⟦/⟧⟦fg=#8e616d⟧──⟦/⟧⟦fg=#8a5f6a⟧──⟦/⟧⟦fg=#865c67⟧──⟦/⟧⟦fg=#825a64⟧──⟦/⟧⟦fg=#7e5862⟧──⟦/⟧⟦fg=#79565f⟧──⟦/⟧⟦fg=#75535c⟧──⟦/⟧⟦fg=#715159⟧──⟦/⟧⟦fg=#6d4f57⟧──⟦/⟧⟦fg=#694d54⟧──⟦/⟧⟦fg=#654b51⟧──⟦/⟧⟦fg=#62484f⟧──⟦/⟧⟦fg=#5e464c⟧──⟦/⟧⟦fg=#5a4449⟧──⟦/⟧⟦fg=#564247⟧──⟦/⟧⟦fg=#524044⟧──⟦/⟧⟦fg=#4e3e42⟧──⟦/⟧⟦fg=#4a3c3f⟧──⟦/⟧⟦fg=#47393d⟧──⟦/⟧⟦fg=#43373a⟧──⟦/⟧
+
+  Inline math ⟦fg=#8ec07c italic⟧e⟦/⟧⟦fg=#8ec07c dim⟧^(⟦/⟧⟦fg=#8ec07c italic⟧iπ⟦/⟧⟦fg=#8ec07c dim⟧)⟦/⟧⟦fg=#8ec07c⟧ + 1 = 0⟦/⟧ and ⟦fg=#8ec07c italic⟧x⟦/⟧⟦fg=#8ec07c⟧²⟦/⟧, and money: $5 and $10, or $5-$10.
+
+                             ⟦fg=#8ec07c⟧ ⟦/⟧⟦fg=#8ec07c italic⟧n⟦/⟧⟦fg=#8ec07c⟧       ⟦/⟧⟦fg=#8ec07c italic⟧n⟦/⟧⟦fg=#8ec07c⟧(⟦/⟧⟦fg=#8ec07c italic⟧n⟦/⟧⟦fg=#8ec07c⟧+1)(2⟦/⟧⟦fg=#8ec07c italic⟧n⟦/⟧⟦fg=#8ec07c⟧+1)⟦/⟧
+                             ⟦fg=#8ec07c⟧ ∑  ⟦/⟧⟦fg=#8ec07c italic⟧i⟦/⟧⟦fg=#8ec07c⟧² = ────────────⟦/⟧
+                             ⟦fg=#8ec07c italic⟧i⟦/⟧⟦fg=#8ec07c⟧=1           6⟦/⟧
+
+                                   ⟦fg=#8ec07c italic⟧A⟦/⟧⟦fg=#8ec07c⟧ = ⎛⟦/⟧⟦fg=#8ec07c italic⟧a⟦/⟧⟦fg=#8ec07c⟧  ⟦/⟧⟦fg=#8ec07c italic⟧b⟦/⟧⟦fg=#8ec07c⟧⎞⟦/⟧
+                                   ⟦fg=#8ec07c⟧    ⎝⟦/⟧⟦fg=#8ec07c italic⟧c⟦/⟧⟦fg=#8ec07c⟧  ⟦/⟧⟦fg=#8ec07c italic⟧d⟦/⟧⟦fg=#8ec07c⟧⎠⟦/⟧
+
+  ⟦fg=#d3869b bold⟧Table⟦/⟧
+  ⟦fg=#d3869b bold⟧━━━━━⟦/⟧⟦fg=#d3869b⟧──⟦/⟧⟦fg=#ce8498⟧──⟦/⟧⟦fg=#ca8195⟧──⟦/⟧⟦fg=#c57f92⟧──⟦/⟧⟦fg=#c17c8f⟧──⟦/⟧⟦fg=#bc7a8c⟧──⟦/⟧⟦fg=#b87789⟧──⟦/⟧⟦fg=#b37586⟧──⟦/⟧⟦fg=#af7383⟧──⟦/⟧⟦fg=#ab7080⟧──⟦/⟧⟦fg=#a66e7d⟧──⟦/⟧⟦fg=#a26c7a⟧──⟦/⟧⟦fg=#9d6977⟧──⟦/⟧⟦fg=#996774⟧──⟦/⟧⟦fg=#956571⟧──⟦/⟧⟦fg=#90626e⟧──⟦/⟧⟦fg=#8c606b⟧──⟦/⟧⟦fg=#885e69⟧──⟦/⟧⟦fg=#845b66⟧──⟦/⟧⟦fg=#7f5963⟧──⟦/⟧⟦fg=#7b5760⟧──⟦/⟧⟦fg=#77545d⟧──⟦/⟧⟦fg=#73525a⟧──⟦/⟧⟦fg=#6f5058⟧──⟦/⟧⟦fg=#6b4e55⟧──⟦/⟧⟦fg=#674b52⟧──⟦/⟧⟦fg=#63494f⟧──⟦/⟧⟦fg=#5e474d⟧──⟦/⟧⟦fg=#5a454a⟧──⟦/⟧⟦fg=#574247⟧──⟦/⟧⟦fg=#534045⟧──⟦/⟧⟦fg=#4f3e42⟧──⟦/⟧⟦fg=#4b3c3f⟧──⟦/⟧⟦fg=#473a3d⟧──⟦/⟧⟦fg=#43373a⟧──⟦/⟧⟦fg=#3f3537⟧─⟦/⟧
+
+  ⟦fg=#928374⟧╭───────────────────────┬────────┬───────╮⟦/⟧
+  ⟦fg=#928374⟧│⟦/⟧⟦bg=#373737 bold⟧ Left                  ⟦/⟧⟦fg=#928374⟧│⟦/⟧⟦bg=#373737 bold⟧ Center ⟦/⟧⟦fg=#928374⟧│⟦/⟧⟦bg=#373737 bold⟧ Right ⟦/⟧⟦fg=#928374⟧│⟦/⟧
+  ⟦fg=#928374⟧├───────────────────────┼────────┼───────┤⟦/⟧
+  ⟦fg=#928374⟧│⟦/⟧ ⟦fg=#fe8019 bg=#373737⟧ a ⟦/⟧                   ⟦fg=#928374⟧│⟦/⟧   ⟦bold⟧b⟦/⟧    ⟦fg=#928374⟧│⟦/⟧     ⟦fg=#8ec07c italic⟧c⟦/⟧ ⟦fg=#928374⟧│⟦/⟧
+  ⟦fg=#928374⟧│⟦/⟧⟦bg=#32302f⟧ long cell with a ⟦/⟧⟦fg=#85a79a bg=#32302f ul link 6⟧link⟦/⟧⟦bg=#32302f⟧ ⟦/⟧⟦fg=#928374⟧│⟦/⟧⟦bg=#32302f⟧   x⟦/⟧⟦fg=#85a79a bg=#32302f link 7⟧¹⟦/⟧⟦bg=#32302f⟧   ⟦/⟧⟦fg=#928374⟧│⟦/⟧⟦bg=#32302f⟧     3 ⟦/⟧⟦fg=#928374⟧│⟦/⟧
+  ⟦fg=#928374⟧╰───────────────────────┴────────┴───────╯⟦/⟧
+
+  ⟦fg=#d3869b bold⟧Other blocks⟦/⟧
+  ⟦fg=#d3869b bold⟧━━━━━━━━━━━━⟦/⟧⟦fg=#d3869b⟧──⟦/⟧⟦fg=#ce8398⟧──⟦/⟧⟦fg=#c98194⟧──⟦/⟧⟦fg=#c47e91⟧──⟦/⟧⟦fg=#bf7b8e⟧──⟦/⟧⟦fg=#ba798a⟧──⟦/⟧⟦fg=#b57687⟧──⟦/⟧⟦fg=#b07484⟧──⟦/⟧⟦fg=#ac7181⟧──⟦/⟧⟦fg=#a76e7d⟧──⟦/⟧⟦fg=#a26c7a⟧──⟦/⟧⟦fg=#9d6977⟧──⟦/⟧⟦fg=#986774⟧──⟦/⟧⟦fg=#946471⟧──⟦/⟧⟦fg=#8f616d⟧──⟦/⟧⟦fg=#8a5f6a⟧──⟦/⟧⟦fg=#865c67⟧──⟦/⟧⟦fg=#815a64⟧──⟦/⟧⟦fg=#7d5761⟧──⟦/⟧⟦fg=#78555e⟧──⟦/⟧⟦fg=#73525b⟧──⟦/⟧⟦fg=#6f5058⟧──⟦/⟧⟦fg=#6a4d55⟧──⟦/⟧⟦fg=#664b52⟧──⟦/⟧⟦fg=#62484f⟧──⟦/⟧⟦fg=#5d464c⟧──⟦/⟧⟦fg=#594449⟧──⟦/⟧⟦fg=#544146⟧──⟦/⟧⟦fg=#503f43⟧──⟦/⟧⟦fg=#4c3c40⟧──⟦/⟧⟦fg=#483a3d⟧──⟦/⟧⟦fg=#43383a⟧──⟦/⟧
+
+  ⟦bold⟧Term⟦/⟧
+      Its definition.
+
+  ⟦fg=#32302f⟧─⟦/⟧⟦fg=#3b3936⟧─⟦/⟧⟦fg=#45413d⟧─⟦/⟧⟦fg=#504a45⟧─⟦/⟧⟦fg=#5a534c⟧─⟦/⟧⟦fg=#655d54⟧─⟦/⟧⟦fg=#70665c⟧─⟦/⟧⟦fg=#7b7064⟧─⟦/⟧⟦fg=#86796c⟧─⟦/⟧⟦fg=#928374⟧──────────────────────────────────────────────────────────⟦/⟧⟦fg=#86796c⟧─⟦/⟧⟦fg=#7b7064⟧─⟦/⟧⟦fg=#70665c⟧─⟦/⟧⟦fg=#655d54⟧─⟦/⟧⟦fg=#5a534c⟧─⟦/⟧⟦fg=#504a45⟧─⟦/⟧⟦fg=#45413d⟧─⟦/⟧⟦fg=#3b3936⟧─⟦/⟧⟦fg=#32302f⟧─⟦/⟧
+
+  ⟦fg=#928374⟧▾ ⟦/⟧⟦bold⟧Click to expand⟦/⟧
+    Hidden content with ⟦fg=#ebdbb2 bg=#373737 bold⟧ Ctrl ⟦/⟧+⟦fg=#ebdbb2 bg=#373737 bold⟧ C ⟦/⟧ and H₂O and x².
+
+                      Centred text, ⟦bg=#605134⟧marked⟦/⟧ and ⟦ul⟧underlined⟦/⟧.
+
+                                   ⟦fg=#928374⟧▣ ⟦/⟧⟦fg=#928374 italic⟧A figure⟦/⟧
+                                 ⟦fg=#bdae93 italic⟧Figure caption⟦/⟧
+
+  Text with an ⟦fg=#928374⟧▣ ⟦/⟧⟦fg=#928374 italic⟧inline image⟦/⟧ chip and a ⟦fg=#85a79a ul link 8⟧▣ ⟦/⟧⟦fg=#85a79a italic ul link 8⟧badge⟦/⟧ badge.
+
+  日本語のテキストと English mixed with emoji 👨‍👩‍👧 and ❤️.
+
+  ⟦fg=#928374⟧── ⟦/⟧⟦fg=#bdae93⟧Footnotes⟦/⟧⟦fg=#928374⟧ ───────────────────────────────────────────────────────────────⟦/⟧
+
+  ⟦fg=#85a79a⟧1.⟦/⟧ ⟦fg=#bdae93⟧The footnote text, with ⟦/⟧⟦fg=#bdae93 italic⟧emphasis⟦/⟧⟦fg=#bdae93⟧.⟦/⟧⟦fg=#85a79a link 2⟧ ↑⟦/⟧⟦fg=#85a79a link 7⟧ ↑²⟦/⟧
+  ⟦fg=#85a79a⟧2.⟦/⟧ ⟦fg=#bdae93⟧Second footnote.⟦/⟧⟦fg=#85a79a link 3⟧ ↑⟦/⟧
+━━ light, code theme gruvbox-light
+━━ width 80 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ⟦fg=#887e6f⟧┌──────────────────────────┐⟦/⟧
+  ⟦fg=#887e6f⟧│⟦/⟧ ⟦fg=#887e6f⟧title⟦/⟧   Kitchen Sink     ⟦fg=#887e6f⟧│⟦/⟧
+  ⟦fg=#887e6f⟧│⟦/⟧ ⟦fg=#887e6f⟧author⟦/⟧  emde             ⟦fg=#887e6f⟧│⟦/⟧
+  ⟦fg=#887e6f⟧│⟦/⟧ ⟦fg=#887e6f⟧tags⟦/⟧    [markdown, test] ⟦fg=#887e6f⟧│⟦/⟧
+  ⟦fg=#887e6f⟧└──────────────────────────┘⟦/⟧
+
+  ⟦grad #076678→#8f3f71 0..76⟧⟦fg=#fbf1c7 bold⟧ Kitchen Sink⟦/⟧⟦/grad⟧
+
+  A paragraph with ⟦italic⟧emphasis⟦/⟧, ⟦bold⟧strong⟦/⟧, ⟦bold italic⟧both⟦/⟧, ⟦fg=#887e6f strike⟧strikethrough⟦/⟧, ⟦fg=#af3a03 bg=#eae0b7⟧ inline code ⟦/⟧, a
+  ⟦fg=#076678 ul link 0⟧link⟦/⟧, an autolink ⟦fg=#076678 ul link 1⟧https://example.org/path⟦/⟧, and a bare URL ⟦fg=#076678 ul link 4⟧https://www.rust-⟦/⟧
+  ⟦fg=#076678 ul link 4⟧lang.org/learn⟦/⟧. Hard break at the end of this line
+  and a backslash hard break
+  then more text. Footnote reference⟦fg=#076678 link 2⟧¹⟦/⟧ and another⟦fg=#076678 link 3⟧²⟦/⟧.
+
+  ⟦fg=#8f3f71 bold⟧Headings⟦/⟧
+  ⟦fg=#8f3f71 bold⟧━━━━━━━━⟦/⟧⟦fg=#8f3f71⟧──⟦/⟧⟦fg=#924473⟧──⟦/⟧⟦fg=#954875⟧──⟦/⟧⟦fg=#984d78⟧──⟦/⟧⟦fg=#9a517a⟧──⟦/⟧⟦fg=#9d557c⟧──⟦/⟧⟦fg=#a05a7e⟧──⟦/⟧⟦fg=#a35e80⟧──⟦/⟧⟦fg=#a66283⟧──⟦/⟧⟦fg=#a86785⟧──⟦/⟧⟦fg=#ab6b87⟧──⟦/⟧⟦fg=#ae7089⟧──⟦/⟧⟦fg=#b1748b⟧──⟦/⟧⟦fg=#b4788d⟧──⟦/⟧⟦fg=#b67d90⟧──⟦/⟧⟦fg=#b98192⟧──⟦/⟧⟦fg=#bc8594⟧──⟦/⟧⟦fg=#bf8a96⟧──⟦/⟧⟦fg=#c18e98⟧──⟦/⟧⟦fg=#c4929a⟧──⟦/⟧⟦fg=#c7979c⟧──⟦/⟧⟦fg=#c99b9f⟧──⟦/⟧⟦fg=#cca0a1⟧──⟦/⟧⟦fg=#cfa4a3⟧──⟦/⟧⟦fg=#d1a9a5⟧──⟦/⟧⟦fg=#d4ada7⟧──⟦/⟧⟦fg=#d7b1a9⟧──⟦/⟧⟦fg=#d9b6ab⟧──⟦/⟧⟦fg=#dcbaae⟧──⟦/⟧⟦fg=#dfbfb0⟧──⟦/⟧⟦fg=#e1c3b2⟧──⟦/⟧⟦fg=#e4c8b4⟧──⟦/⟧⟦fg=#e6ccb6⟧──⟦/⟧⟦fg=#e9d1b8⟧──⟦/⟧
+
+  ⟦fg=#407956 bold⟧▎ Third level⟦/⟧
+
+  ⟦bold⟧Fourth level⟦/⟧
+
+  ⟦fg=#665c54 bold italic⟧Fifth level⟦/⟧
+
+  ⟦fg=#665c54 italic⟧Sixth level⟦/⟧
+
+  ⟦fg=#8f3f71 bold⟧Lists⟦/⟧
+  ⟦fg=#8f3f71 bold⟧━━━━━⟦/⟧⟦fg=#8f3f71⟧──⟦/⟧⟦fg=#924373⟧──⟦/⟧⟦fg=#954875⟧──⟦/⟧⟦fg=#974c77⟧──⟦/⟧⟦fg=#9a507a⟧──⟦/⟧⟦fg=#9d557c⟧──⟦/⟧⟦fg=#a0597e⟧──⟦/⟧⟦fg=#a25d80⟧──⟦/⟧⟦fg=#a56182⟧──⟦/⟧⟦fg=#a86684⟧──⟦/⟧⟦fg=#aa6a86⟧──⟦/⟧⟦fg=#ad6e88⟧──⟦/⟧⟦fg=#b0728b⟧──⟦/⟧⟦fg=#b3778d⟧──⟦/⟧⟦fg=#b57b8f⟧──⟦/⟧⟦fg=#b87f91⟧──⟦/⟧⟦fg=#bb8393⟧──⟦/⟧⟦fg=#bd8895⟧──⟦/⟧⟦fg=#c08c97⟧──⟦/⟧⟦fg=#c29099⟧──⟦/⟧⟦fg=#c5949b⟧──⟦/⟧⟦fg=#c8999d⟧──⟦/⟧⟦fg=#ca9d9f⟧──⟦/⟧⟦fg=#cda1a2⟧──⟦/⟧⟦fg=#cfa5a4⟧──⟦/⟧⟦fg=#d2aaa6⟧──⟦/⟧⟦fg=#d5aea8⟧──⟦/⟧⟦fg=#d7b2aa⟧──⟦/⟧⟦fg=#dab7ac⟧──⟦/⟧⟦fg=#dcbbae⟧──⟦/⟧⟦fg=#dfbfb0⟧──⟦/⟧⟦fg=#e1c4b2⟧──⟦/⟧⟦fg=#e4c8b4⟧──⟦/⟧⟦fg=#e7cdb6⟧──⟦/⟧⟦fg=#e9d1b8⟧──⟦/⟧⟦fg=#ecd5ba⟧─⟦/⟧
+
+  ⟦fg=#076678⟧•⟦/⟧ Tight item one
+  ⟦fg=#076678⟧•⟦/⟧ Tight item with ⟦bold⟧bold⟦/⟧
+    ⟦fg=#076678⟧◦⟦/⟧ Nested item
+      ⟦fg=#076678⟧‣⟦/⟧ Deeper item
+  ⟦fg=#887e6f⟧☐⟦/⟧ Unchecked task
+  ⟦fg=#6b6600⟧☒⟦/⟧ ⟦dim⟧Checked task⟦/⟧
+
+  ⟦fg=#076678⟧1.⟦/⟧ First
+
+  ⟦fg=#076678⟧2.⟦/⟧ Second
+
+     With a second paragraph.
+
+  ⟦fg=#076678⟧3.⟦/⟧ Third
+
+  ⟦fg=#8f3f71 bold⟧Quotes and alerts⟦/⟧
+  ⟦fg=#8f3f71 bold⟧━━━━━━━━━━━━━━━━━⟦/⟧⟦fg=#8f3f71⟧──⟦/⟧⟦fg=#924474⟧──⟦/⟧⟦fg=#964a76⟧──⟦/⟧⟦fg=#994f79⟧──⟦/⟧⟦fg=#9c547b⟧──⟦/⟧⟦fg=#a0597e⟧──⟦/⟧⟦fg=#a35e80⟧──⟦/⟧⟦fg=#a66383⟧──⟦/⟧⟦fg=#aa6886⟧──⟦/⟧⟦fg=#ad6e88⟧──⟦/⟧⟦fg=#b0738b⟧──⟦/⟧⟦fg=#b3788d⟧──⟦/⟧⟦fg=#b77d90⟧──⟦/⟧⟦fg=#ba8292⟧──⟦/⟧⟦fg=#bd8795⟧──⟦/⟧⟦fg=#c08c97⟧──⟦/⟧⟦fg=#c3919a⟧──⟦/⟧⟦fg=#c6979c⟧──⟦/⟧⟦fg=#ca9c9f⟧──⟦/⟧⟦fg=#cda1a1⟧──⟦/⟧⟦fg=#d0a6a4⟧──⟦/⟧⟦fg=#d3aba6⟧──⟦/⟧⟦fg=#d6b0a9⟧──⟦/⟧⟦fg=#d9b6ab⟧──⟦/⟧⟦fg=#dcbbae⟧──⟦/⟧⟦fg=#dfc0b0⟧──⟦/⟧⟦fg=#e2c6b3⟧──⟦/⟧⟦fg=#e5cbb5⟧──⟦/⟧⟦fg=#e9d0b8⟧──⟦/⟧⟦fg=#ecd5ba⟧─⟦/⟧
+
+  ⟦fg=#887e6f⟧▎⟦/⟧ ⟦fg=#665c54⟧A plain quote with a ⟦/⟧⟦fg=#076678 ul link 5⟧reference link⟦/⟧⟦fg=#665c54⟧.⟦/⟧
+  ⟦fg=#887e6f⟧▎⟦/⟧
+  ⟦fg=#887e6f⟧▎⟦/⟧ ⟦fg=#887e6f⟧▎⟦/⟧ ⟦fg=#665c54⟧A nested quote.⟦/⟧
+
+  ⟦fg=#076678 bg=#e4e3c0⟧▎⟦/⟧⟦bg=#e4e3c0⟧ ⟦/⟧⟦fg=#076678 bg=#e4e3c0 bold⟧ⓘ Note⟦/⟧⟦bg=#e4e3c0⟧                                                                    ⟦/⟧
+  ⟦fg=#076678 bg=#e4e3c0⟧▎⟦/⟧⟦bg=#e4e3c0⟧ Notes carry an icon and a title.                                          ⟦/⟧
+
+  ⟦fg=#6b6600 bg=#ece2b5⟧▎⟦/⟧⟦bg=#ece2b5⟧ ⟦/⟧⟦fg=#6b6600 bg=#ece2b5 bold⟧✦ Tip⟦/⟧⟦bg=#ece2b5⟧                                                                     ⟦/⟧
+  ⟦fg=#6b6600 bg=#ece2b5⟧▎⟦/⟧⟦bg=#ece2b5⟧ A tip.                                                                    ⟦/⟧
+
+  ⟦fg=#8f3f71 bg=#f1dfbf⟧▎⟦/⟧⟦bg=#f1dfbf⟧ ⟦/⟧⟦fg=#8f3f71 bg=#f1dfbf bold⟧❖ Important⟦/⟧⟦bg=#f1dfbf⟧                                                               ⟦/⟧
+  ⟦fg=#8f3f71 bg=#f1dfbf⟧▎⟦/⟧⟦bg=#f1dfbf⟧ Something important.                                                      ⟦/⟧
+
+  ⟦fg=#855a00 bg=#efe1b5⟧▎⟦/⟧⟦bg=#efe1b5⟧ ⟦/⟧⟦fg=#855a00 bg=#efe1b5 bold⟧▲ Warning⟦/⟧⟦bg=#efe1b5⟧                                                                 ⟦/⟧
+  ⟦fg=#855a00 bg=#efe1b5⟧▎⟦/⟧⟦bg=#efe1b5⟧ Careful: this is a ⟦/⟧⟦bg=#efe1b5 italic⟧warning⟦/⟧⟦bg=#efe1b5⟧.                                               ⟦/⟧
+
+  ⟦fg=#9d0006 bg=#f4dcb4⟧▎⟦/⟧⟦bg=#f4dcb4⟧ ⟦/⟧⟦fg=#9d0006 bg=#f4dcb4 bold⟧⊘ Caution⟦/⟧⟦bg=#f4dcb4⟧                                                                 ⟦/⟧
+  ⟦fg=#9d0006 bg=#f4dcb4⟧▎⟦/⟧⟦bg=#f4dcb4⟧ Mind the risks.                                                           ⟦/⟧
+
+  ⟦fg=#8f3f71 bold⟧Code⟦/⟧
+  ⟦fg=#8f3f71 bold⟧━━━━⟦/⟧⟦fg=#8f3f71⟧──⟦/⟧⟦fg=#924373⟧──⟦/⟧⟦fg=#944875⟧──⟦/⟧⟦fg=#974c77⟧──⟦/⟧⟦fg=#9a5079⟧──⟦/⟧⟦fg=#9c547b⟧──⟦/⟧⟦fg=#9f587d⟧──⟦/⟧⟦fg=#a25c80⟧──⟦/⟧⟦fg=#a46182⟧──⟦/⟧⟦fg=#a76584⟧──⟦/⟧⟦fg=#aa6986⟧──⟦/⟧⟦fg=#ac6d88⟧──⟦/⟧⟦fg=#af718a⟧──⟦/⟧⟦fg=#b2758c⟧──⟦/⟧⟦fg=#b4798e⟧──⟦/⟧⟦fg=#b77d90⟧──⟦/⟧⟦fg=#b98192⟧──⟦/⟧⟦fg=#bc8694⟧──⟦/⟧⟦fg=#bf8a96⟧──⟦/⟧⟦fg=#c18e98⟧──⟦/⟧⟦fg=#c4929a⟧──⟦/⟧⟦fg=#c6969c⟧──⟦/⟧⟦fg=#c99a9e⟧──⟦/⟧⟦fg=#cb9ea0⟧──⟦/⟧⟦fg=#cea3a2⟧──⟦/⟧⟦fg=#d0a7a4⟧──⟦/⟧⟦fg=#d3aba6⟧──⟦/⟧⟦fg=#d5afa8⟧──⟦/⟧⟦fg=#d8b3aa⟧──⟦/⟧⟦fg=#dab8ac⟧──⟦/⟧⟦fg=#ddbcae⟧──⟦/⟧⟦fg=#dfc0b0⟧──⟦/⟧⟦fg=#e2c4b2⟧──⟦/⟧⟦fg=#e4c9b4⟧──⟦/⟧⟦fg=#e7cdb6⟧──⟦/⟧⟦fg=#e9d1b8⟧──⟦/⟧
+
+  ⟦bg=#eae0b7⟧ ⟦/⟧⟦fg=#887e6f bg=#eae0b7⟧hello.rs⟦/⟧⟦bg=#eae0b7⟧                                                              ⟦/⟧⟦fg=#887e6f bg=#eae0b7⟧rust⟦/⟧⟦bg=#eae0b7⟧ ⟦/⟧
+  ⟦bg=#eae0b7⟧ ⟦/⟧⟦fg=#cba6f7 bg=#eae0b7 bold⟧fn⟦/⟧⟦bg=#eae0b7⟧ main() {                                                                ⟦/⟧
+  ⟦bg=#eae0b7⟧     println!(⟦/⟧⟦fg=#a6e3a1 bg=#eae0b7⟧"Hello, {}!"⟦/⟧⟦bg=#eae0b7⟧, ⟦/⟧⟦fg=#a6e3a1 bg=#eae0b7⟧"world"⟦/⟧⟦bg=#eae0b7⟧);                                       ⟦/⟧
+  ⟦bg=#eae0b7⟧ }                                                                          ⟦/⟧
+  ⟦bg=#eae0b7⟧                                                                            ⟦/⟧
+
+  ⟦bg=#eae0b7⟧                                                                            ⟦/⟧
+  ⟦bg=#eae0b7⟧ indented code block                                                        ⟦/⟧
+  ⟦bg=#eae0b7⟧                                                                            ⟦/⟧
+
+  ⟦bg=#eae0b7⟧                                                                       ⟦/⟧⟦fg=#887e6f bg=#eae0b7⟧diff⟦/⟧⟦bg=#eae0b7⟧ ⟦/⟧
+  ⟦bg=#e1bd98⟧ -old line                                                                  ⟦/⟧
+  ⟦bg=#d2c999⟧ +new line                                                                  ⟦/⟧
+  ⟦bg=#eae0b7⟧                                                                            ⟦/⟧
+
+  ⟦fg=#8f3f71 bold⟧Math⟦/⟧
+  ⟦fg=#8f3f71 bold⟧━━━━⟦/⟧⟦fg=#8f3f71⟧──⟦/⟧⟦fg=#924373⟧──⟦/⟧⟦fg=#944875⟧──⟦/⟧⟦fg=#974c77⟧──⟦/⟧⟦fg=#9a5079⟧──⟦/⟧⟦fg=#9c547b⟧──⟦/⟧⟦fg=#9f587d⟧──⟦/⟧⟦fg=#a25c80⟧──⟦/⟧⟦fg=#a46182⟧──⟦/⟧⟦fg=#a76584⟧──⟦/⟧⟦fg=#aa6986⟧──⟦/⟧⟦fg=#ac6d88⟧──⟦/⟧⟦fg=#af718a⟧──⟦/⟧⟦fg=#b2758c⟧──⟦/⟧⟦fg=#b4798e⟧──⟦/⟧⟦fg=#b77d90⟧──⟦/⟧⟦fg=#b98192⟧──⟦/⟧⟦fg=#bc8694⟧──⟦/⟧⟦fg=#bf8a96⟧──⟦/⟧⟦fg=#c18e98⟧──⟦/⟧⟦fg=#c4929a⟧──⟦/⟧⟦fg=#c6969c⟧──⟦/⟧⟦fg=#c99a9e⟧──⟦/⟧⟦fg=#cb9ea0⟧──⟦/⟧⟦fg=#cea3a2⟧──⟦/⟧⟦fg=#d0a7a4⟧──⟦/⟧⟦fg=#d3aba6⟧──⟦/⟧⟦fg=#d5afa8⟧──⟦/⟧⟦fg=#d8b3aa⟧──⟦/⟧⟦fg=#dab8ac⟧──⟦/⟧⟦fg=#ddbcae⟧──⟦/⟧⟦fg=#dfc0b0⟧──⟦/⟧⟦fg=#e2c4b2⟧──⟦/⟧⟦fg=#e4c9b4⟧──⟦/⟧⟦fg=#e7cdb6⟧──⟦/⟧⟦fg=#e9d1b8⟧──⟦/⟧
+
+  Inline math ⟦fg=#407956 italic⟧e⟦/⟧⟦fg=#407956 dim⟧^(⟦/⟧⟦fg=#407956 italic⟧iπ⟦/⟧⟦fg=#407956 dim⟧)⟦/⟧⟦fg=#407956⟧ + 1 = 0⟦/⟧ and ⟦fg=#407956 italic⟧x⟦/⟧⟦fg=#407956⟧²⟦/⟧, and money: $5 and $10, or $5-$10.
+
+                             ⟦fg=#407956⟧ ⟦/⟧⟦fg=#407956 italic⟧n⟦/⟧⟦fg=#407956⟧       ⟦/⟧⟦fg=#407956 italic⟧n⟦/⟧⟦fg=#407956⟧(⟦/⟧⟦fg=#407956 italic⟧n⟦/⟧⟦fg=#407956⟧+1)(2⟦/⟧⟦fg=#407956 italic⟧n⟦/⟧⟦fg=#407956⟧+1)⟦/⟧
+                             ⟦fg=#407956⟧ ∑  ⟦/⟧⟦fg=#407956 italic⟧i⟦/⟧⟦fg=#407956⟧² = ────────────⟦/⟧
+                             ⟦fg=#407956 italic⟧i⟦/⟧⟦fg=#407956⟧=1           6⟦/⟧
+
+                                   ⟦fg=#407956 italic⟧A⟦/⟧⟦fg=#407956⟧ = ⎛⟦/⟧⟦fg=#407956 italic⟧a⟦/⟧⟦fg=#407956⟧  ⟦/⟧⟦fg=#407956 italic⟧b⟦/⟧⟦fg=#407956⟧⎞⟦/⟧
+                                   ⟦fg=#407956⟧    ⎝⟦/⟧⟦fg=#407956 italic⟧c⟦/⟧⟦fg=#407956⟧  ⟦/⟧⟦fg=#407956 italic⟧d⟦/⟧⟦fg=#407956⟧⎠⟦/⟧
+
+  ⟦fg=#8f3f71 bold⟧Table⟦/⟧
+  ⟦fg=#8f3f71 bold⟧━━━━━⟦/⟧⟦fg=#8f3f71⟧──⟦/⟧⟦fg=#924373⟧──⟦/⟧⟦fg=#954875⟧──⟦/⟧⟦fg=#974c77⟧──⟦/⟧⟦fg=#9a507a⟧──⟦/⟧⟦fg=#9d557c⟧──⟦/⟧⟦fg=#a0597e⟧──⟦/⟧⟦fg=#a25d80⟧──⟦/⟧⟦fg=#a56182⟧──⟦/⟧⟦fg=#a86684⟧──⟦/⟧⟦fg=#aa6a86⟧──⟦/⟧⟦fg=#ad6e88⟧──⟦/⟧⟦fg=#b0728b⟧──⟦/⟧⟦fg=#b3778d⟧──⟦/⟧⟦fg=#b57b8f⟧──⟦/⟧⟦fg=#b87f91⟧──⟦/⟧⟦fg=#bb8393⟧──⟦/⟧⟦fg=#bd8895⟧──⟦/⟧⟦fg=#c08c97⟧──⟦/⟧⟦fg=#c29099⟧──⟦/⟧⟦fg=#c5949b⟧──⟦/⟧⟦fg=#c8999d⟧──⟦/⟧⟦fg=#ca9d9f⟧──⟦/⟧⟦fg=#cda1a2⟧──⟦/⟧⟦fg=#cfa5a4⟧──⟦/⟧⟦fg=#d2aaa6⟧──⟦/⟧⟦fg=#d5aea8⟧──⟦/⟧⟦fg=#d7b2aa⟧──⟦/⟧⟦fg=#dab7ac⟧──⟦/⟧⟦fg=#dcbbae⟧──⟦/⟧⟦fg=#dfbfb0⟧──⟦/⟧⟦fg=#e1c4b2⟧──⟦/⟧⟦fg=#e4c8b4⟧──⟦/⟧⟦fg=#e7cdb6⟧──⟦/⟧⟦fg=#e9d1b8⟧──⟦/⟧⟦fg=#ecd5ba⟧─⟦/⟧
+
+  ⟦fg=#887e6f⟧╭───────────────────────┬────────┬───────╮⟦/⟧
+  ⟦fg=#887e6f⟧│⟦/⟧⟦bg=#eae0b7 bold⟧ Left                  ⟦/⟧⟦fg=#887e6f⟧│⟦/⟧⟦bg=#eae0b7 bold⟧ Center ⟦/⟧⟦fg=#887e6f⟧│⟦/⟧⟦bg=#eae0b7 bold⟧ Right ⟦/⟧⟦fg=#887e6f⟧│⟦/⟧
+  ⟦fg=#887e6f⟧├───────────────────────┼────────┼───────┤⟦/⟧
+  ⟦fg=#887e6f⟧│⟦/⟧ ⟦fg=#af3a03 bg=#eae0b7⟧ a ⟦/⟧                   ⟦fg=#887e6f⟧│⟦/⟧   ⟦bold⟧b⟦/⟧    ⟦fg=#887e6f⟧│⟦/⟧     ⟦fg=#407956 italic⟧c⟦/⟧ ⟦fg=#887e6f⟧│⟦/⟧
+  ⟦fg=#887e6f⟧│⟦/⟧⟦bg=#f3e6bc⟧ long cell with a ⟦/⟧⟦fg=#076678 bg=#f3e6bc ul link 6⟧link⟦/⟧⟦bg=#f3e6bc⟧ ⟦/⟧⟦fg=#887e6f⟧│⟦/⟧⟦bg=#f3e6bc⟧   x⟦/⟧⟦fg=#076678 bg=#f3e6bc link 7⟧¹⟦/⟧⟦bg=#f3e6bc⟧   ⟦/⟧⟦fg=#887e6f⟧│⟦/⟧⟦bg=#f3e6bc⟧     3 ⟦/⟧⟦fg=#887e6f⟧│⟦/⟧
+  ⟦fg=#887e6f⟧╰───────────────────────┴────────┴───────╯⟦/⟧
+
+  ⟦fg=#8f3f71 bold⟧Other blocks⟦/⟧
+  ⟦fg=#8f3f71 bold⟧━━━━━━━━━━━━⟦/⟧⟦fg=#8f3f71⟧──⟦/⟧⟦fg=#924473⟧──⟦/⟧⟦fg=#954976⟧──⟦/⟧⟦fg=#984d78⟧──⟦/⟧⟦fg=#9b527a⟧──⟦/⟧⟦fg=#9e577d⟧──⟦/⟧⟦fg=#a15b7f⟧──⟦/⟧⟦fg=#a46081⟧──⟦/⟧⟦fg=#a76584⟧──⟦/⟧⟦fg=#aa6986⟧──⟦/⟧⟦fg=#ad6e88⟧──⟦/⟧⟦fg=#b0738b⟧──⟦/⟧⟦fg=#b3778d⟧──⟦/⟧⟦fg=#b67c8f⟧──⟦/⟧⟦fg=#b98091⟧──⟦/⟧⟦fg=#bc8594⟧──⟦/⟧⟦fg=#bf8a96⟧──⟦/⟧⟦fg=#c18e98⟧──⟦/⟧⟦fg=#c4939b⟧──⟦/⟧⟦fg=#c7989d⟧──⟦/⟧⟦fg=#ca9c9f⟧──⟦/⟧⟦fg=#cda1a1⟧──⟦/⟧⟦fg=#d0a6a4⟧──⟦/⟧⟦fg=#d2aaa6⟧──⟦/⟧⟦fg=#d5afa8⟧──⟦/⟧⟦fg=#d8b4ab⟧──⟦/⟧⟦fg=#dbb9ad⟧──⟦/⟧⟦fg=#debdaf⟧──⟦/⟧⟦fg=#e0c2b1⟧──⟦/⟧⟦fg=#e3c7b4⟧──⟦/⟧⟦fg=#e6ccb6⟧──⟦/⟧⟦fg=#e9d1b8⟧──⟦/⟧
+
+  ⟦bold⟧Term⟦/⟧
+      Its definition.
+
+  ⟦fg=#efe5be⟧─⟦/⟧⟦fg=#e3d9b5⟧─⟦/⟧⟦fg=#d7cdac⟧─⟦/⟧⟦fg=#cbc1a3⟧─⟦/⟧⟦fg=#c0b69a⟧─⟦/⟧⟦fg=#b4aa91⟧─⟦/⟧⟦fg=#a99f88⟧─⟦/⟧⟦fg=#9e9480⟧─⟦/⟧⟦fg=#938977⟧─⟦/⟧⟦fg=#887e6f⟧──────────────────────────────────────────────────────────⟦/⟧⟦fg=#938977⟧─⟦/⟧⟦fg=#9e9480⟧─⟦/⟧⟦fg=#a99f88⟧─⟦/⟧⟦fg=#b4aa91⟧─⟦/⟧⟦fg=#c0b69a⟧─⟦/⟧⟦fg=#cbc1a3⟧─⟦/⟧⟦fg=#d7cdac⟧─⟦/⟧⟦fg=#e3d9b5⟧─⟦/⟧⟦fg=#efe5be⟧─⟦/⟧
+
+  ⟦fg=#887e6f⟧▾ ⟦/⟧⟦bold⟧Click to expand⟦/⟧
+    Hidden content with ⟦fg=#3c3836 bg=#eae0b7 bold⟧ Ctrl ⟦/⟧+⟦fg=#3c3836 bg=#eae0b7 bold⟧ C ⟦/⟧ and H₂O and x².
+
+                      Centred text, ⟦bg=#d7c290⟧marked⟦/⟧ and ⟦ul⟧underlined⟦/⟧.
+
+                                   ⟦fg=#887e6f⟧▣ ⟦/⟧⟦fg=#887e6f italic⟧A figure⟦/⟧
+                                 ⟦fg=#665c54 italic⟧Figure caption⟦/⟧
+
+  Text with an ⟦fg=#887e6f⟧▣ ⟦/⟧⟦fg=#887e6f italic⟧inline image⟦/⟧ chip and a ⟦fg=#076678 ul link 8⟧▣ ⟦/⟧⟦fg=#076678 italic ul link 8⟧badge⟦/⟧ badge.
+
+  日本語のテキストと English mixed with emoji 👨‍👩‍👧 and ❤️.
+
+  ⟦fg=#887e6f⟧── ⟦/⟧⟦fg=#665c54⟧Footnotes⟦/⟧⟦fg=#887e6f⟧ ───────────────────────────────────────────────────────────────⟦/⟧
+
+  ⟦fg=#076678⟧1.⟦/⟧ ⟦fg=#665c54⟧The footnote text, with ⟦/⟧⟦fg=#665c54 italic⟧emphasis⟦/⟧⟦fg=#665c54⟧.⟦/⟧⟦fg=#076678 link 2⟧ ↑⟦/⟧⟦fg=#076678 link 7⟧ ↑²⟦/⟧
+  ⟦fg=#076678⟧2.⟦/⟧ ⟦fg=#665c54⟧Second footnote.⟦/⟧⟦fg=#076678 link 3⟧ ↑⟦/⟧

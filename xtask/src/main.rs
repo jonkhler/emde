@@ -1,8 +1,9 @@
 //! Development tasks for emde: `cargo xtask <task>`.
 //!
-//! * `ci [--full]` – formatting, lints, tests, the documentation (up to date,
-//!   and rustdoc without warnings), dependency guards, cargo-deny, MSRV check
-//!   and the binary size budget (`--full` adds a feature powerset check).
+//! * `ci [--full]` – formatting, lints and tests (also with the `svg`
+//!   feature), the documentation (up to date, and rustdoc without
+//!   warnings), dependency guards, cargo-deny, MSRV check and the binary
+//!   size budget (`--full` adds a feature powerset check).
 //! * `deps` – fail if a banned crate (e.g. the C Oniguruma binding) is in the tree.
 //! * `size` – build the release binary and enforce the size budget.
 //! * `gen [--check]` – regenerate checked-in data tables (math symbols,
@@ -150,7 +151,25 @@ fn ci(full: bool) -> Result {
             "warnings",
         ]),
     )?;
+    // The optional `svg` feature (resvg): about 25 s more when warm.
+    run(
+        "clippy (svg)",
+        cargo().args([
+            "clippy",
+            "--workspace",
+            "--all-targets",
+            "--features",
+            "svg",
+            "--",
+            "-D",
+            "warnings",
+        ]),
+    )?;
     run("test", cargo().args(["test", "--workspace", "--quiet"]))?;
+    run(
+        "test (svg)",
+        cargo().args(["test", "--workspace", "--features", "svg", "--quiet"]),
+    )?;
     eprintln!("xtask: == docs up to date");
     docs::run(true)?;
     run(

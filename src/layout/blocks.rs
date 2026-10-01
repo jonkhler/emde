@@ -23,7 +23,7 @@ use super::style::Ctx;
 use super::{Fill, LineKind, SpanFlags};
 
 /// Share of the alert colour in an alert's background tint.
-const ALERT_TINT: f32 = 0.10;
+pub(crate) const ALERT_TINT: f32 = 0.10;
 
 fn to_u16(n: usize) -> u16 {
     u16::try_from(n).unwrap_or(u16::MAX)
