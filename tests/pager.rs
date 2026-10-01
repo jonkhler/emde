@@ -784,6 +784,80 @@ fn every_frame_is_one_synchronized_write() {
     }
 }
 
+/// A random script: keys (never `q`), mouse events, resizes (down to
+/// nothing at all), quiet periods, SIGCONT and redraws.
+fn random_script(mut term: FakeTerminal, next: &mut impl FnMut() -> u64) -> FakeTerminal {
+    let chars: Vec<char> = "jkdufbgG%][}{tnN/?oashHLywxe15 rRim".chars().collect();
+    let codes = [
+        KeyCode::Enter,
+        KeyCode::Esc,
+        KeyCode::Backspace,
+        KeyCode::Tab,
+        KeyCode::BackTab,
+        KeyCode::Down,
+        KeyCode::PageUp,
+        KeyCode::End,
+        KeyCode::F(1),
+    ];
+    let mouse = [
+        MouseKind::WheelDown,
+        MouseKind::WheelUp,
+        MouseKind::Press(Button::Left),
+    ];
+    for _ in 0..next() % 100 {
+        let r = next();
+        let pick = (r >> 8) as usize;
+        let (a, b) = ((r >> 24) as u16 % 170, (r >> 40) as u16 % 70);
+        term = match r % 10 {
+            0..=4 => term.key(Key::char(chars[pick % chars.len()])),
+            5 => term.code(codes[pick % codes.len()]),
+            6 => term.mouse(Mouse {
+                kind: mouse[pick % mouse.len()],
+                col: a,
+                row: b,
+            }),
+            7 => term.resize(a, b),
+            8 => term.wait(ms(r % 400)),
+            _ if r.is_multiple_of(3) => term.step(Step::Signal(signal_hook::consts::SIGCONT)),
+            _ => term.key(Key::ctrl('l')),
+        };
+    }
+    term
+}
+
+#[test]
+fn random_scripts_always_end_with_the_terminal_restored() {
+    let mut seed: u64 = 0x9e37_79b9_7f4a_7c15;
+    let mut next = move || {
+        seed ^= seed << 13;
+        seed ^= seed >> 7;
+        seed ^= seed << 17;
+        seed
+    };
+    for round in 0..8 {
+        for name in ["kitchen-sink", "links", "tables", "footnotes", "math"] {
+            let mut s = session(&fixture(name));
+            s.caps.hyperlinks = round % 2 == 0;
+            s.pager.open = emde::config::OpenCommand::Never;
+            s.open_toc = round == 3;
+            let signals = Signals::new();
+            let size = (next() % 160 + 1, next() % 60 + 1);
+            let term =
+                FakeTerminal::new(size.0 as u16, size.1 as u16).with_signals(signals.clone());
+            // Out of any overlay or prompt, then quit.
+            let mut term = random_script(term, &mut next).keys("\x1b\x1b\x1bq");
+            let exit = run_on(&mut term, s, &signals);
+            assert!(exit.is_ok(), "{name}, round {round}: {exit:?}");
+            assert!(!term.is_raw());
+            assert_eq!(
+                *term.writes().last().unwrap(),
+                EXIT,
+                "{name}, round {round}"
+            );
+        }
+    }
+}
+
 /// The frame written right after mark `name`.
 fn frame_after<'a>(term: &'a FakeTerminal, name: &str) -> &'a [u8] {
     let chunks = term.chunks();
