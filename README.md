@@ -56,21 +56,12 @@ emde README.md
 
 ## Installing
 
-The repository (github.com/jonkhler/emde) is private, so the installer authenticates with the GitHub
-CLI (log in once with `gh auth login`). It picks the release archive for
-your system (Linux or macOS, x86-64 or ARM), checks its SHA-256, and puts
-`emde` in `~/.local/bin`, the man page in `~/.local/share/man` and shell
-completions in `~/.local/share`:
+The installer picks the release archive for your system (Linux or macOS,
+x86-64 or ARM), checks its SHA-256, and puts `emde` in `~/.local/bin`, the
+man page in `~/.local/share/man` and shell completions in `~/.local/share`:
 
 ```sh
-gh api -H 'Accept: application/vnd.github.raw' repos/jonkhler/emde/contents/install.sh | sh
-```
-
-Without `gh`, use a token that can read the repository:
-
-```sh
-curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" -H 'Accept: application/vnd.github.raw' \
-  https://api.github.com/repos/jonkhler/emde/contents/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/jonkhler/emde/main/install.sh | sh
 ```
 
 The same command updates emde. Variants:
@@ -82,6 +73,7 @@ The same command updates emde. Variants:
 | `… \| sh -s -- --from-source` | build with `cargo install` (any platform with Rust) |
 | `… \| sh -s -- --uninstall` | remove everything the installer put in place |
 | `./install.sh --local` | in a checkout: build it and install that build |
+| `… \| EMDE_REPO=you/emde sh` | install from a fork (a private one through `gh auth login` or `GITHUB_TOKEN`) |
 
 Releases are built by GitHub Actions when a `v*` tag is pushed
 (`.github/workflows/release.yml`), using `cargo xtask dist`, which you can

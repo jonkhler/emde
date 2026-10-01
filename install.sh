@@ -1,11 +1,11 @@
 #!/bin/sh
 # Install emde, the terminal Markdown reader, from a GitHub release.
 #
-#   gh api -H 'Accept: application/vnd.github.raw' repos/jonkhler/emde/contents/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/jonkhler/emde/main/install.sh | sh
 #
-# The repository is private, so downloads are authenticated: with the GitHub
-# CLI (`gh auth login`) when it is installed, else with $GITHUB_TOKEN (a token
-# that can read the repository). Without a release for this platform, emde is
+# Releases are downloaded anonymously from github.com. For a private fork
+# (EMDE_REPO), downloads are authenticated with the GitHub CLI (`gh auth
+# login`) or with $GITHUB_TOKEN. Without a release for this platform, emde is
 # built from source with cargo instead.
 #
 # Environment:
@@ -14,7 +14,7 @@
 #   EMDE_DATA_DIR      man page and completions (default: ~/.local/share)
 #   EMDE_REPO          owner/name of the repository (default: jonkhler/emde)
 #   EMDE_ARCHIVE       install this local release archive instead of downloading
-#   GITHUB_TOKEN       token for downloads when gh is not available
+#   GITHUB_TOKEN       token for private repositories when gh is not available
 #
 # Options:
 #   --local            build from this checkout (cargo xtask dist) and install it
@@ -70,12 +70,17 @@ api() {
 download() {
     dl_asset=$1
     dl_dir=$2
+    # A public repository: no login needed.
+    if have curl && curl -fsSL -o "$dl_dir/$dl_asset" \
+        "https://github.com/$REPO/releases/download/$VERSION/$dl_asset" 2>/dev/null; then
+        return
+    fi
+    rm -f "$dl_dir/$dl_asset"
     if have gh && gh auth status >/dev/null 2>&1; then
         gh release download "$VERSION" --repo "$REPO" --pattern "$dl_asset" --dir "$dl_dir" --clobber
         return
     fi
-    [ -n "${GITHUB_TOKEN:-}" ] || die "cannot download from the private repository $REPO:
-  log in with the GitHub CLI (gh auth login) or set GITHUB_TOKEN"
+    [ -n "${GITHUB_TOKEN:-}" ] || return 1
     have curl || die "need curl to download"
     dl_release=$(api "repos/$REPO/releases/tags/$VERSION") || die "no release $VERSION in $REPO"
     # The asset's numeric id: the last "id" before its "name" (GitHub lists
@@ -89,6 +94,15 @@ download() {
 }
 
 latest_tag() {
+    # A public repository: github.com redirects /releases/latest to the tag.
+    if have curl; then
+        tag=$(curl -fsSIL -o /dev/null -w '%{url_effective}' \
+            "https://github.com/$REPO/releases/latest" 2>/dev/null | sed -n 's#.*/releases/tag/##p')
+        if [ -n "$tag" ]; then
+            echo "$tag"
+            return
+        fi
+    fi
     if have gh && gh auth status >/dev/null 2>&1; then
         gh release view --repo "$REPO" --json tagName --jq .tagName
     elif [ -n "${GITHUB_TOKEN:-}" ]; then
@@ -185,11 +199,8 @@ main() {
     triple=$(target)
     [ -n "$VERSION" ] || VERSION=$(latest_tag 2>/dev/null) || true
     if [ -z "$VERSION" ]; then
-        if have gh && gh auth status >/dev/null 2>&1 || [ -n "${GITHUB_TOKEN:-}" ]; then
-            die "$REPO has no published release yet (or you cannot read it); try --from-source"
-        fi
-        die "cannot read releases of the private repository $REPO:
-  log in with the GitHub CLI (gh auth login) or set GITHUB_TOKEN; or use --from-source"
+        die "cannot find a release of $REPO (no release yet, no network, or a private
+  repository: then log in with gh auth login or set GITHUB_TOKEN); try --from-source"
     fi
     asset="emde-${VERSION#v}-$triple.tar.gz"
     dl=$(mktemp -d)
