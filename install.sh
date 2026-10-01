@@ -182,9 +182,14 @@ main() {
     fi
 
     triple=$(target)
-    [ -n "$VERSION" ] || VERSION=$(latest_tag) || true
-    [ -n "$VERSION" ] || die "cannot find a release of $REPO
-  (log in with gh auth login or set GITHUB_TOKEN; or use --from-source)"
+    [ -n "$VERSION" ] || VERSION=$(latest_tag 2>/dev/null) || true
+    if [ -z "$VERSION" ]; then
+        if have gh && gh auth status >/dev/null 2>&1 || [ -n "${GITHUB_TOKEN:-}" ]; then
+            die "$REPO has no published release yet (or you cannot read it); try --from-source"
+        fi
+        die "cannot read releases of the private repository $REPO:
+  log in with the GitHub CLI (gh auth login) or set GITHUB_TOKEN; or use --from-source"
+    fi
     asset="emde-${VERSION#v}-$triple.tar.gz"
     dl=$(mktemp -d)
     say "downloading $asset ($VERSION)"
