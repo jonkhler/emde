@@ -65,26 +65,27 @@ api() {
         -H 'X-GitHub-Api-Version: 2022-11-28' "$@" "https://api.github.com/$path"
 }
 
-# Download release asset $1 of tag $VERSION into directory $2.
+# Download release asset $1 of tag $VERSION into directory $2. (POSIX sh has
+# no local variables: these names must not clash with the callers'.)
 download() {
-    asset=$1
-    dir=$2
+    dl_asset=$1
+    dl_dir=$2
     if have gh && gh auth status >/dev/null 2>&1; then
-        gh release download "$VERSION" --repo "$REPO" --pattern "$asset" --dir "$dir" --clobber
+        gh release download "$VERSION" --repo "$REPO" --pattern "$dl_asset" --dir "$dl_dir" --clobber
         return
     fi
     [ -n "${GITHUB_TOKEN:-}" ] || die "cannot download from the private repository $REPO:
   log in with the GitHub CLI (gh auth login) or set GITHUB_TOKEN"
     have curl || die "need curl to download"
-    release=$(api "repos/$REPO/releases/tags/$VERSION") || die "no release $VERSION in $REPO"
+    dl_release=$(api "repos/$REPO/releases/tags/$VERSION") || die "no release $VERSION in $REPO"
     # The asset's numeric id: the last "id" before its "name" (GitHub lists
     # url, id, node_id, name for each asset), whether the JSON is pretty or not.
-    id=$(printf '%s' "$release" | tr ',{' '\n\n' | sed 's/^[[:space:]]*//; s/": */":/' |
-        awk -v want="\"name\":\"$asset\"" '
+    dl_id=$(printf '%s' "$dl_release" | tr ',{' '\n\n' | sed 's/^[[:space:]]*//; s/": */":/' |
+        awk -v want="\"name\":\"$dl_asset\"" '
             /^"id":[0-9]/ { split($0, kv, ":"); id = kv[2] }
             $0 == want { print id; exit }')
-    [ -n "$id" ] || return 1
-    api "repos/$REPO/releases/assets/$id" -H 'Accept: application/octet-stream' -o "$dir/$asset"
+    [ -n "$dl_id" ] || return 1
+    api "repos/$REPO/releases/assets/$dl_id" -H 'Accept: application/octet-stream' -o "$dl_dir/$dl_asset"
 }
 
 latest_tag() {
