@@ -22,9 +22,10 @@
 //!    highlighted in parallel before layout (`prehighlight`).
 //! 6. **Images**: an [`ImageStore`] for each document with figures, when
 //!    images are shown at all.
-//! 7. **Output**: the pager when it applies (`run_pager`; not part of
-//!    this build yet), else stream mode: every document laid out and
-//!    written to standard output, figures decoded in parallel just before.
+//! 7. **Output**: the pager when it applies (`run_pager`: every document,
+//!    `:n` and `:p` going through them), else stream mode: every document
+//!    laid out and written to standard output, figures decoded in parallel
+//!    just before.
 //!
 //! Exit status: 0 on success (a reader that goes away, `| head`, included),
 //! 1 when an input could not be read (the other inputs are still shown) or
@@ -50,7 +51,7 @@ use crate::highlight::{self, Highlighter, PlainHighlighter};
 use crate::ir::Document;
 use crate::layout::{ImageSizer, Layout, NoImages, layout};
 use crate::options::{FrontMatterMode, Height, ImageMode, RenderOptions, When};
-use crate::pager::{self, FileLoader, PagerDoc, PagerSession};
+use crate::pager::{self, FileLoader, PagerDoc, PagerImages, PagerSession};
 use crate::parse::{ParseOptions, parse_source};
 use crate::render::{ImageRows, RenderConfig, StreamSink, is_broken_pipe};
 use crate::source::{Input, Source, SourceError};
@@ -635,43 +636,22 @@ fn wants_pager(request: &PagerRequest, caps: &Caps, lines: usize) -> bool {
 
 /// Show the documents in the built-in pager.
 ///
-/// The pager shows one document at a time: the first one opens, and linked
-/// local documents load in-app. `layouts` are the stream-mode layouts the
-/// paging decision was made on (figures capped for stream mode), so the
-/// pager lays out for itself with the configured image heights.
+/// The first document opens; `:n` and `:p` go through the others, and
+/// linked local documents load in-app. `layouts` are the stream-mode layouts
+/// the paging decision was made on (figures capped for stream mode), so the
+/// pager lays out for itself with the configured image heights; the image
+/// stores loaded for stream mode are handed over (the pager loads stores
+/// for the documents it opens later).
 fn run_pager(
     setup: Setup,
-    mut docs: Vec<Doc>,
+    docs: Vec<Doc>,
     layouts: Vec<Layout>,
     request: PagerRequest,
 ) -> ExitCode {
     drop(layouts);
-    if docs.is_empty() {
+    let Some(session) = pager_session(setup, docs, request) else {
         return ExitCode::SUCCESS;
-    }
-    let first = docs.swap_remove(0);
-    let Doc {
-        source,
-        doc,
-        anchor,
-        images,
-        ..
-    } = first;
-    let render = setup.config.render.clone();
-    let parse = ParseOptions::from(&render);
-    let mut session =
-        PagerSession::new(PagerDoc::new(source, doc), setup.theme, setup.caps, render);
-    session.loader = Box::new(FileLoader::new(parse));
-    session.highlighter = setup.highlighter;
-    session.pager = setup.config.pager.clone();
-    session.anchor = request.anchor.or(anchor);
-    session.open_toc = request.toc;
-    session.env = setup.env;
-    session.tmux = setup.tmux;
-    session.late_replies = LateReplyFilter::after(setup.probe.as_ref(), Instant::now());
-    if let Some(store) = images {
-        session.images = Box::new(FirstDocImages(store));
-    }
+    };
     match pager::run(session) {
         Ok(exit) => ExitCode::from(exit.code()),
         Err(e) => {
@@ -681,23 +661,88 @@ fn run_pager(
     }
 }
 
-/// Figure sizes for the pager from the first document's image store.
-/// Linked documents opened in the pager show their figures as alt boxes.
-struct FirstDocImages(ImageStore);
+/// The pager session for `docs` (`None` without any): the first one shown
+/// (at its `#anchor`), the others for `:n` and `:p`, and their image stores.
+fn pager_session(setup: Setup, docs: Vec<Doc>, request: PagerRequest) -> Option<PagerSession> {
+    let anchor = docs.first().and_then(|d| d.anchor.clone());
+    let mut stores = Vec::new();
+    let mut pages = Vec::with_capacity(docs.len());
+    for d in docs {
+        stores.extend(d.images);
+        pages.push(PagerDoc::new(d.source, d.doc));
+    }
+    let mut pages = pages.into_iter();
+    let first = pages.next()?;
+    let render = setup.config.render.clone();
+    let parse = ParseOptions::from(&render);
+    let options = StoreOptions::new(&setup.caps, &render.images, &setup.theme);
+    let mut session = PagerSession::new(first, setup.theme, setup.caps, render);
+    session.more = pages.collect();
+    session.loader = Box::new(FileLoader::new(parse));
+    session.highlighter = setup.highlighter;
+    session.images = PagerImages {
+        stores,
+        ..PagerImages::new(options)
+    };
+    session.pager = setup.config.pager.clone();
+    session.anchor = request.anchor.or(anchor);
+    session.open_toc = request.toc;
+    session.env = setup.env;
+    session.tmux = setup.tmux;
+    session.late_replies = LateReplyFilter::after(setup.probe.as_ref(), Instant::now());
+    Some(session)
+}
 
-impl pager::ImageProvider for FirstDocImages {
-    fn figure_cells(
-        &self,
-        doc: &Document,
-        image: crate::ir::ImageId,
-        max_cols: u16,
-        max_rows: u16,
-    ) -> Option<(u16, u16)> {
-        // Only the store's own document has its images loaded.
-        if !self.0.belongs_to(doc) {
-            return None;
+#[cfg(test)]
+mod pager_session_tests {
+    use super::*;
+    use crate::source::Origin;
+
+    fn setup() -> Setup {
+        let config = config::load(&LoadOptions::default()).config;
+        let caps = Caps::full();
+        let theme = config::build_theme(&config, caps.background, caps.color);
+        Setup {
+            env: Env::default(),
+            config,
+            caps,
+            theme,
+            highlighter: Arc::new(PlainHighlighter),
+            tmux: None,
+            probe: None,
+            width: 80,
+            verbose: false,
         }
-        self.0.cells(image, max_cols, max_rows)
+    }
+
+    fn doc(name: &str, anchor: Option<&str>) -> Doc {
+        let source = Source::from_bytes(format!("# {name}\n").into_bytes(), Origin::Memory);
+        let arg = FileArg {
+            path: name.into(),
+            anchor: anchor.map(str::to_owned),
+        };
+        parse_doc(arg, source, &ParseOptions::default(), FrontMatterMode::Card)
+    }
+
+    #[test]
+    fn every_document_goes_to_the_pager() {
+        let docs = vec![doc("a", Some("a")), doc("b", None), doc("c", Some("c"))];
+        let s = pager_session(setup(), docs, PagerRequest::default()).unwrap();
+        assert_eq!(s.doc.doc.title.as_deref(), Some("a"));
+        let more: Vec<_> = s.more.iter().map(|d| d.doc.title.clone()).collect();
+        assert_eq!(more, [Some("b".into()), Some("c".into())]);
+        assert_eq!(s.anchor.as_deref(), Some("a"), "the first file's anchor");
+        let opts = s.images.options.as_ref().unwrap();
+        assert_eq!(opts.graphics, Graphics::Blocks, "the terminal's choice");
+        assert!(!s.images.wait_when_idle);
+        // `--anchor` wins; no documents, no session.
+        let request = PagerRequest {
+            anchor: Some("given".into()),
+            ..PagerRequest::default()
+        };
+        let s = pager_session(setup(), vec![doc("a", Some("a"))], request).unwrap();
+        assert_eq!(s.anchor.as_deref(), Some("given"));
+        assert!(pager_session(setup(), Vec::new(), PagerRequest::default()).is_none());
     }
 }
 

@@ -62,6 +62,10 @@ pub enum Action {
     Message(String),
     /// Show an error.
     Error(String),
+    /// The shell switched images to the mode named `name`; with `relayout`,
+    /// figure sizes change (images on or off), so the document is laid out
+    /// again at the same place.
+    ImageMode { name: String, relayout: bool },
 }
 
 /// Something for the shell to do.
@@ -88,7 +92,8 @@ pub enum Effect {
     Relayout,
     /// Repaint the whole screen.
     Redraw,
-    /// Switch to the next image mode (a [`Effect::Relayout`] follows).
+    /// Switch to the next image mode (the shell answers with
+    /// [`Action::ImageMode`]).
     CycleImages,
 }
 
@@ -150,6 +155,7 @@ pub fn update(state: &mut State, action: Action) -> Vec<Effect> {
             }
         },
         Action::LoadFailed { request, error } => {
+            state.pending_file = None;
             match request.nav {
                 Nav::Back => {
                     state.history.back.pop();
@@ -171,6 +177,14 @@ pub fn update(state: &mut State, action: Action) -> Vec<Effect> {
             state.complain(text);
             Vec::new()
         }
+        Action::ImageMode { name, relayout } => {
+            state.say(format!("images: {name}"));
+            if relayout {
+                state.pending = Some(Goto::Place(state.top_place()));
+                return vec![Effect::Relayout];
+            }
+            Vec::new()
+        }
     }
 }
 
@@ -185,6 +199,7 @@ fn context(mode: &Mode) -> Context {
         Mode::Outline(_) => Context::Outline,
         Mode::Help { .. } => Context::Help,
         Mode::Hints(_) => Context::Hints,
+        Mode::Command(_) => Context::Command,
     }
 }
 
@@ -209,17 +224,19 @@ fn on_key(state: &mut State, key: Key) -> Vec<Effect> {
             state.count = None;
             Vec::new()
         }
-        (Mode::Prompt(_) | Mode::Outline(_) | Mode::Hints(_), None) => match key.text() {
-            Some(c) => {
-                let mut buf = [0u8; 4];
-                type_text(state, c.encode_utf8(&mut buf))
+        (Mode::Prompt(_) | Mode::Outline(_) | Mode::Hints(_) | Mode::Command(_), None) => {
+            match key.text() {
+                Some(c) => {
+                    let mut buf = [0u8; 4];
+                    type_text(state, c.encode_utf8(&mut buf))
+                }
+                None if matches!(state.mode, Mode::Hints(_)) => {
+                    state.mode = Mode::Normal;
+                    Vec::new()
+                }
+                None => Vec::new(),
             }
-            None if matches!(state.mode, Mode::Hints(_)) => {
-                state.mode = Mode::Normal;
-                Vec::new()
-            }
-            None => Vec::new(),
-        },
+        }
         (Mode::Help { .. }, None) => Vec::new(),
     }
 }
@@ -244,6 +261,10 @@ fn type_text(state: &mut State, text: &str) -> Vec<Effect> {
         Mode::Hints(h) => {
             h.typed.push_str(&clean);
             hint_typed(state)
+        }
+        Mode::Command(input) => {
+            input.push_str(&clean);
+            Vec::new()
         }
         Mode::Normal | Mode::Help { .. } => Vec::new(),
     }
@@ -317,10 +338,7 @@ fn command(state: &mut State, cmd: Command) -> Vec<Effect> {
                 });
             }
         }
-        Command::CycleImages => {
-            state.pending = Some(Goto::Place(state.top_place()));
-            return vec![Effect::CycleImages, Effect::Relayout];
-        }
+        Command::CycleImages => return vec![Effect::CycleImages],
         Command::ToggleWidth => {
             state.wide = !state.wide;
             state.pending = Some(Goto::Place(state.top_place()));
@@ -339,6 +357,21 @@ fn command(state: &mut State, cmd: Command) -> Vec<Effect> {
                 "mouse off: the terminal selects text"
             });
             return vec![Effect::SetMouse(state.mouse)];
+        }
+        Command::CommandLine => state.mode = Mode::Command(String::new()),
+        Command::CommandRun => return run_command(state),
+        Command::CommandCancel => state.mode = Mode::Normal,
+        Command::CommandErase => {
+            if let Mode::Command(input) = &mut state.mode
+                && input.pop().is_none()
+            {
+                state.mode = Mode::Normal;
+            }
+        }
+        Command::CommandClear => {
+            if let Mode::Command(input) = &mut state.mode {
+                input.clear();
+            }
         }
         Command::Help => state.mode = Mode::Help { scroll: 0 },
         Command::Redraw => return vec![Effect::Redraw],
@@ -885,6 +918,78 @@ fn hint_typed(state: &mut State) -> Vec<Effect> {
 }
 
 // ---------------------------------------------------------------------------
+// The `:` prompt and the files named on the command line
+// ---------------------------------------------------------------------------
+
+/// Run what was typed at the `:` prompt.
+fn run_command(state: &mut State) -> Vec<Effect> {
+    let Mode::Command(input) = mem::replace(&mut state.mode, Mode::Normal) else {
+        return Vec::new();
+    };
+    match input.trim() {
+        "" => Vec::new(),
+        "n" | "next" => step_file(state, true),
+        "p" | "N" | "prev" | "previous" => step_file(state, false),
+        "x" | "first" => go_file(state, 0),
+        "q" | "quit" => vec![Effect::Quit],
+        other => {
+            let shown = crate::text::sanitize(other).into_owned();
+            state.complain(format!("unknown command :{shown} (:n, :p, :x, :q)"));
+            Vec::new()
+        }
+    }
+}
+
+/// `:n` and `:p`: the next or previous file named on the command line.
+fn step_file(state: &mut State, forward: bool) -> Vec<Effect> {
+    let n = state.files.len();
+    if n < 2 {
+        state.say("there is only one file");
+        return Vec::new();
+    }
+    let target = if forward {
+        state.file.checked_add(1).filter(|&i| i < n)
+    } else {
+        state.file.checked_sub(1)
+    };
+    match target {
+        Some(i) => go_file(state, i),
+        None => {
+            state.say(if forward {
+                "this is the last file"
+            } else {
+                "this is the first file"
+            });
+            Vec::new()
+        }
+    }
+}
+
+/// Show file `i` of the command line (from where it was read, if the
+/// history no longer keeps it).
+fn go_file(state: &mut State, i: usize) -> Vec<Effect> {
+    let Some(key) = state.files.get(i).cloned() else {
+        return Vec::new();
+    };
+    let request = LoadRequest {
+        path: key.path().map(PathBuf::from).unwrap_or_default(),
+        anchor: None,
+        restore: None,
+        nav: Nav::Push,
+    };
+    state.pending_file = Some(i);
+    if let Some(page) = state.history.page(&key) {
+        return switch(state, page, request);
+    }
+    if key.path().is_some() {
+        return vec![Effect::Load(request)];
+    }
+    state.pending_file = None;
+    state.complain("that document is gone (standard input cannot be read again)");
+    Vec::new()
+}
+
+// ---------------------------------------------------------------------------
 // History and documents
 // ---------------------------------------------------------------------------
 
@@ -961,6 +1066,15 @@ fn switch(state: &mut State, page: Rc<Page>, req: LoadRequest) -> Vec<Effect> {
         }
     }
     state.history.touch(&page);
+    // Which of the files named on the command line this is now.
+    let asked = state.pending_file.take();
+    if let Some(i) = asked.filter(|&i| state.files.get(i) == Some(&page.key)) {
+        state.file = i;
+    } else if state.files.get(state.file) != Some(&page.key)
+        && let Some(i) = state.files.iter().position(|k| *k == page.key)
+    {
+        state.file = i;
+    }
     let goto = match (req.restore, req.anchor) {
         (Some(place), _) => Goto::Place(place),
         (None, Some(anchor)) => Goto::Anchor(anchor),
@@ -1158,11 +1272,11 @@ fn click(state: &mut State, col: u16, row: u16) -> Vec<Effect> {
             state.mode = Mode::Normal;
             Vec::new()
         }
-        Mode::Hints(_) | Mode::Prompt(_) | Mode::Normal => {
+        Mode::Hints(_) | Mode::Prompt(_) | Mode::Command(_) | Mode::Normal => {
             if matches!(state.mode, Mode::Hints(_)) {
                 state.mode = Mode::Normal;
             }
-            if matches!(state.mode, Mode::Prompt(_)) {
+            if matches!(state.mode, Mode::Prompt(_) | Mode::Command(_)) {
                 return Vec::new();
             }
             let row = usize::from(row);

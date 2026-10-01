@@ -744,6 +744,176 @@ fn switching_to_a_document_in_memory() {
     assert_eq!(s.message(), Some("that document is no longer in memory"));
 }
 
+// ---------------------------------------------------------------------------
+// The files named on the command line, and the `:` prompt
+// ---------------------------------------------------------------------------
+
+/// A state for files `a.md`, `b.md` and `c.md`, showing `a.md`.
+fn three_files() -> State {
+    let mut s = state_for(pdoc("# A", Origin::File(file("a.md"))), 60, 10);
+    let more = ["b.md", "c.md"]
+        .into_iter()
+        .map(|name| {
+            let doc = pdoc(&format!("# {name}"), Origin::File(file(name)));
+            (doc, Some(DocKey::Path(file(name))))
+        })
+        .collect();
+    s.add_files(more);
+    s
+}
+
+/// Type a command at the `:` prompt.
+fn colon(s: &mut State, command: &str) -> Vec<Effect> {
+    keys(s, &format!(":{command}\n"))
+}
+
+#[test]
+fn colon_n_and_colon_p_walk_the_files() {
+    let mut s = three_files();
+    assert_eq!(s.file_position(), Some((0, 3)));
+    assert_eq!(
+        s.key(),
+        &DocKey::Path(file("a.md")),
+        "the first stays current"
+    );
+    assert_eq!(s.pages_kept(), 3, "all in memory");
+    assert!(colon(&mut s, "n").is_empty(), "in memory: no load");
+    assert_eq!(s.key(), &DocKey::Path(file("b.md")));
+    assert_eq!(s.file_position(), Some((1, 3)));
+    colon(&mut s, "next");
+    assert_eq!(s.file_position(), Some((2, 3)));
+    colon(&mut s, "n");
+    assert_eq!(s.message(), Some("this is the last file"));
+    assert_eq!(s.file_position(), Some((2, 3)));
+    colon(&mut s, "p");
+    assert_eq!(s.file_position(), Some((1, 3)));
+    colon(&mut s, "x");
+    assert_eq!(s.file_position(), Some((0, 3)));
+    colon(&mut s, "p");
+    assert_eq!(s.message(), Some("this is the first file"));
+    // Back goes where `:n` came from.
+    colon(&mut s, "n");
+    code(&mut s, KeyCode::Backspace);
+    assert_eq!(s.file_position(), Some((0, 3)));
+    assert_eq!(colon(&mut s, "q"), [Effect::Quit]);
+}
+
+#[test]
+fn the_colon_prompt_edits_and_cancels() {
+    let mut s = three_files();
+    keys(&mut s, ":");
+    assert_eq!(s.mode_name(), "command");
+    keys(&mut s, "nq");
+    code(&mut s, KeyCode::Backspace);
+    assert!(matches!(&s.mode, Mode::Command(input) if input == "n"));
+    key(&mut s, Key::ctrl('u'));
+    assert!(matches!(&s.mode, Mode::Command(input) if input.is_empty()));
+    code(&mut s, KeyCode::Backspace);
+    assert_eq!(s.mode_name(), "normal", "erasing nothing closes it");
+    keys(&mut s, ":abc");
+    code(&mut s, KeyCode::Esc);
+    assert_eq!(s.mode_name(), "normal");
+    assert_eq!(s.key(), &DocKey::Path(file("a.md")));
+    drive(&mut s, Action::Paste("n".into()));
+    assert_eq!(
+        s.mode_name(),
+        "normal",
+        "pasting outside a prompt does nothing"
+    );
+    keys(&mut s, ":");
+    drive(&mut s, Action::Paste("n".into()));
+    code(&mut s, KeyCode::Enter);
+    assert_eq!(s.file_position(), Some((1, 3)));
+    colon(&mut s, "frobnicate");
+    assert_eq!(
+        s.message(),
+        Some("unknown command :frobnicate (:n, :p, :x, :q)")
+    );
+    assert!(colon(&mut s, "").is_empty());
+}
+
+#[test]
+fn files_the_history_dropped_are_read_again() {
+    let mut s = three_files();
+    for i in 0..MAX_PAGES {
+        opened(&mut s, &format!("{i}.md"), &format!("# Doc {i}"), None);
+    }
+    assert!(!s.has_page(&DocKey::Path(file("b.md"))));
+    assert_eq!(s.file_position(), None, "not one of the files");
+    let effects = colon(&mut s, "n");
+    let [Effect::Load(req)] = effects.as_slice() else {
+        panic!("{effects:?}");
+    };
+    assert_eq!(req.path, file("b.md"));
+    let request = req.clone();
+    drive(
+        &mut s,
+        Action::Opened {
+            doc: pdoc("# b again", Origin::File(file("b.md"))),
+            key: Some(DocKey::Path(file("b.md"))),
+            request: request.clone(),
+        },
+    );
+    assert_eq!(s.file_position(), Some((1, 3)));
+    // A file that cannot be read: nothing changes.
+    let effects = colon(&mut s, "n");
+    let [Effect::Load(req)] = effects.as_slice() else {
+        panic!("{effects:?}");
+    };
+    drive(
+        &mut s,
+        Action::LoadFailed {
+            request: req.clone(),
+            error: "c.md: gone".into(),
+        },
+    );
+    assert_eq!(s.file_position(), Some((1, 3)));
+    assert_eq!(s.message(), Some("c.md: gone"));
+}
+
+#[test]
+fn a_single_file_has_no_neighbours() {
+    let mut s = state("# Only", 60, 10);
+    assert_eq!(s.file_position(), Some((0, 1)));
+    colon(&mut s, "n");
+    assert_eq!(s.message(), Some("there is only one file"));
+}
+
+#[test]
+fn following_a_link_to_one_of_the_files_moves_the_position() {
+    let mut s = three_files();
+    opened(&mut s, "c.md", "# c", None);
+    assert_eq!(s.file_position(), Some((2, 3)));
+    colon(&mut s, "p");
+    assert_eq!(s.key(), &DocKey::Path(file("b.md")));
+}
+
+#[test]
+fn image_modes_lay_out_again_only_when_sizes_change() {
+    let mut s = state(&long_doc(3, 2), 60, 10);
+    keys(&mut s, "5j");
+    let place = s.top_place();
+    let effects = update(
+        &mut s,
+        Action::ImageMode {
+            name: "blocks".into(),
+            relayout: false,
+        },
+    );
+    assert!(effects.is_empty());
+    assert_eq!(s.message(), Some("images: blocks"));
+    assert!(s.pending.is_none(), "nothing waits for a layout");
+    let effects = update(
+        &mut s,
+        Action::ImageMode {
+            name: "off (alt text)".into(),
+            relayout: true,
+        },
+    );
+    assert_eq!(effects, [Effect::Relayout]);
+    assert_eq!(s.pending, Some(state::Goto::Place(place)));
+}
+
 #[test]
 fn reloading_keeps_the_place_and_the_search() {
     let path = file("r.md");

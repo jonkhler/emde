@@ -8,7 +8,10 @@
 //!
 //! Time is virtual: a poll that finds no event advances the clock by its
 //! timeout (or by what is left of a scripted wait), so debouncing and file
-//! watching run instantly and deterministically. A poll timeout outside
+//! watching run instantly and deterministically. Like the real terminal,
+//! leaving writes the cleanup bytes ([`Terminal::set_cleanup`]) and
+//! [`EXIT`] in one write; unlike it, they are kept per terminal, so tests
+//! running side by side never see each other's. A poll timeout outside
 //! [`MIN_POLL`]`..=`[`MAX_POLL`] is an error, and so is polling long after
 //! the script ran out (a test that forgot to quit fails instead of
 //! hanging).
@@ -81,6 +84,8 @@ pub struct FakeTerminal {
     signals: Option<Signals>,
     idle: u32,
     polls: Vec<Duration>,
+    cleanup: Vec<u8>,
+    job_control: bool,
 }
 
 impl FakeTerminal {
@@ -97,7 +102,16 @@ impl FakeTerminal {
             signals: None,
             idle: 0,
             polls: Vec::new(),
+            cleanup: Vec::new(),
+            job_control: true,
         }
+    }
+
+    /// A terminal whose process cannot be stopped (no job control): Ctrl-Z
+    /// and SIGTSTP are refused.
+    pub fn without_job_control(mut self) -> FakeTerminal {
+        self.job_control = false;
+        self
     }
 
     /// Scripted [`Step::Signal`]s raise on these flags.
@@ -309,12 +323,22 @@ impl Terminal for FakeTerminal {
             return Ok(());
         }
         self.raw = false;
-        self.write(EXIT)
+        let mut bytes = self.cleanup.clone();
+        bytes.extend_from_slice(EXIT);
+        self.write(&bytes)
     }
 
     fn suspend(&mut self) -> io::Result<()> {
         self.chunks.push(Chunk::Suspend);
         Ok(())
+    }
+
+    fn can_suspend(&self) -> bool {
+        self.job_control
+    }
+
+    fn set_cleanup(&mut self, bytes: Vec<u8>) {
+        self.cleanup = bytes;
     }
 
     fn now(&self) -> Instant {
@@ -368,6 +392,19 @@ mod tests {
         let mut want = ENTER.to_vec();
         want.extend_from_slice(MOUSE_ON);
         assert_eq!(t.writes(), [want.as_slice(), EXIT]);
+    }
+
+    #[test]
+    fn leaving_writes_the_cleanup_first() {
+        let mut t = FakeTerminal::new(10, 5);
+        assert!(t.can_suspend());
+        t.enter(false).unwrap();
+        t.set_cleanup(b"<delete>".to_vec());
+        t.leave().unwrap();
+        let mut want = b"<delete>".to_vec();
+        want.extend_from_slice(EXIT);
+        assert_eq!(t.writes().last().copied(), Some(want.as_slice()));
+        assert!(!FakeTerminal::new(1, 1).without_job_control().can_suspend());
     }
 
     #[test]

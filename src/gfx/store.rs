@@ -33,22 +33,35 @@
 //!
 //! A store is made for one document and one terminal ([`StoreOptions`]);
 //! the rows [`prepare_stream`](ImageStore::prepare_stream) makes are for
-//! one layout, placements being known by their first line. The pager needs
-//! other rows for pixel protocols (its own redraw rules, plan §7); sizes,
-//! sources and block renditions are the same.
+//! one layout, placements being known by their first line.
+//!
+//! # The pager
+//!
+//! The pager has redraw rules of its own (plan §7), so it does not use
+//! [`prepare_stream`](ImageStore::prepare_stream): it sizes figures through
+//! the store like stream mode does, then renders one rendition at a time
+//! on its worker thread with [`make`], from the image's [`Source`]. Each
+//! [`Make`] is one rendition: block cells, a kitty upload (for
+//! placeholders or classic placements, under a fresh id), or the iTerm2 or
+//! sixel bytes of the cell rows of the box that are on screen. Those come
+//! from the same decisions as stream mode (original files when they can be
+//! sent as they are, the same scaling and fallbacks); a partly visible
+//! image is a slice of whole cell rows (sixel slices end on whole bands).
 
+use std::cell::{OnceCell, RefCell};
 use std::collections::HashMap;
 use std::fs;
 use std::io::Read as _;
 use std::num::NonZeroU32;
+use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 
 use super::raster::{self, Raster};
 use super::{Passthrough, Rgba, b64, iterm, kitty, size};
-use crate::ir::{Document, ImageId, ImageRef, Length};
+use crate::ir::{Block, Document, ImageId, ImageRef, Length};
 use crate::layout::{ImageSizer, Layout, Placement};
 use crate::options::ImageOptions;
 use crate::render::osc8;
@@ -198,13 +211,36 @@ enum Rows {
     Overlay { first: Vec<u8>, rest: Vec<u8> },
 }
 
+/// An image file read for a figure, shared with the thread that renders it
+/// (the pager's worker): see [`ImageStore::source`] and [`make`].
+#[derive(Clone, Debug)]
+pub struct Source(Arc<Entry>);
+
+impl Source {
+    /// The pixel size from the file's header.
+    pub fn size(&self) -> (u32, u32) {
+        self.0.size
+    }
+
+    /// Where the image came from, for messages.
+    pub fn name(&self) -> &str {
+        &self.0.name
+    }
+
+    /// Decode the image, refusing more than `max_pixels` pixels; `None`
+    /// when it cannot be decoded (or emde was built without image support).
+    pub fn decode(&self, max_pixels: u64) -> Option<Rgba> {
+        codec::decode(&self.0.bytes, max_pixels).ok()
+    }
+}
+
 /// The images of one document; see the module docs.
 #[derive(Debug)]
 pub struct ImageStore {
     opts: StoreOptions,
     /// Indexed by [`ImageId`]; `None` for images that are not figures or
     /// could not be read.
-    entries: Vec<Option<Entry>>,
+    entries: Vec<Option<Arc<Entry>>>,
     renditions: HashMap<Key, Rendition>,
     /// The rows of each placement of the last prepared layout, by its first
     /// line.
@@ -241,7 +277,7 @@ impl ImageStore {
             match result.unwrap_or_else(|| Err("could not be read".into())) {
                 Ok(entry) => {
                     if let Some(slot) = store.entries.get_mut(id.index()) {
-                        *slot = Some(entry);
+                        *slot = Some(Arc::new(entry));
                     }
                 }
                 Err(problem) => store.problems.push(problem),
@@ -250,10 +286,29 @@ impl ImageStore {
         store
     }
 
+    /// Read the images of every figure of `doc` ([`figure_images`]).
+    pub fn load_figures(doc: &Document, opts: StoreOptions) -> ImageStore {
+        ImageStore::load(doc, &figure_images(doc), opts)
+    }
+
     /// Why images are not shown (unreadable, not an image, too large, …),
     /// one message per image.
     pub fn problems(&self) -> &[String] {
         &self.problems
+    }
+
+    /// How the store shows images.
+    pub fn options(&self) -> &StoreOptions {
+        &self.opts
+    }
+
+    /// The image of figure image `id`, to render with [`make`] (on any
+    /// thread); `None` when it was not read.
+    pub fn source(&self, id: ImageId) -> Option<Source> {
+        self.entries
+            .get(id.index())?
+            .as_ref()
+            .map(|e| Source(Arc::clone(e)))
     }
 
     /// Render every placement of `layout` for stream output (decoding each
@@ -282,7 +337,7 @@ impl ImageStore {
         }
         let opts = &self.opts;
         let entries = &self.entries;
-        let entry = |id: ImageId| entries.get(id.index()).and_then(Option::as_ref);
+        let entry = |id: ImageId| entries.get(id.index()).and_then(Option::as_deref);
         let largest = missing
             .iter()
             .filter_map(|&(id, _)| entry(id))
@@ -852,45 +907,66 @@ fn render<'p>(
     let pixel = match opts.graphics {
         Graphics::None => return None,
         Graphics::Blocks => None,
-        Graphics::KittyPlaceholders => placeholders(entry, pixels, cols, rows, opts),
-        Graphics::KittyClassic => kitty_classic(entry, pixels, cols, rows, opts),
-        Graphics::Iterm => iterm_image(entry, pixels, cols, rows, opts),
-        Graphics::Sixel => sixel_image(pixels, cols, rows, opts),
+        Graphics::KittyPlaceholders => {
+            placeholders(entry, pixels, cols, rows, opts).map(|p| Rendition::Placeholders {
+                upload: Some(p.upload),
+                rows: p.rows,
+            })
+        }
+        Graphics::KittyClassic => {
+            kitty_upload(entry, pixels, cols, rows, opts).map(|k| Rendition::KittyClassic {
+                id: k.id,
+                upload: Some(k.upload),
+                placed: 0,
+            })
+        }
+        Graphics::Iterm => iterm_image(entry, pixels, cols, rows, opts).map(Rendition::Pixels),
+        Graphics::Sixel => sixel_image(pixels, cols, rows, 0..rows, opts).map(Rendition::Pixels),
     };
-    pixel.or_else(|| blocks(pixels()?, cols, rows, opts))
+    pixel.or_else(|| blocks(pixels()?, cols, rows, opts).map(Rendition::Blocks))
 }
 
 /// Block glyphs (only with colours to draw them in).
-fn blocks(img: &Rgba, cols: u16, rows: u16, opts: &StoreOptions) -> Option<Rendition> {
-    (opts.depth >= ColorDepth::Ansi16).then(|| {
-        Rendition::Blocks(raster::rasterize(
-            img,
-            cols,
-            rows,
-            opts.glyphs,
-            opts.background,
-            opts.depth,
-        ))
-    })
+fn blocks(img: &Rgba, cols: u16, rows: u16, opts: &StoreOptions) -> Option<Raster> {
+    (opts.depth >= ColorDepth::Ansi16)
+        .then(|| raster::rasterize(img, cols, rows, opts.glyphs, opts.background, opts.depth))
 }
 
-/// A PNG for kitty: the original file when it is a PNG that is not much
-/// larger than its box, else the image downscaled to (twice) the box.
+/// A PNG for kitty and its size in pixels: the original file when it is a
+/// PNG that is not much larger than its box, else the image downscaled to
+/// (twice) the box.
 fn kitty_png<'p>(
     entry: &Entry,
     pixels: &dyn Fn() -> Option<&'p Rgba>,
     cols: u16,
     rows: u16,
     opts: &StoreOptions,
-) -> Option<Vec<u8>> {
+) -> Option<(Vec<u8>, (u32, u32))> {
     let (bw, bh) = box_px(cols, rows, opts.cell());
+    let (max_w, max_h) = (bw.saturating_mul(2), bh.saturating_mul(2));
     let (w, h) = entry.size;
-    let small = w <= bw.saturating_mul(2) && h <= bh.saturating_mul(2);
+    let small = w <= max_w && h <= max_h;
     if codec::is_png(&entry.bytes) && entry.bytes.len() <= KITTY_ORIGINAL_MAX_BYTES && small {
-        return Some(entry.bytes.clone());
+        return Some((entry.bytes.clone(), entry.size));
     }
     let img = pixels()?;
-    codec::png(img, bw.saturating_mul(2), bh.saturating_mul(2))
+    let png = codec::png(img, max_w, max_h)?;
+    Some((
+        png,
+        size::fit_within((img.width, img.height), (max_w, max_h)),
+    ))
+}
+
+/// An image uploaded for kitty Unicode placeholders ([`Made::Placeholders`]).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Placeholders {
+    /// The image id: fresh for every upload, never reused.
+    pub id: kitty::ImageId,
+    /// The upload (`a=T,U=1`, wrapped for tmux passthrough when needed),
+    /// written before the first row is shown.
+    pub upload: Vec<u8>,
+    /// The text of each row (placeholder cells with all three diacritics).
+    pub rows: Vec<Vec<u8>>,
 }
 
 fn placeholders<'p>(
@@ -899,40 +975,46 @@ fn placeholders<'p>(
     cols: u16,
     rows: u16,
     opts: &StoreOptions,
-) -> Option<Rendition> {
+) -> Option<Placeholders> {
     if cols > kitty::MAX_CELLS || rows > kitty::MAX_CELLS {
         return None;
     }
-    let png = kitty_png(entry, pixels, cols, rows, opts)?;
+    let (png, _) = kitty_png(entry, pixels, cols, rows, opts)?;
     let id = kitty::next_image_id();
     let text: Option<Vec<Vec<u8>>> = (0..rows)
         .map(|row| kitty::placeholder_row(id, row, 0..cols).map(String::into_bytes))
         .collect();
-    Some(Rendition::Placeholders {
-        upload: Some(kitty::transmit_placeholder(
-            id,
-            &png,
-            cols,
-            rows,
-            opts.passthrough,
-        )),
+    Some(Placeholders {
+        id,
+        upload: kitty::transmit_placeholder(id, &png, cols, rows, opts.passthrough),
         rows: text?,
     })
 }
 
-fn kitty_classic<'p>(
+/// An image uploaded for kitty classic placements ([`Made::Kitty`]).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct KittyImage {
+    /// The image id: fresh for every upload, never reused.
+    pub id: kitty::ImageId,
+    /// The upload (`a=t`), written before the first placement.
+    pub upload: Vec<u8>,
+    /// The uploaded PNG's height in pixels: crops (`y`, `h`) count in it.
+    pub height: u32,
+}
+
+fn kitty_upload<'p>(
     entry: &Entry,
     pixels: &dyn Fn() -> Option<&'p Rgba>,
     cols: u16,
     rows: u16,
     opts: &StoreOptions,
-) -> Option<Rendition> {
-    let png = kitty_png(entry, pixels, cols, rows, opts)?;
+) -> Option<KittyImage> {
+    let (png, (_, height)) = kitty_png(entry, pixels, cols, rows, opts)?;
     let id = kitty::next_image_id();
-    Some(Rendition::KittyClassic {
+    Some(KittyImage {
         id,
-        upload: Some(kitty::transmit(id, &png, opts.passthrough)),
-        placed: 0,
+        upload: kitty::transmit(id, &png, opts.passthrough),
+        height,
     })
 }
 
@@ -945,47 +1027,226 @@ fn iterm_image<'p>(
     cols: u16,
     rows: u16,
     opts: &StoreOptions,
-) -> Option<Rendition> {
+) -> Option<Vec<u8>> {
     let direct = iterm::Options::default();
     if codec::iterm_decodes(&entry.bytes)
         && entry.bytes.len() <= iterm::ORIGINAL_MAX_BYTES
         && let Some(draw) = iterm::inline_image(&entry.bytes, cols, rows, direct)
     {
-        return Some(Rendition::Pixels(draw));
+        return Some(draw);
     }
-    let (bw, bh) = box_px(cols, rows, opts.cell());
-    let img = pixels()?;
-    [2, 1]
-        .into_iter()
-        .find_map(|scale| {
-            let png = codec::png(img, bw.saturating_mul(scale), bh.saturating_mul(scale))?;
-            iterm::inline_image(&png, cols, rows, direct)
-        })
-        .map(Rendition::Pixels)
+    iterm_png(pixels()?, cols, rows, opts)
 }
 
+/// `img` as an iTerm2 inline image over `cols × rows` cells: a PNG of twice
+/// that box, or of the box itself when that is too large for one sequence.
+fn iterm_png(img: &Rgba, cols: u16, rows: u16, opts: &StoreOptions) -> Option<Vec<u8>> {
+    let (bw, bh) = box_px(cols, rows, opts.cell());
+    [2, 1].into_iter().find_map(|scale| {
+        let png = codec::png(img, bw.saturating_mul(scale), bh.saturating_mul(scale))?;
+        iterm::inline_image(&png, cols, rows, iterm::Options::default())
+    })
+}
+
+/// iTerm2 bytes for cell rows `shown` of the `cols × rows` box: the whole
+/// image as [`iterm_image`] sends it, or the pixel rows those cell rows
+/// show, as a PNG slice drawn over them.
+fn iterm_rows<'p>(
+    entry: &Entry,
+    pixels: &dyn Fn() -> Option<&'p Rgba>,
+    cols: u16,
+    rows: u16,
+    shown: Range<u16>,
+    opts: &StoreOptions,
+) -> Option<Vec<u8>> {
+    let shown = within(shown, rows)?;
+    if shown == (0..rows) {
+        return iterm_image(entry, pixels, cols, rows, opts);
+    }
+    let img = pixels()?;
+    let slice = img.crop_rows(size::visible_pixel_rows(img.height, rows, shown.clone())?);
+    iterm_png(&slice, cols, shown.end - shown.start, opts)
+}
+
+/// `shown` cut to a box of `rows` rows; `None` when nothing is left.
+fn within(shown: Range<u16>, rows: u16) -> Option<Range<u16>> {
+    let end = shown.end.min(rows);
+    (shown.start < end).then_some(shown.start..end)
+}
+
+/// Height of a sixel band in pixels.
+const SIXEL_BAND: u32 = 6;
+
 /// Sixel: the image composited onto the page colour and scaled to its box
-/// (whole sixel bands, so nothing spills below it).
+/// (whole sixel bands, so nothing spills below it), or the slice of it
+/// that cell rows `shown` of the box show (ending on a whole band within
+/// the last of them).
 fn sixel_image<'p>(
     pixels: &dyn Fn() -> Option<&'p Rgba>,
     cols: u16,
     rows: u16,
+    shown: Range<u16>,
     opts: &StoreOptions,
-) -> Option<Rendition> {
+) -> Option<Vec<u8>> {
+    let shown = within(shown, rows)?;
     let (bw, bh) = box_px(cols, rows, opts.cell());
-    let band = 6;
-    let bh = bh / band * band;
+    let bh = bh / SIXEL_BAND * SIXEL_BAND;
     if bw == 0 || bh == 0 {
         return None;
     }
     let img = pixels()?;
     let (w, h) = fit_box((img.width, img.height), (bw, bh));
-    codec::sixel(img, w, h, opts.page).map(Rendition::Pixels)
+    if shown == (0..rows) {
+        return codec::sixel(img, w, h, opts.page);
+    }
+    let cut = codec::sixel_rows(h, opts.cell().1, shown)?;
+    // The source rows behind that slice of the scaled image (at least one).
+    let source_row = |y: u32| {
+        let row = u64::from(y) * u64::from(img.height) / u64::from(h.max(1));
+        u32::try_from(row).unwrap_or(img.height)
+    };
+    let top = source_row(cut.start);
+    let bottom = source_row(cut.end).max(top + 1);
+    codec::sixel(
+        &img.crop_rows(top..bottom),
+        w,
+        cut.end - cut.start,
+        opts.page,
+    )
+}
+
+/// The images of `doc`'s figures, wherever they are (nested blocks and
+/// footnotes too), sorted and without duplicates: what layout sizes.
+pub fn figure_images(doc: &Document) -> Vec<ImageId> {
+    fn walk(blocks: &[Block], out: &mut Vec<ImageId>) {
+        for block in blocks {
+            match block {
+                Block::Figure(f) => out.push(f.image),
+                Block::Quote { body, .. }
+                | Block::Details { body, .. }
+                | Block::Align { body, .. } => walk(body, out),
+                Block::List(list) => {
+                    for item in &list.items {
+                        walk(&item.body, out);
+                    }
+                }
+                Block::DefList(items) => {
+                    for def in items.iter().flat_map(|item| &item.defs) {
+                        walk(def, out);
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    let mut out = Vec::new();
+    walk(&doc.blocks, &mut out);
+    for note in &doc.footnotes {
+        walk(&note.body, &mut out);
+    }
+    out.sort_unstable();
+    out.dedup();
+    out
+}
+
+// --- The pager -----------------------------------------------------------------
+
+/// What the pager makes of a figure: one rendition, made by [`make`].
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Make {
+    /// Block-glyph cells.
+    Blocks,
+    /// A kitty upload for Unicode placeholders, and the text of each row.
+    Placeholders,
+    /// A kitty upload for classic placements.
+    Kitty,
+    /// iTerm2 bytes that draw these cell rows of the box.
+    Iterm(Range<u16>),
+    /// Sixel bytes that draw these cell rows of the box.
+    Sixel(Range<u16>),
+}
+
+/// A rendition made for the pager.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Made {
+    /// Block-glyph cells.
+    Blocks(Raster),
+    /// An image for Unicode placeholders.
+    Placeholders(Placeholders),
+    /// An image for classic placements.
+    Kitty(KittyImage),
+    /// Bytes that draw the image (or the slice of it) at the cursor, over
+    /// the cells of the rows it shows: iTerm2 or sixel.
+    Pixels(Vec<u8>),
+}
+
+impl Made {
+    /// Roughly how many bytes it holds (for cache budgets).
+    pub fn bytes(&self) -> usize {
+        match self {
+            Made::Blocks(r) => {
+                usize::from(r.cols) * usize::from(r.rows) * size_of::<raster::RasterCell>()
+            }
+            Made::Placeholders(p) => p.upload.len() + p.rows.iter().map(Vec::len).sum::<usize>(),
+            Made::Kitty(k) => k.upload.len(),
+            Made::Pixels(b) => b.len(),
+        }
+    }
+}
+
+/// Render `source` at `cols × rows` cells as `what` says, with the
+/// decisions stream mode makes (original files when they can be sent as
+/// they are, the same scaling, PNG and sixel limits). `decoded` decodes the
+/// image when the rendition needs pixels (it is called at most once; kitty
+/// uploads and whole iTerm2 images of small files need none), so a caller
+/// can keep decoded images across renditions.
+///
+/// `None` when the rendition cannot be made: no pixels, no colours for
+/// blocks, more cells than placeholders address, or too large for the
+/// protocol; the pager falls back to blocks, then to the placeholder box.
+pub fn make(
+    source: &Source,
+    what: &Make,
+    cols: u16,
+    rows: u16,
+    opts: &StoreOptions,
+    decoded: &mut dyn FnMut() -> Option<Arc<Rgba>>,
+) -> Option<Made> {
+    if cols == 0 || rows == 0 {
+        return None;
+    }
+    let decoded = RefCell::new(decoded);
+    let image: OnceCell<Option<Arc<Rgba>>> = OnceCell::new();
+    let pixels = || {
+        image
+            .get_or_init(|| {
+                let mut decode = decoded.borrow_mut();
+                let decode: &mut dyn FnMut() -> Option<Arc<Rgba>> = &mut **decode;
+                decode()
+            })
+            .as_deref()
+    };
+    let entry = &source.0;
+    match what {
+        Make::Blocks => blocks(pixels()?, cols, rows, opts).map(Made::Blocks),
+        Make::Placeholders => {
+            placeholders(entry, &pixels, cols, rows, opts).map(Made::Placeholders)
+        }
+        Make::Kitty => kitty_upload(entry, &pixels, cols, rows, opts).map(Made::Kitty),
+        Make::Iterm(shown) => {
+            iterm_rows(entry, &pixels, cols, rows, shown.clone(), opts).map(Made::Pixels)
+        }
+        Make::Sixel(shown) => {
+            sixel_image(&pixels, cols, rows, shown.clone(), opts).map(Made::Pixels)
+        }
+    }
 }
 
 /// The decoders and encoders, which need the `images` (and `sixel`)
 /// features; without them nothing decodes and every figure keeps its box.
 mod codec {
+    use std::ops::Range;
+
     use super::Rgba;
     use crate::style::Rgb;
 
@@ -1035,6 +1296,25 @@ mod codec {
         #[cfg(not(feature = "images"))]
         {
             let _ = (img, max_w, max_h);
+            None
+        }
+    }
+
+    /// The pixel rows of an image `height` pixels tall (drawn with cells
+    /// `cell_height` pixels tall) that cell rows `shown` show, cut to whole
+    /// sixel bands ([`crate::gfx::sixel::crop_rows`]).
+    pub(super) fn sixel_rows(
+        height: u32,
+        cell_height: u16,
+        shown: Range<u16>,
+    ) -> Option<Range<u32>> {
+        #[cfg(feature = "sixel")]
+        {
+            crate::gfx::sixel::crop_rows(height, cell_height, shown)
+        }
+        #[cfg(not(feature = "sixel"))]
+        {
+            let _ = (height, cell_height, shown);
             None
         }
     }

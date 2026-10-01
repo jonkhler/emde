@@ -3,9 +3,11 @@
 //!
 //! The loop polls the terminal with a timeout between [`MIN_POLL`] and
 //! [`MAX_POLL`], set by what is due next: the resize debounce
-//! ([`RESIZE_DEBOUNCE`]) and the file watcher. After an event it takes
-//! whatever else is already queued before painting, so a burst of wheel
-//! events costs one frame. Signal flags are checked on every turn.
+//! ([`RESIZE_DEBOUNCE`]), the file watcher, the end of the image debounce,
+//! and, while the image worker has jobs out, [`WORK_POLL`] (its results
+//! are picked up at every turn). After an event it takes whatever else is
+//! already queued before painting, so a burst of wheel events costs one
+//! frame. Signal flags are checked on every turn.
 
 use std::collections::{HashMap, VecDeque};
 use std::io;
@@ -16,7 +18,7 @@ use std::time::{Duration, Instant};
 use crate::config::OpenCommand;
 use crate::highlight::Highlighter;
 use crate::layout::{self, Layout};
-use crate::options::{ImageMode, RenderOptions};
+use crate::options::RenderOptions;
 use crate::render::RenderConfig;
 use crate::source::{Origin, find_readme};
 use crate::term::Caps;
@@ -24,8 +26,8 @@ use crate::term::env::Env;
 use crate::term::tmux::TmuxInfo;
 use crate::theme::Theme;
 
-use super::diff::Screen;
-use super::images::{self, ImageProvider, Sizer};
+use super::diff::{Extras, Screen};
+use super::images::{self, Images, WORK_POLL};
 use super::keymap::Command;
 use super::os::{self, ClipboardPlan, OpenPlan};
 use super::state::{DocKey, Settings, State};
@@ -82,9 +84,7 @@ pub(crate) struct Shell<'t, T: Terminal> {
     opts: RenderOptions,
     max_width: u16,
     highlighter: Arc<dyn Highlighter>,
-    images: Box<dyn ImageProvider>,
-    image_modes: Vec<ImageMode>,
-    image_mode: usize,
+    images: Images,
     env: Env,
     /// The tmux query result: from the session, else asked for the first
     /// time something is copied inside tmux.
@@ -123,6 +123,7 @@ impl<'t, T: Terminal> Shell<'t, T> {
             .unwrap_or((80, 24));
         let PagerSession {
             doc,
+            more,
             loader,
             theme,
             mut caps,
@@ -139,29 +140,28 @@ impl<'t, T: Terminal> Shell<'t, T> {
         } = session;
         caps.size = Some(size);
         let settings = Settings::new(&pager, &opts);
-        let image_modes = images::cycle(opts.images.mode);
-        let sizer = Sizer {
-            provider: &*images,
-            doc: &doc.doc,
-            enabled: opts.images.mode != ImageMode::None,
-        };
-        let first = first.filter(|l| l.width == size.0).unwrap_or_else(|| {
-            layout::layout(
-                &doc.doc,
-                size.0,
-                &theme,
-                &caps,
-                &opts,
-                &*highlighter,
-                &sizer,
-            )
-        });
+        let mut images = Images::new(images);
         let key = key_of(&doc.source.origin);
+        let sizer = images.sizer(&key.clone().unwrap_or(DocKey::Unnamed(0)), &doc.doc);
+        let first = first.filter(|l| l.width == size.0).unwrap_or_else(|| {
+            layout::layout(&doc.doc, size.0, &theme, &caps, &opts, &*highlighter, sizer)
+        });
         let mut stamps = HashMap::new();
         if let Origin::File(p) = &doc.source.origin {
             stamps.insert(p.clone(), watch::stamp(p));
         }
         let mut state = State::new(doc, key, first, size, &pager, settings);
+        let more = more
+            .into_iter()
+            .map(|d| {
+                if let Origin::File(p) = &d.source.origin {
+                    stamps.insert(p.clone(), watch::stamp(p));
+                }
+                let key = key_of(&d.source.origin);
+                (d, key)
+            })
+            .collect();
+        state.add_files(more);
         if let Some(anchor) = anchor {
             update(&mut state, Action::Anchor(anchor));
         }
@@ -180,8 +180,6 @@ impl<'t, T: Terminal> Shell<'t, T> {
             opts,
             highlighter,
             images,
-            image_modes,
-            image_mode: 0,
             env,
             tmux_asked: tmux.is_some(),
             tmux,
@@ -200,6 +198,7 @@ impl<'t, T: Terminal> Shell<'t, T> {
 
     /// Run until the reader quits or a signal says so.
     pub(crate) fn run(mut self) -> io::Result<PagerExit> {
+        self.term.term.set_cleanup(Vec::new());
         self.term.term.enter(self.state.mouse())?;
         self.sync_watcher();
         self.paint()?;
@@ -210,11 +209,25 @@ impl<'t, T: Terminal> Shell<'t, T> {
             if let Some(sig) = self.signals.exit_requested() {
                 return Ok(PagerExit::Signal(sig));
             }
+            if self.signals.take_stop() {
+                // SIGTSTP from outside: as Ctrl-Z.
+                self.suspend()?;
+                self.paint()?;
+            }
             if self.signals.take_continued() {
                 // Stopped from outside and continued: set up again and
                 // repaint now, not after the next event.
                 self.resume()?;
+                self.images.reset(false);
                 self.paint()?;
+            }
+            if !self.images.waits_when_idle() && self.images.collect() {
+                // Show what came in now, not after the next poll (which
+                // may be a long one once the worker has nothing left).
+                self.dirty = true;
+                if self.resize.is_none() {
+                    self.paint()?;
+                }
             }
             let now = self.term.term.now();
             if let Some(exit) = self.fire_resize(now)? {
@@ -257,6 +270,12 @@ impl<'t, T: Terminal> Shell<'t, T> {
         if let Some(w) = &self.watcher {
             due = due.min(w.deadline().saturating_duration_since(now));
         }
+        if let Some(at) = self.images.deadline() {
+            due = due.min(at.saturating_duration_since(now));
+        }
+        if self.images.busy() && !self.images.waits_when_idle() {
+            due = due.min(WORK_POLL);
+        }
         clamp_poll(due)
     }
 
@@ -292,9 +311,16 @@ impl<'t, T: Terminal> Shell<'t, T> {
         }
     }
 
-    /// Nothing happened: time for the watcher.
+    /// Nothing happened: time for the watcher, and for images (the end of
+    /// the debounce, or the worker's results when they are waited for).
     fn idle(&mut self) -> io::Result<Option<PagerExit>> {
         let now = self.term.term.now();
+        if self.images.deadline().is_some_and(|at| now >= at) {
+            self.dirty = true;
+        }
+        if self.images.waits_when_idle() && self.images.busy() && self.images.settle() {
+            self.dirty = true;
+        }
         let changed = match &mut self.watcher {
             Some(w) => w.poll(now),
             None => false,
@@ -325,6 +351,7 @@ impl<'t, T: Terminal> Shell<'t, T> {
                 }
                 Effect::Redraw => {
                     self.screen.invalidate();
+                    self.images.reset(false);
                     Vec::new()
                 }
                 Effect::Load(req) => self.load(req),
@@ -351,6 +378,9 @@ impl<'t, T: Terminal> Shell<'t, T> {
             };
             queue.extend(more);
         }
+        // Images of documents the history dropped go with them.
+        let state = &self.state;
+        self.images.retain(|key| state.has_page(key));
         self.sync_watcher();
         Ok(None)
     }
@@ -360,18 +390,8 @@ impl<'t, T: Terminal> Shell<'t, T> {
         let (cols, rows) = self.state.size();
         self.caps.size = Some((cols, rows));
         self.opts.max_width = if self.state.wide() { 0 } else { self.max_width };
-        let mode = self
-            .image_modes
-            .get(self.image_mode)
-            .copied()
-            .unwrap_or(ImageMode::Auto);
-        self.opts.images.mode = mode;
         let doc = self.state.document();
-        let sizer = Sizer {
-            provider: &*self.images,
-            doc,
-            enabled: mode != ImageMode::None,
-        };
+        let sizer = self.images.sizer(self.state.key(), doc);
         layout::layout(
             doc,
             cols,
@@ -379,24 +399,45 @@ impl<'t, T: Terminal> Shell<'t, T> {
             &self.caps,
             &self.opts,
             &*self.highlighter,
-            &sizer,
+            sizer,
         )
     }
 
-    /// Paint a frame if anything changed since the last one.
+    /// Paint a frame if anything changed since the last one: the rows that
+    /// changed, with the image layer's uploads before them and its pixel
+    /// images and placements after.
     fn paint(&mut self) -> io::Result<()> {
         if !self.dirty {
             return Ok(());
         }
         self.dirty = false;
-        let frame = view(&self.state, &self.ctx);
+        let now = self.term.term.now();
+        let mut frame = view(&self.state, &self.ctx);
         self.cfg.link_base = self.state.page.link_base;
-        let bytes = self
-            .screen
-            .paint(&frame, &self.state.page.doc, &self.state.layout, &self.cfg);
+        self.images
+            .plan(&self.state, &mut frame, &mut self.screen, now);
+        let diff = self.screen.diff(&frame);
+        let (before, after) = self.images.extras(&self.state, &frame, &diff, now);
+        let rows = self.images.rows();
+        let extras = Extras {
+            images: Some(&rows),
+            before: &before,
+            after: &after,
+        };
+        let bytes = self.screen.write(
+            &frame,
+            &diff,
+            &self.state.page.doc,
+            &self.state.layout,
+            &self.cfg,
+            extras,
+        );
         if !bytes.is_empty() {
             self.term.term.write(&bytes)?;
             self.term.term.flush()?;
+        }
+        if let Some(cleanup) = self.images.cleanup() {
+            self.term.term.set_cleanup(cleanup);
         }
         Ok(())
     }
@@ -544,24 +585,38 @@ impl<'t, T: Terminal> Shell<'t, T> {
         }
     }
 
+    /// `i`: the next image mode, painted from scratch (laid out again when
+    /// figures appear or turn into alt text).
     fn cycle_images(&mut self) -> Vec<Effect> {
-        self.image_mode = (self.image_mode + 1) % self.image_modes.len().max(1);
-        let mode = self
-            .image_modes
-            .get(self.image_mode)
-            .copied()
-            .unwrap_or(ImageMode::Auto);
-        update(
-            &mut self.state,
-            Action::Message(format!("images: {}", images::mode_name(mode))),
-        )
+        let Some((mode, relayout)) = self.images.cycle() else {
+            return update(
+                &mut self.state,
+                Action::Message("images cannot be shown here".into()),
+            );
+        };
+        self.screen.invalidate();
+        let name = images::mode_name(mode).to_owned();
+        update(&mut self.state, Action::ImageMode { name, relayout })
     }
 
-    /// Ctrl-Z: put the terminal back, stop, and set it up again on resume.
+    /// Ctrl-Z or SIGTSTP: put the terminal back (kitty images are deleted
+    /// with it), stop, and set it up again on resume. Without job control
+    /// nothing could continue the process: it carries on instead.
     fn suspend(&mut self) -> io::Result<()> {
+        if !self.term.term.can_suspend() {
+            update(
+                &mut self.state,
+                Action::Error("cannot suspend: no shell with job control to resume from".into()),
+            );
+            self.dirty = true;
+            return Ok(());
+        }
         self.term.term.leave()?;
+        self.images.reset(true);
+        self.term.term.set_cleanup(Vec::new());
         self.term.term.suspend()?;
         let _ = self.signals.take_continued();
+        let _ = self.signals.take_stop();
         self.resume()
     }
 

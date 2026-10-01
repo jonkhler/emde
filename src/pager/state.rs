@@ -228,8 +228,12 @@ pub(crate) enum Mode {
     Normal,
     Prompt(Prompt),
     Outline(Outline),
-    Help { scroll: usize },
+    Help {
+        scroll: usize,
+    },
     Hints(Hints),
+    /// The `:` prompt, with what was typed after the colon.
+    Command(String),
 }
 
 /// A message in the status bar, shown until the next key.
@@ -400,6 +404,12 @@ pub struct State {
     pub(crate) mouse: bool,
     pub(crate) watch: bool,
     pub(crate) settings: Settings,
+    /// The documents named on the command line, in order (`:n`, `:p`).
+    pub(crate) files: Vec<DocKey>,
+    /// Which of them was shown last.
+    pub(crate) file: usize,
+    /// The file `:n` or `:p` asked for, until it is shown.
+    pub(crate) pending_file: Option<usize>,
     next_unnamed: u32,
     next_link_base: u32,
 }
@@ -418,7 +428,7 @@ impl State {
     ) -> State {
         let key = key.unwrap_or(DocKey::Unnamed(0));
         let links = u32::try_from(doc.doc.links.len()).unwrap_or(u32::MAX);
-        let page = Rc::new(Page::new(doc, key, 0, settings.front_matter));
+        let page = Rc::new(Page::new(doc, key.clone(), 0, settings.front_matter));
         let mut history = History::default();
         history.touch(&page);
         // Whether files are watched; standard input never is (`watching`).
@@ -443,11 +453,29 @@ impl State {
             mouse: pager.mouse,
             watch,
             settings,
+            files: vec![key],
+            file: 0,
+            pending_file: None,
             next_unnamed: 1,
             next_link_base: links,
         };
         state.clamp_top();
         state
+    }
+
+    /// The other documents named on the command line, after the first one
+    /// (`key`: their file, `None` for standard input): `:n` and `:p` go
+    /// through them all. They are kept in memory like visited documents
+    /// (as far as the history keeps documents; files it drops are read
+    /// again when shown), the first document staying the current one.
+    pub fn add_files(&mut self, docs: Vec<(PagerDoc, Option<DocKey>)>) {
+        for (doc, key) in docs {
+            let page = self.new_page(doc, key);
+            self.files.push(page.key.clone());
+            self.history.touch(&page);
+        }
+        let current = Rc::clone(&self.page);
+        self.history.touch(&current);
     }
 
     /// A page for a newly read document.
@@ -613,7 +641,15 @@ impl State {
             Mode::Outline(_) => "outline",
             Mode::Help { .. } => "help",
             Mode::Hints(_) => "hints",
+            Mode::Command(_) => "command",
         }
+    }
+
+    /// The position of the current document among the files named on the
+    /// command line, and how many there are: `Some((0, 2))` for the first
+    /// of two; `None` when the document is not one of them.
+    pub fn file_position(&self) -> Option<(usize, usize)> {
+        (self.files.get(self.file) == Some(&self.page.key)).then_some((self.file, self.files.len()))
     }
 
     /// Whether a document with this key is in memory.

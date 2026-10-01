@@ -1,8 +1,9 @@
 //! The built-in pager (plan §7).
 //!
-//! [`run`] takes a [`PagerSession`] — the first document, a loader for the
-//! documents its links lead to, the render context and the pager options —
-//! and shows it on the terminal until the reader quits.
+//! [`run`] takes a [`PagerSession`] — the documents named on the command
+//! line, a loader for the documents their links lead to, the render
+//! context, how images are shown and the pager options — and shows them on
+//! the terminal until the reader quits.
 //!
 //! # Architecture
 //!
@@ -16,14 +17,18 @@
 //!   lays them out, carries out the [`Effect`]s, and paints frames with
 //!   [`Screen`]: only rows whose hash changed, a DECSTBM scroll when the
 //!   document just moved, everything in one synchronized write.
+//! * The image layer ([`PagerImages`]; the `images` module) sizes figures
+//!   for layout, has their renditions made on a worker thread, and adds to
+//!   each frame what its graphics protocol needs: kitty uploads before the
+//!   rows, pixel images and placements after them.
 //!
 //! # The terminal
 //!
 //! Setup and teardown, signals and the panic hook are described in
 //! [`term`]. The terminal is put back on every way out: the shell's drop
 //! guard, SIGTERM/SIGHUP/SIGINT (flags checked at least every
-//! [`term::MAX_POLL`]), and unguarded panics; Ctrl-Z suspends with the
-//! terminal restored and redraws on resume.
+//! [`term::MAX_POLL`]), and unguarded panics; Ctrl-Z and SIGTSTP suspend
+//! with the terminal restored and redraw on resume.
 //!
 //! # Paging decision
 //!
@@ -37,8 +42,9 @@
 //! use std::sync::Arc;
 //!
 //! use emde::config::PagerOptions;
+//! use emde::gfx::store::StoreOptions;
 //! use emde::options::RenderOptions;
-//! use emde::pager::{FileLoader, PagerDoc, PagerSession};
+//! use emde::pager::{FileLoader, PagerDoc, PagerImages, PagerSession};
 //! use emde::parse::ParseOptions;
 //! use emde::term::Caps;
 //! use emde::theme::{Theme, Variant};
@@ -50,9 +56,12 @@
 //! let theme = Theme::fallback(Variant::Dark, None);
 //! let (highlighter, _warning) = emde::highlight::create(&theme.code_theme, &opts.code);
 //! let caps = Caps::full(); // from term::color::decide and term::caps::decide
+//! let images = PagerImages::new(StoreOptions::new(&caps, &opts.images, &theme));
 //! let mut session = PagerSession::new(doc, theme, caps, opts);
+//! session.more = vec![PagerDoc::load("CHANGELOG.md".as_ref(), &parse)?]; // `:n`
 //! session.loader = Box::new(FileLoader::new(parse));
 //! session.highlighter = Arc::from(highlighter);
+//! session.images = images;
 //! session.pager = PagerOptions::default(); // config.pager
 //! let exit = emde::pager::run(session)?;
 //! std::process::exit(i32::from(exit.code()));
@@ -78,7 +87,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 pub use diff::{SYNC_OFF, SYNC_ON, Screen};
-pub use images::ImageProvider;
+pub use images::PagerImages;
 pub use state::{DocKey, Place, Settings, State};
 pub use term::{Signals, Terminal};
 pub use update::{Action, Effect, LoadRequest, Nav, update};
@@ -87,7 +96,7 @@ pub use view::{Body, Ctx, Frame, Row, Segment, view};
 use crate::config::PagerOptions;
 use crate::highlight::{Highlighter, PlainHighlighter};
 use crate::ir::Document;
-use crate::layout::{Layout, NoImages};
+use crate::layout::Layout;
 use crate::options::RenderOptions;
 use crate::parse::{ParseOptions, parse_source};
 use crate::source::{Input, Source, SourceError};
@@ -158,6 +167,9 @@ impl DocLoader for FileLoader {
 pub struct PagerSession {
     /// The first document.
     pub doc: PagerDoc,
+    /// The other documents named on the command line, in order: `:n` and
+    /// `:p` go through them all.
+    pub more: Vec<PagerDoc>,
     /// Reads linked documents and reloads.
     pub loader: Box<dyn DocLoader>,
     pub theme: Theme,
@@ -166,8 +178,8 @@ pub struct PagerSession {
     pub caps: Caps,
     pub opts: RenderOptions,
     pub highlighter: Arc<dyn Highlighter>,
-    /// Sizes figures.
-    pub images: Box<dyn ImageProvider>,
+    /// How figures are shown.
+    pub images: PagerImages,
     pub pager: PagerOptions,
     /// An anchor to show first (`FILE#anchor`, `--anchor`).
     pub anchor: Option<String>,
@@ -188,18 +200,19 @@ pub struct PagerSession {
 
 impl PagerSession {
     /// A session for `doc` with the given render context and defaults for
-    /// the rest: files loaded with parse options from `opts`, no syntax
-    /// highlighting, no image sizes, default pager options, the process
-    /// environment.
+    /// the rest: no other documents, files loaded with parse options from
+    /// `opts`, no syntax highlighting, figures as alt text boxes, default
+    /// pager options, the process environment.
     pub fn new(doc: PagerDoc, theme: Theme, caps: Caps, opts: RenderOptions) -> PagerSession {
         PagerSession {
             loader: Box::new(FileLoader::new(ParseOptions::from(&opts))),
             doc,
+            more: Vec::new(),
             theme,
             caps,
             opts,
             highlighter: Arc::new(PlainHighlighter),
-            images: Box::new(NoImages),
+            images: PagerImages::off(),
             pager: PagerOptions::default(),
             anchor: None,
             open_toc: false,

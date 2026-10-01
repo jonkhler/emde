@@ -242,6 +242,20 @@ fn drawing_over_reserved_rows() {
     assert_eq!(cursor_forward(12), b"\x1b[12C");
 }
 
+#[test]
+fn figures_are_found_at_any_depth() {
+    use crate::parse::{ParseOptions, parse};
+    let md = "![top](a.png)\n\n> ![quoted](b.png)\n\n- ![listed](c.png)\n\n\
+              Inline ![chip](d.png) only.\n\n![again](a.png)\n\n[^n]\n\n[^n]: ![noted](e.png)\n";
+    let doc = parse(md, &ParseOptions::default());
+    let srcs: Vec<&str> = figure_images(&doc)
+        .into_iter()
+        .map(|id| &*doc.image(id).unwrap().src)
+        .collect();
+    // Chips are not figures; each figure is its own image.
+    assert_eq!(srcs, ["a.png", "b.png", "c.png", "a.png", "e.png"]);
+}
+
 // --- Loading and rendering -------------------------------------------------
 
 #[cfg(feature = "images")]
@@ -274,15 +288,9 @@ mod rendering {
         doc
     }
 
-    /// The figure images of a document (top-level figures only).
+    /// The figure images of a document.
     fn figures(doc: &Document) -> Vec<ImageId> {
-        doc.blocks
-            .iter()
-            .filter_map(|block| match block {
-                crate::ir::Block::Figure(f) => Some(f.image),
-                _ => None,
-            })
-            .collect()
+        figure_images(doc)
     }
 
     /// A PNG of `w × h` pixels of one colour.
@@ -597,5 +605,175 @@ mod rendering {
             None,
             "no blocks without colours"
         );
+    }
+    // --- The pager's renditions ----------------------------------------------
+
+    /// The source of the first figure of `md` in `dir`.
+    fn source_of(dir: &Path, md: &str, opts: StoreOptions) -> (ImageStore, Source) {
+        let doc = doc_in(dir, md);
+        let store = ImageStore::load_figures(&doc, opts);
+        let src = store.source(figure_images(&doc)[0]).unwrap();
+        (store, src)
+    }
+
+    /// `make` with a decoder that counts its calls.
+    fn made(
+        src: &Source,
+        what: Make,
+        cols: u16,
+        rows: u16,
+        opts: &StoreOptions,
+    ) -> (Option<Made>, usize) {
+        let mut calls = 0;
+        let mut decode = || {
+            calls += 1;
+            src.decode(opts.max_pixels).map(Arc::new)
+        };
+        let out = make(src, &what, cols, rows, opts, &mut decode);
+        (out, calls)
+    }
+
+    #[test]
+    fn sources_carry_the_file_to_other_threads() {
+        let dir = pictures();
+        let (store, src) = source_of(dir.path(), "![a](a.png)", opts(Graphics::Blocks));
+        assert_eq!(src.size(), (64, 32));
+        assert_eq!(src.name(), "a.png");
+        let img = src.decode(10_000).unwrap();
+        assert_eq!((img.width, img.height), (64, 32));
+        assert!(src.decode(10).is_none(), "the pixel limit holds");
+        assert_eq!(store.options().graphics, Graphics::Blocks);
+        assert!(store.source(ImageId(7)).is_none());
+        std::thread::spawn(move || assert_eq!(src.size(), (64, 32)))
+            .join()
+            .unwrap();
+    }
+
+    #[test]
+    fn pager_blocks_and_kitty_uploads() {
+        let dir = pictures();
+        let o = opts(Graphics::KittyPlaceholders);
+        let (_, src) = source_of(dir.path(), "![a](a.png)", o.clone());
+        let (blocks, calls) = made(&src, Make::Blocks, 8, 2, &o);
+        let Some(Made::Blocks(raster)) = blocks else {
+            panic!("{blocks:?}");
+        };
+        assert_eq!((raster.cols, raster.rows, calls), (8, 2, 1));
+        // A small PNG is uploaded as it is: nothing decoded.
+        let (ph, calls) = made(&src, Make::Placeholders, 8, 2, &o);
+        let Some(Made::Placeholders(ph)) = ph else {
+            panic!("{ph:?}");
+        };
+        assert_eq!(calls, 0);
+        assert_eq!(ph.rows.len(), 2);
+        assert_eq!(
+            ph.rows[1],
+            kitty::placeholder_row(ph.id, 1, 0..8).unwrap().into_bytes()
+        );
+        let head = format!("\x1b_Ga=T,U=1,i={},f=100,t=d,c=8,r=2,q=2,m=0;", ph.id.get());
+        assert!(ph.upload.starts_with(head.as_bytes()));
+        // Every upload is a new image.
+        let (again, _) = made(&src, Make::Placeholders, 8, 2, &o);
+        assert!(matches!(again, Some(Made::Placeholders(p)) if p.id != ph.id));
+        let (k, calls) = made(&src, Make::Kitty, 8, 2, &o);
+        let Some(Made::Kitty(k)) = k else {
+            panic!("{k:?}");
+        };
+        assert_eq!((k.height, calls), (32, 0), "the original PNG's height");
+        let head = format!("\x1b_Ga=t,i={},f=100,t=d,q=2,m=0;", k.id.get());
+        assert!(k.upload.starts_with(head.as_bytes()));
+        // Too many cells for placeholders; no cells at all.
+        assert_eq!(made(&src, Make::Placeholders, 300, 2, &o).0, None);
+        assert_eq!(made(&src, Make::Blocks, 0, 2, &o).0, None);
+    }
+
+    #[test]
+    fn large_kitty_images_are_downscaled_to_twice_their_box() {
+        let dir = TestDir::new("store-kitty-large");
+        fs::write(dir.path().join("big.png"), png(800, 400, [1, 2, 3, 255])).unwrap();
+        let o = opts(Graphics::KittyClassic);
+        let (_, src) = source_of(dir.path(), "![b](big.png)", o.clone());
+        // 10×2 cells are 80×32 pixels: sent at 160×64 at most.
+        let (k, calls) = made(&src, Make::Kitty, 10, 2, &o);
+        let Some(Made::Kitty(k)) = k else {
+            panic!("{k:?}");
+        };
+        assert_eq!(calls, 1);
+        assert_eq!(k.height, 64);
+    }
+
+    /// The `height=` of an iTerm2 sequence and the size of its PNG.
+    fn iterm_slice(bytes: &[u8]) -> (u16, (u32, u32)) {
+        let text = String::from_utf8(bytes.to_vec()).unwrap();
+        let args = text.strip_prefix("\x1b]1337;File=").unwrap();
+        let (args, payload) = args.split_once(':').unwrap();
+        let height = args
+            .split(';')
+            .find_map(|a| a.strip_prefix("height="))
+            .unwrap()
+            .parse()
+            .unwrap();
+        let png = b64::decode(payload.trim_end_matches('\x07').as_bytes()).unwrap();
+        (height, crate::gfx::decode::dimensions(&png).unwrap())
+    }
+
+    #[test]
+    fn iterm_slices_of_partly_visible_images() {
+        let dir = TestDir::new("store-iterm-slices");
+        fs::write(dir.path().join("tall.png"), png(64, 128, [9, 9, 9, 255])).unwrap();
+        let o = opts(Graphics::Iterm);
+        let (_, src) = source_of(dir.path(), "![t](tall.png)", o.clone());
+        // Whole: the original file, nothing decoded.
+        let (whole, calls) = made(&src, Make::Iterm(0..8), 8, 8, &o);
+        let Some(Made::Pixels(whole)) = whole else {
+            panic!("{whole:?}");
+        };
+        assert_eq!(calls, 0);
+        assert_eq!(iterm_slice(&whole), (8, (64, 128)));
+        // Rows 2..5 of 8: 48 of the 128 pixel rows, as a slice drawn over 3
+        // rows (scaled to twice the slice's box at most: 128×96).
+        let (slice, calls) = made(&src, Make::Iterm(2..5), 8, 8, &o);
+        let Some(Made::Pixels(slice)) = slice else {
+            panic!("{slice:?}");
+        };
+        assert_eq!(calls, 1);
+        assert_eq!(iterm_slice(&slice), (3, (64, 48)));
+        // Rows past the box are cut; nothing left is nothing.
+        let (cut, _) = made(&src, Make::Iterm(6..20), 8, 8, &o);
+        let Some(Made::Pixels(cut)) = cut else {
+            panic!("{cut:?}");
+        };
+        assert_eq!(iterm_slice(&cut).0, 2);
+        assert_eq!(made(&src, Make::Iterm(8..9), 8, 8, &o).0, None);
+    }
+
+    #[cfg(feature = "sixel")]
+    #[test]
+    fn sixel_slices_end_on_whole_bands() {
+        let dir = TestDir::new("store-sixel-slices");
+        fs::write(dir.path().join("tall.png"), png(64, 128, [9, 9, 9, 255])).unwrap();
+        let o = opts(Graphics::Sixel);
+        let (_, src) = source_of(dir.path(), "![t](tall.png)", o.clone());
+        let raster = |bytes: &[u8]| {
+            let text = String::from_utf8_lossy(bytes).into_owned();
+            let attrs = text.split('"').nth(1).unwrap().to_owned();
+            attrs
+                .split(|c: char| !c.is_ascii_digit())
+                .take(4)
+                .map(|f| f.parse::<u32>().unwrap())
+                .collect::<Vec<_>>()
+        };
+        // 8×8 cells of 8×16 pixels: a 64×128 box, all whole bands (126).
+        let (whole, _) = made(&src, Make::Sixel(0..8), 8, 8, &o);
+        let Some(Made::Pixels(whole)) = whole else {
+            panic!("{whole:?}");
+        };
+        assert_eq!(raster(&whole), [1, 1, 63, 126]);
+        // Rows 1..3: 32 pixels, cut to 30 (five whole bands).
+        let (slice, _) = made(&src, Make::Sixel(1..3), 8, 8, &o);
+        let Some(Made::Pixels(slice)) = slice else {
+            panic!("{slice:?}");
+        };
+        assert_eq!(raster(&slice), [1, 1, 63, 30]);
     }
 }
