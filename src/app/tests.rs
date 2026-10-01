@@ -145,7 +145,7 @@ fn pager_requests_carry_the_pager_flags() {
     assert_eq!(
         r,
         PagerRequest {
-            paging: Paging::Auto,
+            paging: Paging::Always,
             toc: true,
             anchor: Some("intro".into()),
         }
@@ -157,6 +157,44 @@ fn pager_requests_carry_the_pager_flags() {
     assert_eq!(pager_request(&cli(&[]), &plain, &[]).paging, Paging::Never);
     let set = loaded(&["pager.enabled=always"]).config;
     assert_eq!(pager_request(&cli(&[]), &set, &[]).paging, Paging::Always);
+}
+
+#[test]
+fn the_pager_opens_for_short_documents_on_a_terminal_by_default() {
+    let tty = Caps {
+        size: Some((80, 24)),
+        ..Caps::full()
+    };
+    let paging = |args: &[&str], set: &[&str]| {
+        let cli = cli(args);
+        let mut opts = cli.load_options(ConfigEnv::default());
+        opts.set = set.iter().map(|s| (*s).to_owned()).collect();
+        let config = config::load(&opts).config;
+        pager_request(&cli, &config, &[])
+    };
+    // The default: a one-line document opens in the pager on a terminal.
+    let default = paging(&[], &[]);
+    assert_eq!(default.paging, Paging::Always);
+    assert_eq!(PagerRequest::default().paging, Paging::Always);
+    assert!(wants_pager(&default, &tty, 1));
+    assert!(wants_pager(&default, &tty, 0), "even an empty one");
+    // Never when piped, with --plain or with --paging=never.
+    assert!(!wants_pager(&default, &Caps::plain(), 1000));
+    for args in [&["-p"][..], &["--plain"], &["--paging", "never"]] {
+        let r = paging(args, &[]);
+        assert!(!wants_pager(&r, &tty, 1000), "{args:?}");
+    }
+    assert!(!wants_pager(
+        &paging(&[], &["pager.enabled=never"]),
+        &tty,
+        1000
+    ));
+    // `auto` keeps its meaning: only documents taller than the screen.
+    let auto = paging(&["--paging", "auto"], &[]);
+    assert!(!wants_pager(&auto, &tty, 23));
+    assert!(wants_pager(&auto, &tty, 24));
+    let auto = paging(&[], &["pager.enabled=auto"]);
+    assert!(!wants_pager(&auto, &tty, 1));
 }
 
 #[test]

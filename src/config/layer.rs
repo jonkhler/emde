@@ -263,6 +263,27 @@ layered! {
     }
 }
 
+/// `[pager.keys]`: action names and their keys, in the order written
+/// (later bindings of a key win); merged action by action. Serde leaves
+/// the table alone: [`super::de::Parsed::pager_keys`] reads it from the
+/// document, where its order is known.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub(crate) struct KeysTable(pub(crate) Vec<(String, Vec<String>)>);
+
+impl Merge for KeysTable {
+    fn merge(&mut self, top: Self) {
+        for (action, keys) in top.0 {
+            self.0.retain(|(a, _)| *a != action);
+            self.0.push((action, keys));
+        }
+    }
+}
+
+#[cfg(test)]
+impl Unset for KeysTable {
+    fn unset(&self, _path: &str, _out: &mut Vec<String>) {}
+}
+
 layered! {
     /// `[pager]`: the built-in pager.
     pub(crate) struct PagerLayer {
@@ -275,6 +296,8 @@ layered! {
         pub(crate) search_case: Option<SearchCase>,
         #[serde(deserialize_with = "open_command")]
         pub(crate) open: Option<OpenCommand>,
+        #[serde(skip)]
+        pub(crate) keys: KeysTable,
     }
 }
 
@@ -417,6 +440,22 @@ mod tests {
     }
 
     #[test]
+    fn key_tables_merge_per_action() {
+        let mut low = KeysTable(vec![
+            ("top".into(), vec!["T".into()]),
+            ("quit".into(), vec!["Q".into()]),
+        ]);
+        low.merge(KeysTable(vec![("top".into(), vec!["x".into()])]));
+        assert_eq!(
+            low.0,
+            [
+                ("quit".to_owned(), vec!["Q".to_owned()]),
+                ("top".to_owned(), vec!["x".to_owned()]),
+            ]
+        );
+    }
+
+    #[test]
     fn keys_and_unset_paths() {
         assert_eq!(TablesLayer::KEYS, &["zebra"]);
         let layer = ConfigLayer::default();
@@ -426,6 +465,7 @@ mod tests {
         // Free-form tables are never "unset".
         assert!(!unset.iter().any(|p| p.starts_with("palette")));
         assert!(!unset.iter().any(|p| p.starts_with("code.aliases")));
+        assert!(!unset.iter().any(|p| p.starts_with("pager.keys")));
     }
 
     #[test]

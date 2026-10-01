@@ -96,7 +96,7 @@ fn screen_at(term: &FakeTerminal, cols: u16, rows: u16, name: Option<&str>) -> v
             Chunk::Write(bytes) => p.process(bytes),
             Chunk::Resize(c, r) => p.screen_mut().set_size(*r, *c),
             Chunk::Mark(m) if Some(m.as_str()) == name => break,
-            Chunk::Mark(_) | Chunk::Suspend => {}
+            Chunk::Mark(_) | Chunk::Suspend | Chunk::Run(_) => {}
         }
     }
     p
@@ -248,7 +248,7 @@ fn placeholders_are_uploaded_once_before_their_rows() {
         .mark("scrolled")
         .keys("G")
         .mark("away")
-        .keys("g")
+        .keys("gg")
         .mark("back")
         .keys("q");
     let (term, exit) = run(term, session(&doc, options(Graphics::KittyPlaceholders)));

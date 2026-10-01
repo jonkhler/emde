@@ -392,6 +392,9 @@ watch = false
 scroll_lines = 5
 search_case = "insensitive"
 open = "firefox"
+[pager.keys]
+quit = ["Q", "ZZ"]
+top = ["T"]
 [terminal]
 probe = false
 probe_timeout_ms = 500
@@ -436,6 +439,14 @@ probe_timeout_ms = 500
     assert_eq!(c.pager.scroll_lines, 5);
     assert_eq!(c.pager.search_case, SearchCase::Insensitive);
     assert_eq!(c.pager.open, OpenCommand::Command("firefox".into()));
+    assert_eq!(
+        c.pager.keys,
+        [
+            ("quit".to_owned(), vec!["Q".to_owned(), "ZZ".to_owned()]),
+            ("top".to_owned(), vec!["T".to_owned()]),
+        ],
+        "in the order written"
+    );
     assert!(!c.terminal.probe);
     assert_eq!(
         c.terminal.probe_timeout(true),
@@ -993,4 +1004,82 @@ fn diagnostics_never_print_control_characters() {
     let text = setup.report(&loaded);
     assert!(text.contains("evil␛[2J"), "{text}");
     assert!(!text.contains('\u{1b}'));
+}
+
+#[test]
+fn pager_keys_are_checked() {
+    let (setup, loaded) = load_config(
+        "pager-keys",
+        r#"[pager.keys]
+page-down = ["Space", "f"]
+pgae-up = ["b"]
+top = ["PgDwn", "T"]
+bottom = ["T"]
+count = ["x"]
+"#,
+    );
+    let report = setup.report(&loaded);
+    assert_eq!(
+        report,
+        "warning: ~/.config/emde/config.toml:2: pager.keys.page-down: `f` is a default key \
+         of `hints-follow`, which loses it to `page-down`\n\
+         warning: ~/.config/emde/config.toml:3: pager.keys.pgae-up: unknown action `pgae-up` \
+         (did you mean `page-up`?)\n\
+         warning: ~/.config/emde/config.toml:4: pager.keys.top: unknown key `PgDwn` (did you \
+         mean `PgDn`?)\n\
+         warning: ~/.config/emde/config.toml:5: pager.keys.bottom: `T` is bound twice, to \
+         `top` and `bottom`: the later one, `bottom`, gets it\n\
+         warning: ~/.config/emde/config.toml:6: pager.keys.count: the count digits cannot be \
+         changed"
+    );
+    // The keys still apply, as far as they can.
+    let keys = &loaded.config.pager.keys;
+    assert_eq!(keys.first().map(|(a, _)| a.as_str()), Some("page-down"));
+    let (map, _) = crate::pager::keymap::Keymap::new(keys);
+    use crate::pager::keymap::{Command, Context};
+    use crate::pager::term::Key;
+    assert_eq!(
+        map.command(Context::Normal, Key::char('f')),
+        Some(Command::PageDown)
+    );
+    assert_eq!(
+        map.command(Context::Normal, Key::char('T')),
+        Some(Command::Bottom)
+    );
+    // --check-config reports the same.
+    let report = check(&setup.opts());
+    assert!(
+        report.to_string().ends_with(": 0 errors, 5 warnings"),
+        "{report}"
+    );
+    // A bad value is left out, the rest is kept.
+    let (setup, loaded) = load_config(
+        "pager-keys-type",
+        "[pager]\nmouse = false\n[pager.keys]\ntop = 5\nquit = [\"Q\"]\nhelp = \"H\"\n",
+    );
+    assert!(!loaded.config.pager.mouse);
+    assert_eq!(
+        loaded.config.pager.keys,
+        [("quit".to_owned(), vec!["Q".to_owned()])]
+    );
+    assert_eq!(
+        setup.report(&loaded),
+        "warning: ~/.config/emde/config.toml:4: pager.keys.top: expected a list of keys, \
+         like [\"j\", \"Down\"]\n\
+         warning: ~/.config/emde/config.toml:6: pager.keys.help: expected a list of keys, \
+         like [\"j\", \"Down\"]"
+    );
+    let (setup, loaded) = load_config("pager-keys-table", "[pager]\nkeys = 3\n");
+    assert!(
+        setup
+            .report(&loaded)
+            .contains("pager.keys: expected a table"),
+        "{}",
+        setup.report(&loaded)
+    );
+    // --set works too, one action at a time.
+    let setup = Setup::new("pager-keys-set");
+    let loaded = setup.load(&["pager.keys.quit=[\"Q\"]", "pager.keys.top=[\"T\"]"]);
+    no_diagnostics(&loaded);
+    assert_eq!(loaded.config.pager.keys.len(), 2);
 }

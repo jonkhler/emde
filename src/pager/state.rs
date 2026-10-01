@@ -12,13 +12,16 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
 use crate::config::{PagerOptions, SearchCase};
-use crate::ir::{Document, HeadingId, LinkId, SrcPos};
+use crate::ir::{Document, HeadingId, ImageId, LinkId, SrcPos};
 use crate::layout::Layout;
 use crate::options::{FrontMatterMode, RenderOptions};
 use crate::source::{Origin, Source};
 
 use super::PagerDoc;
+use super::hints::Target;
+use super::keymap::{Command, Keymap};
 use super::search::{Corpus, Search};
+use super::term::Key;
 
 /// Documents kept in memory for back and forward.
 pub(crate) const MAX_PAGES: usize = 8;
@@ -213,13 +216,45 @@ pub(crate) struct Outline {
     pub(crate) scroll: usize,
 }
 
-/// Link hints.
+/// What a hint label does.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum HintKind {
+    /// `o`: follow a link.
+    Links,
+    /// `f`: follow a link, go to a heading or block, zoom an image.
+    Follow,
+    /// `y`: copy what the label is on.
+    Yank,
+    /// `v`: select it in Visual mode.
+    Visual,
+}
+
+/// Hint labels on screen.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Hints {
-    /// Label and link occurrence.
-    pub(crate) labels: Vec<(String, usize)>,
+    pub(crate) kind: HintKind,
+    /// Label and what it is on.
+    pub(crate) labels: Vec<(String, Target)>,
     /// What was typed so far.
     pub(crate) typed: String,
+}
+
+/// Visual mode's selection: the lines from `anchor` to `cursor`, both
+/// included, kept as places so they survive a new layout.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Visual {
+    pub(crate) anchor: Place,
+    pub(crate) cursor: Place,
+}
+
+impl Visual {
+    /// The selected lines of `layout`: `(first, last)`.
+    pub(crate) fn lines(&self, layout: &Layout) -> (usize, usize) {
+        let last = layout.len().saturating_sub(1);
+        let a = self.anchor.line(layout).min(last);
+        let c = self.cursor.line(layout).min(last);
+        (a.min(c), a.max(c))
+    }
 }
 
 /// What has the keys.
@@ -234,6 +269,8 @@ pub(crate) enum Mode {
     Hints(Hints),
     /// The `:` prompt, with what was typed after the colon.
     Command(String),
+    /// Selecting lines.
+    Visual(Visual),
 }
 
 /// A message in the status bar, shown until the next key.
@@ -350,10 +387,16 @@ pub struct Settings {
     pub ascii: bool,
     /// East Asian Ambiguous characters are wide.
     pub ambiguous_wide: bool,
+    /// The keys (`[pager.keys]` applied).
+    pub keymap: Keymap,
+    /// The quote bar and the code wrap marker as layout draws them (left
+    /// out of copied text).
+    pub glyphs: (String, String),
 }
 
 impl Settings {
-    /// The settings for `pager` and `render` options.
+    /// The settings for `pager` and `render` options (problems with
+    /// `[pager.keys]` are the config check's to report).
     pub fn new(pager: &PagerOptions, render: &RenderOptions) -> Settings {
         Settings {
             scroll_lines: pager.scroll_lines.max(1),
@@ -361,6 +404,8 @@ impl Settings {
             front_matter: render.front_matter,
             ascii: render.ascii,
             ambiguous_wide: render.ambiguous_wide,
+            keymap: Keymap::new(&pager.keys).0,
+            glyphs: crate::layout::deco_glyphs(render),
         }
     }
 }
@@ -410,6 +455,15 @@ pub struct State {
     pub(crate) file: usize,
     /// The file `:n` or `:p` asked for, until it is shown.
     pub(crate) pending_file: Option<usize>,
+    /// The keys typed of a sequence not complete yet (`g` of `gg`).
+    pub(crate) keys: Vec<Key>,
+    /// A command waiting for its argument key (`m`, `'`).
+    pub(crate) awaiting: Option<Command>,
+    /// Marks `a`–`z` of each document, and `'`: where the reader was
+    /// before the last jump.
+    marks: Vec<(DocKey, char, Place)>,
+    /// The figure shown at full size (`f` on an image).
+    pub(crate) zoom: Option<ImageId>,
     next_unnamed: u32,
     next_link_base: u32,
 }
@@ -456,6 +510,10 @@ impl State {
             files: vec![key],
             file: 0,
             pending_file: None,
+            keys: Vec::new(),
+            awaiting: None,
+            marks: Vec::new(),
+            zoom: None,
             next_unnamed: 1,
             next_link_base: links,
         };
@@ -550,6 +608,33 @@ impl State {
         }
     }
 
+    /// Set mark `name` of the current document to `place`.
+    pub(crate) fn set_mark(&mut self, name: char, place: Place) {
+        let key = &self.page.key;
+        match self
+            .marks
+            .iter_mut()
+            .find(|(k, n, _)| k == key && *n == name)
+        {
+            Some(slot) => slot.2 = place,
+            None => self.marks.push((key.clone(), name, place)),
+        }
+    }
+
+    /// Mark `name` of the current document.
+    pub(crate) fn mark(&self, name: char) -> Option<Place> {
+        let key = &self.page.key;
+        self.marks
+            .iter()
+            .find(|(k, n, _)| k == key && *n == name)
+            .map(|&(_, _, p)| p)
+    }
+
+    /// Remember the top line as mark `'` (before a jump).
+    pub(crate) fn record_jump(&mut self) {
+        self.set_mark('\'', self.top_place());
+    }
+
     /// Show a message until the next key.
     pub(crate) fn say(&mut self, text: impl Into<String>) {
         self.message = Some(Message {
@@ -613,6 +698,26 @@ impl State {
         self.wide
     }
 
+    /// The figure shown at full size, if any.
+    pub fn zoom(&self) -> Option<ImageId> {
+        self.zoom
+    }
+
+    /// Whether keys of an unfinished sequence wait for the next key (the
+    /// shell sends [`super::Action::KeyTimeout`] after
+    /// [`super::keymap::SEQUENCE_TIMEOUT`]).
+    pub fn keys_pending(&self) -> bool {
+        !self.keys.is_empty()
+    }
+
+    /// The selected lines in Visual mode: `(first, last)`.
+    pub fn selection(&self) -> Option<(usize, usize)> {
+        match &self.mode {
+            Mode::Visual(v) => Some(v.lines(&self.layout)),
+            _ => None,
+        }
+    }
+
     /// The status message, if any.
     pub fn message(&self) -> Option<&str> {
         self.message.as_ref().map(|m| m.text.as_str())
@@ -642,6 +747,7 @@ impl State {
             Mode::Help { .. } => "help",
             Mode::Hints(_) => "hints",
             Mode::Command(_) => "command",
+            Mode::Visual(_) => "visual",
         }
     }
 

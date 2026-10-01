@@ -21,9 +21,8 @@ use crate::text::width::{grapheme_width, next_grapheme_end};
 use crate::theme::{Element, Theme};
 
 use super::keymap::{self, HelpLine};
-use super::links;
 use super::search::{LineText, line_marks};
-use super::state::{Hints, Mode, Outline, State};
+use super::state::{HintKind, Hints, Mode, Outline, State};
 use super::toc::{self, BoxGeom};
 
 /// Width of the keys column in the help.
@@ -67,6 +66,8 @@ struct UiStyles {
     search_match: StylePatch,
     search_current: StylePatch,
     link_focus: StylePatch,
+    selection: StylePatch,
+    selection_fill: Style,
     hint: Style,
     toc: Style,
     toc_current: Style,
@@ -101,6 +102,8 @@ impl UiStyles {
             search_match: patch_of(theme.style(Element::SearchMatch)),
             search_current: patch_of(theme.style(Element::SearchCurrent)),
             link_focus: patch_of(theme.style(Element::LinkFocus)),
+            selection: patch_of(theme.style(Element::Selection)),
+            selection_fill: theme.style(Element::Selection),
             hint: theme.style(Element::Hint),
             toc_current: theme.style(Element::TocCurrent),
             toc_selected: toc.with(Attrs::REVERSE),
@@ -321,6 +324,7 @@ pub fn view(state: &State, ctx: &Ctx) -> Frame {
             Mode::Outline(o) => outline(state, ctx, o, &mut building),
             Mode::Help { scroll } => help(state, ctx, *scroll, &mut building),
             Mode::Hints(h) => hints(state, ctx, h, &mut building),
+            Mode::Visual(_) => selection(state, ctx, &mut building),
             Mode::Normal | Mode::Prompt(_) | Mode::Command(_) => {}
         }
         building.push(Building {
@@ -378,10 +382,18 @@ fn hash_row(generation: u64, body: &Body, overlays: &[Segment]) -> u64 {
 // Marks
 // ---------------------------------------------------------------------------
 
-/// The marks of document line `index`: the focused link, with search
-/// matches over it.
+/// The marks of document line `index`: the selection or the focused link,
+/// with search matches over it.
 fn marks(state: &State, ctx: &Ctx, index: usize) -> Vec<Mark> {
-    let focus = focus_marks(state, ctx, index);
+    let focus = match state.selection() {
+        Some((lo, hi)) if (lo..=hi).contains(&index) => {
+            let text = LineText::new(&state.layout, index);
+            let mut out = Vec::new();
+            text.marks(0..text.text.len(), ctx.styles.selection, &mut out);
+            out
+        }
+        _ => focus_marks(state, ctx, index),
+    };
     let found = match &state.search {
         Some(s) if !s.matches.is_empty() => line_marks(
             state.page.corpus(),
@@ -480,9 +492,22 @@ fn merge(under: Vec<Mark>, over: Vec<Mark>) -> Vec<Mark> {
 // Status bar
 // ---------------------------------------------------------------------------
 
-/// Search counter and position: `3/12  L 120/1480 13%`.
+/// Keys of an unfinished command, search counter and position: `5g
+/// 3/12  L 120/1480 13%`.
 fn status_right(state: &State) -> String {
     let mut parts = Vec::new();
+    let mut typed: String = state.count.map(|n| n.to_string()).unwrap_or_default();
+    typed.push_str(&keymap::seq_label(&state.keys));
+    if let Some(cmd) = state.awaiting {
+        typed.push(if cmd == keymap::Command::SetMark {
+            'm'
+        } else {
+            '\''
+        });
+    }
+    if !typed.is_empty() {
+        parts.push(typed);
+    }
     if let Some(s) = &state.search {
         let plus = if s.capped { "+" } else { "" };
         let n = s.matches.len();
@@ -547,6 +572,34 @@ fn status_left<'a>(state: &'a State, ctx: &Ctx, room: usize) -> Vec<(Style, Cow<
     if let Some(m) = &state.message {
         let style = if m.error { st.error } else { st.message };
         return vec![(style, clean(&m.text))];
+    }
+    let mode = match &state.mode {
+        Mode::Visual(_) => Some((
+            "-- VISUAL --",
+            super::visual::describe(state).unwrap_or_default(),
+        )),
+        Mode::Hints(h) => {
+            let name = match h.kind {
+                HintKind::Links => "-- LINKS --",
+                HintKind::Follow => "-- FOLLOW --",
+                HintKind::Yank => "-- YANK --",
+                HintKind::Visual => "-- SELECT --",
+            };
+            let rest = if h.typed.is_empty() {
+                "type a label, Esc cancels".to_owned()
+            } else {
+                clean(&h.typed).into_owned()
+            };
+            Some((name, rest))
+        }
+        _ => None,
+    };
+    if let Some((name, rest)) = mode {
+        return vec![
+            (st.name, Cow::Borrowed(name)),
+            (st.status, Cow::Borrowed("  ")),
+            (st.status, Cow::Owned(rest)),
+        ];
     }
     let name = clean(&state.page.name);
     // Which of the files named on the command line: ` (1/2)`.
@@ -756,7 +809,7 @@ fn outline(state: &State, ctx: &Ctx, o: &Outline, rows: &mut [Building]) {
 }
 
 fn help(state: &State, ctx: &Ctx, scroll: usize, rows: &mut [Building]) {
-    let lines = keymap::help_lines();
+    let lines = state.settings.keymap.help_lines();
     let g = toc::help_box(state.cols, state.rows, lines.len());
     if g.h < 3 || g.w < 4 {
         return;
@@ -800,29 +853,50 @@ fn help(state: &State, ctx: &Ctx, scroll: usize, rows: &mut [Building]) {
     put_segment(rows, bottom, g.x, border(ctx, &g, false, more, ascii, amb));
 }
 
+/// Hint chips: the labels that start with what was typed, without it.
 fn hints(state: &State, ctx: &Ctx, h: &Hints, rows: &mut [Building]) {
     let amb = state.settings.ambiguous_wide;
     let top = state.top;
-    let shown = state.view_rows();
-    for (label, occ) in &h.labels {
-        if !label.starts_with(h.typed.as_str()) {
-            continue;
-        }
-        let Some(o) = state.derived.links.get(*occ) else {
+    for (label, target) in &h.labels {
+        let Some(rest) = label.strip_prefix(h.typed.as_str()) else {
             continue;
         };
-        let Some((line, col)) = links::first_visible_hit(&state.layout, o, top, shown) else {
+        let Some(row) = target.line.checked_sub(top) else {
             continue;
         };
-        let col = col.saturating_add(state.layout.indent);
+        let col = target.col.saturating_add(state.layout.indent);
         let room = usize::from(state.cols.saturating_sub(col));
-        let (text, _) = fit(label, room, amb);
+        let (text, _) = fit(rest, room, amb);
         if text.is_empty() {
             continue;
         }
         let mut w = Styled::new(ctx);
         w.put(&ctx.styles.hint, text, amb);
-        put_segment(rows, line - top, col, w.finish());
+        put_segment(rows, row, col, w.finish());
+    }
+}
+
+/// The selection's background after the text of its lines, to the end of
+/// the text column.
+fn selection(state: &State, ctx: &Ctx, rows: &mut [Building]) {
+    let Some((lo, hi)) = state.selection() else {
+        return;
+    };
+    let layout = &state.layout;
+    let end = (hi + 1).min(state.top + state.view_rows());
+    for index in lo.max(state.top)..end {
+        let Some(line) = layout.lines.get(index) else {
+            break;
+        };
+        let pad = layout.measure.saturating_sub(line.cols);
+        let col = layout.indent.saturating_add(line.cols);
+        if pad == 0 || col >= state.cols {
+            continue;
+        }
+        let pad = pad.min(state.cols - col);
+        let mut w = Styled::new(ctx);
+        w.spaces(&ctx.styles.selection_fill, usize::from(pad));
+        put_segment(rows, index - state.top, col, w.finish());
     }
 }
 

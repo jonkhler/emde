@@ -1,4 +1,5 @@
-//! What the pager asks of the system: opening URLs and the clipboard.
+//! What the pager asks of the system: opening URLs, the clipboard and the
+//! editor.
 //!
 //! Opening: `open` (macOS) or `xdg-open`, or the configured command, run
 //! directly (never through a shell) with the URL as the last argument,
@@ -12,8 +13,15 @@
 //! ignores OSC 52 from programs, so the text goes to `tmux load-buffer -w
 //! -` instead, which fills a tmux buffer and forwards it to the outer
 //! terminal's clipboard.
+//!
+//! The editor: `$VISUAL`, else `$EDITOR`, else `vi`, split on whitespace
+//! and run directly (no shell) with `+LINE FILE`, which vim, neovim, nano,
+//! emacs, micro, helix and kakoune all take; the pager waits for it with
+//! the terminal put back.
 
-use std::io::{self, Write as _};
+use std::ffi::OsString;
+use std::io::{self, IsTerminal as _, Write as _};
+use std::path::Path;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
@@ -111,6 +119,36 @@ pub(crate) fn spawn_detached(argv: &[String]) -> io::Result<()> {
             let _ = child.wait();
         })?;
     Ok(())
+}
+
+/// The command line that opens `path` at `line` in the reader's editor.
+pub(crate) fn editor_command(env: &Env, path: &Path, line: usize) -> Vec<OsString> {
+    let set = |name| env.get(name).filter(|v| !v.trim().is_empty());
+    let editor = set("VISUAL").or_else(|| set("EDITOR")).unwrap_or("vi");
+    let mut argv: Vec<OsString> = editor.split_whitespace().map(OsString::from).collect();
+    if argv.is_empty() {
+        argv.push("vi".into());
+    }
+    argv.push(format!("+{}", line.max(1)).into());
+    argv.push(path.as_os_str().to_owned());
+    argv
+}
+
+/// Run `argv` in the foreground and wait for it: it shares the terminal
+/// (standard input from `/dev/tty` when standard input is not one).
+/// Returns whether it succeeded.
+pub(crate) fn run_foreground(argv: &[OsString]) -> io::Result<bool> {
+    let Some((program, args)) = argv.split_first() else {
+        return Err(io::Error::other("no command"));
+    };
+    let mut cmd = Command::new(program);
+    cmd.args(args);
+    if !io::stdin().is_terminal()
+        && let Ok(tty) = std::fs::File::open("/dev/tty")
+    {
+        cmd.stdin(tty);
+    }
+    Ok(cmd.status()?.success())
 }
 
 /// Where copied text goes.
@@ -291,6 +329,40 @@ mod tests {
         assert_eq!(osc52("hi"), b"\x1b]52;c;aGk=\x1b\\");
         let big = "x".repeat(MAX_CLIPBOARD + 10);
         assert!(osc52(&big).len() < MAX_CLIPBOARD * 2);
+    }
+
+    #[test]
+    fn editor_commands() {
+        let path = Path::new("docs/guide.md");
+        let words = |env: &[(&str, &str)], line| -> Vec<String> {
+            editor_command(&Env::from_pairs(env), path, line)
+                .iter()
+                .map(|w| w.to_string_lossy().into_owned())
+                .collect()
+        };
+        assert_eq!(words(&[], 12), ["vi", "+12", "docs/guide.md"]);
+        assert_eq!(
+            words(&[("EDITOR", "nano")], 3),
+            ["nano", "+3", "docs/guide.md"]
+        );
+        assert_eq!(
+            words(&[("EDITOR", "nano"), ("VISUAL", "code --wait")], 3),
+            ["code", "--wait", "+3", "docs/guide.md"],
+            "VISUAL first, split on whitespace"
+        );
+        assert_eq!(
+            words(&[("VISUAL", "  "), ("EDITOR", "hx")], 0),
+            ["hx", "+1", "docs/guide.md"],
+            "blank VISUAL is unset; lines start at 1"
+        );
+    }
+
+    #[test]
+    fn running_programs() {
+        assert!(run_foreground(&[]).is_err());
+        assert!(run_foreground(&["/nonexistent/emde-test-editor".into()]).is_err());
+        assert_eq!(run_foreground(&["true".into()]).ok(), Some(true));
+        assert_eq!(run_foreground(&["false".into()]).ok(), Some(false));
     }
 
     #[test]

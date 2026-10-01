@@ -257,6 +257,7 @@ impl Theme {
                 on(Some(base_c), c("yellow"), Attrs::empty()),
             ),
             (E::SearchCurrent, on(Some(base_c), c("peach"), Attrs::BOLD)),
+            (E::Selection, attrs(None, Attrs::REVERSE)),
             (E::Prompt, fg(c("blue"))),
             (E::Hint, on(Some(base_c), c("blue"), Attrs::BOLD)),
             (E::TocCurrent, attrs(Some(c("blue")), Attrs::BOLD)),

@@ -1,5 +1,4 @@
-//! Links: which one is where on screen, hint labels, and where following
-//! one leads.
+//! Links: which one is where on screen, and where following one leads.
 //!
 //! Layout records one [`crate::layout::LinkHit`] per link fragment per
 //! line; the pager groups the hits of a link wrapped over several lines
@@ -92,19 +91,6 @@ pub(crate) fn first_visible_hit(
     hits.iter()
         .find(|h| (h.line as usize) >= top && (h.line as usize) < top + rows)
         .map(|h| (h.line as usize, h.cols.start))
-}
-
-/// `n` hint labels: single keys for up to ten links, else two keys each
-/// (up to a hundred), so no label is a prefix of another.
-pub(crate) fn hint_labels(n: usize) -> Vec<String> {
-    if n <= HINT_KEYS.len() {
-        return HINT_KEYS.iter().take(n).map(|c| c.to_string()).collect();
-    }
-    HINT_KEYS
-        .iter()
-        .flat_map(|&a| HINT_KEYS.iter().map(move |&b| format!("{a}{b}")))
-        .take(n)
-        .collect()
 }
 
 /// `path` relative to `base` unless absolute.
@@ -240,17 +226,6 @@ mod tests {
         );
         let d = Derived::new(&l);
         (doc, l, d)
-    }
-
-    #[test]
-    fn labels_are_prefix_free() {
-        assert_eq!(hint_labels(3), ["a", "s", "d"]);
-        assert_eq!(hint_labels(10).last().map(String::as_str), Some(";"));
-        let two = hint_labels(11);
-        assert_eq!(two.len(), 11);
-        assert!(two.iter().all(|l| l.chars().count() == 2));
-        assert_eq!(hint_labels(500).len(), 100);
-        assert!(hint_labels(0).is_empty());
     }
 
     #[test]

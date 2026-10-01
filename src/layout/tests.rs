@@ -269,6 +269,25 @@ fn link_hits_cover_wrapped_fragments() {
 }
 
 #[test]
+fn inline_math_is_found_on_its_lines() {
+    let md = "Let $x^2$ and $y$ be.\n\n> - in a quote $\\alpha$\n\n<div align=\"center\">\n\ncentred $z$\n\n</div>";
+    let (d, l) = lay(md, 40);
+    check(&l, &d);
+    let at = |h: &MathHit| {
+        let text = l.line_text(h.line as usize);
+        let rest: String = text.chars().skip(usize::from(h.col)).collect();
+        (h.pos.top, h.pos.off, h.len, rest)
+    };
+    let hits: Vec<_> = l.math_hits.iter().map(at).collect();
+    assert_eq!(hits.len(), 4, "{hits:?}");
+    assert_eq!((hits[0].0, hits[0].1, hits[0].2), (0, 4, 3), "x^2 at 4");
+    assert!(hits[0].3.starts_with("x²"), "{hits:?}");
+    assert!(hits[1].3.starts_with('y'), "{hits:?}");
+    assert!(hits[2].3.starts_with('α'), "{hits:?}");
+    assert!(hits[3].3.starts_with('z'), "aligned lines too: {hits:?}");
+}
+
+#[test]
 fn footnote_back_links_are_flagged() {
     let md = "a[^x] b[^x]\n\n[^x]: note";
     let (d, l) = lay(md, 40);

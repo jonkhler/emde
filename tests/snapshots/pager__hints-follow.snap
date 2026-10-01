@@ -1,0 +1,41 @@
+---
+source: tests/pager.rs
+expression: "render_with(&screen, true)"
+---
+ 1│   auide                                                    │
+  │  ##│
+ 2│                                                            │
+ 3│  Intro with s link and d² inline.                          │
+  │             #          #│
+ 4│                                                            │
+ 5│   f                                                 rust   │
+  │   #│
+ 6│   fn main() {}                                             │
+ 7│   let x = 1;                                               │
+ 8│                                                            │
+ 9│                                                            │
+10│                          g = mc²                           │
+  │                          #│
+11│                                                            │
+12│  h───┬───╮                                                 │
+  │  #│
+13│  │ a │ b │                                                 │
+14│  ├───┼───┤                                                 │
+15│  │ 1 │ 2 │                                                 │
+16│  ╰───┴───╯                                                 │
+17│                                                            │
+18│  • first item                                              │
+19│  • second item                                             │
+20│                                                            │
+21│  ▎ A quote over lines.                                     │
+22│                                                            │
+23│                         j alt text                         │
+  │                         #│
+24│                                                            │
+25│  kext                                                      │
+  │  #│
+26│  ━━━━────────────────────────────────────────────────────  │
+27│                                                            │
+28│  Last paragraph.                                           │
+29│                                                            │
+30│ -- FOLLOW --  type a label, Esc cancels        L 1/28 100% │

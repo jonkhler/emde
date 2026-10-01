@@ -4,7 +4,7 @@
 
 use std::path::{Path, PathBuf};
 
-use super::keymap::Command;
+use super::keymap::{self, Command};
 use super::state::{DocKey, MAX_PAGES, Mode};
 use super::term::{Button, Key, KeyCode, Mouse, MouseKind};
 use super::*;
@@ -149,7 +149,7 @@ fn line_and_page_scrolling() {
     code(&mut s, KeyCode::PageDown);
     assert_eq!(s.top(), 5 + rows);
     code(&mut s, KeyCode::PageUp);
-    keys(&mut s, "f");
+    key(&mut s, Key::ctrl('f'));
     assert_eq!(s.top(), 5 + rows);
     keys(&mut s, "2b");
     assert_eq!(s.top(), 0, "clamped at the top");
@@ -164,8 +164,15 @@ fn jumps_to_ends_lines_and_percentages() {
     assert_eq!(s.top(), max, "the last line at the bottom");
     keys(&mut s, "j");
     assert_eq!(s.top(), max, "no scrolling past the end");
-    keys(&mut s, "g");
+    keys(&mut s, "gg");
     assert_eq!(s.top(), 0);
+    keys(&mut s, "G");
+    keys(&mut s, "g");
+    assert_eq!(s.top(), max, "g waits for a second key");
+    drive(&mut s, Action::KeyTimeout);
+    assert_eq!(s.top(), 0, "…or for the time to run out");
+    keys(&mut s, "Ggj");
+    assert_eq!(s.top(), 1, "…or for a key that does not continue it");
     code(&mut s, KeyCode::End);
     assert_eq!(s.top(), max);
     code(&mut s, KeyCode::Home);
@@ -174,11 +181,11 @@ fn jumps_to_ends_lines_and_percentages() {
     assert_eq!(s.top(), total / 2);
     keys(&mut s, "%");
     assert_eq!(s.top(), 0, "no count: 0%");
-    keys(&mut s, "20g");
+    keys(&mut s, "20gg");
     assert_eq!(s.top(), 19, "line 20");
     keys(&mut s, "3G");
     assert_eq!(s.top(), 2);
-    keys(&mut s, "999999999g");
+    keys(&mut s, "999999999gg");
     assert_eq!(s.top(), max, "huge counts are clamped");
 }
 
@@ -521,7 +528,10 @@ fn following_other_kinds_of_links() {
     );
     assert_eq!(
         keys(&mut s, "y"),
-        [Effect::Copy("https://example.com".into())]
+        [Effect::Copy {
+            text: "https://example.com".into(),
+            what: "copied https://example.com".into()
+        }]
     );
     code(&mut s, KeyCode::Tab);
     let effects = code(&mut s, KeyCode::Enter);
@@ -564,7 +574,7 @@ fn link_hints() {
     assert_eq!(s.mode_name(), "normal");
     keys(&mut s, "ox");
     assert_eq!(s.mode_name(), "normal");
-    assert_eq!(s.message(), Some("no link labelled x"));
+    assert_eq!(s.message(), Some("no label x"));
     keys(&mut s, "o");
     code(&mut s, KeyCode::Esc);
     assert_eq!(s.mode_name(), "normal");
@@ -1032,9 +1042,9 @@ fn toggles_and_simple_effects() {
     assert_eq!(s.message(), Some("full width"));
     keys(&mut s, "w");
     assert_eq!(s.layout().measure, narrow);
-    assert_eq!(keys(&mut s, "m"), [Effect::SetMouse(false)]);
+    assert_eq!(keys(&mut s, "M"), [Effect::SetMouse(false)]);
     assert!(!s.mouse());
-    assert_eq!(keys(&mut s, "m"), [Effect::SetMouse(true)]);
+    assert_eq!(keys(&mut s, "M"), [Effect::SetMouse(true)]);
     assert_eq!(keys(&mut s, "i"), [Effect::CycleImages]);
     assert_eq!(keys(&mut s, "q"), [Effect::Quit]);
     assert_eq!(key(&mut s, Key::ctrl('c')), [Effect::Quit]);
@@ -1074,7 +1084,7 @@ fn help_overlay() {
     let Mode::Help { scroll } = s.mode else {
         panic!("help")
     };
-    let lines = keymap::help_lines().len();
+    let lines = keymap::Keymap::default().help_lines().len();
     let shown = toc::help_box(80, 60, lines).inner_rows();
     assert_eq!(scroll, lines.saturating_sub(shown).saturating_sub(1));
 }
@@ -1196,7 +1206,8 @@ fn file_loader_reads_readmes() {
 fn input(n: u32, col: u16, row: u16) -> Action {
     const CHARS: &[char] = &[
         'j', 'k', 'd', 'u', 'f', 'b', 'g', 'G', '%', ']', '[', '}', '{', 't', 'n', 'N', '/', '?',
-        'o', 'a', 's', 'h', 'H', 'L', 'y', 'w', 'q', 'x', 'e', '1', '5', ' ',
+        'o', 'a', 's', 'h', 'H', 'L', 'y', 'w', 'q', 'x', 'e', '1', '5', ' ', 'v', 'V', 'Y', 'z',
+        'm', '\'', ';', 'M', 'c',
     ];
     const CODES: &[KeyCode] = &[
         KeyCode::Enter,
@@ -1212,6 +1223,10 @@ fn input(n: u32, col: u16, row: u16) -> Action {
         KeyCode::End,
     ];
     let pick = n as usize;
+    if n.is_multiple_of(61) {
+        // The pause that ends a key sequence (`g` of `gg`).
+        return Action::KeyTimeout;
+    }
     match n % 7 {
         0..=3 => Action::Key(Key::char(CHARS[pick / 7 % CHARS.len()])),
         4 => Action::Key(Key::plain(CODES[pick / 7 % CODES.len()])),
@@ -1236,7 +1251,7 @@ proptest::proptest! {
 
     #[test]
     fn random_input_keeps_the_invariants(
-        doc in 0usize..3,
+        doc in 0usize..6,
         cols in 1u16..140,
         rows in 1u16..50,
         steps in proptest::collection::vec((0u32..10_000, 0u16..150, 0u16..60), 1..80),
@@ -1244,6 +1259,9 @@ proptest::proptest! {
         let md = match doc {
             0 => include_str!("../../tests/fixtures/md/kitchen-sink.md").to_owned(),
             1 => include_str!("../../tests/fixtures/md/links.md").to_owned(),
+            2 => String::new(),
+            3 => "one line".to_owned(),
+            4 => "Text $x$.\n\n\\[\na\n=\nb\n\\]\n\n| a |\n|---|\n| 1 |\n\n- i\n\n  > q\n".to_owned(),
             _ => long_doc(6, 3),
         };
         let mut s = state(&md, cols, rows);
@@ -1253,9 +1271,19 @@ proptest::proptest! {
         for (n, col, row) in steps {
             drive(&mut s, input(n, col, row));
             proptest::prop_assert!(s.top() <= s.max_top(), "{} > {}", s.top(), s.max_top());
+            if let Some((lo, hi)) = s.selection() {
+                proptest::prop_assert!(lo <= hi && hi < s.layout().len().max(1), "{lo}..={hi}");
+            }
+            if let Mode::Hints(h) = &s.mode {
+                proptest::prop_assert!(!h.labels.is_empty());
+                proptest::prop_assert!(h.labels.iter().all(|(_, t)| t.line < s.layout().len()));
+            }
             let frame = view(&s, &ctx);
             proptest::prop_assert_eq!(frame.lines.len(), usize::from(s.size().1));
             let _ = screen.paint(&frame, s.document(), s.layout(), &cfg);
         }
     }
 }
+
+// Hints, Visual mode, marks and the editor.
+mod modes;

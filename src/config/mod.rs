@@ -42,7 +42,7 @@ use crate::style::Rgb;
 use crate::term::ColorDepth;
 use crate::theme::spec::ThemePatch;
 use crate::theme::{Theme, Variant, builtin, chain};
-use check::{Checks, check_aliases, check_code_themes, check_colours};
+use check::{Checks, check_aliases, check_code_themes, check_colours, check_keys};
 use de::{Origin, Parsed};
 use layer::{ConfigLayer, Merge as _};
 
@@ -107,7 +107,9 @@ fn printable(s: &str) -> Cow<'_, str> {
 /// Built-in pager settings (`[pager]`).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PagerOptions {
-    /// `auto`: only on a terminal and for documents taller than the screen.
+    /// When the pager runs (on a terminal only, whatever this says):
+    /// `always` (the default) whatever the length, `auto` for documents
+    /// taller than the screen.
     pub enabled: When,
     /// Mouse wheel scrolling and link clicks.
     pub mouse: bool,
@@ -118,17 +120,21 @@ pub struct PagerOptions {
     pub search_case: SearchCase,
     /// How external links are opened.
     pub open: OpenCommand,
+    /// `[pager.keys]`: action names and their keys, in order (see
+    /// [`crate::pager::keymap::Keymap::new`]).
+    pub keys: Vec<(String, Vec<String>)>,
 }
 
 impl Default for PagerOptions {
     fn default() -> Self {
         PagerOptions {
-            enabled: When::Auto,
+            enabled: When::Always,
             mouse: true,
             watch: true,
             scroll_lines: 3,
             search_case: SearchCase::Smart,
             open: OpenCommand::Auto,
+            keys: Vec::new(),
         }
     }
 }
@@ -361,6 +367,9 @@ fn load_with(opts: &LoadOptions, checks: Checks) -> Loaded {
     let mut defaults =
         de::parse_config(Cow::Borrowed(DEFAULT_CONFIG), Origin::Defaults, &mut diags);
     let (path, mut user_docs) = user_layers(opts, &mut diags);
+    for doc in &mut user_docs {
+        doc.pager_keys(&mut diags);
+    }
     for doc in std::iter::once(&mut defaults).chain(user_docs.iter_mut()) {
         for (key, message) in resolve::validate(&mut doc.value) {
             diags.push(doc.diagnostic(Severity::Warning, &key, message));
@@ -373,6 +382,7 @@ fn load_with(opts: &LoadOptions, checks: Checks) -> Loaded {
         check_colours(theme_docs, &user_docs, &t.patch, &mut diags);
     }
     check_code_themes(theme_docs, &user_docs, checks, &mut diags);
+    check_keys(&user_docs, &mut diags);
     if checks == Checks::Thorough {
         check_aliases(&user_docs, &mut diags);
     }

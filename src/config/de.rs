@@ -198,6 +198,70 @@ impl<T> Parsed<T> {
     }
 }
 
+/// The path of `[pager.keys]`, which serde leaves alone (its keys are
+/// action names, and their order matters): [`Parsed::pager_keys`] reads it.
+const PAGER_KEYS: [&str; 2] = ["pager", "keys"];
+
+impl Parsed<ConfigLayer> {
+    /// `[pager.keys]` in the order written, into the layer; entries that are
+    /// not lists of keys are reported.
+    pub(crate) fn pager_keys(&mut self, diags: &mut Vec<Diagnostic>) {
+        let Ok(root) = DeTable::parse(&self.src) else {
+            return;
+        };
+        let table = root
+            .get_ref()
+            .get(PAGER_KEYS[0])
+            .and_then(|p| match p.get_ref() {
+                DeValue::Table(t) => t.get(PAGER_KEYS[1]),
+                _ => None,
+            });
+        let Some(table) = table else {
+            return;
+        };
+        let DeValue::Table(table) = table.get_ref() else {
+            let text = "pager.keys: expected a table of actions and keys".to_owned();
+            diags.push(self.diagnostic(Severity::Warning, &PAGER_KEYS, text));
+            return;
+        };
+        let mut keys: Vec<(usize, (String, Vec<String>))> = Vec::new();
+        let mut bad = Vec::new();
+        for (action, value) in table {
+            let list: Option<Vec<String>> = match value.get_ref() {
+                DeValue::Array(items) => items
+                    .iter()
+                    .map(|k| match k.get_ref() {
+                        DeValue::String(s) => Some(s.to_string()),
+                        _ => None,
+                    })
+                    .collect(),
+                _ => None,
+            };
+            let name = action.get_ref().to_string();
+            match list {
+                Some(list) => {
+                    let at = action.span().start;
+                    let i = keys.partition_point(|(a, _)| *a <= at);
+                    keys.insert(i, (at, (name, list)));
+                }
+                None => bad.push(name),
+            }
+        }
+        let items: Vec<Deferred<'_>> = bad
+            .iter()
+            .map(|name| {
+                let path = vec![PAGER_KEYS[0], PAGER_KEYS[1], name.as_str()];
+                let message = move || {
+                    format!("pager.keys.{name}: expected a list of keys, like [\"j\", \"Down\"]")
+                };
+                (path, Box::new(message) as Box<dyn FnOnce() -> String>)
+            })
+            .collect();
+        self.report(Severity::Warning, items, diags);
+        self.value.pager.keys.0 = keys.into_iter().map(|(_, k)| k).collect();
+    }
+}
+
 /// Parse a document into `T`, reporting problems into `diags`.
 pub(crate) fn parse<T>(
     src: Cow<'static, str>,
@@ -208,7 +272,10 @@ pub(crate) fn parse<T>(
 where
     T: DeserializeOwned + Default + Merge,
 {
-    let (value, unknown) = read::<T>(&src, &origin, diags);
+    let (value, mut unknown) = read::<T>(&src, &origin, diags);
+    if schema == Schema::Config {
+        unknown.retain(|p| !p.starts_with(&PAGER_KEYS.map(String::from)));
+    }
     let parsed = Parsed { value, origin, src };
     let items: Vec<Deferred<'_>> = unknown
         .iter()

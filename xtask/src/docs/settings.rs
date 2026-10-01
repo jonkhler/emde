@@ -67,7 +67,7 @@ const FLAGS: &[Flag] = &[
     flag("math.display", "`--math-display`", &["--math-display", "linear"], "linear"),
     flag("images.blocks", "`--blocks`", &["--blocks", "sextant"], "sextant"),
     flag("images.remote", "`--remote-images` (true)", &["--remote-images"], "true"),
-    flag("pager.enabled", "`--paging`; `--plain` (`-p`) means never", &["--paging", "always"], "always"),
+    flag("pager.enabled", "`--paging`; `--plain` (`-p`) means never", &["--paging", "auto"], "auto"),
 ];
 
 /// One `[section]` of the defaults.

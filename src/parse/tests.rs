@@ -22,7 +22,37 @@ fn doc(md: &str) -> Document {
 fn doc_with(md: &str, opts: &ParseOptions) -> Document {
     let d = parse(md, opts);
     check(&d);
+    check_sources(&d, md);
     d
+}
+
+/// Source ranges: one per top-level block, in order, inside the text.
+fn check_sources(d: &Document, md: &str) {
+    assert_eq!(d.block_src.len(), d.blocks.len(), "{:?}", d.block_src);
+    let mut last = 0;
+    for r in &d.block_src {
+        assert!(
+            r.start <= r.end && r.end as usize <= md.len(),
+            "{r:?} in {md:?}"
+        );
+        if r.start < r.end {
+            assert!(r.start >= last, "ranges go back: {:?}", d.block_src);
+            last = r.start;
+        }
+    }
+}
+
+/// The source of each top-level block.
+fn sources(md: &str) -> Vec<String> {
+    let d = doc(md);
+    (0..d.blocks.len())
+        .map(|i| {
+            d.block_source(BlockId(u32::try_from(i).unwrap()))
+                .and_then(|r| md.get(r))
+                .unwrap_or("")
+                .to_owned()
+        })
+        .collect()
 }
 
 /// Feed raw events to a builder.
@@ -112,6 +142,79 @@ fn text(s: &'static str) -> Event<'static> {
 }
 
 // ----- paragraphs and inline content -------------------------------------------
+
+#[test]
+fn top_level_blocks_know_their_source() {
+    let md = "# Title\n\nSome *text*\nover lines.\n\n```rust\nfn x() {}\n```\n\n- a\n- b\n\n  more b\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\n> quoted\n> text\n\n---\n";
+    let src = sources(md);
+    assert_eq!(src[0], "# Title");
+    assert_eq!(src[1], "Some *text*\nover lines.");
+    assert_eq!(src[2], "```rust\nfn x() {}\n```");
+    assert_eq!(src[3], "- a\n- b\n\n  more b");
+    assert_eq!(src[4], "| a | b |\n|---|---|\n| 1 | 2 |");
+    assert_eq!(src[5], "> quoted\n> text");
+    assert_eq!(src[6], "---");
+    let d = doc(md);
+    let Block::List(list) = &d.blocks[3] else {
+        panic!("{}", d.dump());
+    };
+    let items: Vec<&str> = list
+        .items
+        .iter()
+        .map(|i| &md[i.src.start as usize..i.src.end as usize])
+        .collect();
+    assert_eq!(items, ["- a", "- b\n\n  more b"]);
+}
+
+#[test]
+fn sources_survive_the_display_math_rewrite() {
+    // The rewrite adds lines (`\[ a =` becomes a fence line and `a =`):
+    // ranges still point into the text as written.
+    let md = "Intro.\n\n\\[ a =\nb \\]\n\n- item\n  $$\n  x\n  $$\n\nEnd.\n";
+    let src = sources(md);
+    assert_eq!(
+        src,
+        [
+            "Intro.",
+            "\\[ a =\nb \\]",
+            "- item\n  $$\n  x\n  $$",
+            "End."
+        ]
+    );
+    let d = doc(md);
+    assert!(
+        matches!(&d.blocks[1], Block::Math(m) if &*m.tex == "a =\nb"),
+        "{}",
+        d.dump()
+    );
+    let Block::List(list) = &d.blocks[2] else {
+        panic!("{}", d.dump());
+    };
+    let item = &list.items[0].src;
+    assert_eq!(
+        &md[item.start as usize..item.end as usize],
+        "- item\n  $$\n  x\n  $$"
+    );
+}
+
+#[test]
+fn html_containers_and_footnotes_have_sources() {
+    let md = "<details>\n<summary>More</summary>\n\nHidden *text*.\n\n</details>\n\nNote[^1].\n\n[^1]: The note.\n";
+    let d = doc(md);
+    let src = sources(md);
+    assert!(matches!(d.blocks[0], Block::Details { .. }), "{}", d.dump());
+    assert!(
+        src[0].starts_with("<details>") && src[0].ends_with("</details>"),
+        "{src:?}"
+    );
+    assert_eq!(src[1], "Note[^1].");
+    assert!(matches!(d.blocks.last(), Some(Block::FootnoteSection)));
+    assert_eq!(
+        src.last().map(String::as_str),
+        Some(""),
+        "made up by the parser"
+    );
+}
 
 #[test]
 fn emphasis_code_and_breaks() {

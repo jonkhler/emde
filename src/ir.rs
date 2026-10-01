@@ -80,6 +80,12 @@ id_type! {
 pub struct Document {
     /// Top-level blocks in reading order.
     pub blocks: Vec<Block>,
+    /// Where each top-level block is in the source text (indexed like
+    /// [`Document::blocks`]): byte offsets into the text given to
+    /// [`crate::parse::parse`], blank lines around the block excluded as
+    /// far as the parser reports them. Empty for blocks made up by the
+    /// parser (the footnote section) and in documents not made by it.
+    pub block_src: Vec<Range<u32>>,
     /// Every link occurrence, including footnote references and bare URLs.
     pub links: Vec<Link>,
     /// Every image occurrence (figures and inline chips). Never decoded here.
@@ -389,6 +395,9 @@ pub struct ListItem {
     pub task: Option<bool>,
     /// The item's content.
     pub body: Vec<Block>,
+    /// Where the item is in the source text (its marker included), as
+    /// [`Document::block_src`]; empty when unknown.
+    pub src: Range<u32>,
 }
 
 /// A table. The header and every row have exactly `align.len()` cells.
@@ -601,6 +610,15 @@ impl Document {
         self.headings.get(id.index())
     }
 
+    /// The source range of top-level block `id`, if known (see
+    /// [`Document::block_src`]).
+    pub fn block_source(&self, id: BlockId) -> Option<Range<usize>> {
+        self.block_src
+            .get(id.index())
+            .filter(|r| r.start < r.end)
+            .map(|r| r.start as usize..r.end as usize)
+    }
+
     /// The front matter, if the document has any.
     pub fn front_matter(&self) -> Option<&FrontMatter> {
         self.blocks.iter().find_map(|b| match b {
@@ -746,6 +764,19 @@ impl Document {
             }
         }
         Ok(())
+    }
+
+    /// The text content of `blocks`, one leaf per line, as
+    /// [`Document::plain_text`] has it (without the last line break).
+    pub fn blocks_text(&self, blocks: &[Block]) -> String {
+        let mut out = String::new();
+        for block in blocks {
+            self.write_plain(block, &mut out);
+        }
+        if out.ends_with('\n') {
+            out.pop();
+        }
+        out
     }
 
     /// All text content, one leaf per line: for tests and search. Math is

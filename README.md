@@ -17,12 +17,15 @@ emde README.md
   fit (or turn into cards), and long lines wrap instead of being cut off.
   Every line ends with a reset, so styles never bleed, and a document can
   never send escape sequences of its own to the terminal.
-- **A built-in pager.** On a terminal, a document taller than the screen
-  opens in the pager: incremental search (smart case, and a phrase is found
-  even where it wraps), an outline, jumps between headings, link focus and
-  link hints, back and forward through linked documents, reload when the
-  file changes, the mouse wheel, and re-wrapping on resize that keeps your
-  place. Short documents and pipes get the rendered text, like `bat` does.
+- **A built-in pager.** On a terminal, a document opens in the pager:
+  incremental search (smart case, and a phrase is found even where it
+  wraps), an outline, jumps between headings, marks, Vimium-style hints to
+  follow links or copy code, math and tables as written, a Visual mode
+  that copies lines as Markdown or text, `e` to edit the file at the line
+  you are reading, back and forward through linked documents, reload when
+  the file changes, the mouse wheel, and re-wrapping on resize that keeps
+  your place. Pipes and `--plain` get the rendered text, like `bat` does
+  (and with `pager.enabled = "auto"`, documents that fit on the screen).
 - **Math.** `$…$`, `$$…$$`, `\(…\)`, `\[…\]` and ` ```math ` blocks.
   Inline math is one line of Unicode (`α² + a/b`); display math is laid out
   in two dimensions, with stacked fractions, limits above and below, tall
@@ -82,7 +85,7 @@ builds without Oniguruma: then emde has no C code at all.
 ## Usage
 
 ```sh
-emde README.md                       # read a document (in the pager when it is long)
+emde README.md                       # read a document in the pager
 emde docs/guide.md#installation      # open the pager at a heading
 emde .                               # a directory shows its README
 curl -sL https://example.org/README.md | emde   # read standard input
@@ -97,7 +100,7 @@ emde --doctor                        # what emde found out about the terminal
 | Option | |
 |---|---|
 | `-p`, `--plain` | No pager: write the rendered document to standard output. |
-| `--paging auto\|always\|never` | When to use the pager (`auto`: on a terminal, for long documents). |
+| `--paging auto\|always\|never` | When to use the pager on a terminal (default `always`; `auto`: for long documents only). |
 | `-w`, `--width N` · `-m`, `--max-width N` | The width, and the widest text column (default 100). |
 | `--color auto\|always\|never\|truecolor\|256\|16` | Colours, also when piping. |
 | `-t`, `--theme NAME\|PATH` · `--background auto\|dark\|light` | The theme and its variant. |
@@ -111,8 +114,20 @@ emde --doctor                        # what emde found out about the terminal
 ## The pager
 
 Keys work like in `less` and `vim`; `h` shows them all. A count before a
-command repeats it or gives it a line or a percentage: `5j`, `120g`, `50%`.
+command repeats it or gives it a line or a percentage: `5j`, `120gg`, `50%`.
 Links can be followed into other Markdown files, and `Backspace` comes back.
+
+Hints put a short label on everything worth acting on, as Vimium does in a
+browser: type it. `f` follows a link, goes to a heading, a code block, a
+table or a footnote (and back), or shows an image at full size; `o` labels
+links only. `y` copies what the label is on as written in the file: the
+code of a code block (no fences), the TeX of math, a table, a paragraph, a
+list item or a quote as Markdown, a link's URL, `file.md#slug` for a
+heading. `V` selects lines (`v` and a label: a block), and in Visual mode
+`y` copies the Markdown of the selected blocks, `Y` their text as shown.
+`e` opens the file in `$VISUAL` or `$EDITOR` at the line you are reading,
+and shows it again when the editor exits. `ma` marks a place, `'a` goes
+back to it, and `''` to where you were before the last jump.
 
 <!-- BEGIN GENERATED keys (`cargo xtask docs`, from src/pager/keymap.rs) -->
 
@@ -120,16 +135,19 @@ Links can be followed into other Markdown files, and `Backspace` comes back.
 
 | Keys | Action |
 |---|---|
-| `0`–`9` | count for the next command (5j, 50%, 120g) |
+| `0`–`9` | count for the next command (5j, 50%, 120gg) |
 | `j` `↓` `^E` `^N` | down a line |
 | `k` `↑` `^Y` `^P` | up a line |
-| `Space` `f` `PgDn` `^F` | down a page |
+| `Space` `PgDn` `^F` | down a page |
 | `b` `PgUp` `^B` | up a page |
 | `d` `^D` | down half a page |
 | `u` `^U` | up half a page |
-| `g` `Home` `<` | top (line N with a count) |
+| `gg` `g` `Home` `<` | top (line N with a count) |
 | `G` `End` `>` | bottom (line N with a count) |
 | `%` | N percent into the document |
+| `zz` | centre the current match, link or middle line |
+| `zt` | … to the top |
+| `zb` | … to the bottom |
 
 **Jumping**
 
@@ -140,6 +158,8 @@ Links can be followed into other Markdown files, and `Backspace` comes back.
 | `}` | next heading of the same or a higher level |
 | `{` | previous heading of the same or a higher level |
 | `t` | outline (type to filter) |
+| `m` | mark the place: m and a letter (ma) |
+| `'` | go to a mark ('a); '' back to before the last jump |
 
 **Searching**
 
@@ -149,7 +169,7 @@ Links can be followed into other Markdown files, and `Backspace` comes back.
 | `?` | search backward |
 | `n` | next match |
 | `N` | previous match |
-| `Esc` | clear the search (then the link focus) |
+| `Esc` | clear the zoomed image, the search, the link focus |
 
 **Links**
 
@@ -161,7 +181,16 @@ Links can be followed into other Markdown files, and `Backspace` comes back.
 | `o` | link hints: type a label to follow |
 | `Backspace` `H` | back |
 | `L` | forward |
-| `y` | copy the focused link's URL |
+
+**Hints, copying and editing**
+
+| Keys | Action |
+|---|---|
+| `f` | hints: follow a link, go to a heading or block, zoom an image |
+| `y` | copy the focused link's URL, else hints: copy code, math, a table… |
+| `v` | hints: select a block (Visual mode) |
+| `V` | Visual mode: select lines |
+| `e` | edit the file ($VISUAL, $EDITOR) at the top block |
 
 **Other**
 
@@ -171,12 +200,38 @@ Links can be followed into other Markdown files, and `Backspace` comes back.
 | `R` | watch the file for changes, on or off |
 | `i` | cycle the image mode |
 | `w` | full width, on or off |
-| `m` | mouse, on or off (off: select text) |
+| `M` | mouse, on or off (off: select text) |
 | `:` | command: :n next file, :p previous file, :q quit |
 | `h` `F1` | this help |
 | `^L` | redraw the screen (anywhere) |
 | `^Z` | suspend (anywhere) |
 | `q` `^C` | quit |
+
+**In Visual mode**
+
+| Keys | Action |
+|---|---|
+| `0`–`9` | count for the next motion |
+| `j` `↓` `^N` | extend down a line |
+| `k` `↑` `^P` | extend up a line |
+| `^D` `PgDn` | down half a page |
+| `^U` `PgUp` | up half a page |
+| `}` | to the end of the block, or of the next |
+| `{` | to the start of the block, or of the previous |
+| `]` | to the next heading |
+| `[` | to the previous heading |
+| `gg` `g` `Home` | to the top |
+| `G` `End` | to the bottom |
+| `n` | to the next match |
+| `N` | to the previous match |
+| `zz` | the cursor line to the middle |
+| `zt` | … to the top |
+| `zb` | … to the bottom |
+| `o` | go to the other end |
+| `y` | copy the Markdown of the selected blocks |
+| `Y` | copy the text of the selected lines |
+| `e` | edit the file at the selection |
+| `Esc` `V` `q` `^C` | leave Visual mode |
 
 **In the search prompt**
 
@@ -208,7 +263,7 @@ Links can be followed into other Markdown files, and `Backspace` comes back.
 | `Esc` `^C` | close |
 | `Backspace` | delete a filter character |
 
-**With link hints**
+**With hints**
 
 | Keys | Action |
 |---|---|
@@ -227,7 +282,8 @@ Links can be followed into other Markdown files, and `Backspace` comes back.
 
 <!-- END GENERATED keys -->
 
-In the search prompt, the outline and link hints, other keys type text.
+In the search prompt, the outline and hints, other keys type text. The keys
+can be changed in `[pager.keys]` ([key bindings](CONFIG.md#key-bindings)).
 
 ## Configuration
 
@@ -297,7 +353,7 @@ block images elsewhere. `NO_COLOR` turns colours off (the `mono` theme);
   knows that tmux converts colours for each client and uses 24-bit colour
   inside tmux anyway. If colours look wrong in tmux, tell tmux your
   terminal has 24-bit colour: `set -as terminal-features ',xterm-256color:RGB'`.
-- Copying a link's URL (`y` in the pager) uses OSC 52. With tmux's default
+- Copying (`y` in the pager) uses OSC 52. With tmux's default
   `set-clipboard external`, tmux ignores OSC 52 from programs, so emde puts
   the URL into a tmux buffer with `tmux load-buffer -w`, which also passes
   it on to your terminal's clipboard. `set -g set-clipboard on` lets OSC 52

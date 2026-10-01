@@ -9,16 +9,12 @@
 //! (not repeated when the box already shows it).
 
 use crate::ir::{Figure, ImageRef};
-use crate::options::Height;
 use crate::style::StyleId;
 use crate::theme::Element;
 
 use super::build::{Builder, cut_to_cols};
 use super::inline::Composed;
 use super::{Fill, LineKind, Placement};
-
-/// Figure height cap when the screen height is unknown.
-const DEFAULT_MAX_ROWS: u16 = 30;
 
 fn to_u32(n: usize) -> u32 {
     u32::try_from(n).unwrap_or(u32::MAX)
@@ -27,16 +23,7 @@ fn to_u32(n: usize) -> u32 {
 impl Builder<'_> {
     /// The tallest figure allowed.
     fn max_image_rows(&self) -> u16 {
-        match self.opts.images.max_height {
-            Height::Rows(n) => n.max(1),
-            Height::Percent(p) => match self.caps.size {
-                Some((_, rows)) => {
-                    let r = u32::from(rows) * u32::from(p.min(100)) / 100;
-                    u16::try_from(r).unwrap_or(u16::MAX).max(1)
-                }
-                None => DEFAULT_MAX_ROWS,
-            },
-        }
+        super::max_image_rows(self.opts, self.caps)
     }
 
     /// A figure.

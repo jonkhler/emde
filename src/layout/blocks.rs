@@ -706,7 +706,7 @@ impl Builder<'_> {
         };
         let start = pieces.partition_point(|p| (p.line as usize) < r);
         let end = pieces.partition_point(|p| (p.line as usize) <= r);
-        self.put_pieces(c, line, pieces.get(start..end).unwrap_or(&[]));
+        self.put_pieces(c, line, pieces.get(start..end).unwrap_or(&[]), None);
     }
 
     /// Raw HTML (`html = "raw"`), shown as dim text.

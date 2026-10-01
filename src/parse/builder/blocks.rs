@@ -144,9 +144,9 @@ impl Builder {
                     Vec::new(),
                 );
             }
-            Container::Item { task, body } => {
+            Container::Item { task, body, src } => {
                 if let Some(Container::List { items, .. }) = self.stack.last_mut() {
-                    items.push(ListItem { task, body });
+                    items.push(ListItem { task, body, src });
                 } else {
                     self.push_blocks(body);
                 }
@@ -198,14 +198,15 @@ impl Builder {
             };
             self.add_anchors(anchors, target);
         }
-        let mut dest = &mut self.root;
-        for c in self.stack.iter_mut().rev() {
-            if let Some(blocks) = c.blocks_mut() {
-                dest = blocks;
-                break;
+        let dest = self.stack.iter_mut().rev().find_map(Container::blocks_mut);
+        match dest {
+            Some(blocks) => blocks.push(block),
+            None => {
+                self.root.push(block);
+                let src = &self.top_src;
+                self.root_src.push(to_u32(src.start)..to_u32(src.end));
             }
         }
-        dest.push(block);
     }
 
     /// Push several finished blocks.
@@ -241,7 +242,7 @@ impl Builder {
         self.leaf_seq += 1;
         self.leaf = Some(Leaf {
             kind,
-            buf: InlineBuf::with_capacity(self.size_hint),
+            buf: InlineBuf::with_capacity(self.range.len()),
             anchors: Vec::new(),
             seq: self.leaf_seq,
         });

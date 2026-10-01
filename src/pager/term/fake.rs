@@ -17,6 +17,7 @@
 //! hanging).
 
 use std::collections::VecDeque;
+use std::ffi::OsString;
 use std::fmt;
 use std::io;
 use std::time::{Duration, Instant};
@@ -69,6 +70,22 @@ pub enum Chunk {
     Suspend,
     /// A [`Step::Mark`] was played.
     Mark(String),
+    /// The pager ran a program in the foreground (the editor), with the
+    /// terminal put back.
+    Run(Vec<OsString>),
+}
+
+/// What running a program does in a test: whether it succeeds (or why it
+/// cannot start).
+type Program = Box<dyn FnMut(&[OsString]) -> io::Result<bool>>;
+
+/// A [`Program`] that is `Debug`.
+struct Runner(Program);
+
+impl fmt::Debug for Runner {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("Runner(..)")
+    }
 }
 
 /// A scripted terminal; see the module docs.
@@ -86,6 +103,7 @@ pub struct FakeTerminal {
     polls: Vec<Duration>,
     cleanup: Vec<u8>,
     job_control: bool,
+    program: Option<Runner>,
 }
 
 impl FakeTerminal {
@@ -104,7 +122,18 @@ impl FakeTerminal {
             polls: Vec::new(),
             cleanup: Vec::new(),
             job_control: true,
+            program: None,
         }
+    }
+
+    /// Programs the pager runs ([`Terminal::run_foreground`]) do what
+    /// `program` does (without one they succeed and do nothing).
+    pub fn with_program(
+        mut self,
+        program: impl FnMut(&[OsString]) -> io::Result<bool> + 'static,
+    ) -> FakeTerminal {
+        self.program = Some(Runner(Box::new(program)));
+        self
     }
 
     /// A terminal whose process cannot be stopped (no job control): Ctrl-Z
@@ -335,6 +364,14 @@ impl Terminal for FakeTerminal {
 
     fn can_suspend(&self) -> bool {
         self.job_control
+    }
+
+    fn run_foreground(&mut self, argv: &[OsString]) -> io::Result<bool> {
+        self.chunks.push(Chunk::Run(argv.to_vec()));
+        match &mut self.program {
+            Some(Runner(f)) => f(argv),
+            None => Ok(true),
+        }
     }
 
     fn set_cleanup(&mut self, bytes: Vec<u8>) {
