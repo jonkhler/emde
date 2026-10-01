@@ -21,7 +21,10 @@
 //! |---|---|
 //! | blocks | [`raster::rasterize`] cells |
 //! | kitty placeholders | the upload (`a=T,U=1`, wrapped for tmux passthrough), then placeholder text on every row |
-//! | kitty classic, iTerm2, sixel | the first row reserves the box with newlines, moves the cursor back up to the box, saves it, draws the image and restores it; the other rows are left empty |
+//! | kitty classic, iTerm2, sixel | the first row reserves the box (and the row below it) with newlines, moves the cursor back up to the box, saves it, draws the image and restores it; the other rows only move the cursor over the image |
+//!
+//! Every row leaves the cursor at the box's right edge, as text would, so
+//! what the line shows after the box (an alert's tint) can follow.
 //!
 //! Every kitty command carries `q=2`, and every upload gets a fresh id. A
 //! pixel rendition that cannot be made (too large, cannot be encoded) falls
@@ -35,7 +38,6 @@
 //! sources and block renditions are the same.
 
 use std::collections::HashMap;
-use std::fmt::Write as _;
 use std::fs;
 use std::io::Read as _;
 use std::num::NonZeroU32;
@@ -71,6 +73,21 @@ const KITTY_ORIGINAL_MAX_BYTES: usize = 1 << 20;
 
 /// Most worker threads used for fetching and decoding.
 const MAX_THREADS: usize = 8;
+
+/// Decoded pixels held at once while images are rendered (RGBA bytes):
+/// large photos are decoded on fewer threads, so a gallery of them cannot
+/// take gigabytes.
+const DECODE_BUDGET_BYTES: u64 = 256 << 20;
+
+/// Threads to decode images on when the largest has `pixels` pixels: as
+/// many decoded images as fit in [`DECODE_BUDGET_BYTES`], from 1 to
+/// [`MAX_THREADS`].
+fn decode_threads(pixels: u64) -> usize {
+    let per_image = pixels.saturating_mul(4).max(1);
+    usize::try_from(DECODE_BUDGET_BYTES / per_image)
+        .unwrap_or(MAX_THREADS)
+        .clamp(1, MAX_THREADS)
+}
 
 /// How the images are shown: the terminal's side of the decision.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -176,8 +193,9 @@ enum Rows {
     /// Row 0 (with the upload when this placement sends it) and the other
     /// rows of the placeholder rendition `Key`.
     Placeholders { key: Key, first: Vec<u8> },
-    /// Row 0 draws the image over the reserved box; the others are empty.
-    Overlay { first: Vec<u8> },
+    /// Row 0 draws the image over the reserved box; the others only move
+    /// the cursor over it (`rest`).
+    Overlay { first: Vec<u8>, rest: Vec<u8> },
 }
 
 /// The images of one document; see the module docs.
@@ -261,9 +279,16 @@ impl ImageStore {
         }
         let opts = &self.opts;
         let entries = &self.entries;
-        let rendered = crate::parallel::map(&missing, MAX_THREADS, |(id, sizes)| {
-            let entry = entries.get(id.index()).and_then(Option::as_ref)?;
-            Some(render_sizes(*id, entry, sizes, opts))
+        let entry = |id: ImageId| entries.get(id.index()).and_then(Option::as_ref);
+        let largest = missing
+            .iter()
+            .filter_map(|&(id, _)| entry(id))
+            .map(|e| u64::from(e.size.0) * u64::from(e.size.1))
+            .max()
+            .unwrap_or(0);
+        let threads = decode_threads(largest);
+        let rendered = crate::parallel::map(&missing, threads, |(id, sizes)| {
+            Some(render_sizes(*id, entry(*id)?, sizes, opts))
         });
         for (rendered, (id, _)) in rendered.into_iter().zip(&missing) {
             let Some(Some(Rendered {
@@ -316,18 +341,20 @@ impl ImageStore {
                     None,
                     passthrough,
                 ));
-                let column = indent.saturating_add(p.col);
-                Rows::Overlay {
-                    first: over_reserved_rows(&draw, p.rows, column),
-                }
+                overlay_rows(&draw, p, indent)
             }
-            Rendition::Pixels(draw) => {
-                let column = indent.saturating_add(p.col);
-                Rows::Overlay {
-                    first: over_reserved_rows(draw, p.rows, column),
-                }
-            }
+            Rendition::Pixels(draw) => overlay_rows(draw, p, indent),
         })
+    }
+}
+
+/// The rows of a pixel image drawn over the box of `p` (`indent` is the
+/// layout's indent, so the column is absolute).
+fn overlay_rows(draw: &[u8], p: &Placement, indent: u16) -> Rows {
+    let column = indent.saturating_add(p.col);
+    Rows::Overlay {
+        first: over_reserved_rows(draw, p.rows, column, p.cols),
+        rest: cursor_forward(p.cols),
     }
 }
 
@@ -364,37 +391,48 @@ impl ImageRows for ImageStore {
                     _ => None,
                 }
             }
-            Rows::Overlay { first } => {
-                let bytes: &[u8] = if row == 0 { first } else { &[] };
+            Rows::Overlay { first, rest } => {
+                let bytes = if row == 0 { first } else { rest };
                 Some(RowContent::Bytes(bytes))
             }
         }
     }
 }
 
-/// Bytes that draw an image over the `rows` rows starting at the current
-/// line, from `column` (0-based): newlines make sure the rows below exist
-/// (scrolling the screen as needed), the cursor goes back up to the first
-/// row and over to the column, and it is saved around the image (`ESC 7`,
-/// `ESC 8`), so whatever the protocol does with it, it ends up where the
-/// line's own newline expects it.
-fn over_reserved_rows(draw: &[u8], rows: u16, column: u16) -> Vec<u8> {
-    let below = rows.saturating_sub(1);
-    let mut out = Vec::with_capacity(draw.len() + usize::from(below) + 24);
-    out.resize(usize::from(below), b'\n');
-    let mut moves = String::new();
-    if below > 0 {
-        let _ = write!(moves, "\x1b[{below}A");
+/// Bytes that draw an image over the `rows × cols` box whose first row is
+/// the current line, from `column` (0-based).
+///
+/// `rows` newlines first make sure the box *and the row below it* are on
+/// screen (scrolling as needed): after an image some terminals leave the
+/// cursor on its last row, others on the row below it, and for a box that
+/// ended on the screen's last row the latter would scroll the screen under
+/// the saved cursor and misplace everything after it. The cursor then goes
+/// back up to the box and is saved around the image (`ESC 7`, `ESC 8`), so
+/// wherever the protocol leaves it, it ends at the box's right edge, as
+/// text of `cols` cells would.
+fn over_reserved_rows(draw: &[u8], rows: u16, column: u16, cols: u16) -> Vec<u8> {
+    let mut out = Vec::with_capacity(draw.len() + usize::from(rows) + 32);
+    out.resize(usize::from(rows), b'\n');
+    if rows > 0 {
+        out.extend_from_slice(format!("\x1b[{rows}A").as_bytes());
     }
-    moves.push('\r');
-    if column > 0 {
-        let _ = write!(moves, "\x1b[{column}C");
-    }
-    out.extend_from_slice(moves.as_bytes());
+    out.push(b'\r');
+    out.extend(cursor_forward(column));
     out.extend_from_slice(b"\x1b7");
     out.extend_from_slice(draw);
     out.extend_from_slice(b"\x1b8");
+    out.extend(cursor_forward(cols));
     out
+}
+
+/// `CSI n C`: the cursor `n` columns to the right, writing nothing (empty
+/// for 0, which `CSI 0 C` would read as 1).
+fn cursor_forward(n: u16) -> Vec<u8> {
+    if n == 0 {
+        Vec::new()
+    } else {
+        format!("\x1b[{n}C").into_bytes()
+    }
 }
 
 // --- Sizes -------------------------------------------------------------------
@@ -511,16 +549,33 @@ fn locate(src: &str, base: Option<&Path>, remote: bool) -> Result<Location, Stri
     match scheme.as_deref() {
         Some("data") => data_uri(src).map(Location::Data),
         Some("http" | "https") => remote_url(src, remote),
-        Some("file") => Ok(Location::File(PathBuf::from(percent_decode(
-            src.get(5..)
-                .unwrap_or("")
-                .trim_start_matches("//localhost")
-                .trim_start_matches("//"),
-        )))),
+        Some("file") => file_uri(src).map(Location::File),
         Some(other) => Err(format!("`{other}:` images are not supported")),
         None if src.starts_with("//") => remote_url(&format!("https:{src}"), remote),
         None => Ok(Location::File(local_path(src, base))),
     }
+}
+
+/// The local path of a `file:` URI (`file:///p`, `file://localhost/p`,
+/// `file:/p`), percent-escapes decoded and any query or fragment dropped.
+/// Another host, or a path that is not absolute, names no file here.
+fn file_uri(uri: &str) -> Result<PathBuf, String> {
+    let rest = uri.get(5..).unwrap_or("");
+    let rest = rest.split(['?', '#']).next().unwrap_or(rest);
+    let path = match rest.strip_prefix("//") {
+        Some(authority) => {
+            let (host, path) = authority.split_at(authority.find('/').unwrap_or(authority.len()));
+            if !(host.is_empty() || host.eq_ignore_ascii_case("localhost")) {
+                return Err(format!("`file:` URI of another host (`{host}`)"));
+            }
+            path
+        }
+        None => rest,
+    };
+    if !path.starts_with('/') {
+        return Err("a `file:` URI needs an absolute path".into());
+    }
+    Ok(PathBuf::from(percent_decode(path)))
 }
 
 /// An `http(s)` image, if remote images are on and the URL is safe to pass
@@ -849,7 +904,8 @@ fn kitty_classic<'p>(
 }
 
 /// iTerm2 inline images: the original PNG, JPEG or GIF when it is small
-/// enough, else a PNG downscaled to (twice) the box.
+/// enough, else a PNG downscaled to twice the box, or to the box itself
+/// when that is still too large for one sequence.
 fn iterm_image<'p>(
     entry: &Entry,
     pixels: &dyn Fn() -> Option<&'p Rgba>,
@@ -865,9 +921,14 @@ fn iterm_image<'p>(
         return Some(Rendition::Pixels(draw));
     }
     let (bw, bh) = box_px(cols, rows, opts.cell());
-    let png = codec::png(pixels()?, bw.saturating_mul(2), bh.saturating_mul(2))?;
-    let draw = iterm::inline_image(&png, cols, rows, direct)?;
-    Some(Rendition::Pixels(draw))
+    let img = pixels()?;
+    [2, 1]
+        .into_iter()
+        .find_map(|scale| {
+            let png = codec::png(img, bw.saturating_mul(scale), bh.saturating_mul(scale))?;
+            iterm::inline_image(&png, cols, rows, direct)
+        })
+        .map(Rendition::Pixels)
 }
 
 /// Sixel: the image composited onto the page colour and scaled to its box

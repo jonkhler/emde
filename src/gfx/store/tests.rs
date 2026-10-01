@@ -27,6 +27,11 @@ fn locations() {
         file("file://localhost/abs/my%20b.png"),
         PathBuf::from("/abs/my b.png")
     );
+    assert_eq!(file("file:/abs/c.png?x#y"), PathBuf::from("/abs/c.png"));
+    // No file here: another host, or no absolute path.
+    for uri in ["file://example.com/abs/a.png", "file:a.png", "file://"] {
+        assert!(locate(uri, Some(base), false).is_err(), "{uri}");
+    }
     // A one-letter "scheme" is a Windows drive, i.e. a path.
     assert_eq!(file("c:x.png"), PathBuf::from("/docs/c:x.png"));
     assert!(
@@ -214,12 +219,27 @@ fn boxes() {
 }
 
 #[test]
+fn large_images_are_decoded_on_fewer_threads() {
+    // Screenshots and icons: every thread.
+    assert_eq!(decode_threads(0), MAX_THREADS);
+    assert_eq!(decode_threads(1920 * 1080), MAX_THREADS);
+    // 12 MP photos (48 MB decoded): five at a time; 40 MP: one.
+    assert_eq!(decode_threads(4000 * 3000), 5);
+    assert_eq!(decode_threads(40_000_000), 1);
+    assert_eq!(decode_threads(u64::MAX), 1);
+}
+
+#[test]
 fn drawing_over_reserved_rows() {
-    let out = over_reserved_rows(b"IMG", 3, 5);
-    assert_eq!(out, b"\n\n\x1b[2A\r\x1b[5C\x1b7IMG\x1b8");
-    // No zero-length moves: `CSI 0 A` would move one row.
-    let out = over_reserved_rows(b"IMG", 1, 0);
-    assert_eq!(out, b"\r\x1b7IMG\x1b8");
+    // The box's 3 rows and the one below it on screen, back up to the box,
+    // the image drawn from the saved cursor, then over to the right edge.
+    let out = over_reserved_rows(b"IMG", 3, 5, 8);
+    assert_eq!(out, b"\n\n\n\x1b[3A\r\x1b[5C\x1b7IMG\x1b8\x1b[8C");
+    // No zero-length moves: `CSI 0 C` would move one column.
+    let out = over_reserved_rows(b"IMG", 1, 0, 2);
+    assert_eq!(out, b"\n\x1b[1A\r\x1b7IMG\x1b8\x1b[2C");
+    assert_eq!(cursor_forward(0), b"");
+    assert_eq!(cursor_forward(12), b"\x1b[12C");
 }
 
 // --- Loading and rendering -------------------------------------------------
@@ -455,14 +475,15 @@ mod rendering {
         // The column is absolute: the layout's indent plus the box's place.
         let col = l.indent + l.images[0].col;
         assert!(
-            first.starts_with(&format!("\n\x1b[1A\r\x1b[{col}C\x1b7\x1b_Ga=t,i=")),
+            first.starts_with(&format!("\n\n\x1b[2A\r\x1b[{col}C\x1b7\x1b_Ga=t,i=")),
             "{first:?}"
         );
         assert!(
-            first.ends_with(",p=1,c=8,r=2,C=1,q=2\x1b\\\x1b8"),
+            first.ends_with(",p=1,c=8,r=2,C=1,q=2\x1b\\\x1b8\x1b[8C"),
             "{first:?}"
         );
-        assert_eq!(bytes(&store, &l.images[0], 1), b"", "row 1 is reserved");
+        // Row 1 is reserved: the cursor only moves over the image.
+        assert_eq!(bytes(&store, &l.images[0], 1), b"\x1b[8C");
         // Placed again, the image is not sent again, and the new placement
         // gets its own id (the same one would move the first).
         store.prepare_stream(&l);
@@ -474,6 +495,40 @@ mod rendering {
                 assert!(cmd.contains("q=2"), "{cmd:?}");
             }
         }
+    }
+
+    #[test]
+    fn large_iterm_images_shrink_until_they_fit_one_sequence() {
+        // Noise does not compress: 1600×800 is a 3.8 MB PNG, and even at
+        // twice the 50×13-cell box (800×400 px) more than iTerm2 takes in
+        // one sequence. At the box's own size it fits.
+        let dir = TestDir::new("store-iterm-large");
+        let mut seed = 0x2545_f491_u32;
+        let mut noise = Vec::with_capacity(1600 * 800 * 4);
+        for _ in 0..1600 * 800 {
+            seed ^= seed << 13;
+            seed ^= seed >> 17;
+            seed ^= seed << 5;
+            let [r, g, b, _] = seed.to_le_bytes();
+            noise.extend_from_slice(&[r, g, b, 255]);
+        }
+        let img = Rgba::new(1600, 800, noise).unwrap();
+        fs::write(
+            dir.path().join("noise.png"),
+            crate::gfx::png::encode(&img).unwrap(),
+        )
+        .unwrap();
+        let doc = doc_in(dir.path(), "![n](noise.png)");
+        let (store, l) = staged(&doc, opts(Graphics::Iterm), 54);
+        let p = l.images[0];
+        assert_eq!((p.cols, p.rows), (50, 13));
+        let row0 = String::from_utf8(bytes(&store, &p, 0).to_vec()).unwrap();
+        let start = row0.find("\x1b]1337;File=").expect("pixels, not blocks");
+        let end = row0.find('\x07').unwrap();
+        assert!(end - start <= iterm::MAX_SEQUENCE, "{}", end - start);
+        let payload = row0[start..end].split_once(':').unwrap().1;
+        let png = b64::decode(payload.as_bytes()).unwrap();
+        assert_eq!(crate::gfx::decode::dimensions(&png), Some((400, 200)));
     }
 
     #[test]
@@ -514,7 +569,7 @@ mod rendering {
         let row0 = String::from_utf8_lossy(bytes(&store, &l.images[0], 0)).into_owned();
         let dcs = row0.find("\x1bP").unwrap();
         assert!(row0[dcs..].contains("q\"1;1;60;30"), "{row0:?}");
-        assert!(row0.ends_with("\x1b\\\x1b8"));
+        assert!(row0.ends_with("\x1b\\\x1b8\x1b[8C"), "{row0:?}");
     }
 
     #[test]

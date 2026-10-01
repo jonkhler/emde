@@ -3,6 +3,7 @@
 use clap::Parser as _;
 
 use super::*;
+use crate::source::Origin;
 
 fn cli(args: &[&str]) -> Cli {
     Cli::try_parse_from(std::iter::once("emde").chain(args.iter().copied())).unwrap()
@@ -27,6 +28,25 @@ fn width_precedence() {
     let zero = Env::from_pairs(&[("COLUMNS", "0")]);
     assert_eq!(terminal_width(Some(0), false, &zero, &mut caps), 80);
     assert_eq!(caps.size, None, "no terminal size without a terminal");
+}
+
+#[test]
+fn the_terminal_size_counts_unless_it_is_zero() {
+    let env = Env::from_pairs(&[("COLUMNS", "132")]);
+    let mut caps = Caps::full();
+    assert_eq!(width_for(None, Some((100, 30)), &env, &mut caps), 100);
+    assert_eq!(caps.size, Some((100, 30)));
+    // --width wins, and the screen is still known.
+    let mut caps = Caps::full();
+    assert_eq!(width_for(Some(60), Some((100, 30)), &env, &mut caps), 60);
+    assert_eq!(caps.size, Some((100, 30)));
+    // A 0×0 pseudo-terminal is an unknown size: $COLUMNS, and no screen
+    // height to cap figures by or to decide on the pager with.
+    for screen in [(0, 0), (100, 0), (0, 30)] {
+        let mut caps = Caps::full();
+        assert_eq!(width_for(None, Some(screen), &env, &mut caps), 132);
+        assert_eq!(caps.size, None, "{screen:?}");
+    }
 }
 
 #[test]
@@ -109,7 +129,7 @@ fn paging_decisions() {
 
 fn doc(anchor: Option<&str>) -> Doc {
     Doc {
-        origin: Origin::Memory,
+        source: Source::from_text(""),
         doc: Document::default(),
         anchor: anchor.map(str::to_owned),
         images: None,
@@ -176,16 +196,16 @@ fn configuration_problems_are_brief_unless_verbose() {
 
 #[test]
 fn content_problems_only_with_verbose() {
-    let source = Source::from_bytes(b"bad \xff byte".to_vec(), Origin::Memory);
-    let mut d = parse_doc(
+    let source = Source::from_bytes(b"bad \xff byte".to_vec(), Origin::Stdin);
+    let d = parse_doc(
         FileArg {
             path: "-".into(),
             anchor: None,
         },
-        &source,
+        source,
         &ParseOptions::default(),
+        FrontMatterMode::Card,
     );
-    d.origin = Origin::Stdin;
     let docs = [d];
     let mut quiet = Vec::new();
     report_content(&mut quiet, &docs, false);
@@ -208,7 +228,7 @@ fn the_highlighter_is_only_made_for_code_in_a_language() {
             path: "-".into(),
             anchor: None,
         };
-        parse_doc(arg, &source, &parse_opts)
+        parse_doc(arg, source, &parse_opts, FrontMatterMode::Card)
     };
     let config = loaded(&[]).config;
     let theme = Theme::fallback(crate::theme::Variant::Dark, None);
@@ -221,6 +241,10 @@ fn the_highlighter_is_only_made_for_code_in_a_language() {
         let rust = h.resolve("rust").unwrap();
         assert!(!h.highlight(rust, "fn a() {}").lines[0].is_empty());
     }
+    // Nested front matter is shown as YAML code, so it is highlighted too.
+    let front = [make("---\ntitle: A\ntags:\n  - x\n---\n\ntext")];
+    let h = highlighter_for(&front, &theme, &config, &[]);
+    assert_eq!(h.resolve("yaml").is_some(), cfg!(feature = "highlight"));
 }
 
 #[test]

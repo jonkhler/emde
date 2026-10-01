@@ -137,6 +137,14 @@ fn missing_files_fail_with_one_but_the_rest_is_shown() {
     assert_eq!(o.status.code(), Some(1));
     assert!(String::from_utf8_lossy(&o.stderr).contains("/nonexistent/emde-test.md"));
     assert!(stdout(&o).contains("Heading level one"));
+    // Nothing to show at all: the error, and no other work or output.
+    let o = run(emde()
+        .args(["--set", "render.no_such_key=1"])
+        .arg("/nonexistent/emde-test.md"));
+    assert_eq!(o.status.code(), Some(1));
+    assert!(o.stdout.is_empty());
+    let err = String::from_utf8_lossy(&o.stderr);
+    assert_eq!(err.lines().count(), 1, "{err}");
 }
 
 #[test]
@@ -288,7 +296,9 @@ fn an_unknown_code_theme_warns_once_and_falls_back() {
     );
     assert!(o.status.success());
     let err = stderr(&o);
-    assert_eq!(err.matches("unknown code theme").count(), 1, "{err}");
+    // Without highlighting, code themes are never used, so never wrong.
+    let warnings = usize::from(cfg!(feature = "highlight"));
+    assert_eq!(err.matches("unknown code theme").count(), warnings, "{err}");
     if cfg!(feature = "highlight") {
         assert!(err.contains("did you mean `Nord`?"), "{err}");
         // The `ansi` code theme: the terminal's own colours.

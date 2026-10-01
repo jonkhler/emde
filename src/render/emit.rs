@@ -16,8 +16,9 @@
 //! the image instead: block-glyph cells, drawn with the same SGR diffing
 //! as text, or bytes a graphics protocol needs (kitty placeholder text, a
 //! pixel image drawn over its reserved rows). What the layout put left of
-//! the box (quote bars, list indentation, the centring pad) stays. Without
-//! a provider, or when it has nothing for a row, the box is shown.
+//! the box (quote bars, list indentation, the centring pad) stays, and so
+//! does the line's background after it (an alert's tint). Without a
+//! provider, or when it has nothing for a row, the box is shown.
 
 use std::ops::Range;
 
@@ -71,13 +72,16 @@ pub struct Mark {
 /// What one row of a figure shows instead of its placeholder box.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RowContent<'a> {
-    /// Block-glyph cells (a text-mode image row), written from the box's
-    /// left edge with their colours downsampled like any other style.
+    /// Block-glyph cells (a text-mode image row), one per column of the
+    /// box, written from its left edge with their colours downsampled like
+    /// any other style.
     Cells(&'a [RasterCell]),
     /// Bytes written as they are at the box's left edge, with every
-    /// attribute reset first; they must leave the attributes reset (kitty
-    /// placeholder text ends with `ESC[39m`). Empty for rows that another
-    /// row's bytes already drew.
+    /// attribute reset first. They must leave the attributes reset (kitty
+    /// placeholder text ends with `ESC[39m`) and the cursor at the box's
+    /// right edge, as the box's width of text would: a pixel image drawn
+    /// without moving the cursor, or a row another row's bytes already
+    /// drew, ends with a cursor-forward over the box (`CSI n C`).
     Bytes(&'a [u8]),
 }
 
@@ -563,8 +567,22 @@ impl<'a> Emitter<'a> {
         Some((placement, content))
     }
 
-    /// Append a figure row showing `content`: what the layout put left of
-    /// the box, then the image from the box's left edge.
+    /// Append `n` spaces in `style`.
+    fn pad(&mut self, out: &mut Vec<u8>, pen: &mut Pen, n: u16, style: StyleId) {
+        spaces(n, &mut |pad| {
+            let piece = Piece {
+                text: pad,
+                style: SegStyle::Id(style),
+                link: None,
+                off: None,
+            };
+            self.piece(out, pen, piece);
+        });
+    }
+
+    /// Append figure row `index` showing `content`: what the layout put
+    /// left of the box (quote bars, indentation, padding), the image from
+    /// the box's left edge, then the line's background after the box.
     fn write_image_row(
         &mut self,
         index: usize,
@@ -580,8 +598,15 @@ impl<'a> Emitter<'a> {
         };
         let mut col = 0u16;
         for span in layout.line_spans(index) {
+            if col >= placement.col {
+                break;
+            }
             let end = col.saturating_add(span.cols);
             if end > placement.col {
+                // Padding that runs on into the box: the part before it,
+                // in its own style (a tint stays a tint).
+                self.pad(out, &mut pen, placement.col - col, span.style);
+                col = placement.col;
                 break;
             }
             let piece = Piece {
@@ -593,20 +618,13 @@ impl<'a> Emitter<'a> {
             self.piece(out, &mut pen, piece);
             col = end;
         }
-        spaces(placement.col.saturating_sub(col), &mut |pad| {
-            let piece = Piece {
-                text: pad,
-                style: SegStyle::Id(StyleId(0)),
-                link: None,
-                off: None,
-            };
-            self.piece(out, &mut pen, piece);
-        });
+        self.pad(out, &mut pen, placement.col.saturating_sub(col), StyleId(0));
         match content {
             RowContent::Cells(cells) => {
                 // A linked figure stays a link: its cells are clickable.
                 let link = self.doc.image(placement.image).and_then(|i| i.link);
                 let mut buf = [0u8; 4];
+                let cells = cells.get(..usize::from(placement.cols)).unwrap_or(cells);
                 for cell in cells {
                     let style = Style {
                         fg: cell.fg,
@@ -621,6 +639,13 @@ impl<'a> Emitter<'a> {
                     };
                     self.piece(out, &mut pen, piece);
                 }
+                let drawn = u16::try_from(cells.len()).unwrap_or(u16::MAX);
+                self.pad(
+                    out,
+                    &mut pen,
+                    placement.cols.saturating_sub(drawn),
+                    StyleId(0),
+                );
             }
             RowContent::Bytes(bytes) => {
                 if pen.link.take().is_some() {
@@ -630,6 +655,13 @@ impl<'a> Emitter<'a> {
                 pen.style = Style::PLAIN;
                 out.extend_from_slice(bytes);
             }
+        }
+        // Both kinds of content leave the cursor at the box's right edge.
+        if let Some(line) = layout.lines.get(index)
+            && let Fill::Panel { style, to_col } = line.fill
+        {
+            let after = placement.col.saturating_add(placement.cols);
+            self.pad(out, &mut pen, to_col.saturating_sub(after), style);
         }
         if pen.link.is_some() {
             osc8::close(out);
@@ -920,5 +952,64 @@ mod tests {
         let after_reset = before.rsplit("\x1b[0m").next().unwrap_or(before);
         assert!(before.contains("▎\x1b[0m"), "{second:?}");
         assert!(after_reset.chars().all(|c| c == ' '), "{second:?}");
+    }
+
+    /// Image rows as providers give them: cells in row 0, and in row 1
+    /// bytes that leave the cursor at the box's right edge (as a pixel
+    /// image drawn over the box does).
+    struct Drawn;
+
+    impl ImageRows for Drawn {
+        fn row(&self, p: &Placement, row: u16) -> Option<RowContent<'_>> {
+            const RED: RasterCell = RasterCell {
+                ch: ' ',
+                fg: Color::Default,
+                bg: Color::Rgb(Rgb(255, 0, 0)),
+            };
+            const CELLS: [RasterCell; 4] = [RED; 4];
+            assert_eq!(p.cols, 4);
+            match row {
+                0 => Some(RowContent::Cells(&CELLS)),
+                1 => Some(RowContent::Bytes(b"\x1b[4C")),
+                _ => None,
+            }
+        }
+    }
+
+    #[test]
+    fn image_rows_keep_the_background_of_their_line() {
+        // A figure in a tinted alert: around the box, its rows look like
+        // the alert's text rows, tint included.
+        let caps = Caps::full();
+        let (doc, l) = figure("> [!NOTE]\n> text\n>\n> ![alt](a.png)\n", &caps);
+        let p = l.images[0];
+        let first = p.line as usize;
+        let text = (0..first)
+            .find(|&i| l.line_spans(i).iter().any(|s| l.span_text(s) == "text"))
+            .unwrap();
+        assert!(
+            matches!(l.lines[first].fill, Fill::Panel { .. }),
+            "{:?}",
+            l.lines[first]
+        );
+        let out = emitted(&doc, &l, &caps, Some(&Drawn));
+        let mut parser = vt100::Parser::new(24, 40, 0);
+        parser.process(out.replace('\n', "\r\n").as_bytes());
+        let screen = parser.screen();
+        let bg = |row: usize, col: u16| {
+            let row = u16::try_from(row).unwrap();
+            screen.cell(row, col).map(vt100::Cell::bgcolor)
+        };
+        let x0 = l.indent + p.col;
+        let x1 = x0 + p.cols;
+        assert_ne!(bg(text, x1), Some(vt100::Color::Default), "a tint");
+        for row in [first, first + 1] {
+            for col in (0..x0).chain(x1..40) {
+                assert_eq!(bg(row, col), bg(text, col), "row {row}, column {col}");
+            }
+        }
+        for col in x0..x1 {
+            assert_eq!(bg(first, col), Some(vt100::Color::Rgb(255, 0, 0)));
+        }
     }
 }

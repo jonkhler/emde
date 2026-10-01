@@ -39,6 +39,7 @@ mod survey;
 use std::fmt::Write as _;
 use std::io::{self, IsTerminal as _, Write as _};
 use std::process::ExitCode;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use crate::cli::{Cli, DoctorArg, DumpArg, FileArg};
@@ -48,10 +49,10 @@ use crate::gfx::store::{ImageStore, StoreOptions};
 use crate::highlight::{self, Highlighter, PlainHighlighter};
 use crate::ir::Document;
 use crate::layout::{ImageSizer, Layout, NoImages, layout};
-use crate::options::{Height, ImageMode, RenderOptions, When};
+use crate::options::{FrontMatterMode, Height, ImageMode, RenderOptions, When};
 use crate::parse::{ParseOptions, parse_source};
 use crate::render::{ImageRows, RenderConfig, StreamSink, is_broken_pipe};
-use crate::source::{Input, Origin, Source, SourceError};
+use crate::source::{Input, Source, SourceError};
 use crate::term::env::Env;
 use crate::term::probe::{self, Needs, ProbeOutcome, ProbeRequest};
 use crate::term::tmux::{self, TmuxInfo};
@@ -104,9 +105,9 @@ pub struct PagerRequest {
 /// A document ready to be shown.
 #[derive(Debug)]
 pub struct Doc {
-    /// Where it came from (the pager reloads it and resolves relative
-    /// links from it).
-    pub origin: Origin,
+    /// Its text and where it came from (the pager reloads and watches that
+    /// file, and resolves relative links from it).
+    pub source: Source,
     /// The parsed document.
     pub doc: Document,
     /// The heading to open at (`FILE#anchor`).
@@ -129,8 +130,9 @@ pub struct Setup {
     pub caps: Caps,
     /// The theme for this terminal.
     pub theme: Theme,
-    /// Syntax highlighting (plain when no document has code in a language).
-    pub highlighter: Box<dyn Highlighter>,
+    /// Syntax highlighting (plain when no document has code in a language;
+    /// shared, as the pager keeps it across layouts).
+    pub highlighter: Arc<dyn Highlighter>,
     /// The tmux query, when it ran.
     pub tmux: Option<TmuxInfo>,
     /// The probe, when it ran: after a timeout the pager's input layer must
@@ -161,6 +163,10 @@ pub fn run(cli: &Cli) -> ExitCode {
         Ok(read) => read,
         Err(code) => return code,
     };
+    if sources.is_empty() {
+        // Every input failed (and was reported): nothing to set up for.
+        return status;
+    }
     let hints = sources
         .iter()
         .fold(Hints::default(), |h, (_, s)| h.union(Hints::of(&s.text)));
@@ -213,14 +219,24 @@ fn prepare(
     let width = terminal_width(config.render.width, is_tty, &env, &mut base);
     let needs = probe_needs(&config, hints, base.color);
     let parse_opts = ParseOptions::from(&config.render);
+    let front_matter = config.render.front_matter;
+    let ask = || ask_terminal(&env, needs, &config, cli.reprobe);
     let (docs, answers) = std::thread::scope(|s| {
-        let asked = (is_tty && needs.any())
-            .then(|| s.spawn(|| ask_terminal(&env, needs, &config, cli.reprobe)));
+        let asked = (is_tty && needs.any()).then(|| {
+            std::thread::Builder::new()
+                .name("emde-probe".into())
+                .spawn_scoped(s, ask)
+        });
         let docs: Vec<Doc> = sources
             .into_iter()
-            .map(|(arg, source)| parse_doc(arg, &source, &parse_opts))
+            .map(|(arg, source)| parse_doc(arg, source, &parse_opts, front_matter))
             .collect();
-        let answers = asked.and_then(|h| h.join().ok()).unwrap_or_default();
+        let answers = match asked {
+            Some(Ok(probing)) => probing.join().unwrap_or_default(),
+            // No thread to spare: ask now.
+            Some(Err(_)) => ask(),
+            None => Answers::default(),
+        };
         (docs, answers)
     });
     trace.stage("parse+probe", &hints);
@@ -246,7 +262,7 @@ fn prepare(
         config,
         caps,
         theme,
-        highlighter,
+        highlighter: Arc::from(highlighter),
         tmux: answers.tmux,
         probe: answers.probe,
         width,
@@ -411,12 +427,17 @@ fn read_sources(cli: &Cli) -> Result<(Vec<(FileArg, Source)>, ExitCode), ExitCod
     Ok((sources, status))
 }
 
-/// Parse one source.
-fn parse_doc(arg: FileArg, source: &Source, opts: &ParseOptions) -> Doc {
-    let doc = parse_source(source, opts);
-    let survey = Survey::of(&doc);
+/// Parse one source; `front_matter` is how its front matter is shown.
+fn parse_doc(
+    arg: FileArg,
+    source: Source,
+    opts: &ParseOptions,
+    front_matter: FrontMatterMode,
+) -> Doc {
+    let doc = parse_source(&source, opts);
+    let survey = Survey::of(&doc, front_matter);
     Doc {
-        origin: source.origin.clone(),
+        source,
         doc,
         anchor: arg.anchor,
         images: None,
@@ -475,9 +496,20 @@ fn ask_terminal(env: &Env, needs: Needs, config: &Config, reprobe: bool) -> Answ
 /// The total width: `--width`, else the terminal's (recorded in
 /// `caps.size`), else `$COLUMNS`, else 80.
 fn terminal_width(forced: Option<u16>, is_tty: bool, env: &Env, caps: &mut Caps) -> u16 {
-    if is_tty && let Ok((cols, rows)) = crossterm::terminal::size() {
+    let screen = if is_tty {
+        crossterm::terminal::size().ok()
+    } else {
+        None
+    };
+    width_for(forced, screen, env, caps)
+}
+
+/// [`terminal_width`] for a terminal of `screen` (columns, rows), if
+/// known. A size of zero (some pseudo-terminals report 0×0) is unknown.
+fn width_for(forced: Option<u16>, screen: Option<(u16, u16)>, env: &Env, caps: &mut Caps) -> u16 {
+    if let Some((cols, rows)) = screen.filter(|&(cols, rows)| cols > 0 && rows > 0) {
         caps.size = Some((cols, rows));
-        if forced.is_none() && cols > 0 {
+        if forced.is_none() {
             return cols;
         }
     }
@@ -519,11 +551,12 @@ fn highlighter_and_images(
         return (highlighter(), stores());
     }
     std::thread::scope(|s| {
-        let highlighting = s.spawn(highlighter);
+        let highlighting = std::thread::Builder::new().spawn_scoped(s, highlighter);
         let stores = stores();
-        let highlighter = highlighting
-            .join()
-            .unwrap_or_else(|_| Box::new(PlainHighlighter));
+        let highlighter = match highlighting {
+            Ok(h) => h.join().unwrap_or_else(|_| Box::new(PlainHighlighter)),
+            Err(_) => highlighter(),
+        };
         (highlighter, stores)
     })
 }
@@ -602,11 +635,13 @@ fn wants_pager(request: &PagerRequest, caps: &Caps, lines: usize) -> bool {
 /// Show the documents in the built-in pager.
 ///
 /// TODO(merge): the pager track provides `pager::run(PagerSession)`. Build
-/// the session from `setup` (terminal, theme, highlighter, probe outcome
-/// for its late-reply filter), `docs` (each with its origin, anchor and
-/// image store) and `request`, return its exit status, and drop the
-/// fallback below. `layouts` are the stream-mode layouts the decision was
-/// made on (figures capped for stream mode); the pager lays out for itself.
+/// the session from `setup` (theme, caps, `config.render`, `config.pager`,
+/// the shared highlighter, env, tmux, and `probe::LateReplyFilter::after`
+/// on the probe outcome), the first of `docs` (its `source` and `doc` make
+/// the `PagerDoc`; its image store sizes figures) and `request` (anchor,
+/// outline), map its exit to a status, and drop the fallback below.
+/// `layouts` are the stream-mode layouts the decision was made on (figures
+/// capped for stream mode), so the pager lays out for itself.
 fn run_pager(
     setup: Setup,
     mut docs: Vec<Doc>,
@@ -719,10 +754,10 @@ fn report_content(out: &mut dyn io::Write, docs: &[Doc], verbose: bool) {
     }
     for d in docs {
         for diag in &d.doc.diagnostics {
-            let _ = writeln!(out, "emde: {}: {diag}", d.origin);
+            let _ = writeln!(out, "emde: {}: {diag}", d.source.origin);
         }
         for problem in d.images.iter().flat_map(ImageStore::problems) {
-            let _ = writeln!(out, "emde: {}: image {problem}", d.origin);
+            let _ = writeln!(out, "emde: {}: image {problem}", d.source.origin);
         }
     }
 }

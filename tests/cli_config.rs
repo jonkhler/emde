@@ -284,8 +284,12 @@ fn doctor_json_without_a_terminal() {
     assert!(json.contains("\"tmux\": true"), "{json}");
     assert!(json.contains("\"probe\": null") && json.contains("\"tmux\": null"));
     assert!(json.contains("\"color\": \"truecolor\""), "{json}");
-    assert!(json.contains("\"graphics\": \"blocks\""), "{json}");
-    assert!(json.contains("pixels ✗ output is not a terminal"), "{json}");
+    if cfg!(feature = "images") {
+        assert!(json.contains("\"graphics\": \"blocks\""), "{json}");
+        assert!(json.contains("pixels ✗ output is not a terminal"), "{json}");
+    } else {
+        assert!(json.contains("built without image support"), "{json}");
+    }
     assert!(json.contains("\"SSH_CONNECTION\": \"(set)\""), "redacted");
     assert!(!json.contains("192.0.2.1"));
 }

@@ -4,16 +4,20 @@
 
 use std::collections::HashSet;
 
-use crate::ir::{Block, CodeBlock, Document, ImageId};
+use crate::ir::{Block, CodeBlock, Document, FrontMatter, FrontMatterFormat, ImageId};
+use crate::options::FrontMatterMode;
 
 /// What a document might contain, from a scan of its text that takes
-/// microseconds: it never misses anything, and sometimes sees what is not
-/// there (the parser has the last word). It decides what starts before
-/// parsing: loading the syntax set, and whether the probe asks about
-/// graphics.
+/// microseconds: it never misses a fence or an image, and sometimes sees
+/// what is not there (the parser has the last word). It decides what
+/// starts before parsing: loading the syntax set, and whether the probe
+/// asks about graphics.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(super) struct Hints {
     /// A fence (```` ``` ```` or `~~~`): code in some language, perhaps.
+    /// Front matter, which is shown as code only when it is nested, does
+    /// not count: most is a flat card, and loading syntaxes for it would
+    /// slow those documents down.
     pub(super) code: bool,
     /// `![` or an `<img` tag.
     pub(super) images: bool,
@@ -95,33 +99,51 @@ pub(super) fn code_blocks(doc: &Document) -> Vec<&CodeBlock> {
     out
 }
 
+/// The language front matter is highlighted in when layout shows it as a
+/// code block (`front_matter = "code"`, or nested data that does not fit a
+/// key/value card); `None` when it is a card or hidden.
+fn front_matter_lang(fm: &FrontMatter, mode: FrontMatterMode) -> Option<&'static str> {
+    let as_code = match mode {
+        FrontMatterMode::Hide => false,
+        FrontMatterMode::Code => true,
+        FrontMatterMode::Card => fm.fields.as_ref().is_none_or(Vec::is_empty),
+    };
+    as_code.then_some(match fm.format {
+        FrontMatterFormat::Yaml => "yaml",
+        FrontMatterFormat::Toml => "toml",
+    })
+}
+
 /// What a parsed document uses beyond text.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(super) struct Survey {
-    /// Fence languages of its code blocks, in order of first use.
+    /// Languages of its code blocks (fence tokens, and front matter shown
+    /// as code), in order of first use.
     pub(super) langs: Vec<Box<str>>,
     /// The images of its figures, sorted.
     pub(super) figures: Vec<ImageId>,
 }
 
 impl Survey {
-    pub(super) fn of(doc: &Document) -> Survey {
-        let mut survey = Survey::default();
-        let mut seen = HashSet::new();
+    /// Survey `doc`, whose front matter is shown as `front_matter` says.
+    pub(super) fn of(doc: &Document, front_matter: FrontMatterMode) -> Survey {
+        let mut tokens: Vec<&str> = Vec::new();
+        let mut figures = Vec::new();
         each_block(doc, &mut |block| match block {
-            Block::Code(cb) => {
-                if let Some(lang) = cb.lang.as_deref()
-                    && seen.insert(lang)
-                {
-                    survey.langs.push(lang.into());
-                }
-            }
-            Block::Figure(f) => survey.figures.push(f.image),
+            Block::Code(cb) => tokens.extend(cb.lang.as_deref()),
+            Block::FrontMatter(fm) => tokens.extend(front_matter_lang(fm, front_matter)),
+            Block::Figure(f) => figures.push(f.image),
             _ => {}
         });
-        survey.figures.sort_unstable();
-        survey.figures.dedup();
-        survey
+        let mut seen = HashSet::new();
+        let langs = tokens
+            .into_iter()
+            .filter(|token| seen.insert(*token))
+            .map(Box::from)
+            .collect();
+        figures.sort_unstable();
+        figures.dedup();
+        Survey { langs, figures }
     }
 }
 
@@ -211,7 +233,7 @@ Text[^n].
     #[test]
     fn surveys_look_inside_every_container() {
         let doc = parse(NESTED, &ParseOptions::default());
-        let survey = Survey::of(&doc);
+        let survey = Survey::of(&doc, FrontMatterMode::Card);
         let langs: Vec<&str> = survey.langs.iter().map(AsRef::as_ref).collect();
         assert_eq!(langs, ["rust", "python", "bash"]);
         let figures: Vec<&str> = survey
@@ -231,7 +253,25 @@ Text[^n].
     #[test]
     fn empty_documents_need_nothing() {
         let doc = parse("just text", &ParseOptions::default());
-        assert_eq!(Survey::of(&doc), Survey::default());
+        assert_eq!(Survey::of(&doc, FrontMatterMode::Code), Survey::default());
         assert!(code_blocks(&doc).is_empty());
+    }
+
+    #[test]
+    fn front_matter_shown_as_code_needs_its_language() {
+        let langs = |md: &str, mode| {
+            let doc = parse(md, &ParseOptions::default());
+            Survey::of(&doc, mode).langs
+        };
+        let flat = "---\ntitle: A\n---\n\n```rust\nfn a() {}\n```\n";
+        let nested = "+++\ntitle = \"A\"\n[extra]\nx = 1\n+++\n\ntext\n";
+        // A flat front matter is a key/value card; nested data is code.
+        assert_eq!(langs(flat, FrontMatterMode::Card), [Box::from("rust")]);
+        assert_eq!(
+            langs(flat, FrontMatterMode::Code),
+            [Box::from("yaml"), Box::from("rust")]
+        );
+        assert_eq!(langs(nested, FrontMatterMode::Card), [Box::from("toml")]);
+        assert!(langs(nested, FrontMatterMode::Hide).is_empty());
     }
 }

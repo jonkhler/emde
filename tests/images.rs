@@ -306,14 +306,15 @@ fn kitty_classic_placements_draw_over_reserved_rows() {
     for cmd in commands {
         assert!(cmd.contains("q=2"), "{cmd:?}");
     }
-    // One newline reserves the second row, the cursor goes back up, over
-    // to the box (column 14: centred in the 36-column measure, with no
-    // indent when piped) and is saved around the image.
+    // Two newlines reserve the second row and the one below the box, the
+    // cursor goes back up, over to the box (column 14: centred in the
+    // 36-column measure, with no indent when piped) and is saved around
+    // the image, then moves over it to the box's right edge.
     assert!(
-        out.contains("\n\x1b[1A\r\x1b[14C\x1b7\x1b_Ga=t,"),
+        out.contains("\n\n\x1b[2A\r\x1b[14C\x1b7\x1b_Ga=t,"),
         "{out:?}"
     );
-    assert!(out.contains("q=2\x1b\\\x1b8\n"), "{out:?}");
+    assert!(out.contains("q=2\x1b\\\x1b8\x1b[8C\n"), "{out:?}");
 }
 
 #[test]
@@ -576,4 +577,52 @@ fn pixel_images_leave_the_text_after_them_in_place() {
     let shown = screen(&o.stdout, 8);
     assert_eq!(shown[2].trim(), "▀▀▀▀▀▀▀▀", "{shown:?}");
     assert_eq!(shown[4].trim(), "Gradient");
+}
+
+/// `bytes` with every escape sequence that starts with `open` (up to and
+/// including `close`) replaced by `with`.
+fn replace_sequences(bytes: &[u8], open: &[u8], close: &[u8], with: &[u8]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut rest = bytes;
+    while let Some(start) = rest.windows(open.len()).position(|w| w == open) {
+        out.extend_from_slice(&rest[..start]);
+        let after = &rest[start + open.len()..];
+        let Some(end) = after.windows(close.len()).position(|w| w == close) else {
+            break;
+        };
+        out.extend_from_slice(with);
+        rest = &after[end + close.len()..];
+    }
+    out.extend_from_slice(rest);
+    out
+}
+
+#[test]
+fn pixel_images_survive_a_cursor_left_below_them() {
+    // Some terminals leave the cursor on the row below an image. For a box
+    // that ends on the screen's last row that scrolls the screen, so the
+    // box and the row below it are reserved before the image is drawn: as
+    // if each image were two linefeeds (the box is two rows), the text
+    // after it must still land right below the box.
+    let md = "a\n\nb\n\nc\n\n![Gradient](gradient.png)\n\nafter";
+    let mut cases = vec![(
+        "iterm",
+        vec![("TERM_PROGRAM", "iTerm.app")],
+        &b"\x1b]1337;"[..],
+        &b"\x07"[..],
+    )];
+    if cfg!(feature = "sixel") {
+        cases.push(("sixel", vec![], b"\x1bP", b"\x1b\\"));
+    }
+    for (mode, env, open, close) in cases {
+        let o = show(md, &["--color=always", "--images", mode, "-w", "40"], &env);
+        let moved = replace_sequences(&o.stdout, open, close, b"\n\n");
+        assert_ne!(moved, o.stdout, "{mode}: the image was replaced");
+        let shown = screen(&moved, 8);
+        assert_eq!(
+            shown,
+            ["c", "", "", "", "              Gradient", "", "after"],
+            "{mode}: {shown:?}"
+        );
+    }
 }
