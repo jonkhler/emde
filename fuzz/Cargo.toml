@@ -1,0 +1,73 @@
+# emde's fuzz targets (cargo-fuzz, libFuzzer). Run them with
+#
+#     cargo xtask fuzz [--secs N] [TARGET...]
+#
+# which needs the nightly toolchain and cargo-fuzz:
+#
+#     rustup toolchain install nightly --profile minimal
+#     cargo install --locked cargo-fuzz
+#
+# This crate is a workspace of its own: fuzzing needs nightly and its own
+# compiler flags, and libFuzzer's NCSA licence is not on the allow-list of
+# the main workspace (it is never part of emde).
+
+[package]
+name = "emde-fuzz"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4.13"
+# The parser, layout and renderer as the default build has them, without the
+# highlighter (the targets bring a deterministic one) and image decoding.
+emde = { path = "..", default-features = false, features = ["simd"] }
+emde-math = { path = "../crates/emde-math" }
+# Widths as emde-math measures them.
+unicode-width = "0.2.2"
+
+[workspace]
+members = ["."]
+
+[lints.rust]
+unsafe_code = "deny"
+unreachable_pub = "warn"
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(fuzzing)"] }
+
+[[bin]]
+name = "render"
+path = "fuzz_targets/render.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "math"
+path = "fuzz_targets/math.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "probe"
+path = "fuzz_targets/probe.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "html"
+path = "fuzz_targets/html.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "config"
+path = "fuzz_targets/config.rs"
+test = false
+doc = false
+bench = false

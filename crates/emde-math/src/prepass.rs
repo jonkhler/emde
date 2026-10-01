@@ -13,6 +13,10 @@
 //! * `\mathscr` becomes `\mathcal`: Unicode has a single script alphabet.
 //! * `\sqrt[…]` gets its index braced, `\sqrt[{…}]`: pulldown-latex emits a
 //!   multi-token index as loose elements, which breaks the root's arity.
+//! * A one-character argument of `\text` (and `\textbf` …), `\operatorname`,
+//!   `\colorbox` and `\fcolorbox` is braced, `\text{a}`: pulldown-latex
+//!   takes all of the formula after an unbraced one for the argument, then
+//!   reads that rest again.
 //! * `%` comments are removed (up to the end of the line), so that one at the
 //!   end cannot swallow the `\end{gathered}` added after it.
 //! * The result is trimmed.
@@ -211,6 +215,23 @@ impl Rewriter {
                 out.push_str("\\sqrt");
                 self.root_index(src, next, depth.total(), out)
             }
+            // pulldown-latex 0.8 reads a one-character argument of these as
+            // everything that follows (its character token keeps the rest of
+            // the input) and then reads the rest again: `\text a b` showed
+            // as "a bb", and a formula full of them grew quadratically.
+            "text" | "textrm" | "textbf" | "textit" | "textsf" | "texttt" | "operatorname" => {
+                out.push_str(&src[pos..next]);
+                brace_char_argument(src, next, out)
+            }
+            "colorbox" | "fcolorbox" => {
+                let colours = if name == "colorbox" { 1 } else { 2 };
+                let Some(end) = groups(src, next, colours) else {
+                    out.push_str(&src[pos..next]);
+                    return next;
+                };
+                out.push_str(&src[pos..end]);
+                brace_char_argument(src, end, out)
+            }
             _ => {
                 match name {
                     "begin" => depth.environments += 1,
@@ -291,6 +312,35 @@ fn argument(src: &str, pos: usize) -> (&str, usize) {
         Some(c) => start + c.len_utf8(),
     };
     (&src[start..end], end)
+}
+
+/// The position after `n` braced arguments at `pos`, or `None` when one of
+/// them is no group.
+fn groups(src: &str, pos: usize, n: usize) -> Option<usize> {
+    (0..n).try_fold(pos, |at, _| {
+        let (arg, end) = argument(src, at);
+        arg.starts_with('{').then_some(end)
+    })
+}
+
+/// Write the argument at `pos` braced when it is one character (after
+/// spaces and comments, as TeX reads it), and return the position after it.
+/// A group, a control sequence or nothing is left to the scan: `pos`.
+fn brace_char_argument(src: &str, pos: usize, out: &mut String) -> usize {
+    let mut start = skip_space(src, pos);
+    while src[start..].starts_with('%') {
+        let eol = src[start..].find('\n').map_or(src.len(), |i| start + i);
+        start = skip_space(src, eol);
+    }
+    match src[start..].chars().next() {
+        Some(c) if !matches!(c, '{' | '}' | '\\') => {
+            out.push('{');
+            out.push(c);
+            out.push('}');
+            start + c.len_utf8()
+        }
+        _ => pos,
+    }
 }
 
 /// The position of the delimiter closing the one at `open` (which must be
@@ -483,6 +533,48 @@ mod tests {
             tex(r"a \\ b % note"),
             r"\begin{gathered}a \\ b\end{gathered}"
         );
+    }
+
+    /// Found by the `math` fuzz target: pulldown-latex took everything after
+    /// an unbraced one-character argument of `\text` for the argument and
+    /// then read it again, so 2 KiB of TeX with a hundred `\text`s came out
+    /// 94,000 columns wide.
+    #[test]
+    fn one_character_arguments_are_braced() {
+        assert_eq!(tex(r"\text a b"), r"\text{a} b");
+        assert_eq!(
+            tex(r"\textbf x+\operatorname f(x)"),
+            r"\textbf{x}+\operatorname{f}(x)"
+        );
+        assert_eq!(tex("\\textit % note\n  é."), r"\textit{é}.");
+        assert_eq!(
+            tex(r"\colorbox{red}x \fcolorbox{red}{blue} y"),
+            r"\colorbox{red}{x} \fcolorbox{red}{blue}{y}"
+        );
+        // Groups, commands, other commands and missing arguments stay.
+        for src in [
+            r"\text{a} b",
+            r"\text \alpha",
+            r"\textcolor{red}x",
+            r"\colorbox x",
+            r"\fcolorbox{red}x",
+            r"{\text}",
+            r"\text",
+            "\\text %",
+        ] {
+            assert_eq!(tex(src), src.trim_end_matches(" %"), "{src}");
+        }
+    }
+
+    #[test]
+    fn text_arguments_are_read_once() {
+        let opts = crate::MathOptions::default();
+        assert_eq!(crate::inline(r"\text a b", &opts).text, "ab");
+        assert_eq!(crate::inline(r"\operatorname f x", &opts).text, "f x");
+        let tex = r"\text > ".repeat(MAX_INPUT / 8);
+        let line = crate::inline(&tex, &opts);
+        assert!(line.ok);
+        assert_eq!(line.text, ">".repeat(MAX_INPUT / 8));
     }
 
     #[test]

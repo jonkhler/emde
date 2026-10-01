@@ -1,18 +1,26 @@
 //! Development tasks for emde: `cargo xtask <task>`.
 //!
-//! * `ci [--full]` – formatting, lints, tests, dependency guards, cargo-deny,
-//!   MSRV check and the binary size budget (`--full` adds a feature powerset check).
+//! * `ci [--full]` – formatting, lints, tests, the documentation (up to date,
+//!   and rustdoc without warnings), dependency guards, cargo-deny, MSRV check
+//!   and the binary size budget (`--full` adds a feature powerset check).
 //! * `deps` – fail if a banned crate (e.g. the C Oniguruma binding) is in the tree.
 //! * `size` – build the release binary and enforce the size budget.
 //! * `gen [--check]` – regenerate checked-in data tables (math symbols,
 //!   kitty diacritics, block glyphs) from pinned Unicode data.
+//! * `docs [--check]` – regenerate `CONFIG.md` and the README's key table,
+//!   and write the man page and shell completions into the target directory
+//!   (see [`docs`]).
+//! * `fuzz [--secs N] [--jobs N] [--asan] [TARGET...]` – run the fuzz
+//!   targets of `fuzz/` (see [`fuzz`]; needs nightly and cargo-fuzz).
 
 #![allow(clippy::print_stdout, clippy::print_stderr)]
 
 use std::env;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
+mod docs;
+mod fuzz;
 mod gen_gfx;
 mod gen_math;
 
@@ -56,8 +64,13 @@ fn main() -> ExitCode {
             let check = args.iter().any(|a| a == "--check");
             gen_math::run(check).and_then(|()| gen_gfx::run(check))
         }
+        "docs" => docs::run(args.iter().any(|a| a == "--check")),
+        "fuzz" => fuzz::run(&args[1..]),
         _ => {
-            println!("usage: cargo xtask <ci [--full] | deps | size | gen [--check]>");
+            println!(
+                "usage: cargo xtask <ci [--full] | deps | size | gen [--check] | docs [--check] \
+                 | fuzz [--secs N] [--jobs N] [--asan] [TARGET...]>"
+            );
             Ok(())
         }
     };
@@ -72,6 +85,14 @@ fn main() -> ExitCode {
 
 fn cargo() -> Command {
     Command::new(env::var("CARGO").unwrap_or_else(|_| "cargo".into()))
+}
+
+/// The repository root (the parent of the xtask crate).
+fn repo_root() -> Result<PathBuf> {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .map(Path::to_path_buf)
+        .ok_or_else(|| "cannot locate the repository root".to_string())
 }
 
 fn run(step: &str, cmd: &mut Command) -> Result {
@@ -126,6 +147,14 @@ fn ci(full: bool) -> Result {
         ]),
     )?;
     run("test", cargo().args(["test", "--workspace", "--quiet"]))?;
+    eprintln!("xtask: == docs up to date");
+    docs::run(true)?;
+    run(
+        "rustdoc",
+        cargo()
+            .args(["doc", "--workspace", "--no-deps", "--quiet"])
+            .env("RUSTDOCFLAGS", "-D warnings"),
+    )?;
     deps()?;
     run(
         "cargo deny",

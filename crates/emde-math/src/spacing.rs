@@ -106,9 +106,18 @@ pub(crate) fn edges(node: &Node) -> Option<(Class, Class)> {
         }
         Node::Space(_) => None,
         Node::Styled { body, .. } => {
+            // Every item at most once: in a chain of font switches
+            // (`\rm\rm\rm…`) each body holds one item, and looking it up
+            // from both ends would double the work at every level.
             let items = body.items();
-            let left = items.iter().find_map(edges)?.0;
-            let right = items.iter().rev().find_map(edges)?.1;
+            let (first, (left, right)) = items
+                .iter()
+                .enumerate()
+                .find_map(|(i, item)| Some((i, edges(item)?)))?;
+            let right = items
+                .get(first + 1..)
+                .and_then(|rest| rest.iter().rev().find_map(edges))
+                .map_or(right, |(_, r)| r);
             Some((left, right))
         }
         Node::Scripts {
@@ -366,5 +375,49 @@ mod tests {
     fn groups_are_ordinary() {
         let row = [ord('a'), Node::Row(vec![rel("=")]), ord('b')];
         assert_eq!(space(&row, false, None, None).before, [0, 0, 0]);
+    }
+
+    fn styled(items: Vec<Node>) -> Node {
+        Node::Styled {
+            font: crate::ast::Font::Upright,
+            body: Box::new(Node::Row(items)),
+        }
+    }
+
+    #[test]
+    fn styled_groups_space_like_their_ends() {
+        let group = styled(vec![
+            Node::Space(1),
+            open(),
+            ord('x'),
+            rel("="),
+            Node::Space(2),
+        ]);
+        assert_eq!(edges(&group), Some((Class::Open, Class::Rel)));
+        assert_eq!(
+            edges(&styled(vec![bin('+')])),
+            Some((Class::Bin, Class::Bin))
+        );
+        assert_eq!(edges(&styled(vec![Node::Space(1)])), None);
+        assert_eq!(edges(&styled(Vec::new())), None);
+    }
+
+    /// Found by the `math` fuzz target: every `\rm` wraps the rest of its
+    /// group, and looking the one item up from both ends doubled the work
+    /// at each level, so `\rm` 25 times before a delimiter took seconds and
+    /// a hundred times would never finish.
+    #[test]
+    fn nested_font_switches_take_linear_time() {
+        let mut node = open();
+        for _ in 0..100 {
+            node = styled(vec![node]);
+        }
+        assert_eq!(edges(&node), Some((Class::Open, Class::Open)));
+        // Within the pre-pass's chain limit, so the formula is typeset.
+        let tex = format!("{}\\}}", r"\rm".repeat(60));
+        let start = std::time::Instant::now();
+        let shown = crate::display(&tex, &crate::MathOptions::default(), 80);
+        assert!(start.elapsed() < std::time::Duration::from_secs(5));
+        assert!(!matches!(shown, crate::MathDisplay::Raw(_)), "{shown:?}");
     }
 }

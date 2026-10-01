@@ -402,6 +402,21 @@ pub fn decide(
     caps
 }
 
+/// Images drawn with block glyphs are refused when East Asian Ambiguous
+/// characters are wide (`render.ambiguous_width = 2`): every glyph set has
+/// some (the half and full blocks), which such a terminal draws two columns
+/// wide, so an image row would run over its box and the line. The figures
+/// show their alt text instead; pixel protocols are not affected.
+pub fn refuse_wide_blocks(caps: &mut Caps, ambiguous_wide: bool) {
+    if ambiguous_wide && caps.graphics == Graphics::Blocks {
+        caps.graphics = Graphics::None;
+        caps.reasons.push(Reason {
+            topic: topic::GRAPHICS,
+            detail: "block glyphs are two columns wide with ambiguous_width = 2".to_string(),
+        });
+    }
+}
+
 /// `$TERM` names a terminal multiplexer (`tmux*`, `screen*`). `TERM` travels
 /// over SSH while `$TMUX` does not, so after `ssh` from a tmux pane (or
 /// under GNU screen) a multiplexer still answers every query, and an
@@ -1920,6 +1935,31 @@ mod tests {
                 .mode(ImageMode::Kitty)
                 .decide_with(Caps::plain(), &ImageOptions::default());
             assert_eq!(caps.graphics, Graphics::None);
+        }
+
+        /// Found by the `render` fuzz target: with `ambiguous_width = 2`
+        /// a row of half blocks (`▀`, ambiguous) was twice as wide as the
+        /// box layout reserved for it, and ran over the line.
+        #[test]
+        fn wide_ambiguous_characters_refuse_block_images() {
+            let kitty = || Case::new(&[("TERM", "xterm-kitty")], Some(KITTY));
+            for mode in [ImageMode::Blocks, ImageMode::Auto] {
+                let mut caps = Case::new(&[], None).mode(mode).decide();
+                assert_eq!(caps.graphics, Graphics::Blocks);
+                refuse_wide_blocks(&mut caps, false);
+                assert_eq!(caps.graphics, Graphics::Blocks, "narrow: unchanged");
+                refuse_wide_blocks(&mut caps, true);
+                assert_eq!(caps.graphics, Graphics::None);
+                assert_eq!(
+                    reason(&caps, topic::GRAPHICS),
+                    "block glyphs are two columns wide with ambiguous_width = 2"
+                );
+            }
+            // Pixels are drawn by the terminal, not with characters.
+            let mut caps = kitty().decide();
+            let before = caps.clone();
+            refuse_wide_blocks(&mut caps, true);
+            assert_eq!(caps, before);
         }
 
         #[test]

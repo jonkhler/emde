@@ -1,0 +1,3 @@
+# `cargo fuzz coverage` output (target/, corpus/ and artifacts/ are
+# ignored by the repository's .gitignore).
+coverage/
