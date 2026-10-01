@@ -9,11 +9,12 @@
 //!
 //! The thread keeps the decoded images it used last ([`Pixels`]), so the
 //! renditions of one image (blocks, then a pixel protocol, then slices of
-//! it while it is partly visible) decode it once. Each job runs inside
-//! [`guarded`]: a panic loses that rendition only. The thread starts with
-//! the first job and ends when the pager drops the worker. If no thread can
-//! be started, or it is gone (its jobs are then reported skipped, so they
-//! are asked for again), jobs run in the event loop instead, one per turn.
+//! it while it is partly visible) decode it once; an SVG is drawn once per
+//! box size. Each job runs inside [`guarded`]: a panic loses that
+//! rendition only. The thread starts with the first job and ends when the
+//! pager drops the worker. If no thread can be started, or it is gone (its
+//! jobs are then reported skipped, so they are asked for again), jobs run
+//! in the event loop instead, one per turn.
 
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
@@ -286,7 +287,10 @@ fn run(job: Job, pixels: &mut Pixels, epoch: &AtomicU64) -> Done {
         Outcome::Skipped
     } else {
         let made = guarded(|| {
-            let image = (job.key.store, job.key.image);
+            let at = job
+                .source
+                .decode_size(job.key.cols, job.key.rows, &job.opts);
+            let image = (job.key.store, job.key.image, at);
             let mut decode = || pixels.get(image, &job.source, job.opts.max_pixels);
             store::make(
                 &job.source,
@@ -306,8 +310,9 @@ fn run(job: Job, pixels: &mut Pixels, epoch: &AtomicU64) -> Done {
     }
 }
 
-/// Which decoded image: a store's image.
-type Decoded = (StoreId, ImageId);
+/// Which decoded image: a store's image, and for an SVG the size it was
+/// drawn at ([`Source::decode_size`]).
+type Decoded = (StoreId, ImageId, Option<(u32, u32)>);
 
 /// Decoded images, most recently used last, within a byte budget (the
 /// last one is kept whatever its size, so the renditions of one large
@@ -330,7 +335,7 @@ impl Pixels {
     fn get(&mut self, key: Decoded, source: &Source, max: u64) -> Option<Arc<Rgba>> {
         let item = match self.items.iter().position(|(k, _)| *k == key) {
             Some(i) => self.items.remove(i),
-            None => (key, source.decode(max).map(Arc::new)),
+            None => (key, source.decode_at(max, key.2).map(Arc::new)),
         };
         let image = item.1.clone();
         self.items.push(item);
@@ -469,14 +474,14 @@ mod tests {
         let src = store.source(image).unwrap();
         // 8×4 RGBA is 128 bytes: a budget of 200 keeps one.
         let mut p = Pixels::new(200);
-        let a = p.get((StoreId(1), image), &src, 1000).unwrap();
-        let again = p.get((StoreId(1), image), &src, 1000).unwrap();
+        let a = p.get((StoreId(1), image, None), &src, 1000).unwrap();
+        let again = p.get((StoreId(1), image, None), &src, 1000).unwrap();
         assert!(Arc::ptr_eq(&a, &again), "decoded once");
-        p.get((StoreId(2), image), &src, 1000);
+        p.get((StoreId(2), image, None), &src, 1000);
         assert_eq!(p.items.len(), 1, "over budget: the older one goes");
         // Too many pixels: a failure, kept as one.
         let mut small = Pixels::new(200);
-        assert!(small.get((StoreId(1), image), &src, 4).is_none());
+        assert!(small.get((StoreId(1), image, None), &src, 4).is_none());
         assert_eq!(small.items.len(), 1);
     }
 

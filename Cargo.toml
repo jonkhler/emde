@@ -46,7 +46,8 @@ tmtheme = ["highlight", "syntect/plist-load"]
 images = ["dep:image", "dep:imagesize"]
 # Sixel output for terminals without kitty/iTerm2 graphics.
 sixel = ["images", "dep:icy_sixel"]
-# SVG images (resvg); off by default because of its size.
+# SVG images (resvg, with text and embedded raster images; no .svgz);
+# off by default because of its size.
 svg = ["images", "dep:resvg"]
 # SSSE3 scanners in pulldown-cmark (runtime-detected, x86_64 only).
 simd = ["pulldown-cmark/simd"]
@@ -76,7 +77,8 @@ two-face = { version = "0.5.2", default-features = false, optional = true }
 image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "gif", "webp"], optional = true }
 imagesize = { version = "0.15", default-features = false, features = ["png", "jpeg", "gif", "webp"], optional = true }
 icy_sixel = { version = "0.7", optional = true }
-resvg = { version = "0.48.1", optional = true }
+# No `svgz`: inflating gzip has no size limit in usvg.
+resvg = { version = "0.48.1", optional = true, default-features = false, features = ["text", "system-fonts", "memmap-fonts", "raster-images"] }
 
 [dev-dependencies]
 insta = "1.48"

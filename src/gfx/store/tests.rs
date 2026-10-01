@@ -777,4 +777,200 @@ mod rendering {
         };
         assert_eq!(raster(&slice), [1, 1, 63, 30]);
     }
+
+    // --- SVG -------------------------------------------------------------------
+
+    /// A 64×32 SVG (from its viewBox) of one colour.
+    fn svg_of(fill: &str) -> String {
+        format!(
+            "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 64 32\">\
+             <rect width=\"64\" height=\"32\" fill=\"{fill}\"/></svg>"
+        )
+    }
+
+    #[cfg(not(feature = "svg"))]
+    #[test]
+    fn without_the_svg_feature_svg_keeps_its_alt_text() {
+        let dir = TestDir::new("store-svg-off");
+        fs::write(dir.path().join("r.svg"), svg_of("red")).unwrap();
+        let doc = doc_in(dir.path(), "![r](r.svg)");
+        let store = ImageStore::load(&doc, &figures(&doc), opts(Graphics::Blocks));
+        assert_eq!(store.cells(figures(&doc)[0], 100, 30), None);
+        assert!(
+            store.problems()[0].starts_with("r.svg: SVG images are not supported"),
+            "{:?}",
+            store.problems()
+        );
+    }
+
+    #[cfg(feature = "svg")]
+    mod svg_figures {
+        use super::*;
+
+        /// A directory with `r.svg` (red), `badge` (green, no extension)
+        /// and `broken.svg`.
+        fn drawings() -> TestDir {
+            let dir = TestDir::new("store-svg");
+            fs::write(dir.path().join("r.svg"), svg_of("red")).unwrap();
+            fs::write(dir.path().join("badge"), svg_of("lime")).unwrap();
+            fs::write(dir.path().join("broken.svg"), "<svg><g></svg>").unwrap();
+            dir
+        }
+
+        #[test]
+        fn sized_from_the_svg_by_extension_type_or_content() {
+            let dir = drawings();
+            let red = svg_of("red");
+            let md = format!(
+                "![r](r.svg)\n\n![b](badge)\n\n![x](broken.svg)\n\n\
+                 ![p](data:image/svg+xml,{})\n\n![64](data:image/svg+xml;base64,{})",
+                red.replace('<', "%3C")
+                    .replace('>', "%3E")
+                    .replace('"', "%22")
+                    .replace(' ', "%20"),
+                b64::encode_string(red.as_bytes()),
+            );
+            let doc = doc_in(dir.path(), &md);
+            let store = ImageStore::load(&doc, &figures(&doc), opts(Graphics::Blocks));
+            let ids = figures(&doc);
+            // 64×32 px at 8×16 px cells, like a PNG of that size.
+            for i in [0, 1, 3, 4] {
+                assert_eq!(store.cells(ids[i], 100, 30), Some((8, 2)), "figure {i}");
+            }
+            assert_eq!(
+                store.cells(ids[2], 100, 30),
+                None,
+                "malformed: its alt text"
+            );
+            assert_eq!(store.problems().len(), 1, "{:?}", store.problems());
+            assert!(
+                store.problems()[0].starts_with("broken.svg: cannot read SVG"),
+                "{:?}",
+                store.problems()
+            );
+        }
+
+        #[test]
+        fn svg_is_not_held_to_the_pixel_limit_of_its_size() {
+            // The intrinsic size is only a hint: a huge viewBox is drawn at
+            // the size of its box, within images.max_pixels.
+            let dir = TestDir::new("store-svg-huge");
+            fs::write(
+                dir.path().join("huge.svg"),
+                "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1e7 5e6\">\
+                 <rect width=\"1e7\" height=\"5e6\" fill=\"red\"/></svg>",
+            )
+            .unwrap();
+            let small = StoreOptions {
+                max_pixels: 1000,
+                ..opts(Graphics::Blocks)
+            };
+            let doc = doc_in(dir.path(), "![h](huge.svg)");
+            let (store, l) = staged(&doc, small.clone(), 40);
+            let p = l.images[0];
+            assert_eq!(
+                (p.cols, p.rows),
+                (36, 9),
+                "the measure and the aspect ratio"
+            );
+            let src = store.source(figures(&doc)[0]).unwrap();
+            let at = src.decode_size(p.cols, p.rows, &small).unwrap();
+            assert!(u64::from(at.0) * u64::from(at.1) <= 1000, "{at:?}");
+            assert!(matches!(store.row(&p, 0), Some(RowContent::Cells(_))));
+        }
+
+        #[test]
+        fn drawn_at_the_size_of_each_path() {
+            let dir = drawings();
+            let decode_size = |graphics| {
+                let o = opts(graphics);
+                let (_, src) = source_of(dir.path(), "![r](r.svg)", o.clone());
+                src.decode_size(8, 2, &o)
+            };
+            // An 8×2 box of 8×16 px cells is 64×32 pixels.
+            assert_eq!(decode_size(Graphics::Blocks), Some((64, 32)));
+            assert_eq!(decode_size(Graphics::KittyPlaceholders), Some((128, 64)));
+            assert_eq!(decode_size(Graphics::KittyClassic), Some((128, 64)));
+            assert_eq!(decode_size(Graphics::Iterm), Some((128, 64)));
+            // Sixel: whole bands of six rows (30), keeping the aspect ratio.
+            assert_eq!(decode_size(Graphics::Sixel), Some((60, 30)));
+            // Raster images are decoded at their own size.
+            let pngs = pictures();
+            let o = opts(Graphics::Blocks);
+            let (_, png) = source_of(pngs.path(), "![a](a.png)", o.clone());
+            assert_eq!(png.decode_size(8, 2, &o), None);
+        }
+
+        #[test]
+        fn blocks_of_an_svg() {
+            let dir = drawings();
+            let doc = doc_in(dir.path(), "![r](r.svg)");
+            let (store, l) = staged(&doc, opts(Graphics::Blocks), 40);
+            let p = l.images[0];
+            assert_eq!((p.cols, p.rows), (8, 2));
+            let red = crate::style::Color::Rgb(Rgb(255, 0, 0));
+            for row in 0..2 {
+                let Some(RowContent::Cells(cells)) = store.row(&p, row) else {
+                    panic!("row {row}");
+                };
+                assert!(cells.iter().all(|c| c.bg == red), "{cells:?}");
+            }
+        }
+
+        /// Decode the PNG inside a kitty upload.
+        fn uploaded_png(upload: &[u8]) -> Rgba {
+            let text = String::from_utf8_lossy(upload);
+            let payload: String = text
+                .split("\x1b_G")
+                .filter_map(|cmd| cmd.split_once(';'))
+                .map(|(_, rest)| rest.trim_end_matches("\x1b\\").to_owned())
+                .collect();
+            let bytes = b64::decode(payload.as_bytes()).unwrap();
+            crate::gfx::decode::decode(&bytes, 1 << 20).unwrap()
+        }
+
+        #[test]
+        fn pixel_protocols_get_the_drawing_at_their_size() {
+            let dir = drawings();
+            // The pager: kitty classic at twice the box, drawn once for
+            // that size, sent as a PNG of exactly that size.
+            let o = opts(Graphics::KittyClassic);
+            let (_, src) = source_of(dir.path(), "![r](r.svg)", o.clone());
+            let at = src.decode_size(8, 2, &o);
+            let mut calls = 0;
+            let mut decode = || {
+                calls += 1;
+                src.decode_at(o.max_pixels, at).map(Arc::new)
+            };
+            let Some(Made::Kitty(k)) = make(&src, &Make::Kitty, 8, 2, &o, &mut decode) else {
+                panic!("no kitty upload");
+            };
+            assert_eq!((k.height, calls), (64, 1));
+            let png = uploaded_png(&k.upload);
+            assert_eq!((png.width, png.height), (128, 64));
+            assert_eq!(png.pixel(64, 32), [255, 0, 0, 255]);
+            // Stream output: kitty placeholders and iTerm2 PNGs of the
+            // drawing, never the SVG file itself.
+            let doc = doc_in(dir.path(), "![r](r.svg)");
+            let (store, l) = staged(&doc, opts(Graphics::KittyPlaceholders), 40);
+            let first = String::from_utf8_lossy(bytes(&store, &l.images[0], 0)).into_owned();
+            assert!(first.contains(",f=100,"), "{first:?}");
+            let (store, l) = staged(&doc, opts(Graphics::Iterm), 40);
+            let first = bytes(&store, &l.images[0], 0);
+            let start = first.windows(4).position(|w| w == b"\x1b]13").unwrap();
+            let end = start + first[start..].iter().position(|&b| b == 7).unwrap();
+            let (height, size) = iterm_slice(&first[start..=end]);
+            assert_eq!((height, size), (2, (128, 64)));
+        }
+
+        #[cfg(feature = "sixel")]
+        #[test]
+        fn sixel_of_an_svg() {
+            let dir = drawings();
+            let doc = doc_in(dir.path(), "![r](r.svg)");
+            let (store, l) = staged(&doc, opts(Graphics::Sixel), 40);
+            let first = String::from_utf8_lossy(bytes(&store, &l.images[0], 0)).into_owned();
+            assert!(first.contains("\"1;1;60;30"), "{first:?}");
+        }
+    }
 }

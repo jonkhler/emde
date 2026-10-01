@@ -29,7 +29,14 @@
 //! Every kitty command carries `q=2`, and every upload gets a fresh id. A
 //! pixel rendition that cannot be made (too large, cannot be encoded) falls
 //! back to blocks, and an image that cannot be decoded keeps its
-//! placeholder box. SVG images always keep it (see the `svg` feature).
+//! placeholder box.
+//!
+//! SVG images (with the `svg` feature; without it they keep their alt
+//! text) are sized from their own `width`, `height` or `viewBox`, and drawn
+//! at the pixel size of each box instead of being decoded once: the box for
+//! blocks and sixel, twice the box for kitty and iTerm2 (as large raster
+//! images are scaled for them). The drawing then takes the same paths as a
+//! decoded raster image ([`super::svg`] has the limits).
 //!
 //! A store is made for one document and one terminal ([`StoreOptions`]);
 //! the rows [`prepare_stream`](ImageStore::prepare_stream) makes are for
@@ -60,7 +67,7 @@ use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 
 use super::raster::{self, Raster};
-use super::{Passthrough, Rgba, b64, iterm, kitty, size};
+use super::{Passthrough, Rgba, b64, iterm, kitty, size, svg};
 use crate::ir::{Block, Document, ImageId, ImageRef, Length};
 use crate::layout::{ImageSizer, Layout, Placement};
 use crate::options::ImageOptions;
@@ -165,17 +172,72 @@ impl StoreOptions {
     }
 }
 
+/// What kind of image an [`Entry`] holds.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Kind {
+    /// PNG, JPEG, GIF or WebP: decoded once, at its own size.
+    Raster,
+    /// SVG: drawn at the size of each box ([`Entry::draw_size`]).
+    Svg,
+}
+
 /// An image read into memory.
 #[derive(Clone, Debug)]
 struct Entry {
     /// The file.
     bytes: Vec<u8>,
-    /// Pixel size from the header.
+    kind: Kind,
+    /// Pixel size from the header (an SVG's intrinsic size).
     size: (u32, u32),
     /// HTML `width` / `height` attributes.
     hints: (Option<Length>, Option<Length>),
     /// Where it came from, for messages.
     name: String,
+}
+
+impl Entry {
+    /// The pixel size to draw an SVG at for a `cols × rows` box: the box
+    /// (in whole sixel bands for sixel), or twice it for kitty and iTerm2,
+    /// keeping the aspect ratio and at most `max_pixels`. `None` for raster
+    /// images, which are decoded at their own size and scaled afterwards.
+    fn draw_size(&self, cols: u16, rows: u16, opts: &StoreOptions) -> Option<(u32, u32)> {
+        if self.kind == Kind::Raster {
+            return None;
+        }
+        let (bw, bh) = box_px(cols, rows, opts.cell());
+        let target = match opts.graphics {
+            Graphics::KittyPlaceholders | Graphics::KittyClassic | Graphics::Iterm => {
+                (bw.saturating_mul(2), bh.saturating_mul(2))
+            }
+            Graphics::Sixel => (bw, bh / SIXEL_BAND * SIXEL_BAND),
+            Graphics::Blocks | Graphics::None => (bw, bh),
+        };
+        Some(within_pixels(fit_box(self.size, target), opts.max_pixels))
+    }
+
+    /// The image's pixels: a raster image decoded, an SVG drawn at `at`
+    /// (else at its own size, within `max_pixels`).
+    fn decode(&self, max_pixels: u64, at: Option<(u32, u32)>) -> Result<Rgba, String> {
+        match self.kind {
+            Kind::Raster => codec::decode(&self.bytes, max_pixels),
+            Kind::Svg => {
+                let at = at.unwrap_or_else(|| within_pixels(self.size, max_pixels));
+                codec::svg(&self.bytes, at, max_pixels)
+            }
+        }
+    }
+}
+
+/// `size` scaled down to at most `max_pixels` pixels, keeping its aspect
+/// ratio (each side at least 1).
+fn within_pixels((w, h): (u32, u32), max_pixels: u64) -> (u32, u32) {
+    let pixels = u64::from(w) * u64::from(h);
+    if pixels <= max_pixels {
+        return (w, h);
+    }
+    let scale = (max_pixels as f64 / pixels as f64).sqrt();
+    let side = |v: u32| ((f64::from(v) * scale).floor() as u32).max(1);
+    (side(w), side(h))
 }
 
 /// Which rendition: an image at a size in cells.
@@ -235,8 +297,21 @@ impl Source {
 
     /// Decode the image, refusing more than `max_pixels` pixels; `None`
     /// when it cannot be decoded (or emde was built without image support).
+    /// An SVG is drawn at its own size (within `max_pixels`).
     pub fn decode(&self, max_pixels: u64) -> Option<Rgba> {
-        codec::decode(&self.0.bytes, max_pixels).ok()
+        self.decode_at(max_pixels, None)
+    }
+
+    /// The pixel size the renditions of a `cols × rows` box need the image
+    /// decoded at: `None` for raster images (their own size, scaled
+    /// afterwards), the box's drawing size for an SVG.
+    pub fn decode_size(&self, cols: u16, rows: u16, opts: &StoreOptions) -> Option<(u32, u32)> {
+        self.0.draw_size(cols, rows, opts)
+    }
+
+    /// [`Source::decode`] at a size from [`Source::decode_size`].
+    pub fn decode_at(&self, max_pixels: u64, at: Option<(u32, u32)>) -> Option<Rgba> {
+        self.0.decode(max_pixels, at).ok()
     }
 }
 
@@ -773,9 +848,16 @@ fn read_image(img: &ImageRef, base: Option<&Path>, opts: &StoreOptions) -> Resul
             Location::Remote(url) => fetch_remote(&url),
         })
         .map_err(|e| format!("{name}: {e}"))?;
-    let size =
-        codec::dimensions(&bytes).ok_or_else(|| format!("{name}: {}", unknown_format(&bytes)))?;
-    if u64::from(size.0) * u64::from(size.1) > opts.max_pixels {
+    let (kind, size) = match codec::dimensions(&bytes) {
+        Some(size) => (Kind::Raster, size),
+        // The pixel limit applies when an SVG is drawn, at its box's size.
+        None if codec::SVG && (svg::named_svg(src) || svg::sniff(&bytes)) => {
+            let size = codec::svg_dimensions(&bytes).map_err(|e| format!("{name}: {e}"))?;
+            (Kind::Svg, size)
+        }
+        None => return Err(format!("{name}: {}", unknown_format(&bytes))),
+    };
+    if kind == Kind::Raster && u64::from(size.0) * u64::from(size.1) > opts.max_pixels {
         return Err(format!(
             "{name}: {}×{} pixels is more than images.max_pixels ({})",
             size.0, size.1, opts.max_pixels
@@ -783,6 +865,7 @@ fn read_image(img: &ImageRef, base: Option<&Path>, opts: &StoreOptions) -> Resul
     }
     Ok(Entry {
         bytes,
+        kind,
         size,
         hints: (img.width, img.height),
         name,
@@ -815,7 +898,8 @@ fn unknown_format(bytes: &[u8]) -> &'static str {
     let head = bytes.get(..bytes.len().min(512)).unwrap_or_default();
     let text = String::from_utf8_lossy(head).to_ascii_lowercase();
     if text.contains("<svg") {
-        "SVG images are not supported (they are shown as their alt text)"
+        "SVG images are not supported (they are shown as their alt text; \
+         emde was built without the `svg` feature)"
     } else if cfg!(feature = "images") {
         "not a PNG, JPEG, GIF or WebP image"
     } else {
@@ -878,23 +962,29 @@ struct Rendered {
     problem: Option<String>,
 }
 
-/// Render `entry` at each size in `sizes`, decoding it at most once.
+/// Render `entry` at each size in `sizes`, decoding a raster image at most
+/// once (an SVG is drawn once per size).
 fn render_sizes(id: ImageId, entry: &Entry, sizes: &[(u16, u16)], opts: &StoreOptions) -> Rendered {
     let decoded: OnceLock<Result<Rgba, String>> = OnceLock::new();
-    let pixels = || {
-        decoded
-            .get_or_init(|| codec::decode(&entry.bytes, opts.max_pixels))
-            .as_ref()
-            .ok()
-    };
+    let mut problem = None;
     let renditions = sizes
         .iter()
         .filter_map(|&(cols, rows)| {
-            let r = render(entry, &pixels, cols, rows, opts)?;
-            Some(((id, cols, rows), r))
+            let at = entry.draw_size(cols, rows, opts);
+            let drawn: OnceLock<Result<Rgba, String>> = OnceLock::new();
+            let cell = if at.is_some() { &drawn } else { &decoded };
+            let pixels = || {
+                cell.get_or_init(|| entry.decode(opts.max_pixels, at))
+                    .as_ref()
+                    .ok()
+            };
+            let r = render(entry, &pixels, cols, rows, opts);
+            if let Some(Err(e)) = cell.get() {
+                problem.get_or_insert_with(|| e.clone());
+            }
+            Some(((id, cols, rows), r?))
         })
         .collect();
-    let problem = decoded.get().and_then(|r| r.as_ref().err()).cloned();
     Rendered {
         renditions,
         problem,
@@ -1266,6 +1356,35 @@ mod codec {
         {
             let _ = bytes;
             None
+        }
+    }
+
+    /// Whether SVG images are drawn (the `svg` feature).
+    pub(super) const SVG: bool = cfg!(feature = "svg");
+
+    /// An SVG's intrinsic size.
+    pub(super) fn svg_dimensions(bytes: &[u8]) -> Result<(u32, u32), String> {
+        #[cfg(feature = "svg")]
+        {
+            crate::gfx::svg::dimensions(bytes).map_err(|e| e.to_string())
+        }
+        #[cfg(not(feature = "svg"))]
+        {
+            let _ = bytes;
+            Err("emde was built without SVG support".into())
+        }
+    }
+
+    /// An SVG drawn at `at` pixels, refusing more than `max_pixels`.
+    pub(super) fn svg(bytes: &[u8], at: (u32, u32), max_pixels: u64) -> Result<Rgba, String> {
+        #[cfg(feature = "svg")]
+        {
+            crate::gfx::svg::rasterize(bytes, at, max_pixels).map_err(|e| e.to_string())
+        }
+        #[cfg(not(feature = "svg"))]
+        {
+            let _ = (bytes, at, max_pixels);
+            Err("emde was built without SVG support".into())
         }
     }
 
