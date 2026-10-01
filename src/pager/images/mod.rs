@@ -120,12 +120,13 @@ impl PagerImages {
 
 /// The modes `i` goes through, starting with the detected one: then
 /// blocks, then off. Blocks need colours (without them a blocks rendition
-/// cannot be made, and the figures would only show their boxes).
-fn modes(options: Option<&StoreOptions>) -> Vec<Graphics> {
+/// cannot be made, and the figures would only show their boxes) and narrow
+/// block glyphs ([`StoreOptions::blocks`]).
+pub(crate) fn modes(options: Option<&StoreOptions>) -> Vec<Graphics> {
     let Some(opts) = options else {
         return vec![Graphics::None];
     };
-    let blocks = (opts.depth >= ColorDepth::Ansi16).then_some(Graphics::Blocks);
+    let blocks = (opts.depth >= ColorDepth::Ansi16 && opts.blocks).then_some(Graphics::Blocks);
     let mut modes = vec![opts.graphics];
     for g in blocks.into_iter().chain([Graphics::None]) {
         if !modes.contains(&g) {

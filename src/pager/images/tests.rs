@@ -45,6 +45,22 @@ fn modes_start_with_the_detected_one() {
 }
 
 #[test]
+fn wide_ambiguous_characters_keep_blocks_out_of_the_cycle() {
+    let tc = ColorDepth::TrueColor;
+    let wide = |graphics| StoreOptions {
+        blocks: false,
+        ..options(graphics, tc)
+    };
+    // Pixels still cycle to off, never through blocks.
+    assert_eq!(
+        modes(Some(&wide(Graphics::Iterm))),
+        [Graphics::Iterm, Graphics::None]
+    );
+    // `refuse_wide_blocks` already turned blocks into none: nothing to cycle.
+    assert_eq!(modes(Some(&wide(Graphics::None))), [Graphics::None]);
+}
+
+#[test]
 fn cycling_says_when_sizes_change() {
     let mut images = Images::new(PagerImages::new(options(
         Graphics::KittyPlaceholders,

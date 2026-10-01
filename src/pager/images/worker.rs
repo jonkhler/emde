@@ -379,6 +379,7 @@ mod tests {
             max_pixels: 1_000_000,
             remote: false,
             variant: Variant::Dark,
+            blocks: true,
         };
         let id = store::figure_images(&doc)[0];
         (ImageStore::load_figures(&doc, opts), id)

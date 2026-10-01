@@ -507,6 +507,7 @@ The pager's keys (they cannot be changed yet).
 | `i` | cycle the image mode |
 | `w` | full width, on or off |
 | `m` | mouse, on or off (off: select text) |
+| `:` | command: :n next file, :p previous file, :q quit |
 | `h` `F1` | this help |
 | `^L` | redraw the screen (anywhere) |
 | `^Z` | suspend (anywhere) |
@@ -520,6 +521,15 @@ The pager's keys (they cannot be changed yet).
 | `Esc` `^C` | cancel |
 | `Backspace` | delete a character |
 | `^U` | clear the pattern |
+
+**At the : prompt**
+
+| Keys | Action |
+|---|---|
+| `Enter` | run the command |
+| `Esc` `^C` | cancel |
+| `Backspace` | delete a character |
+| `^U` | clear the command |
 
 **In the outline**
 

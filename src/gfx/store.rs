@@ -127,6 +127,11 @@ pub struct StoreOptions {
     pub remote: bool,
     /// The theme's variant: which `<picture>` source to show.
     pub variant: Variant,
+    /// Block-glyph images may be drawn. `false` when East Asian Ambiguous
+    /// characters are wide (`render.ambiguous_width = 2`): the terminal
+    /// draws block glyphs two columns wide, so such rows would overflow
+    /// (see [`crate::term::caps::refuse_wide_blocks`]).
+    pub blocks: bool,
 }
 
 impl StoreOptions {
@@ -147,6 +152,7 @@ impl StoreOptions {
             max_pixels: images.max_pixels,
             remote: images.remote,
             variant: theme.variant,
+            blocks: true,
         }
     }
 

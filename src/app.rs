@@ -677,7 +677,10 @@ fn pager_session(setup: Setup, docs: Vec<Doc>, request: PagerRequest) -> Option<
     let first = pages.next()?;
     let render = setup.config.render.clone();
     let parse = ParseOptions::from(&render);
-    let options = StoreOptions::new(&setup.caps, &render.images, &setup.theme);
+    let options = StoreOptions {
+        blocks: !render.ambiguous_wide,
+        ..StoreOptions::new(&setup.caps, &render.images, &setup.theme)
+    };
     let mut session = PagerSession::new(first, setup.theme, setup.caps, render);
     session.more = pages.collect();
     session.loader = Box::new(FileLoader::new(parse));

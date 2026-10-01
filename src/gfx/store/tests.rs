@@ -278,6 +278,7 @@ mod rendering {
             max_pixels: 40_000_000,
             remote: false,
             variant: Variant::Dark,
+            blocks: true,
         }
     }
 

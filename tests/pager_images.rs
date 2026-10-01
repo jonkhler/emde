@@ -64,6 +64,7 @@ fn options(graphics: Graphics) -> StoreOptions {
         max_pixels: 40_000_000,
         remote: false,
         variant: Variant::Dark,
+        blocks: true,
     }
 }
 
