@@ -1,0 +1,29 @@
+---
+source: tests/pager.rs
+expression: "screen_text(&term, 80, 24, \"open\")"
+---
+ 1│  Headings                                                                      │
+ 2│  ━━╭─ Outline ────────────────────────────────────────────────────────────╮──  │
+ 3│    │ type to filter                                                       │    │
+ 4│  ▎ │  Kitchen Sink                                                        │    │
+ 5│    │▸   Headings                                                          │    │
+  │     ======================================================================│
+ 6│  Fo│      Third level                                                     │    │
+ 7│    │        Fourth level                                                  │    │
+ 8│  Fi│          Fifth level                                                 │    │
+ 9│    │            Sixth level                                               │    │
+10│  Si│    Lists                                                             │    │
+11│    │    Quotes and alerts                                                 │    │
+12│  Li│    Code                                                              │    │
+13│  ━━│    Math                                                              │──  │
+14│    │    Table                                                             │    │
+15│  • │    Other blocks                                                      │    │
+16│  • ╰─ 2/12 ───────────────────────────────────────────────────────────────╯    │
+17│    ◦ Nested item                                                               │
+18│      ‣ Deeper item                                                             │
+19│  ☐ Unchecked task                                                              │
+20│  ☒ Checked task                                                                │
+21│                                                                                │
+22│  1. First                                                                      │
+23│                                                                                │
+24│ text › Kitchen Sink › Headings                                    L 15/129 28% │

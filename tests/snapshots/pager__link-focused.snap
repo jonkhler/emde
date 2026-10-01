@@ -1,0 +1,17 @@
+---
+source: tests/pager.rs
+expression: "screen_text(&term, 60, 12, \"focused\")"
+---
+ 1│   Links                                                    │
+ 2│                                                            │
+ 3│  Go to the end or elsewhere.                               │
+  │        =======│
+ 4│                                                            │
+ 5│  filler                                                    │
+ 6│                                                            │
+ 7│  filler                                                    │
+ 8│                                                            │
+ 9│  filler                                                    │
+10│                                                            │
+11│  filler                                                    │
+12│ text › Links                                    L 1/128 8% │

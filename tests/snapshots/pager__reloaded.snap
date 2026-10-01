@@ -1,0 +1,12 @@
+---
+source: tests/pager.rs
+expression: "screen_text(&term, 50, 8, \"after\")"
+---
+ 1│   Watched                                        │
+ 2│                                                  │
+ 3│  New text, a bit longer.                         │
+ 4│                                                  │
+ 5│                                                  │
+ 6│                                                  │
+ 7│                                                  │
+ 8│ reloaded                              L 1/3 100% │

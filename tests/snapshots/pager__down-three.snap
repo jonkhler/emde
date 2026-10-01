@@ -1,0 +1,28 @@
+---
+source: tests/pager.rs
+expression: "screen_text(&term, 80, 24, \"down three\")"
+---
+ 1│  │ tags    [markdown, test] │                                                  │
+ 2│  └──────────────────────────┘                                                  │
+ 3│                                                                                │
+ 4│   Kitchen Sink                                                                 │
+ 5│                                                                                │
+ 6│  A paragraph with emphasis, strong, both, strikethrough,  inline code , a      │
+ 7│  link, an autolink https://example.org/path, and a bare URL https://www.rust-  │
+ 8│  lang.org/learn. Hard break at the end of this line                            │
+ 9│  and a backslash hard break                                                    │
+10│  then more text. Footnote reference¹ and another².                             │
+11│                                                                                │
+12│  Headings                                                                      │
+13│  ━━━━━━━━────────────────────────────────────────────────────────────────────  │
+14│                                                                                │
+15│  ▎ Third level                                                                 │
+16│                                                                                │
+17│  Fourth level                                                                  │
+18│                                                                                │
+19│  Fifth level                                                                   │
+20│                                                                                │
+21│  Sixth level                                                                   │
+22│                                                                                │
+23│  Lists                                                                         │
+24│ text                                                               L 4/129 20% │
