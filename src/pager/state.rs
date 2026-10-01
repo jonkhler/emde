@@ -388,8 +388,9 @@ pub struct State {
     pub(crate) count: Option<u32>,
     pub(crate) mode: Mode,
     pub(crate) search: Option<Search>,
-    /// The last pattern searched (for an empty `/`).
-    pub(crate) last_pattern: Option<String>,
+    /// The last pattern searched and whether it went up (`?`), for an
+    /// empty `/` and for `n` after the search was cleared.
+    pub(crate) last_pattern: Option<(String, bool)>,
     pub(crate) focus: Option<Focus>,
     pub(crate) message: Option<Message>,
     pub(crate) history: History,
@@ -420,7 +421,8 @@ impl State {
         let page = Rc::new(Page::new(doc, key, 0, settings.front_matter));
         let mut history = History::default();
         history.touch(&page);
-        let watch = pager.watch && page.path().is_some();
+        // Whether files are watched; standard input never is (`watching`).
+        let watch = pager.watch;
         let mut state = State {
             derived: Derived::new(&layout),
             page,
@@ -455,10 +457,17 @@ impl State {
             self.next_unnamed += 1;
             k
         });
-        let base = self.next_link_base;
-        let links = u32::try_from(doc.doc.links.len()).unwrap_or(u32::MAX);
-        self.next_link_base = base.saturating_add(links);
+        let base = self.link_base(doc.doc.links.len());
         Rc::new(Page::new(doc, key, base, self.settings.front_matter))
+    }
+
+    /// A fresh range of OSC 8 link numbers for a document with `links`
+    /// links.
+    pub(crate) fn link_base(&mut self, links: usize) -> u32 {
+        let base = self.next_link_base;
+        let n = u32::try_from(links).unwrap_or(u32::MAX);
+        self.next_link_base = base.saturating_add(n);
+        base
     }
 
     /// Rows for the document (all but the status bar).

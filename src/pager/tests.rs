@@ -219,6 +219,12 @@ fn heading_jumps() {
     keys(&mut s, "g[");
     assert_eq!(s.top(), 0);
     assert_eq!(s.message(), Some("no heading above"));
+    // At the end, the next heading is on screen already.
+    keys(&mut s, "G");
+    let shown = (s.top()..s.layout().len()).any(|i| s.layout().line_text(i).contains("Detail 6"));
+    assert!(shown);
+    keys(&mut s, "]");
+    assert_eq!(s.message(), Some("end of the document"));
 }
 
 #[test]
@@ -373,6 +379,18 @@ fn a_resize_while_searching_keeps_the_origin() {
         "Section 3",
         "back where the search began"
     );
+}
+
+#[test]
+fn n_keeps_the_direction_after_the_search_is_cleared() {
+    let mut s = state(&long_doc(8, 3), 60, 10);
+    keys(&mut s, "G?Section\n");
+    let first = s.current_match().unwrap();
+    code(&mut s, KeyCode::Esc);
+    assert_eq!(s.match_count(), None);
+    keys(&mut s, "n");
+    let next = s.current_match().unwrap();
+    assert!(next < first, "still going up: {next} after {first}");
 }
 
 #[test]
@@ -550,6 +568,10 @@ fn link_hints() {
     keys(&mut s, "o");
     code(&mut s, KeyCode::Esc);
     assert_eq!(s.mode_name(), "normal");
+    // A pasted label follows the link too.
+    keys(&mut s, "o");
+    let effects = drive(&mut s, Action::Paste("s".into()));
+    assert_eq!(effects, [Effect::Open("https://example.com".into())]);
     let mut none = state("no links", 40, 10);
     keys(&mut none, "o");
     assert_eq!(none.message(), Some("no links on screen"));
@@ -743,6 +765,36 @@ fn reloading_keeps_the_place_and_the_search() {
     assert_eq!(stdin.message(), Some("standard input cannot be reloaded"));
     keys(&mut stdin, "R");
     assert_eq!(stdin.message(), Some("standard input cannot be watched"));
+}
+
+#[test]
+fn files_opened_from_standard_input_are_watched() {
+    let mut s = state("# From stdin\n\n[x](x.md)", 40, 10);
+    assert!(!s.watching(), "standard input is never watched");
+    opened(&mut s, "x.md", "# X", None);
+    assert!(s.watching(), "but the files it leads to are");
+}
+
+#[test]
+fn a_reload_gets_fresh_link_ids() {
+    let path = file("l.md");
+    let mut s = state_for(pdoc("[a](#a)", Origin::File(path.clone())), 40, 10);
+    opened(&mut s, "other.md", "[b](#b) [c](#c)", None);
+    code(&mut s, KeyCode::Backspace);
+    let before = s.page.link_base;
+    let other = s
+        .history
+        .page(&DocKey::Path(file("other.md")))
+        .unwrap()
+        .link_base;
+    let more = "[a](#a) [b](#b) [c](#c) [d](#d)";
+    drive(&mut s, Action::Reloaded(pdoc(more, Origin::File(path))));
+    let after = s.page.link_base;
+    assert_ne!(after, before);
+    assert!(
+        after >= other + 2,
+        "no overlap with the other document's ids"
+    );
 }
 
 #[test]

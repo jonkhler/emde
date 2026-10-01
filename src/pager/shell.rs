@@ -97,6 +97,8 @@ pub(crate) struct Shell<'t, T: Terminal> {
     stamps: HashMap<PathBuf, Option<Stamp>>,
     resize: Option<((u16, u16), Instant)>,
     signals: Signals,
+    /// Something may have changed since the last frame.
+    dirty: bool,
     /// Panic after the first frame (`EMDE_TEST_PANIC=1`).
     panic_test: bool,
 }
@@ -186,6 +188,7 @@ impl<'t, T: Terminal> Shell<'t, T> {
             stamps,
             resize: None,
             signals,
+            dirty: true,
             panic_test,
         }
     }
@@ -269,6 +272,7 @@ impl<'t, T: Terminal> Shell<'t, T> {
             Some(((cols, rows), at)) if now >= at => {
                 self.resize = None;
                 self.screen.invalidate();
+                self.dirty = true;
                 if cols == 0 || rows == 0 {
                     return Ok(None);
                 }
@@ -302,6 +306,7 @@ impl<'t, T: Terminal> Shell<'t, T> {
     }
 
     fn run_effects(&mut self, effects: Vec<Effect>) -> io::Result<Option<PagerExit>> {
+        self.dirty = true;
         let mut queue: VecDeque<Effect> = effects.into();
         while let Some(effect) = queue.pop_front() {
             let more = match effect {
@@ -370,7 +375,12 @@ impl<'t, T: Terminal> Shell<'t, T> {
         )
     }
 
+    /// Paint a frame if anything changed since the last one.
     fn paint(&mut self) -> io::Result<()> {
+        if !self.dirty {
+            return Ok(());
+        }
+        self.dirty = false;
         let frame = view(&self.state, &self.ctx);
         self.cfg.link_base = self.state.page.link_base;
         let bytes = self
@@ -473,11 +483,16 @@ impl<'t, T: Terminal> Shell<'t, T> {
         };
         let now = self.term.term.now();
         let before = watch::stamp(&path);
-        if let Some(w) = self.watcher.as_mut().filter(|w| w.path() == path) {
-            w.rebase(before, now);
+        let loaded = self.loader.load(&path);
+        if loaded.is_ok() {
+            // Read: this version is the baseline (a failed read is tried
+            // again at the watcher's next check).
+            if let Some(w) = self.watcher.as_mut().filter(|w| w.path() == path) {
+                w.rebase(before, now);
+            }
+            self.stamps.insert(path.clone(), before);
         }
-        self.stamps.insert(path.clone(), before);
-        match self.loader.load(&path) {
+        match loaded {
             Ok(doc) if doc.source.text == self.state.source().text => {
                 if auto {
                     Vec::new()
@@ -540,6 +555,7 @@ impl<'t, T: Terminal> Shell<'t, T> {
     fn resume(&mut self) -> io::Result<()> {
         self.term.term.enter(self.state.mouse())?;
         self.screen.invalidate();
+        self.dirty = true;
         if let Ok((cols, rows)) = self.term.term.size()
             && cols > 0
             && rows > 0

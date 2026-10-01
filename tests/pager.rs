@@ -468,6 +468,54 @@ fn a_document_changed_while_away_is_reloaded_on_return() {
     assert!(back.contains("Second version, changed."), "{back}");
 }
 
+/// Whether a file with mode 000 cannot be read (false when running as
+/// root).
+#[cfg(unix)]
+fn mode_000_blocks_reading(dir: &Path) -> bool {
+    use std::os::unix::fs::PermissionsExt as _;
+    let probe = dir.join("probe");
+    std::fs::write(&probe, "x").unwrap();
+    std::fs::set_permissions(&probe, std::fs::Permissions::from_mode(0o000)).unwrap();
+    let blocked = std::fs::File::open(&probe).is_err();
+    std::fs::set_permissions(&probe, std::fs::Permissions::from_mode(0o644)).unwrap();
+    blocked
+}
+
+#[cfg(unix)]
+#[test]
+fn a_failed_reload_is_tried_again() {
+    use std::os::unix::fs::PermissionsExt as _;
+    let dir = temp_dir("failed-reload");
+    if !mode_000_blocks_reading(&dir) {
+        return;
+    }
+    let path = dir.join("doc.md");
+    std::fs::write(&path, "# Doc\n\nBefore.\n").unwrap();
+    let locked = path.clone();
+    let unlocked = path.clone();
+    let term = FakeTerminal::new(50, 8)
+        .run(move || {
+            std::fs::write(&locked, "# Doc\n\nAfter, longer.\n").unwrap();
+            let perms = std::fs::Permissions::from_mode(0o000);
+            std::fs::set_permissions(&locked, perms).unwrap();
+        })
+        .wait(ms(800))
+        .mark("unreadable")
+        .run(move || {
+            let perms = std::fs::Permissions::from_mode(0o644);
+            std::fs::set_permissions(&unlocked, perms).unwrap();
+        })
+        .wait(ms(800))
+        .mark("readable")
+        .keys("q");
+    let (term, _) = run(term, file_session(&path));
+    let unreadable = screen_text(&term, 50, 8, "unreadable");
+    assert!(unreadable.contains("reload failed"), "{unreadable}");
+    assert!(unreadable.contains("Before."));
+    let readable = screen_text(&term, 50, 8, "readable");
+    assert!(readable.contains("After, longer."), "{readable}");
+}
+
 #[test]
 fn manual_reload_and_watch_toggle() {
     let dir = temp_dir("manual-reload");

@@ -410,6 +410,9 @@ fn focus_marks(state: &State, ctx: &Ctx, index: usize) -> Vec<Mark> {
         .link_hits
         .get(first..first.saturating_add(o.hits as usize))
         .unwrap_or(&[]);
+    if !hits.iter().any(|h| h.line as usize == index) {
+        return out;
+    }
     let text = LineText::new(&state.layout, index);
     for hit in hits.iter().filter(|h| h.line as usize == index) {
         // Columns to bytes of the line's text.

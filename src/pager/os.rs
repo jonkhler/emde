@@ -165,24 +165,32 @@ fn tmux(env: &Env, args: &[&str], input: &[u8]) -> io::Result<()> {
         cmd.env("TMUX", socket);
     }
     let mut child = cmd.spawn()?;
-    if let Some(mut stdin) = child.stdin.take() {
-        stdin.write_all(input)?;
-    }
+    // Written from a thread: a tmux that does not read must not block the
+    // pager past the deadline (killing it ends the write).
+    let writer = child.stdin.take().map(|mut stdin| {
+        let input = input.to_vec();
+        std::thread::spawn(move || stdin.write_all(&input))
+    });
     let deadline = Instant::now() + TMUX_TIMEOUT;
-    loop {
+    let status = loop {
         if let Some(status) = child.try_wait()? {
-            return if status.success() {
-                Ok(())
-            } else {
-                Err(io::Error::other(format!("tmux exited with {status}")))
-            };
+            break Some(status);
         }
         if Instant::now() >= deadline {
             let _ = child.kill();
             let _ = child.wait();
-            return Err(io::Error::other("tmux did not answer"));
+            break None;
         }
         std::thread::sleep(Duration::from_millis(2));
+    };
+    let written = writer.map_or(Ok(()), |w| {
+        w.join()
+            .unwrap_or_else(|_| Err(io::Error::other("the writer thread panicked")))
+    });
+    match status {
+        None => Err(io::Error::other("tmux did not answer")),
+        Some(s) if !s.success() => Err(io::Error::other(format!("tmux exited with {s}"))),
+        Some(_) => written,
     }
 }
 

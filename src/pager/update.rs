@@ -124,10 +124,7 @@ pub fn update(state: &mut State, action: Action) -> Vec<Effect> {
             on_key(state, key)
         }
         Action::Mouse(m) => on_mouse(state, m),
-        Action::Paste(text) => {
-            type_text(state, &text);
-            Vec::new()
-        }
+        Action::Paste(text) => type_text(state, &text),
         Action::Command(cmd) => {
             state.message = None;
             command(state, cmd)
@@ -445,16 +442,20 @@ fn heading_jump(state: &mut State, n: usize, down: bool, same_level: bool) {
             None => break,
         }
     }
-    let before = state.top;
-    if let Some(line) = target {
-        state.jump_to(line);
-    }
-    if state.top == before {
-        state.say(if down {
+    match target {
+        Some(line) => {
+            let before = state.top;
+            state.jump_to(line);
+            if state.top == before {
+                // The heading is on screen already, below the last top line.
+                state.say("end of the document");
+            }
+        }
+        None => state.say(if down {
             "no heading below"
         } else {
             "no heading above"
-        });
+        }),
     }
 }
 
@@ -604,7 +605,7 @@ fn accept_prompt(state: &mut State) {
     };
     let pattern = if p.input.is_empty() {
         match state.last_pattern.clone() {
-            Some(last) => last,
+            Some((last, _)) => last,
             None => {
                 state.search = p.saved;
                 return;
@@ -613,7 +614,7 @@ fn accept_prompt(state: &mut State) {
     } else {
         p.input
     };
-    state.last_pattern = Some(pattern.clone());
+    state.last_pattern = Some((pattern.clone(), p.backward));
     if !search_from(state, &pattern, p.backward, p.origin) {
         state.search = None;
         state.complain(format!("not found: {pattern}"));
@@ -632,14 +633,14 @@ fn cancel_prompt(state: &mut State) {
 /// `n` (or `N` with `reverse`), `count` times.
 fn next_match(state: &mut State, count: usize, reverse: bool) {
     if state.search.is_none() {
-        let Some(pattern) = state.last_pattern.clone() else {
+        let Some((pattern, backward)) = state.last_pattern.clone() else {
             state.say("no search yet: / searches");
             return;
         };
         state.search = Some(Search::run(
             state.page.corpus(),
             &pattern,
-            false,
+            backward,
             state.settings.search_case,
         ));
     }
@@ -1000,12 +1001,9 @@ fn go(state: &mut State, goto: Goto) {
 /// the same place.
 fn reloaded(state: &mut State, doc: PagerDoc) -> Vec<Effect> {
     let key = state.page.key.clone();
-    let page = Rc::new(Page::new(
-        doc,
-        key,
-        state.page.link_base,
-        state.settings.front_matter,
-    ));
+    // A fresh range of link ids: the new version may have more links.
+    let base = state.link_base(doc.doc.links.len());
+    let page = Rc::new(Page::new(doc, key, base, state.settings.front_matter));
     state.history.touch(&page);
     state.page = page;
     state.pending = Some(Goto::Place(state.top_place()));

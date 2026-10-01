@@ -82,7 +82,8 @@ impl Watcher {
     }
 
     /// Check the file if a check is due; `true` when a change is
-    /// confirmed (the new state becomes the baseline).
+    /// confirmed. The baseline stays until [`Watcher::rebase`] (after the
+    /// file was read successfully), so a failed read is tried again.
     pub(crate) fn poll(&mut self, now: Instant) -> bool {
         self.poll_with(now, stamp)
     }
@@ -108,7 +109,6 @@ impl Watcher {
             return false;
         }
         if self.candidate == Some(reading) {
-            self.last = Some(reading);
             self.candidate = None;
             self.next = now + INTERVAL;
             return true;
@@ -157,8 +157,15 @@ mod tests {
         let t3 = t2 + SETTLE;
         assert!(w.poll_with(t3, |_| at(3)), "settled");
         assert_eq!(w.deadline(), t3 + INTERVAL);
+        // Not read yet: still a change.
         let t4 = t3 + INTERVAL;
-        assert!(!w.poll_with(t4, |_| at(3)), "nothing new");
+        assert!(!w.poll_with(t4, |_| at(3)));
+        assert!(w.poll_with(t4 + SETTLE, |_| at(3)), "tried again");
+        // Read: the new state is the baseline.
+        w.rebase(at(3), t4 + SETTLE);
+        let t5 = w.deadline();
+        assert!(!w.poll_with(t5, |_| at(3)), "nothing new");
+        assert!(!w.poll_with(t5 + SETTLE, |_| at(3)));
     }
 
     #[test]
@@ -174,6 +181,7 @@ mod tests {
         let t1 = w.deadline();
         assert!(!w.poll_with(t1, |_| at(5)));
         assert!(w.poll_with(t1 + SETTLE, |_| at(5)));
+        w.rebase(at(5), t1 + SETTLE);
         // Changed and changed back before settling: nothing.
         let t2 = w.deadline();
         assert!(!w.poll_with(t2, |_| at(6)));
@@ -202,6 +210,7 @@ mod tests {
         let mut w = Watcher::new(file.clone(), Some(a), t0);
         assert!(!w.poll(t0 + INTERVAL));
         assert!(w.poll(t0 + INTERVAL + SETTLE));
+        assert_eq!(w.baseline(), Some(a), "until the file is read");
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
