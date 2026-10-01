@@ -56,7 +56,7 @@ pub(crate) fn run(check: bool) -> Result<(), String> {
     let readme_path = root.join(README_MD);
     let doctor = doctor_sample(&root)?;
     let readme = read(&readme_path)?;
-    let readme = markdown::replace_generated(&readme, README_KEYS, &keymap::markdown())
+    let readme = markdown::replace_generated(&readme, README_KEYS, &keymap::markdown(false))
         .and_then(|r| markdown::replace_generated(&r, README_DOCTOR, &doctor))
         .map_err(|e| format!("{README_MD}: {e}"))?;
     examples::check(README_MD, &readme)?;
@@ -112,7 +112,7 @@ fn config_reference(root: &Path) -> Result<String, String> {
         ("themes", themes.builtin_markdown()?),
         ("palette", themes.palette_markdown()?),
         ("elements", themes.elements_markdown()?),
-        ("keys", keymap::markdown()),
+        ("keys", keymap::markdown(true)),
     ];
     let body = markdown::fill_template(&template, &parts)
         .map_err(|e| format!("{CONFIG_TEMPLATE}: {e}"))?;

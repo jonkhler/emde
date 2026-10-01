@@ -207,6 +207,28 @@ dusk`, or by `name = "dusk"` in `[theme]`.
 
 ## Key bindings
 
-The pager's keys (they cannot be changed yet).
+The pager's keys, with the name of each action. `[pager.keys]` gives an
+action other keys, which replace its default ones:
+
+```toml
+[pager.keys]
+page-down = ["Space", "f", "PgDn"]
+hints-follow = ["F"]
+quit = ["q", "ZZ"]
+top = ["gg", "Home"]
+```
+
+A key is a character (`j`, `G`, `?`), `C-x` (Ctrl), `M-x` (Alt), a name
+(`Enter`, `Esc`, `Space`, `Tab`, `S-Tab`, `Backspace`, `Up`, `Down`,
+`Left`, `Right`, `Home`, `End`, `PgUp`, `PgDn`, `Ins`, `Del`, `F1` to
+`F24`; names ignore case), or several keys in a row: `gg` types `g` twice,
+and keys separated by spaces follow each other (`g Home`, `C-w j`). A word
+that looks like a misspelt name (`PgDwn`) is reported rather than typed
+letter by letter. A sequence that is also the start of a longer one (`g`
+and `gg`) waits for the next key, or runs after a moment.
+
+`[]` leaves an action without keys. A key bound to two actions goes to the
+one bound later, an action of your file winning over a default one; `emde
+--check-config` warns about it, and about unknown actions and keys.
 
 {{keys}}

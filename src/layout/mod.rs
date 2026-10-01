@@ -51,7 +51,7 @@ use bitflags::bitflags;
 
 use crate::highlight::{Highlighter, HlBlock};
 use crate::ir::{Document, ImageId, LinkId, SrcPos};
-use crate::options::{Align, RenderOptions};
+use crate::options::{Align, Height, RenderOptions};
 use crate::style::{Rgb, StyleId, StyleTable};
 use crate::term::Caps;
 use crate::theme::Theme;
@@ -61,6 +61,24 @@ pub use table::allocate_columns;
 /// Narrowest text column worth keeping margins for: on narrower terminals
 /// the margins shrink first.
 const MIN_MEASURE: u16 = 20;
+
+/// Figure height cap when the screen height is unknown.
+const DEFAULT_MAX_ROWS: u16 = 30;
+
+/// The tallest figure `opts.images.max_height` allows on a terminal of
+/// `caps.size`.
+pub fn max_image_rows(opts: &RenderOptions, caps: &Caps) -> u16 {
+    match opts.images.max_height {
+        Height::Rows(n) => n.max(1),
+        Height::Percent(p) => match caps.size {
+            Some((_, rows)) => {
+                let r = u32::from(rows) * u32::from(p.min(100)) / 100;
+                u16::try_from(r).unwrap_or(u16::MAX).max(1)
+            }
+            None => DEFAULT_MAX_ROWS,
+        },
+    }
+}
 
 /// A laid-out document; see the module docs.
 #[derive(Clone, Debug)]
@@ -88,6 +106,8 @@ pub struct Layout {
     pub heading_line: Vec<u32>,
     /// Where links are on screen, one entry per fragment per line.
     pub link_hits: Vec<LinkHit>,
+    /// Where inline math is on screen, one entry per formula per line.
+    pub math_hits: Vec<MathHit>,
     /// Where figures go.
     pub images: Vec<Placement>,
     /// Highlighting of each code block, indexed by `block` in
@@ -162,6 +182,8 @@ bitflags! {
         /// A footnote back-link (`↑`): following it goes to where its link
         /// (the footnote reference) is shown.
         const BACKLINK = 1 << 1;
+        /// Typeset inline math (see [`Layout::math_hits`]).
+        const MATH = 1 << 2;
     }
 }
 
@@ -196,6 +218,21 @@ pub struct LinkHit {
     pub link: LinkId,
     /// A footnote back-link: it leads to where `link` is shown.
     pub back: bool,
+}
+
+/// A piece of inline math on one line.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct MathHit {
+    /// The line.
+    pub line: u32,
+    /// Column where the formula starts on the line (relative to the text
+    /// column).
+    pub col: u16,
+    /// Where its TeX source starts: block and content offset (see
+    /// [`SrcPos`]).
+    pub pos: SrcPos,
+    /// Length of the TeX source in bytes.
+    pub len: u32,
 }
 
 /// Where a figure's image goes: a box of exactly its final size.
@@ -263,6 +300,13 @@ pub fn layout(
         sizer,
     };
     build::Builder::new(inputs, width.max(1), indent, measure).run()
+}
+
+/// The glyphs of quote bars and code wrap markers as layout draws them
+/// with `opts` (for taking them out of copied text).
+pub fn deco_glyphs(opts: &RenderOptions) -> (String, String) {
+    let d = deco::Deco::new(opts);
+    (d.quote.text, d.wrap.text)
 }
 
 /// The text column for a terminal `width` columns wide: `(indent,

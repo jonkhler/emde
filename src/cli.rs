@@ -30,8 +30,8 @@ pub struct Cli {
     #[arg(short = 'p', long, help_heading = "Output")]
     pub plain: bool,
 
-    /// When to use the built-in pager (auto: on a terminal, for documents
-    /// taller than the screen).
+    /// When to use the built-in pager on a terminal (default always; auto:
+    /// for documents taller than the screen).
     #[arg(long, value_enum, value_name = "WHEN", help_heading = "Output")]
     pub paging: Option<WhenArg>,
 

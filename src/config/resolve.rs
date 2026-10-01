@@ -304,6 +304,7 @@ pub(crate) fn pager_options(l: &ConfigLayer) -> PagerOptions {
         scroll_lines: p.scroll_lines.unwrap_or(d.scroll_lines),
         search_case: p.search_case.unwrap_or(d.search_case),
         open: p.open.clone().unwrap_or(d.open),
+        keys: p.keys.0.clone(),
     }
 }
 

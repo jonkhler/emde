@@ -29,7 +29,9 @@ use pulldown_cmark::{Options, Parser};
 pub(crate) use inline::url_break_points;
 pub use slug::{Slugger, slug};
 
-use crate::ir::Document;
+use std::ops::Range;
+
+use crate::ir::{Block, Document, ListItem};
 use crate::options::{HtmlMode, MarkdownOptions, RenderOptions};
 use crate::source::Source;
 
@@ -101,18 +103,61 @@ impl ParseOptions {
 }
 
 /// Parse Markdown text into a document. Total: any input gives a document.
+///
+/// The source ranges of the result ([`Document::block_src`],
+/// [`ListItem::src`]) are byte offsets into `src`, without the whitespace
+/// at their ends.
 pub fn parse(src: &str, opts: &ParseOptions) -> Document {
     let math = opts.markdown.math;
     let tex = math && opts.tex_delimiters;
     // Multi-line display math becomes a fence first, so that its content
     // (a line of `=`, `- x`) cannot start a heading or a list.
-    let src = &*display_math::fence(src, tex, math);
-    let events = Parser::new_ext(src, opts.pulldown()).into_offset_iter();
+    let (fenced, map) = display_math::fence(src, tex, math);
+    let events = Parser::new_ext(&fenced, opts.pulldown()).into_offset_iter();
     let mut builder = builder::Builder::new(*opts);
-    for (event, range) in math_fixup::MathFixup::new(events, src, tex) {
+    for (event, range) in math_fixup::MathFixup::new(events, &fenced, tex) {
         builder.event_at(event, range);
     }
-    builder.finish()
+    let mut doc = builder.finish();
+    let fix = |r: &mut Range<u32>| *r = trim_end(src, map.range(r.clone()));
+    doc.block_src.iter_mut().for_each(fix);
+    for_items(&mut doc.blocks, &mut |item| fix(&mut item.src));
+    for f in &mut doc.footnotes {
+        for_items(&mut f.body, &mut |item| fix(&mut item.src));
+    }
+    doc
+}
+
+/// `r` without the whitespace (line breaks) at its end.
+fn trim_end(src: &str, r: Range<u32>) -> Range<u32> {
+    let text = src.get(r.start as usize..r.end as usize).unwrap_or("");
+    let kept = text.trim_end_matches([' ', '\t', '\n', '\r']).len();
+    r.start
+        ..r.start
+            .saturating_add(u32::try_from(kept).unwrap_or(u32::MAX))
+}
+
+/// Call `f` on every list item in `blocks`, nested ones too.
+fn for_items(blocks: &mut [Block], f: &mut impl FnMut(&mut ListItem)) {
+    for b in blocks {
+        match b {
+            Block::List(list) => {
+                for item in &mut list.items {
+                    f(item);
+                    for_items(&mut item.body, f);
+                }
+            }
+            Block::Quote { body, .. } | Block::Align { body, .. } | Block::Details { body, .. } => {
+                for_items(body, f);
+            }
+            Block::DefList(items) => {
+                for def in items.iter_mut().flat_map(|i| i.defs.iter_mut()) {
+                    for_items(def, f);
+                }
+            }
+            _ => {}
+        }
+    }
 }
 
 /// Parse a loaded source: like [`parse`], plus the base directory for

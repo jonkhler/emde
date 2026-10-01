@@ -51,6 +51,7 @@ pub(crate) trait Named: Copy + PartialEq + 'static {
 }
 
 /// Lowercase, trimmed, `_` → `-`.
+#[inline(never)]
 fn normalize(name: &str) -> String {
     name.trim().to_ascii_lowercase().replace('_', "-")
 }
@@ -226,23 +227,40 @@ named_values!(AmbiguousWidth { "1" => AmbiguousWidth::Narrow, "2" => AmbiguousWi
 named_values!(TmuxPassthrough { "if-enabled" => TmuxPassthrough::IfEnabled, "never" => TmuxPassthrough::Never }
     aliases { "true" => TmuxPassthrough::IfEnabled, "false" => TmuxPassthrough::Never });
 
+/// The documented names of `T`'s values. The messages built from them
+/// are compiled once ([`list_of`], [`unknown_among`]), not for every type.
+fn names<T: Named>() -> Vec<&'static str> {
+    T::NAMES.iter().map(|(n, _)| *n).collect()
+}
+
 /// "`a`, `b` or `c`".
 fn name_list<T: Named>() -> String {
+    list_of(&names::<T>())
+}
+
+/// The error message for an unknown name.
+pub(crate) fn unknown_name<T: Named>(value: &str) -> String {
+    unknown_among(value, &names::<T>())
+}
+
+/// "`a`, `b` or `c`" for `names`.
+#[inline(never)]
+fn list_of(names: &[&str]) -> String {
     let mut out = String::new();
-    let n = T::NAMES.len();
-    for (i, (name, _)) in T::NAMES.iter().enumerate() {
+    for (i, name) in names.iter().enumerate() {
         if i > 0 {
-            out.push_str(if i + 1 == n { " or " } else { ", " });
+            out.push_str(if i + 1 == names.len() { " or " } else { ", " });
         }
         let _ = write!(out, "`{name}`");
     }
     out
 }
 
-/// The error message for an unknown name.
-pub(crate) fn unknown_name<T: Named>(value: &str) -> String {
-    let mut msg = format!("invalid value `{value}`, expected {}", name_list::<T>());
-    if let Some(s) = did_you_mean(&normalize(value), T::NAMES.iter().map(|(n, _)| *n)) {
+/// The error message for `value`, which is none of `names`.
+#[inline(never)]
+fn unknown_among(value: &str, names: &[&str]) -> String {
+    let mut msg = format!("invalid value `{value}`, expected {}", list_of(names));
+    if let Some(s) = did_you_mean(&normalize(value), names.iter().copied()) {
         let _ = write!(msg, " (did you mean `{s}`?)");
     }
     msg

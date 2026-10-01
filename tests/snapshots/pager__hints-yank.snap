@@ -1,0 +1,45 @@
+---
+source: tests/pager.rs
+expression: "render_with(&screen, true)"
+---
+ 1│   auide                                                    │
+  │  ##│
+ 2│                                                            │
+ 3│  sntro with d link and f² inline.                          │
+  │  #          #          #│
+ 4│                                                            │
+ 5│   g                                                 rust   │
+  │   #│
+ 6│   fn main() {}                                             │
+ 7│   let x = 1;                                               │
+ 8│                                                            │
+ 9│                                                            │
+10│                          h = mc²                           │
+  │                          #│
+11│                                                            │
+12│  j───┬───╮                                                 │
+  │  #│
+13│  │ a │ b │                                                 │
+14│  ├───┼───┤                                                 │
+15│  │ 1 │ 2 │                                                 │
+16│  ╰───┴───╯                                                 │
+17│                                                            │
+18│  k first item                                              │
+  │  #│
+19│  l second item                                             │
+  │  #│
+20│                                                            │
+21│  ;aA quote over lines.                                     │
+  │  ##│
+22│                                                            │
+23│                         ;salt text                         │
+  │                         ##│
+24│                                                            │
+25│  ;dxt                                                      │
+  │  ##│
+26│  ━━━━────────────────────────────────────────────────────  │
+27│                                                            │
+28│  ;fst paragraph.                                           │
+  │  ##│
+29│                                                            │
+30│ -- YANK --  type a label, Esc cancels          L 1/28 100% │

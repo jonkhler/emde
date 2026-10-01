@@ -172,6 +172,20 @@ impl Composed<'_> {
         self
     }
 
+    /// The IR range a composed offset was made from: one byte (or none)
+    /// for text copied byte for byte, all of it for transformed text
+    /// (typeset math).
+    fn ir_range(&self, disp: u32) -> Range<u32> {
+        let i = self.map.partition_point(|e| e.disp <= disp);
+        match i.checked_sub(1).and_then(|i| self.map.get(i)) {
+            Some(e) if !e.verbatim => e.ir..e.ir_end,
+            _ => {
+                let at = self.ir_offset(disp);
+                at..at
+            }
+        }
+    }
+
     /// The IR offset of a composed offset.
     pub(super) fn ir_offset(&self, disp: u32) -> u32 {
         if self.map.is_empty() {
@@ -584,7 +598,7 @@ impl<'a> Builder<'a> {
                 dim: span.dim,
             };
             let style = self.sty.inline(base, flags, kind, link.is_some());
-            out.push(piece, style, link, SpanFlags::empty(), false);
+            out.push(piece, style, link, SpanFlags::MATH, false);
             pos = span.end;
         }
         let mut prev = start;
@@ -634,13 +648,35 @@ impl<'a> Builder<'a> {
         split_runs(&c.runs, |r| r.end, lines, pieces);
     }
 
-    /// Append the pieces of one wrapped line.
-    pub(super) fn put_pieces(&mut self, c: &Composed<'_>, line: &WrapLine, pieces: &[Piece]) {
+    /// Append the pieces of one wrapped line. With `base_off` (the content
+    /// offset of the IR text), inline math is recorded for
+    /// [`super::Layout::math_hits`].
+    pub(super) fn put_pieces(
+        &mut self,
+        c: &Composed<'_>,
+        line: &WrapLine,
+        pieces: &[Piece],
+        base_off: Option<u32>,
+    ) {
         let mut last = None;
+        let mut math_at = None;
         for p in pieces {
             let Some(run) = c.runs.get(p.run as usize) else {
                 continue;
             };
+            if let Some(base) = base_off
+                && run.flags.contains(SpanFlags::MATH)
+            {
+                let ir = c.ir_range(p.range.start);
+                if math_at != Some(ir.start) && ir.start < ir.end {
+                    math_at = Some(ir.start);
+                    let pos = crate::ir::SrcPos {
+                        top: self.top,
+                        off: base.saturating_add(ir.start),
+                    };
+                    self.math_starts(pos, ir.end - ir.start);
+                }
+            }
             let text = c
                 .text
                 .get(p.range.start as usize..p.range.end as usize)
@@ -685,7 +721,7 @@ impl<'a> Builder<'a> {
                 self.spaces(hang, look.pad_style);
             }
             let before = self.cols();
-            self.put_pieces(c, line, pieces.get(start..p).unwrap_or(&[]));
+            self.put_pieces(c, line, pieces.get(start..p).unwrap_or(&[]), Some(base_off));
             widest = widest.max(self.cols() - before);
             let off = base_off.saturating_add(c.ir_offset(line.range.start));
             self.end(look.kind, look.fill, off);

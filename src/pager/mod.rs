@@ -32,9 +32,9 @@
 //!
 //! # Paging decision
 //!
-//! Whether to page at all is the caller's decision: with `pager.enabled =
-//! "auto"` the pager is for a terminal and a document taller than it, like
-//! `less -F` ([`fits_on_screen`]).
+//! Whether to page at all is the caller's decision: only on a terminal, and
+//! by default for every document; with `pager.enabled = "auto"` only for a
+//! document taller than the screen, like `less -F` ([`fits_on_screen`]).
 //!
 //! # Starting the pager
 //!
@@ -69,6 +69,7 @@
 //! ```
 
 mod diff;
+mod hints;
 mod images;
 pub mod keymap;
 mod links;
@@ -80,6 +81,7 @@ pub mod term;
 mod toc;
 mod update;
 mod view;
+mod visual;
 mod watch;
 
 use std::io;

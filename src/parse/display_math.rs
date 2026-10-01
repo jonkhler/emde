@@ -29,8 +29,15 @@
 //! Single-line formulas (`\[ x \]`, `$$x$$`) are left alone: nothing inside
 //! them can start a block. Anything else that does not match is left alone
 //! too and parsed as before.
+//!
+//! The rewrite can change the number of lines (content on a delimiter line
+//! gets a line of its own), so [`fence`] also returns an [`OffsetMap`]:
+//! source ranges the parser finds in the rewritten text are mapped back to
+//! the text the reader wrote (for copying blocks and opening an editor at
+//! the right line).
 
 use std::borrow::Cow;
+use std::ops::Range;
 
 /// The most lines a display block may span.
 const MAX_LINES: usize = 400;
@@ -109,12 +116,55 @@ fn code_fence(content: &str) -> Option<(char, usize)> {
     (n >= 3).then_some((c, n))
 }
 
+/// One rewritten block: bytes `new` of the rewritten text stand for bytes
+/// `old` of the source.
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct Edit {
+    old: Range<usize>,
+    new: Range<usize>,
+}
+
+/// Maps byte offsets of the text [`fence`] returns back to the source.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) struct OffsetMap {
+    /// In order, never overlapping.
+    edits: Vec<Edit>,
+}
+
+impl OffsetMap {
+    /// The source offset of rewritten offset `off`. Inside a rewritten
+    /// block a range `start` maps to the start of the original block, an
+    /// `end` to its end, so a range covering any of a block covers all of
+    /// the original.
+    pub(crate) fn map(&self, off: usize, end: bool) -> usize {
+        let i = self.edits.partition_point(|e| e.new.start <= off);
+        let Some(e) = i.checked_sub(1).and_then(|i| self.edits.get(i)) else {
+            return off;
+        };
+        if off >= e.new.end {
+            off - e.new.end + e.old.end
+        } else if end && off > e.new.start {
+            e.old.end
+        } else {
+            e.old.start
+        }
+    }
+
+    /// [`OffsetMap::map`] for a range.
+    pub(crate) fn range(&self, r: Range<u32>) -> Range<u32> {
+        let to = |off: u32, end| u32::try_from(self.map(off as usize, end)).unwrap_or(u32::MAX);
+        to(r.start, false)..to(r.end, true).max(to(r.start, false))
+    }
+}
+
 /// Rewrite multi-line display math blocks into ```` ```math ```` fences.
 /// `brackets` enables `\[ … \]`, `dollars` enables `$$ … $$`. Returns the
-/// source unchanged (borrowed) when there is nothing to rewrite.
-pub(crate) fn fence(src: &str, brackets: bool, dollars: bool) -> Cow<'_, str> {
+/// source unchanged (borrowed) when there is nothing to rewrite, and how
+/// offsets of the result map back to the source.
+pub(crate) fn fence(src: &str, brackets: bool, dollars: bool) -> (Cow<'_, str>, OffsetMap) {
+    let mut map = OffsetMap::default();
     if !(brackets && src.contains("\\[") || dollars && src.contains("$$")) {
-        return Cow::Borrowed(src);
+        return (Cow::Borrowed(src), map);
     }
     let lines = lines(src);
     let mut out = String::new();
@@ -150,15 +200,20 @@ pub(crate) fn fence(src: &str, brackets: bool, dollars: bool) -> Cow<'_, str> {
             continue;
         };
         out.push_str(&src[copied..line.start]);
+        let new_start = out.len();
         write_fence(src, &lines[i..=end], d, &mut out);
         copied = lines.get(end + 1).map_or(src.len(), |l| l.start);
+        map.edits.push(Edit {
+            old: line.start..copied,
+            new: new_start..out.len(),
+        });
         i = end + 1;
     }
-    if copied == 0 {
-        return Cow::Borrowed(src);
+    if map.edits.is_empty() {
+        return (Cow::Borrowed(src), map);
     }
     out.push_str(&src[copied..]);
-    Cow::Owned(out)
+    (Cow::Owned(out), map)
 }
 
 /// The line closing a block opened on line `open`, if any.
@@ -232,7 +287,7 @@ mod tests {
     use super::*;
 
     fn f(src: &str) -> String {
-        fence(src, true, true).into_owned()
+        fence(src, true, true).0.into_owned()
     }
 
     #[test]
@@ -277,7 +332,7 @@ mod tests {
             "\\[\nx\n\\\\]\n",
         ] {
             assert!(
-                matches!(fence(src, true, true), Cow::Borrowed(_)),
+                matches!(fence(src, true, true).0, Cow::Borrowed(_)),
                 "{src:?}"
             );
         }
@@ -287,11 +342,11 @@ mod tests {
     fn the_switches_are_respected() {
         let src = "\\[\na\n=\n\\]\n$$\nb\n=\n$$\n";
         assert_eq!(
-            fence(src, false, true),
+            fence(src, false, true).0,
             "\\[\na\n=\n\\]\n```math\nb\n=\n```\n"
         );
         assert_eq!(
-            fence(src, true, false),
+            fence(src, true, false).0,
             "```math\na\n=\n```\n$$\nb\n=\n$$\n"
         );
     }
@@ -299,6 +354,29 @@ mod tests {
     #[test]
     fn backticks_in_the_formula_lengthen_the_fence() {
         assert_eq!(f("\\[\n```x\n\\]\n"), "````math\n```x\n````\n");
+    }
+
+    #[test]
+    fn offsets_map_back_to_the_source() {
+        let src = "Intro\n\n\\[ a =\nb \\]\n\nAfter.\n";
+        let (text, map) = fence(src, true, true);
+        assert_eq!(text, "Intro\n\n```math\na =\nb\n```\n\nAfter.\n");
+        let fence_at = text.find("```").unwrap();
+        let fence_end = text.find("\n\nAfter").unwrap() + 1;
+        let block = src.find("\\[").unwrap();
+        let block_end = src.find("\n\nAfter").unwrap() + 1;
+        assert_eq!(map.map(0, false), 0, "before the block");
+        assert_eq!(map.map(fence_at, false), block);
+        assert_eq!(map.map(fence_at + 5, false), block, "inside: the start");
+        assert_eq!(map.map(fence_at + 5, true), block_end, "inside: the end");
+        assert_eq!(map.map(fence_end, true), block_end);
+        let after = text.find("After").unwrap();
+        assert_eq!(&src[map.map(after, false)..], "After.\n");
+        assert_eq!(
+            map.range(u32::try_from(fence_at).unwrap()..u32::try_from(fence_end).unwrap()),
+            u32::try_from(block).unwrap()..u32::try_from(block_end).unwrap()
+        );
+        assert_eq!(fence("plain", true, true).1, OffsetMap::default());
     }
 
     #[test]

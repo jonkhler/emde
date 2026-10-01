@@ -180,7 +180,7 @@ impl Builder {
     /// A task list marker for the innermost list item.
     pub(super) fn task(&mut self, done: bool) {
         for c in self.stack.iter_mut().rev() {
-            if let Container::Item { task, body } = c {
+            if let Container::Item { task, body, .. } = c {
                 if task.is_none() && body.is_empty() {
                     *task = Some(done);
                 }

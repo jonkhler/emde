@@ -307,7 +307,7 @@ impl Builder<'_> {
             self.begin();
             self.placed();
             self.spaces(width.saturating_sub(line.cols) / 2, StyleId(0));
-            self.put_pieces(c, line, pieces.get(start..p).unwrap_or(&[]));
+            self.put_pieces(c, line, pieces.get(start..p).unwrap_or(&[]), None);
             self.end(LineKind::Math, Fill::None, off);
         }
     }

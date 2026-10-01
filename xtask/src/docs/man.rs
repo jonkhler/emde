@@ -216,10 +216,10 @@ fn synopsis_and_description() -> Roff {
     ]);
     para(
         &mut roff,
-        "On a terminal, a document taller than the screen opens in the built-in pager (see \
-         KEYS). Otherwise, and with --plain, emde writes the rendered document to standard \
-         output; when that is not a terminal, without escape sequences unless --color says \
-         otherwise. With -, or without FILE when standard input is not a terminal, emde reads \
+        "On a terminal, a document opens in the built-in pager (see KEYS; with pager.enabled \
+         = \"auto\", only one taller than the screen). Otherwise, and with --plain, emde \
+         writes the rendered document to standard output; when that is not a terminal, \
+         without escape sequences unless --color says otherwise. With -, or without FILE when standard input is not a terminal, emde reads \
          standard input. A directory shows its README. FILE#ANCHOR opens the pager at the \
          heading whose slug is ANCHOR, as in GitHub links (lower case, with spaces as \
          hyphens).",

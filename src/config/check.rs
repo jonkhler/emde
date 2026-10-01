@@ -333,6 +333,32 @@ pub(super) fn check_code_themes(
     }
 }
 
+/// Check `[pager.keys]`: action names, key names, and keys bound to two
+/// actions (each document on its own, against the default keys).
+pub(super) fn check_keys(user_docs: &[Parsed<ConfigLayer>], diags: &mut Vec<Diagnostic>) {
+    for doc in user_docs {
+        let keys = &doc.value.pager.keys.0;
+        if keys.is_empty() {
+            continue;
+        }
+        let (_, issues) = crate::pager::keymap::Keymap::new(keys);
+        let items: Vec<Deferred<'_>> = issues
+            .into_iter()
+            .map(|issue| {
+                // The action as written in the document, for its line.
+                let action = keys
+                    .iter()
+                    .find(|(a, _)| *a == issue.action)
+                    .map_or("", |(a, _)| a.as_str());
+                let path = vec!["pager", "keys", action];
+                let message = move || format!("pager.keys.{}: {}", issue.action, issue.message);
+                (path, Box::new(message) as Box<dyn FnOnce() -> String>)
+            })
+            .collect();
+        doc.report(Severity::Warning, items, diags);
+    }
+}
+
 /// Check that `[code.aliases]` targets name languages (loads the syntax
 /// set, so only for [`Checks::Thorough`]).
 pub(super) fn check_aliases(user_docs: &[Parsed<ConfigLayer>], diags: &mut Vec<Diagnostic>) {

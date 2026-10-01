@@ -41,7 +41,7 @@ use crate::theme::{Element, Theme};
 
 use super::deco::Deco;
 use super::style::{Ctx, Styles};
-use super::{Fill, ImageSizer, Layout, LineKind, LinkHit, Span, SpanFlags};
+use super::{Fill, ImageSizer, Layout, LineKind, LinkHit, MathHit, Span, SpanFlags};
 
 /// Content keeps at least this many columns (or half the measure, if
 /// less) however deep the nesting.
@@ -211,6 +211,10 @@ pub(super) struct Builder<'a> {
     pending_gap: Option<usize>,
     block_first: Option<u32>,
     pending_heading: Option<HeadingId>,
+    /// Inline math put on the current line: where its text starts in the
+    /// arena, its source position and length (the column is known once
+    /// the line is aligned).
+    line_math: Vec<(u32, SrcPos, u32)>,
 }
 
 fn to_u32(n: usize) -> u32 {
@@ -264,6 +268,7 @@ impl<'a> Builder<'a> {
                 block_lines: Vec::with_capacity(doc.blocks.len()),
                 heading_line: vec![u32::MAX; doc.headings.len()],
                 link_hits: Vec::new(),
+                math_hits: Vec::new(),
                 images: Vec::new(),
                 code: Vec::new(),
                 styles: crate::style::StyleTable::new(),
@@ -286,6 +291,7 @@ impl<'a> Builder<'a> {
             pending_gap: None,
             block_first: None,
             pending_heading: None,
+            line_math: Vec::new(),
         }
     }
 
@@ -766,6 +772,7 @@ impl<'a> Builder<'a> {
         let n = self.out.spans.len() - first;
         let line = to_u32(self.out.lines.len());
         self.record_links(line, first);
+        self.record_math(line, first);
         // Monotonic positions even if a caller computes one too small.
         let pos = match self.out.lines.last() {
             Some(prev) if prev.pos > pos => prev.pos,
@@ -902,6 +909,43 @@ impl<'a> Builder<'a> {
         }
         if let Some(hit) = open {
             self.out.link_hits.push(hit);
+        }
+    }
+
+    /// Note that inline math with its source at `pos` (`len` bytes) starts
+    /// with the next text put on the current line.
+    pub(super) fn math_starts(&mut self, pos: SrcPos, len: u32) {
+        let arena = to_u32(self.out.text.len());
+        self.line_math.push((arena, pos, len));
+    }
+
+    /// Record the inline math of the line whose spans start at `first`.
+    fn record_math(&mut self, line: u32, first: usize) {
+        if self.line_math.is_empty() {
+            return;
+        }
+        let spans = self.out.spans.get(first..).unwrap_or(&[]);
+        for (arena, pos, len) in std::mem::take(&mut self.line_math) {
+            let mut col = 0u16;
+            for span in spans {
+                let end = span.off.saturating_add(span.len);
+                if span.flags.contains(SpanFlags::MATH) && span.off <= arena && arena < end {
+                    let before = self
+                        .out
+                        .text
+                        .get(span.off as usize..arena as usize)
+                        .unwrap_or("");
+                    let col = col.saturating_add(to_u16(str_width(before, self.amb)));
+                    self.out.math_hits.push(MathHit {
+                        line,
+                        col,
+                        pos,
+                        len,
+                    });
+                    break;
+                }
+                col = col.saturating_add(span.cols);
+            }
         }
     }
 

@@ -63,8 +63,8 @@ code = "auto"
 #   image_alt image_caption image_frame
 #   math math_var math_num math_op math_rel math_func math_text math_delim
 #   math_error
-#   muted status status_msg search_match search_current prompt hint toc
-#   toc_current
+#   muted status status_msg search_match search_current selection prompt hint
+#   toc toc_current
 #
 # Example:
 # [style.h1]
@@ -205,9 +205,10 @@ wrap_marker = "↳"
 icons = "unicode"
 
 [pager]
-# Built-in pager: auto (on a terminal, for documents taller than the
-# screen), always or never.
-enabled = "auto"
+# Built-in pager: always (on a terminal, whatever the length), auto (on a
+# terminal, only for documents taller than the screen, like less -F) or
+# never.
+enabled = "always"
 # Mouse wheel scrolling and link clicks.
 mouse = true
 # Reload the document when the file changes.
@@ -220,6 +221,18 @@ search_case = "smart"
 # Opening links: auto (open or xdg-open locally, copy the URL over SSH),
 # never, or a command that gets the URL as its last argument.
 open = "auto"
+
+[pager.keys]
+# Other keys for the pager: an action name from the key tables and its
+# keys, which replace the default ones (`[]` leaves the action without
+# keys). A key is a character (`j`, `G`, `?`), `C-x` (Ctrl), `M-x` (Alt), a
+# name (`Enter`, `Esc`, `Space`, `Tab`, `S-Tab`, `Backspace`, `Up`, `Down`,
+# `Left`, `Right`, `Home`, `End`, `PgUp`, `PgDn`, `Ins`, `Del`, `F1` to
+# `F24`), or several keys in a row: `gg`, or keys separated by spaces (`g
+# Home`). A key bound to two actions goes to the later one:
+# page-down = ["Space", "f", "PgDn"]
+# hints-follow = ["F"]
+# quit = ["q", "ZZ"]
 
 [terminal]
 # Ask the terminal once for its background colour, image support and cell

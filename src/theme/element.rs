@@ -107,6 +107,8 @@ elements! {
     StatusMsg = "status_msg" => Status,
     SearchMatch = "search_match" => Text,
     SearchCurrent = "search_current" => SearchMatch,
+    /// The lines selected in the pager's Visual mode.
+    Selection = "selection" => Text,
     Prompt = "prompt" => Status,
     Hint = "hint" => Text,
     Toc = "toc" => Text,

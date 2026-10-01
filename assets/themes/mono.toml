@@ -111,6 +111,9 @@ reverse = true
 bold = true
 reverse = true
 
+[style.selection]
+reverse = true
+
 [style.hint]
 bold = true
 reverse = true

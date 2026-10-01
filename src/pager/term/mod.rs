@@ -108,6 +108,13 @@ pub trait Terminal {
         true
     }
 
+    /// Run `argv` (the editor) in the foreground and wait for it; called
+    /// after [`Terminal::leave`], and followed by [`Terminal::enter`].
+    /// Returns whether it succeeded.
+    fn run_foreground(&mut self, argv: &[std::ffi::OsString]) -> io::Result<bool> {
+        super::os::run_foreground(argv)
+    }
+
     /// Set the bytes [`Terminal::leave`] writes before [`EXIT`] (the image
     /// layer's kitty deletions). The real terminal keeps them process-wide
     /// ([`set_cleanup`]), so a panic deletes the images too.
@@ -539,6 +546,17 @@ impl Signals {
     /// Whether SIGTSTP arrived since the last call.
     pub(crate) fn take_stop(&self) -> bool {
         self.flags.0.stop.swap(false, Ordering::SeqCst)
+    }
+
+    /// Forget a SIGINT (one from the terminal while another program had
+    /// it: that program's, not the pager's).
+    pub(crate) fn forget_interrupt(&self) {
+        let int = usize::try_from(signal_hook::consts::SIGINT).unwrap_or(0);
+        let _ = self
+            .flags
+            .0
+            .exit
+            .compare_exchange(int, 0, Ordering::SeqCst, Ordering::SeqCst);
     }
 }
 

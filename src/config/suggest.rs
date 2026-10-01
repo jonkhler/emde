@@ -34,6 +34,13 @@ pub(crate) fn did_you_mean<'a>(
     word: &str,
     candidates: impl IntoIterator<Item = &'a str>,
 ) -> Option<&'a str> {
+    closest(word, &mut candidates.into_iter())
+}
+
+/// [`did_you_mean`], compiled once rather than for every kind of
+/// candidate list (its callers are many, and all on error paths).
+#[inline(never)]
+fn closest<'a>(word: &str, candidates: &mut dyn Iterator<Item = &'a str>) -> Option<&'a str> {
     let len = word.chars().count();
     // Lengths as `distance` compares the words (lowercased).
     let lower_len = |s: &str| s.chars().flat_map(char::to_lowercase).count();

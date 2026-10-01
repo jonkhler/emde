@@ -224,6 +224,9 @@ fg = "base"
 bg = "peach"
 bold = true
 
+[style.selection]
+reverse = true
+
 [style.prompt]
 fg = "accent"
 

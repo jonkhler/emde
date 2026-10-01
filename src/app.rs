@@ -74,9 +74,9 @@ const BRIEF_DIAGNOSTICS: usize = 3;
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Paging {
     /// On a terminal, for documents taller than the screen (like `less -F`).
-    #[default]
     Auto,
-    /// On a terminal, whatever the length.
+    /// On a terminal, whatever the length (the default).
+    #[default]
     Always,
     /// Never: stream mode.
     Never,
@@ -621,8 +621,9 @@ fn pager_request(cli: &Cli, config: &Config, docs: &[Doc]) -> PagerRequest {
     }
 }
 
-/// Whether the pager would run: on a terminal, unless paging is off, for
-/// output taller than the screen or when paging is `always`.
+/// Whether the pager would run: never unless standard output is a
+/// terminal; then unless paging is off, always, or with `auto` for output
+/// taller than the screen.
 fn wants_pager(request: &PagerRequest, caps: &Caps, lines: usize) -> bool {
     if !caps.is_tty {
         return false;

@@ -74,6 +74,8 @@ enum Container {
     Item {
         task: Option<bool>,
         body: Vec<Block>,
+        /// Where the item is in the (rewritten) source.
+        src: Range<u32>,
     },
     Footnote {
         label: Box<str>,
@@ -318,8 +320,13 @@ pub(crate) struct Builder {
     footnotes: Vec<(Box<str>, Vec<LinkId>)>,
     footnote_defs: HashMap<Box<str>, Vec<Block>>,
     found: Vec<linkify::Found>,
-    /// Source length of the event being handled (a capacity hint).
-    size_hint: usize,
+    /// Source range of the event being handled.
+    range: Range<usize>,
+    /// Source range of the top-level element being read: the next block
+    /// that lands at the top level gets it.
+    top_src: Range<usize>,
+    /// Source range of each top-level block in `root`.
+    root_src: Vec<Range<u32>>,
 }
 
 impl Builder {
@@ -352,7 +359,9 @@ impl Builder {
             footnotes: Vec::new(),
             footnote_defs: HashMap::new(),
             found: Vec::new(),
-            size_hint: 0,
+            range: 0..0,
+            top_src: 0..0,
+            root_src: Vec::new(),
         }
     }
 
@@ -363,10 +372,28 @@ impl Builder {
     }
 
     /// Feed one event with its source range, which sizes the buffers of the
-    /// blocks it starts.
+    /// blocks it starts and says where top-level blocks are.
     pub(crate) fn event_at(&mut self, ev: Event<'_>, range: Range<usize>) {
+        if self.stack.is_empty() && starts_block(&ev) {
+            // A new top-level element: whatever is still open belongs to
+            // the one before (each of these would be finished by the event
+            // anyway).
+            self.finish_code();
+            self.finish_meta();
+            self.finish_html_block();
+            self.finish_image();
+            self.flush_leaf(true);
+        }
+        if self.stack.is_empty() && starts_block(&ev) {
+            self.top_src = range.clone();
+        } else if !range.is_empty() {
+            if self.top_src.is_empty() {
+                self.top_src.start = range.start;
+            }
+            self.top_src.end = self.top_src.end.max(range.end);
+        }
+        self.range = range;
         if !self.capture(&ev) {
-            self.size_hint = range.len();
             self.dispatch(ev);
         }
     }
@@ -403,6 +430,7 @@ impl Builder {
                 })
                 .collect();
             self.root.push(Block::FootnoteSection);
+            self.root_src.push(0..0);
         }
         // Every block anchor must name an existing block.
         let last = BlockId(to_u32(self.root.len().saturating_sub(1)));
@@ -424,6 +452,7 @@ impl Builder {
         });
         self.doc.title = fm_title.or_else(|| self.first_h1.take());
         self.doc.blocks = mem::take(&mut self.root);
+        self.doc.block_src = mem::take(&mut self.root_src);
         self.doc
     }
 
@@ -598,9 +627,11 @@ impl Builder {
             }
             Tag::Item => {
                 self.flush_leaf(true);
+                let src = to_u32(self.range.start)..to_u32(self.range.end);
                 self.push_container(Container::Item {
                     task: None,
                     body: Vec::new(),
+                    src,
                 });
             }
             Tag::FootnoteDefinition(label) => {
@@ -746,6 +777,27 @@ fn column_align(a: Alignment) -> Option<HAlign> {
         Alignment::Center => Some(HAlign::Center),
         Alignment::Right => Some(HAlign::Right),
     }
+}
+
+/// Whether an event starts a block (and so, at the top level, a new
+/// top-level element).
+fn starts_block(ev: &Event<'_>) -> bool {
+    matches!(
+        ev,
+        Event::Rule
+            | Event::Start(
+                Tag::Paragraph
+                    | Tag::Heading { .. }
+                    | Tag::BlockQuote(_)
+                    | Tag::CodeBlock(_)
+                    | Tag::HtmlBlock
+                    | Tag::List(_)
+                    | Tag::FootnoteDefinition(_)
+                    | Tag::DefinitionList
+                    | Tag::Table(_)
+                    | Tag::MetadataBlock(_)
+            )
+    )
 }
 
 /// `Some` boxed copy of a non-empty string.

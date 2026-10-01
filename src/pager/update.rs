@@ -14,14 +14,15 @@ use std::rc::Rc;
 use crate::layout::Layout;
 
 use super::PagerDoc;
-use super::keymap::{self, Command, Context};
+use super::hints::{self, Act};
+use super::keymap::{Command, Context};
 use super::links::{self, Follow};
 use super::search::Search;
 use super::state::{
-    Derived, DocKey, Focus, Goto, Hints, Mode, Outline, Page, Place, Prompt, State, Visit,
+    Derived, DocKey, Focus, Goto, HintKind, Mode, Outline, Page, Place, Prompt, State, Visit,
 };
 use super::term::{Button, Key, KeyCode, Mouse, MouseKind};
-use super::toc;
+use super::{toc, visual};
 
 /// Largest count prefix.
 const MAX_COUNT: u32 = 1_000_000;
@@ -31,6 +32,9 @@ const MAX_COUNT: u32 = 1_000_000;
 pub enum Action {
     /// A key press.
     Key(Key),
+    /// No key followed an unfinished key sequence for
+    /// [`super::keymap::SEQUENCE_TIMEOUT`]: what it is bound to runs.
+    KeyTimeout,
     /// A mouse event.
     Mouse(Mouse),
     /// Pasted text (typed into a prompt or filter).
@@ -80,8 +84,10 @@ pub enum Effect {
     /// A local file that is not Markdown: show its path (a directory is
     /// loaded through its README).
     ShowFile(PathBuf),
-    /// Put text on the clipboard.
-    Copy(String),
+    /// Put text on the clipboard; `what` is the message about it.
+    Copy { text: String, what: String },
+    /// Open the file in the editor at `line` (1-based), then read it again.
+    Edit { path: PathBuf, line: usize },
     /// Read the current file again.
     Reload,
     /// Turn mouse reporting on or off.
@@ -127,6 +133,18 @@ pub fn update(state: &mut State, action: Action) -> Vec<Effect> {
         Action::Key(key) => {
             state.message = None;
             on_key(state, key)
+        }
+        Action::KeyTimeout => {
+            let keys = mem::take(&mut state.keys);
+            match state
+                .settings
+                .keymap
+                .lookup(context(&state.mode), &keys)
+                .exact
+            {
+                Some(cmd) if !keys.is_empty() => command(state, cmd),
+                _ => Vec::new(),
+            }
         }
         Action::Mouse(m) => on_mouse(state, m),
         Action::Paste(text) => type_text(state, &text),
@@ -195,6 +213,7 @@ pub fn update(state: &mut State, action: Action) -> Vec<Effect> {
 fn context(mode: &Mode) -> Context {
     match mode {
         Mode::Normal => Context::Normal,
+        Mode::Visual(_) => Context::Visual,
         Mode::Prompt(_) => Context::Prompt,
         Mode::Outline(_) => Context::Outline,
         Mode::Help { .. } => Context::Help,
@@ -204,41 +223,115 @@ fn context(mode: &Mode) -> Context {
 }
 
 fn on_key(state: &mut State, key: Key) -> Vec<Effect> {
-    let cmd = keymap::lookup(context(&state.mode), key);
-    match (&state.mode, cmd) {
-        (Mode::Normal, Some(Command::Count)) => {
-            if let KeyCode::Char(c) = key.code
-                && let Some(d) = c.to_digit(10)
-            {
-                let n = state
-                    .count
-                    .unwrap_or(0)
-                    .saturating_mul(10)
-                    .saturating_add(d);
-                state.count = Some(n.min(MAX_COUNT));
-            }
-            Vec::new()
-        }
-        (_, Some(cmd)) => command(state, cmd),
-        (Mode::Normal, None) => {
-            state.count = None;
-            Vec::new()
-        }
-        (Mode::Prompt(_) | Mode::Outline(_) | Mode::Hints(_) | Mode::Command(_), None) => {
-            match key.text() {
+    if let Some(cmd) = state.awaiting.take() {
+        return argument(state, cmd, key);
+    }
+    let ctx = context(&state.mode);
+    if matches!(
+        ctx,
+        Context::Prompt | Context::Outline | Context::Hints | Context::Command
+    ) {
+        // Text input: single keys, the rest types.
+        return match state.settings.keymap.command(ctx, key) {
+            Some(cmd) => command(state, cmd),
+            None => match key.text() {
                 Some(c) => {
                     let mut buf = [0u8; 4];
                     type_text(state, c.encode_utf8(&mut buf))
                 }
-                None if matches!(state.mode, Mode::Hints(_)) => {
+                None if ctx == Context::Hints => {
                     state.mode = Mode::Normal;
                     Vec::new()
                 }
                 None => Vec::new(),
-            }
-        }
-        (Mode::Help { .. }, None) => Vec::new(),
+            },
+        };
     }
+    if key == Key::plain(KeyCode::Esc) && !state.keys.is_empty() {
+        // Esc drops an unfinished sequence (and its count).
+        state.keys.clear();
+        state.count = None;
+        return Vec::new();
+    }
+    let mut seq = mem::take(&mut state.keys);
+    seq.push(key);
+    let found = state.settings.keymap.lookup(ctx, &seq);
+    if found.longer {
+        // More keys may follow (`g` of `gg`): wait for them.
+        state.keys = seq;
+        return Vec::new();
+    }
+    if let Some(cmd) = found.exact {
+        return key_command(state, cmd, key);
+    }
+    if let Some((_, before)) = seq.split_last()
+        && !before.is_empty()
+    {
+        // The keys before did not continue: what they mean, then this key
+        // on its own.
+        let mut out = match state.settings.keymap.lookup(ctx, before).exact {
+            Some(cmd) => command(state, cmd),
+            None => {
+                state.count = None;
+                Vec::new()
+            }
+        };
+        out.extend(on_key(state, key));
+        return out;
+    }
+    if ctx != Context::Help {
+        state.count = None;
+    }
+    Vec::new()
+}
+
+/// A bound key: a digit of the count, or a command.
+fn key_command(state: &mut State, cmd: Command, key: Key) -> Vec<Effect> {
+    if cmd == Command::Count {
+        if let KeyCode::Char(c) = key.code
+            && let Some(d) = c.to_digit(10)
+        {
+            let n = state
+                .count
+                .unwrap_or(0)
+                .saturating_mul(10)
+                .saturating_add(d);
+            state.count = Some(n.min(MAX_COUNT));
+        }
+        return Vec::new();
+    }
+    command(state, cmd)
+}
+
+/// The key after `m` or `'`: the mark's name.
+fn argument(state: &mut State, cmd: Command, key: Key) -> Vec<Effect> {
+    state.count = None;
+    let Some(name) = key.text() else {
+        return Vec::new();
+    };
+    let jump = cmd == Command::JumpMark;
+    if !(name.is_ascii_lowercase() || jump && name == '\'') {
+        state.complain(format!(
+            "marks are a to z, not {}",
+            crate::text::sanitize(&name.to_string())
+        ));
+        return Vec::new();
+    }
+    if !jump {
+        state.set_mark(name, state.top_place());
+        state.say(format!("mark {name} set"));
+        return Vec::new();
+    }
+    match state.mark(name) {
+        Some(place) => {
+            state.record_jump();
+            state.top = place.line(&state.layout);
+            state.clamp_top();
+        }
+        None if name == '\'' => state.say("no jump yet"),
+        None => state.complain(format!("no mark {name}")),
+    }
+    Vec::new()
 }
 
 /// Text typed (or pasted) into the prompt, the outline filter or hints.
@@ -266,7 +359,7 @@ fn type_text(state: &mut State, text: &str) -> Vec<Effect> {
             input.push_str(&clean);
             Vec::new()
         }
-        Mode::Normal | Mode::Help { .. } => Vec::new(),
+        Mode::Normal | Mode::Help { .. } | Mode::Visual(_) => Vec::new(),
     }
 }
 
@@ -282,6 +375,9 @@ fn command(state: &mut State, cmd: Command) -> Vec<Effect> {
     let n = count.unwrap_or(1).max(1);
     let page = state.view_rows().max(1).saturating_mul(n);
     let half = (state.view_rows() / 2).max(1).saturating_mul(n);
+    if matches!(state.mode, Mode::Visual(_)) && visual::motion(state, cmd, n, count) {
+        return Vec::new();
+    }
     match cmd {
         Command::Count => {}
         Command::LineDown => scroll(state, lines(n, true)),
@@ -290,15 +386,28 @@ fn command(state: &mut State, cmd: Command) -> Vec<Effect> {
         Command::PageUp => scroll(state, lines(page, false)),
         Command::HalfDown => scroll(state, lines(half, true)),
         Command::HalfUp => scroll(state, lines(half, false)),
-        Command::Top => state.jump_to(count.map_or(0, |c| c.saturating_sub(1))),
-        Command::Bottom => match count {
-            Some(c) => state.jump_to(c.saturating_sub(1)),
-            None => state.top = state.max_top(),
-        },
+        Command::Top => {
+            state.record_jump();
+            state.jump_to(count.map_or(0, |c| c.saturating_sub(1)));
+        }
+        Command::Bottom => {
+            state.record_jump();
+            match count {
+                Some(c) => state.jump_to(c.saturating_sub(1)),
+                None => state.top = state.max_top(),
+            }
+        }
         Command::Percent => {
+            state.record_jump();
             let pct = count.unwrap_or(0).min(100);
             state.jump_to(state.layout.len().saturating_mul(pct) / 100);
         }
+        Command::ScrollCenter | Command::ScrollTop | Command::ScrollBottom => {
+            let line = current_line(state);
+            place_line(state, line, cmd);
+        }
+        Command::NextBlock | Command::PrevBlock => {}
+        Command::SetMark | Command::JumpMark => state.awaiting = Some(cmd),
         Command::NextHeading => heading_jump(state, n, true, false),
         Command::PrevHeading => heading_jump(state, n, false, false),
         Command::NextSection => heading_jump(state, n, true, true),
@@ -309,6 +418,10 @@ fn command(state: &mut State, cmd: Command) -> Vec<Effect> {
         Command::NextMatch => next_match(state, n, false),
         Command::PrevMatch => next_match(state, n, true),
         Command::ClearSearch => {
+            if state.zoom.take().is_some() {
+                state.pending = Some(Goto::Place(state.top_place()));
+                return vec![Effect::Relayout];
+            }
             if state.search.take().is_none() {
                 state.focus = None;
             }
@@ -316,10 +429,23 @@ fn command(state: &mut State, cmd: Command) -> Vec<Effect> {
         Command::FocusNext => focus_step(state, n, true),
         Command::FocusPrev => focus_step(state, n, false),
         Command::Follow => return follow_focus(state),
-        Command::Hints => open_hints(state),
+        Command::LinkHints => hints::open(state, HintKind::Links),
+        Command::FollowHints => hints::open(state, HintKind::Follow),
+        Command::YankHints => {
+            if visible_focus(state).is_some() {
+                return copy_focus(state);
+            }
+            hints::open(state, HintKind::Yank);
+        }
+        Command::VisualHints => hints::open(state, HintKind::Visual),
+        Command::VisualLine => visual::enter(state),
+        Command::VisualSwap => visual::swap(state),
+        Command::VisualYank => return visual::yank(state),
+        Command::VisualYankText => return visual::yank_text(state),
+        Command::VisualExit => state.mode = Mode::Normal,
+        Command::Edit => return edit(state),
         Command::Back => return go_history(state, Nav::Back),
         Command::Forward => return go_history(state, Nav::Forward),
-        Command::CopyUrl => return copy_focus(state),
         Command::Reload => {
             if state.page.path().is_some() {
                 return vec![Effect::Reload];
@@ -424,6 +550,52 @@ fn command(state: &mut State, cmd: Command) -> Vec<Effect> {
     Vec::new()
 }
 
+/// The line `zz`, `zt` and `zb` move: the current match, else the
+/// focused link if they are on screen, else the middle line.
+fn current_line(state: &State) -> usize {
+    let (top, rows) = (state.top, state.view_rows());
+    let shown = |l: &usize| (top..top + rows).contains(l);
+    let found = state
+        .search
+        .as_ref()
+        .and_then(|s| s.current.and_then(|i| s.matches.get(i)))
+        .map(|m| state.layout.line_at(m.pos()))
+        .filter(shown);
+    let focused = visible_focus(state)
+        .and_then(|i| state.derived.links.get(i))
+        .map(|o| (o.line as usize).max(top));
+    found
+        .or(focused)
+        .unwrap_or_else(|| top + rows.saturating_sub(1) / 2)
+}
+
+/// `zz`, `zt`, `zb`: put `line` in the middle, at the top or at the
+/// bottom of the screen (as far as the ends allow).
+pub(crate) fn place_line(state: &mut State, line: usize, how: Command) {
+    let rows = state.view_rows().max(1);
+    state.top = match how {
+        Command::ScrollTop => line,
+        Command::ScrollBottom => (line + 1).saturating_sub(rows),
+        _ => line.saturating_sub(rows / 2),
+    };
+    state.clamp_top();
+}
+
+/// `e`: the editor at the source line of the selection (Visual mode) or
+/// of the block at the top.
+fn edit(state: &mut State) -> Vec<Effect> {
+    let Some(path) = state.page.path().map(PathBuf::from) else {
+        state.complain("standard input cannot be edited");
+        return Vec::new();
+    };
+    let at = state.selection().map_or(state.top, |(lo, _)| lo);
+    let line = visual::edit_line(state, at);
+    if matches!(state.mode, Mode::Visual(_)) {
+        state.mode = Mode::Normal;
+    }
+    vec![Effect::Edit { path, line }]
+}
+
 /// Scroll by `delta` lines (clamped).
 fn scroll(state: &mut State, delta: isize) {
     let top = if delta >= 0 {
@@ -478,6 +650,7 @@ fn heading_jump(state: &mut State, n: usize, down: bool, same_level: bool) {
     match target {
         Some(line) => {
             let before = state.top;
+            state.record_jump();
             state.jump_to(line);
             if state.top == before {
                 // The heading is on screen already, below the last top line.
@@ -648,6 +821,7 @@ fn accept_prompt(state: &mut State) {
         p.input
     };
     state.last_pattern = Some((pattern.clone(), p.backward));
+    state.set_mark('\'', p.origin);
     if !search_from(state, &pattern, p.backward, p.origin) {
         state.search = None;
         state.complain(format!("not found: {pattern}"));
@@ -736,6 +910,7 @@ fn next_match(state: &mut State, count: usize, reverse: bool) {
     let pos = cur.and_then(|i| s.matches.get(i)).map(|m| m.pos());
     if let Some(pos) = pos {
         let line = state.layout.line_at(pos);
+        state.record_jump();
         state.reveal(line);
     }
     if wrapped {
@@ -864,7 +1039,7 @@ fn copy_focus(state: &mut State) -> Vec<Effect> {
         .get(occ)
         .and_then(|o| links::copy_text(&state.page.doc, &base, o));
     match text {
-        Some(t) => vec![Effect::Copy(t)],
+        Some(t) => hints::Copied::shown(t).effect(),
         None => {
             state.say("nothing to copy for this link");
             Vec::new()
@@ -872,49 +1047,62 @@ fn copy_focus(state: &mut State) -> Vec<Effect> {
     }
 }
 
-fn open_hints(state: &mut State) {
-    let (top, rows) = (state.top, state.view_rows());
-    let shown: Vec<usize> = state
-        .derived
-        .links
-        .iter()
-        .enumerate()
-        .filter(|(_, o)| links::visible(o, top, rows))
-        .map(|(i, _)| i)
-        .collect();
-    if shown.is_empty() {
-        state.say("no links on screen");
-        return;
-    }
-    let labels = links::hint_labels(shown.len())
-        .into_iter()
-        .zip(shown)
-        .collect();
-    state.mode = Mode::Hints(Hints {
-        labels,
-        typed: String::new(),
-    });
-}
-
+/// A label typed in full does what it is on; a prefix of none ends the
+/// hints.
 fn hint_typed(state: &mut State) -> Vec<Effect> {
     let Mode::Hints(h) = &state.mode else {
         return Vec::new();
     };
-    if let Some(&(_, occ)) = h.labels.iter().find(|(l, _)| *l == h.typed) {
+    if let Some((_, target)) = h.labels.iter().find(|(l, _)| *l == h.typed) {
+        let act = target.act.clone();
         state.mode = Mode::Normal;
-        set_focus(state, occ);
-        return follow(state, occ);
+        return act_on(state, act);
     }
     if !h
         .labels
         .iter()
         .any(|(l, _)| l.starts_with(h.typed.as_str()))
     {
-        let typed = h.typed.clone();
+        let typed = crate::text::sanitize(&h.typed).into_owned();
         state.mode = Mode::Normal;
-        state.complain(format!("no link labelled {typed}"));
+        state.complain(format!("no label {typed}"));
     }
     Vec::new()
+}
+
+fn act_on(state: &mut State, act: Act) -> Vec<Effect> {
+    match act {
+        Act::Link(occ) => {
+            set_focus(state, occ);
+            follow(state, occ)
+        }
+        Act::Jump(line) => {
+            jump_recorded(state, line);
+            Vec::new()
+        }
+        Act::Zoom(image) => {
+            if state.zoom == Some(image) {
+                state.zoom = None;
+            } else {
+                state.zoom = Some(image);
+                state.say("full size: Esc goes back");
+            }
+            let line = state
+                .layout
+                .images
+                .iter()
+                .find(|p| p.image == image)
+                .map_or(state.top, |p| p.line as usize);
+            state.record_jump();
+            state.pending = Some(Goto::Place(Place::of(&state.layout, line)));
+            vec![Effect::Relayout]
+        }
+        Act::Copy(c) => c.effect(),
+        Act::Select(lines) => {
+            visual::start(state, lines);
+            Vec::new()
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -993,11 +1181,13 @@ fn go_file(state: &mut State, i: usize) -> Vec<Effect> {
 // History and documents
 // ---------------------------------------------------------------------------
 
-/// Jump to `line` of this document, recording where the reader was.
+/// Jump to `line` of this document, recording where the reader was (in
+/// the history and as mark `'`).
 fn jump_recorded(state: &mut State, line: usize) {
     let here = state.visit();
     state.history.push_back(here);
     state.history.forward.clear();
+    state.record_jump();
     state.jump_to(line);
 }
 
@@ -1082,6 +1272,8 @@ fn switch(state: &mut State, page: Rc<Page>, req: LoadRequest) -> Vec<Effect> {
     };
     state.mode = Mode::Normal;
     state.count = None;
+    state.keys.clear();
+    state.awaiting = None;
     if page.key == state.page.key {
         // A link into the document itself: no new layout needed.
         go(state, goto);
@@ -1090,6 +1282,7 @@ fn switch(state: &mut State, page: Rc<Page>, req: LoadRequest) -> Vec<Effect> {
     state.page = page;
     state.search = None;
     state.focus = None;
+    state.zoom = None;
     state.pending = Some(goto);
     vec![Effect::Relayout]
 }
@@ -1131,11 +1324,15 @@ fn reloaded(state: &mut State, doc: PagerDoc) -> Vec<Effect> {
         again.current = s.current.filter(|&i| i < again.matches.len());
         state.search = Some(again);
     }
-    if matches!(state.mode, Mode::Hints(_) | Mode::Prompt(_)) {
+    if matches!(
+        state.mode,
+        Mode::Hints(_) | Mode::Prompt(_) | Mode::Visual(_)
+    ) {
         state.mode = Mode::Normal;
     }
-    // Link ids are not stable across versions of a document.
+    // Link and image ids are not stable across versions of a document.
     state.focus = None;
+    state.zoom = None;
     state.say("reloaded");
     vec![Effect::Relayout]
 }
@@ -1199,14 +1396,14 @@ fn resize(state: &mut State, cols: u16, rows: u16) -> Vec<Effect> {
 // ---------------------------------------------------------------------------
 
 fn help_page(state: &State) -> usize {
-    let lines = keymap::help_lines().len();
+    let lines = state.settings.keymap.help_lines().len();
     toc::help_box(state.cols, state.rows, lines)
         .inner_rows()
         .max(1)
 }
 
 fn help_scroll(state: &mut State, delta: isize) {
-    let lines = keymap::help_lines().len();
+    let lines = state.settings.keymap.help_lines().len();
     let shown = toc::help_box(state.cols, state.rows, lines).inner_rows();
     let max = lines.saturating_sub(shown);
     if let Mode::Help { scroll } = &mut state.mode {
@@ -1272,8 +1469,8 @@ fn click(state: &mut State, col: u16, row: u16) -> Vec<Effect> {
             state.mode = Mode::Normal;
             Vec::new()
         }
-        Mode::Hints(_) | Mode::Prompt(_) | Mode::Command(_) | Mode::Normal => {
-            if matches!(state.mode, Mode::Hints(_)) {
+        Mode::Hints(_) | Mode::Prompt(_) | Mode::Command(_) | Mode::Normal | Mode::Visual(_) => {
+            if matches!(state.mode, Mode::Hints(_) | Mode::Visual(_)) {
                 state.mode = Mode::Normal;
             }
             if matches!(state.mode, Mode::Prompt(_) | Mode::Command(_)) {

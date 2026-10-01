@@ -177,6 +177,9 @@ fg = "black"
 bg = "bright-yellow"
 bold = true
 
+[style.selection]
+reverse = true
+
 [style.prompt]
 fg = "accent"
 

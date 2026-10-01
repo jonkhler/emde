@@ -172,12 +172,23 @@ nu = "bash"
 
 | Key | Default | Description |
 |---|---|---|
-| `enabled` | `"auto"` | Built-in pager: auto (on a terminal, for documents taller than the screen), always or never. Flag: `--paging`; `--plain` (`-p`) means never. |
+| `enabled` | `"always"` | Built-in pager: always (on a terminal, whatever the length), auto (on a terminal, only for documents taller than the screen, like less -F) or never. Flag: `--paging`; `--plain` (`-p`) means never. |
 | `mouse` | `true` | Mouse wheel scrolling and link clicks. |
 | `watch` | `true` | Reload the document when the file changes. |
 | `scroll_lines` | `3` | Lines per mouse wheel step. |
 | `search_case` | `"smart"` | Search case: smart (case-sensitive only with an uppercase letter), sensitive or insensitive. |
 | `open` | `"auto"` | Opening links: auto (open or xdg-open locally, copy the URL over SSH), never, or a command that gets the URL as its last argument. |
+
+### `[pager.keys]`
+
+Other keys for the pager: an action name from the key tables and its keys, which replace the default ones (`[]` leaves the action without keys). A key is a character (`j`, `G`, `?`), `C-x` (Ctrl), `M-x` (Alt), a name (`Enter`, `Esc`, `Space`, `Tab`, `S-Tab`, `Backspace`, `Up`, `Down`, `Left`, `Right`, `Home`, `End`, `PgUp`, `PgDn`, `Ins`, `Del`, `F1` to `F24`), or several keys in a row: `gg`, or keys separated by spaces (`g Home`). A key bound to two actions goes to the later one:
+
+```toml
+[pager.keys]
+page-down = ["Space", "f", "PgDn"]
+hints-follow = ["F"]
+quit = ["q", "ZZ"]
+```
 
 ### `[terminal]`
 
@@ -360,8 +371,9 @@ draws it (`—`: as its parent).
 | `status_msg` | `status` | Messages in the status bar. | `fg=yellow` |
 | `search_match` | `text` | Search matches. | `fg=base bg=yellow` |
 | `search_current` | `search_match` | The current search match. | `fg=base bg=peach bold` |
+| `selection` | `text` | The lines selected in Visual mode (`V`). | `reverse` |
 | `prompt` | `status` | The search prompt. | `fg=accent` |
-| `hint` | `text` | Link hint labels (`o`). | `fg=base bg=accent bold` |
+| `hint` | `text` | Hint labels (`f`, `o`, `y`, `v`). | `fg=base bg=accent bold` |
 | `toc` | `text` | The outline (`t`). | — |
 | `toc_current` | `toc` | The current section in the outline. | `fg=accent bold` |
 
@@ -449,113 +461,175 @@ dusk`, or by `name = "dusk"` in `[theme]`.
 
 ## Key bindings
 
-The pager's keys (they cannot be changed yet).
+The pager's keys, with the name of each action. `[pager.keys]` gives an
+action other keys, which replace its default ones:
+
+```toml
+[pager.keys]
+page-down = ["Space", "f", "PgDn"]
+hints-follow = ["F"]
+quit = ["q", "ZZ"]
+top = ["gg", "Home"]
+```
+
+A key is a character (`j`, `G`, `?`), `C-x` (Ctrl), `M-x` (Alt), a name
+(`Enter`, `Esc`, `Space`, `Tab`, `S-Tab`, `Backspace`, `Up`, `Down`,
+`Left`, `Right`, `Home`, `End`, `PgUp`, `PgDn`, `Ins`, `Del`, `F1` to
+`F24`; names ignore case), or several keys in a row: `gg` types `g` twice,
+and keys separated by spaces follow each other (`g Home`, `C-w j`). A word
+that looks like a misspelt name (`PgDwn`) is reported rather than typed
+letter by letter. A sequence that is also the start of a longer one (`g`
+and `gg`) waits for the next key, or runs after a moment.
+
+`[]` leaves an action without keys. A key bound to two actions goes to the
+one bound later, an action of your file winning over a default one; `emde
+--check-config` warns about it, and about unknown actions and keys.
 
 **Scrolling**
 
-| Keys | Action |
-|---|---|
-| `0`–`9` | count for the next command (5j, 50%, 120g) |
-| `j` `↓` `^E` `^N` | down a line |
-| `k` `↑` `^Y` `^P` | up a line |
-| `Space` `f` `PgDn` `^F` | down a page |
-| `b` `PgUp` `^B` | up a page |
-| `d` `^D` | down half a page |
-| `u` `^U` | up half a page |
-| `g` `Home` `<` | top (line N with a count) |
-| `G` `End` `>` | bottom (line N with a count) |
-| `%` | N percent into the document |
+| Keys | Action | Name |
+|---|---|---|
+| `0`–`9` | count for the next command (5j, 50%, 120gg) | |
+| `j` `↓` `^E` `^N` | down a line | `line-down` |
+| `k` `↑` `^Y` `^P` | up a line | `line-up` |
+| `Space` `PgDn` `^F` | down a page | `page-down` |
+| `b` `PgUp` `^B` | up a page | `page-up` |
+| `d` `^D` | down half a page | `half-page-down` |
+| `u` `^U` | up half a page | `half-page-up` |
+| `gg` `g` `Home` `<` | top (line N with a count) | `top` |
+| `G` `End` `>` | bottom (line N with a count) | `bottom` |
+| `%` | N percent into the document | `percent` |
+| `zz` | centre the current match, link or middle line | `scroll-center` |
+| `zt` | … to the top | `scroll-top` |
+| `zb` | … to the bottom | `scroll-bottom` |
 
 **Jumping**
 
-| Keys | Action |
-|---|---|
-| `]` | next heading |
-| `[` | previous heading |
-| `}` | next heading of the same or a higher level |
-| `{` | previous heading of the same or a higher level |
-| `t` | outline (type to filter) |
+| Keys | Action | Name |
+|---|---|---|
+| `]` | next heading | `next-heading` |
+| `[` | previous heading | `prev-heading` |
+| `}` | next heading of the same or a higher level | `next-section` |
+| `{` | previous heading of the same or a higher level | `prev-section` |
+| `t` | outline (type to filter) | `outline` |
+| `m` | mark the place: m and a letter (ma) | `set-mark` |
+| `'` | go to a mark ('a); '' back to before the last jump | `jump-mark` |
 
 **Searching**
 
-| Keys | Action |
-|---|---|
-| `/` | search forward |
-| `?` | search backward |
-| `n` | next match |
-| `N` | previous match |
-| `Esc` | clear the search (then the link focus) |
+| Keys | Action | Name |
+|---|---|---|
+| `/` | search forward | `search-forward` |
+| `?` | search backward | `search-backward` |
+| `n` | next match | `next-match` |
+| `N` | previous match | `prev-match` |
+| `Esc` | clear the zoomed image, the search, the link focus | `clear-search` |
 
 **Links**
 
-| Keys | Action |
-|---|---|
-| `Tab` | focus the next link |
-| `S-Tab` | focus the previous link |
-| `Enter` | follow the focused link |
-| `o` | link hints: type a label to follow |
-| `Backspace` `H` | back |
-| `L` | forward |
-| `y` | copy the focused link's URL |
+| Keys | Action | Name |
+|---|---|---|
+| `Tab` | focus the next link | `focus-next` |
+| `S-Tab` | focus the previous link | `focus-prev` |
+| `Enter` | follow the focused link | `follow` |
+| `o` | link hints: type a label to follow | `link-hints` |
+| `Backspace` `H` | back | `back` |
+| `L` | forward | `forward` |
+
+**Hints, copying and editing**
+
+| Keys | Action | Name |
+|---|---|---|
+| `f` | hints: follow a link, go to a heading or block, zoom an image | `hints-follow` |
+| `y` | copy the focused link's URL, else hints: copy code, math, a table… | `yank-hints` |
+| `v` | hints: select a block (Visual mode) | `visual-hints` |
+| `V` | Visual mode: select lines | `visual-line` |
+| `e` | edit the file ($VISUAL, $EDITOR) at the top block | `edit` |
 
 **Other**
 
-| Keys | Action |
-|---|---|
-| `r` | reload the file |
-| `R` | watch the file for changes, on or off |
-| `i` | cycle the image mode |
-| `w` | full width, on or off |
-| `m` | mouse, on or off (off: select text) |
-| `:` | command: :n next file, :p previous file, :q quit |
-| `h` `F1` | this help |
-| `^L` | redraw the screen (anywhere) |
-| `^Z` | suspend (anywhere) |
-| `q` `^C` | quit |
+| Keys | Action | Name |
+|---|---|---|
+| `r` | reload the file | `reload` |
+| `R` | watch the file for changes, on or off | `toggle-watch` |
+| `i` | cycle the image mode | `cycle-images` |
+| `w` | full width, on or off | `toggle-width` |
+| `M` | mouse, on or off (off: select text) | `toggle-mouse` |
+| `:` | command: :n next file, :p previous file, :q quit | `command-line` |
+| `h` `F1` | this help | `help` |
+| `^L` | redraw the screen (anywhere) | `redraw` |
+| `^Z` | suspend (anywhere) | `suspend` |
+| `q` `^C` | quit | `quit` |
+
+**In Visual mode**
+
+| Keys | Action | Name |
+|---|---|---|
+| `0`–`9` | count for the next motion | |
+| `j` `↓` `^N` | extend down a line | `visual-down` |
+| `k` `↑` `^P` | extend up a line | `visual-up` |
+| `^D` `PgDn` | down half a page | `visual-half-down` |
+| `^U` `PgUp` | up half a page | `visual-half-up` |
+| `}` | to the end of the block, or of the next | `visual-next-block` |
+| `{` | to the start of the block, or of the previous | `visual-prev-block` |
+| `]` | to the next heading | `visual-next-heading` |
+| `[` | to the previous heading | `visual-prev-heading` |
+| `gg` `g` `Home` | to the top | `visual-top` |
+| `G` `End` | to the bottom | `visual-bottom` |
+| `n` | to the next match | `visual-next-match` |
+| `N` | to the previous match | `visual-prev-match` |
+| `zz` | the cursor line to the middle | `visual-scroll-center` |
+| `zt` | … to the top | `visual-scroll-top` |
+| `zb` | … to the bottom | `visual-scroll-bottom` |
+| `o` | go to the other end | `visual-swap` |
+| `y` | copy the Markdown of the selected blocks | `visual-yank` |
+| `Y` | copy the text of the selected lines | `visual-yank-text` |
+| `e` | edit the file at the selection | `visual-edit` |
+| `Esc` `V` `q` `^C` | leave Visual mode | `visual-exit` |
 
 **In the search prompt**
 
-| Keys | Action |
-|---|---|
-| `Enter` | search |
-| `Esc` `^C` | cancel |
-| `Backspace` | delete a character |
-| `^U` | clear the pattern |
+| Keys | Action | Name |
+|---|---|---|
+| `Enter` | search | `prompt-accept` |
+| `Esc` `^C` | cancel | `prompt-cancel` |
+| `Backspace` | delete a character | `prompt-erase` |
+| `^U` | clear the pattern | `prompt-clear` |
 
 **At the : prompt**
 
-| Keys | Action |
-|---|---|
-| `Enter` | run the command |
-| `Esc` `^C` | cancel |
-| `Backspace` | delete a character |
-| `^U` | clear the command |
+| Keys | Action | Name |
+|---|---|---|
+| `Enter` | run the command | `command-run` |
+| `Esc` `^C` | cancel | `command-cancel` |
+| `Backspace` | delete a character | `command-erase` |
+| `^U` | clear the command | `command-clear` |
 
 **In the outline**
 
-| Keys | Action |
-|---|---|
-| `↓` `^N` `^J` | next entry |
-| `↑` `^P` `^K` | previous entry |
-| `PgDn` | down a page |
-| `PgUp` | up a page |
-| `Enter` | go to the heading |
-| `Esc` `^C` | close |
-| `Backspace` | delete a filter character |
+| Keys | Action | Name |
+|---|---|---|
+| `↓` `^N` `^J` | next entry | `outline-down` |
+| `↑` `^P` `^K` | previous entry | `outline-up` |
+| `PgDn` | down a page | `outline-page-down` |
+| `PgUp` | up a page | `outline-page-up` |
+| `Enter` | go to the heading | `outline-jump` |
+| `Esc` `^C` | close | `outline-close` |
+| `Backspace` | delete a filter character | `outline-erase` |
 
-**With link hints**
+**With hints**
 
-| Keys | Action |
-|---|---|
-| `Esc` `^C` | cancel |
-| `Backspace` | delete a label character |
+| Keys | Action | Name |
+|---|---|---|
+| `Esc` `^C` | cancel | `hints-cancel` |
+| `Backspace` | delete a label character | `hints-erase` |
 
 **In this help**
 
-| Keys | Action |
-|---|---|
-| `j` `↓` | down a line |
-| `k` `↑` | up a line |
-| `Space` `f` `PgDn` | down a page |
-| `b` `PgUp` | up a page |
-| `q` `h` `Esc` `F1` `^C` | close |
+| Keys | Action | Name |
+|---|---|---|
+| `j` `↓` | down a line | `help-down` |
+| `k` `↑` | up a line | `help-up` |
+| `Space` `f` `PgDn` | down a page | `help-page-down` |
+| `b` `PgUp` | up a page | `help-page-up` |
+| `q` `h` `Esc` `F1` `^C` | close | `help-close` |

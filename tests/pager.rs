@@ -64,7 +64,7 @@ fn screen_at(term: &FakeTerminal, cols: u16, rows: u16, name: Option<&str>) -> v
             Chunk::Write(bytes) => p.process(bytes),
             Chunk::Resize(c, r) => p.screen_mut().set_size(*r, *c),
             Chunk::Mark(m) if Some(m.as_str()) == name => break,
-            Chunk::Mark(_) | Chunk::Suspend => {}
+            Chunk::Mark(_) | Chunk::Suspend | Chunk::Run(_) => {}
         }
     }
     p
@@ -576,7 +576,7 @@ fn mouse_wheel_and_clicks() {
 
 #[test]
 fn mouse_capture_can_be_turned_off() {
-    let term = FakeTerminal::new(40, 10).keys("m").keys("m").keys("q");
+    let term = FakeTerminal::new(40, 10).keys("M").keys("M").keys("q");
     let (term, _) = run(term, session("text"));
     let writes = term.writes();
     let off = writes.iter().position(|w| *w == MOUSE_OFF).expect("off");
@@ -1075,4 +1075,227 @@ fn frame_composition_benchmark() {
     assert!(full < Duration::from_micros(500), "{full:?}");
     assert!(scroll < Duration::from_micros(500), "{scroll:?}");
     assert!(searching < Duration::from_micros(500), "{searching:?}");
+}
+
+// ---------------------------------------------------------------------------
+// Hints, Visual mode and the editor
+// ---------------------------------------------------------------------------
+
+/// Every kind of block.
+const MIXED: &str = concat!(
+    "# Guide\n\n",
+    "Intro with [a link](https://example.com) and $x^2$ inline.\n\n",
+    "```rust\nfn main() {}\nlet x = 1;\n```\n\n",
+    "$$\nE = mc^2\n$$\n\n",
+    "| a | b |\n|---|---|\n| 1 | 2 |\n\n",
+    "- first item\n- second item\n\n",
+    "> A quote\n> over lines.\n\n",
+    "![alt text](pic.png)\n\n",
+    "## Next\n\n",
+    "Last paragraph.\n",
+);
+
+#[test]
+fn hint_labels_on_mixed_content() {
+    let term = FakeTerminal::new(60, 30)
+        .keys("f")
+        .mark("follow")
+        .keys("\x1b")
+        .keys("y")
+        .mark("yank")
+        .keys(";")
+        .mark("narrowed")
+        .keys("\x1b")
+        .keys("v")
+        .mark("select")
+        .keys("\x1b")
+        .keys("q");
+    let (term, _) = run(term, session(MIXED));
+    for name in ["follow", "yank", "narrowed", "select"] {
+        let screen = screen_at(&term, 60, 30, Some(name));
+        insta::assert_snapshot!(format!("hints-{name}"), render_with(&screen, true));
+    }
+}
+
+#[test]
+fn visual_selection_and_its_status_bar() {
+    let term = FakeTerminal::new(60, 16)
+        .keys("V")
+        .mark("one line")
+        .keys("3j")
+        .mark("extended")
+        .keys("}}")
+        .mark("blocks")
+        .keys("y")
+        .mark("copied")
+        .keys("q");
+    let (term, _) = run(term, session(MIXED));
+    for name in ["one line", "extended", "blocks", "copied"] {
+        let screen = screen_at(&term, 60, 16, Some(name));
+        insta::assert_snapshot!(
+            format!("visual-{}", name.replace(' ', "-")),
+            render(&screen)
+        );
+    }
+}
+
+/// What OSC 52 puts on the clipboard for `text`.
+fn osc52(text: &str) -> Vec<u8> {
+    let mut out = b"\x1b]52;c;".to_vec();
+    out.extend(emde::gfx::b64::encode(text.as_bytes()));
+    out.extend_from_slice(b"\x1b\\");
+    out
+}
+
+fn wrote(term: &FakeTerminal, bytes: &[u8]) -> bool {
+    term.writes()
+        .iter()
+        .any(|w| w.windows(bytes.len()).any(|win| win == bytes))
+}
+
+#[test]
+fn copies_reach_the_clipboard_as_written() {
+    // Display math the parser rewrites before parsing comes back as
+    // written in the file.
+    let md = "Before.\n\n\\[ a =\nb \\]\n\nAfter.\n";
+    let term = FakeTerminal::new(50, 10)
+        .keys("VGy")
+        .mark("copied")
+        .keys("q");
+    let (term, _) = run(term, session(md));
+    assert!(wrote(&term, &osc52(md.trim_end())));
+    assert!(screen_text(&term, 50, 10, "copied").contains("copied 3 blocks of Markdown (6 lines)"));
+    // A line of `=` inside `\[ … \]` would make a setext heading without
+    // the rewrite; the copy is still the file's text, byte for byte.
+    let md = "Intro\n===\n\n\\[\na + b\n=\nc\n\\]\n\nAfter.\n";
+    let term = FakeTerminal::new(50, 12)
+        .keys("VGy")
+        .mark("all")
+        .keys("y")
+        .mark("hints")
+        .keys("s")
+        .mark("tex")
+        .keys("q");
+    let (term, _) = run(term, session(md));
+    assert!(wrote(&term, &osc52(md.trim_end())));
+    assert!(wrote(&term, &osc52("a + b\n=\nc")), "the TeX of the block");
+    assert!(screen_text(&term, 50, 12, "tex").contains("copied math (TeX) (3 lines)"));
+    // `Y`: the text as shown.
+    let term = FakeTerminal::new(50, 10).keys("VGY").keys("q");
+    let (term, _) = run(term, session("> quoted\n\n| a | b |\n|---|---|\n| 1 | 2 |"));
+    assert!(wrote(&term, &osc52("quoted\n\na\tb\n1\t2")));
+    // Yank hints: the code of a code block.
+    let term = FakeTerminal::new(50, 10)
+        .keys("y")
+        .keys("s")
+        .mark("code")
+        .keys("q");
+    let (term, _) = run(term, session("Text.\n\n```\nlet a = 1;\n  b();\n```\n"));
+    assert!(wrote(&term, &osc52("let a = 1;\n  b();")));
+    assert!(screen_text(&term, 50, 10, "code").contains("copied code block (2 lines)"));
+}
+
+#[test]
+fn the_editor_runs_with_the_terminal_put_back() {
+    let dir = temp_dir("editor");
+    let path = dir.join("doc.md");
+    let filler = "filler\n\n".repeat(10);
+    std::fs::write(
+        &path,
+        format!("# Doc\n\n\\[ a =\nb \\]\n\n## Two\n\nOld text.\n\n{filler}"),
+    )
+    .unwrap();
+    let edited = path.clone();
+    let term = FakeTerminal::new(50, 8)
+        .with_program(move |_| {
+            std::fs::write(&edited, "# Doc\n\nNew text.\n")?;
+            Ok(true)
+        })
+        .keys("]")
+        .keys("e")
+        .mark("after")
+        .keys("q");
+    let mut session = file_session(&path);
+    session.env = Env::from_pairs(&[("EDITOR", "my-editor --wait")]);
+    let (term, _) = run(term, session);
+    let chunks = term.chunks();
+    let ran = chunks
+        .iter()
+        .position(|c| matches!(c, Chunk::Run(_)))
+        .expect("the editor ran");
+    let Chunk::Run(argv) = &chunks[ran] else {
+        unreachable!()
+    };
+    let argv: Vec<String> = argv
+        .iter()
+        .map(|a| a.to_string_lossy().into_owned())
+        .collect();
+    assert_eq!(
+        argv,
+        [
+            "my-editor".to_owned(),
+            "--wait".to_owned(),
+            "+6".to_owned(),
+            path.display().to_string()
+        ],
+        "the line in the file, not after the math rewrite"
+    );
+    // The terminal was put back before and set up again after.
+    let wrote_at =
+        |at: usize, bytes: &[u8]| matches!(&chunks[at], Chunk::Write(w) if w.ends_with(bytes));
+    assert!(wrote_at(ran - 1, EXIT), "{:?}", chunks.get(ran - 1));
+    assert!(matches!(&chunks[ran + 1], Chunk::Write(w) if w.starts_with(ENTER)));
+    let after = screen_text(&term, 50, 8, "after");
+    assert!(
+        after.contains("New text.") && after.contains("reloaded"),
+        "{after}"
+    );
+}
+
+#[test]
+fn editor_failures_are_reported() {
+    let dir = temp_dir("editor-fails");
+    let path = dir.join("doc.md");
+    std::fs::write(&path, "# Doc\n\nText.\n").unwrap();
+    let term = FakeTerminal::new(60, 8)
+        .with_program(|_| Err(std::io::Error::other("not found")))
+        .keys("e")
+        .mark("missing")
+        .keys("q");
+    let (term, exit) = run(term, file_session(&path));
+    assert_eq!(exit, PagerExit::Quit);
+    let screen = screen_text(&term, 60, 8, "missing");
+    assert!(screen.contains("could not run vi: not found"), "{screen}");
+    let term = FakeTerminal::new(60, 8)
+        .with_program(|_| Ok(false))
+        .keys("e")
+        .mark("failed")
+        .keys("q");
+    let (term, _) = run(term, file_session(&path));
+    let screen = screen_text(&term, 60, 8, "failed");
+    assert!(screen.contains("vi ended with an error"), "{screen}");
+    // Standard input has no file to edit.
+    let term = FakeTerminal::new(60, 8).keys("e").mark("stdin").keys("q");
+    let (term, _) = run(term, session("text"));
+    assert!(!term.chunks().iter().any(|c| matches!(c, Chunk::Run(_))));
+    assert!(screen_text(&term, 60, 8, "stdin").contains("standard input cannot be edited"));
+}
+
+#[test]
+fn a_lone_g_goes_to_the_top_after_a_pause() {
+    let term = typed(FakeTerminal::new(50, 10), "G")
+        .keys("g")
+        .mark("waiting")
+        .wait(ms(700))
+        .mark("timed out")
+        .keys("q");
+    let (term, _) = run(term, session(&long_doc(10)));
+    assert!(
+        row_text(&term, 50, 10, "waiting", 9).contains('g'),
+        "the pending key is shown"
+    );
+    assert_eq!(
+        row_text(&term, 50, 10, "timed out", 0).trim(),
+        "Long document"
+    );
 }

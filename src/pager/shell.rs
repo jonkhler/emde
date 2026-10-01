@@ -17,7 +17,9 @@ use std::time::{Duration, Instant};
 
 use crate::config::OpenCommand;
 use crate::highlight::Highlighter;
-use crate::layout::{self, Layout};
+use crate::ir::ImageId;
+use crate::layout::{self, ImageSizer, Layout};
+use crate::options::Height;
 use crate::options::RenderOptions;
 use crate::render::RenderConfig;
 use crate::source::{Origin, find_readme};
@@ -28,7 +30,7 @@ use crate::theme::Theme;
 
 use super::diff::{Extras, Screen};
 use super::images::{self, Images, WORK_POLL};
-use super::keymap::Command;
+use super::keymap::{Command, SEQUENCE_TIMEOUT};
 use super::os::{self, ClipboardPlan, OpenPlan};
 use super::state::{DocKey, Settings, State};
 use super::term::{
@@ -62,6 +64,25 @@ pub(crate) fn key_of(origin: &Origin) -> Option<DocKey> {
             std::fs::canonicalize(p).unwrap_or_else(|_| p.clone()),
         )),
         Origin::Stdin | Origin::Memory => None,
+    }
+}
+
+/// The image sizer for a layout with figure `image` zoomed: other figures
+/// keep their usual height cap (`rows`).
+struct Zoomed<'a> {
+    inner: &'a dyn ImageSizer,
+    image: Option<ImageId>,
+    rows: u16,
+}
+
+impl ImageSizer for Zoomed<'_> {
+    fn cells(&self, image: ImageId, max_cols: u16, max_rows: u16) -> Option<(u16, u16)> {
+        let rows = if Some(image) == self.image {
+            max_rows
+        } else {
+            max_rows.min(self.rows)
+        };
+        self.inner.cells(image, max_cols, rows)
     }
 }
 
@@ -100,6 +121,8 @@ pub(crate) struct Shell<'t, T: Terminal> {
     /// baseline when a document comes back from memory).
     stamps: HashMap<PathBuf, Option<Stamp>>,
     resize: Option<((u16, u16), Instant)>,
+    /// When an unfinished key sequence stops waiting for its next key.
+    key_deadline: Option<Instant>,
     signals: Signals,
     /// Something may have changed since the last frame.
     dirty: bool,
@@ -190,6 +213,7 @@ impl<'t, T: Terminal> Shell<'t, T> {
             watcher: None,
             stamps,
             resize: None,
+            key_deadline: None,
             signals,
             dirty: true,
             panic_test,
@@ -233,6 +257,13 @@ impl<'t, T: Terminal> Shell<'t, T> {
             if let Some(exit) = self.fire_resize(now)? {
                 return Ok(exit);
             }
+            if self.key_deadline.is_some_and(|at| now >= at) {
+                self.key_deadline = None;
+                if let Some(exit) = self.dispatch(Action::KeyTimeout)? {
+                    return Ok(exit);
+                }
+                self.paint()?;
+            }
             match self.term.term.poll(self.timeout(now))? {
                 Some(event) => {
                     if let Some(exit) = self.event(event)? {
@@ -267,6 +298,9 @@ impl<'t, T: Terminal> Shell<'t, T> {
         if let Some((_, at)) = self.resize {
             due = due.min(at.saturating_duration_since(now));
         }
+        if let Some(at) = self.key_deadline {
+            due = due.min(at.saturating_duration_since(now));
+        }
         if let Some(w) = &self.watcher {
             due = due.min(w.deadline().saturating_duration_since(now));
         }
@@ -281,7 +315,14 @@ impl<'t, T: Terminal> Shell<'t, T> {
 
     fn event(&mut self, event: TermEvent) -> io::Result<Option<PagerExit>> {
         match event {
-            TermEvent::Key(key) => self.dispatch(Action::Key(key)),
+            TermEvent::Key(key) => {
+                let exit = self.dispatch(Action::Key(key))?;
+                self.key_deadline = self
+                    .state
+                    .keys_pending()
+                    .then(|| self.term.term.now() + SEQUENCE_TIMEOUT);
+                Ok(exit)
+            }
             TermEvent::Mouse(m) if self.state.mouse() => self.dispatch(Action::Mouse(m)),
             TermEvent::Mouse(_) | TermEvent::Focus(_) => Ok(None),
             TermEvent::Paste(text) => self.dispatch(Action::Paste(text)),
@@ -357,11 +398,11 @@ impl<'t, T: Terminal> Shell<'t, T> {
                 Effect::Load(req) => self.load(req),
                 Effect::ShowFile(path) => self.show_file(path),
                 Effect::Open(url) => self.open_url(&url)?,
-                Effect::Copy(text) => {
+                Effect::Copy { text, what } => {
                     self.copy(&text)?;
-                    let shown = crate::text::sanitize(&text).into_owned();
-                    update(&mut self.state, Action::Message(format!("copied {shown}")))
+                    update(&mut self.state, Action::Message(what))
                 }
+                Effect::Edit { path, line } => self.edit(&path, line)?,
                 Effect::Reload => self.reload(false),
                 Effect::SetMouse(on) => {
                     self.term
@@ -385,22 +426,40 @@ impl<'t, T: Terminal> Shell<'t, T> {
         Ok(None)
     }
 
-    /// Lay the current document out for the current size and settings.
+    /// Lay the current document out for the current size and settings
+    /// (a zoomed figure as large as the screen allows).
     fn layout(&mut self) -> Layout {
         let (cols, rows) = self.state.size();
         self.caps.size = Some((cols, rows));
-        self.opts.max_width = if self.state.wide() { 0 } else { self.max_width };
+        let zoom = self.state.zoom();
+        self.opts.max_width = if self.state.wide() || zoom.is_some() {
+            0
+        } else {
+            self.max_width
+        };
+        let normal_height = self.opts.images.max_height;
+        let normal_rows = layout::max_image_rows(&self.opts, &self.caps);
+        if zoom.is_some() {
+            self.opts.images.max_height = Height::Rows(rows.saturating_sub(2).max(1));
+        }
         let doc = self.state.document();
-        let sizer = self.images.sizer(self.state.key(), doc);
-        layout::layout(
+        let inner = self.images.sizer(self.state.key(), doc);
+        let zoomed = Zoomed {
+            inner,
+            image: zoom,
+            rows: normal_rows,
+        };
+        let out = layout::layout(
             doc,
             cols,
             &self.theme,
             &self.caps,
             &self.opts,
             &*self.highlighter,
-            sizer,
-        )
+            &zoomed,
+        );
+        self.opts.images.max_height = normal_height;
+        out
     }
 
     /// Paint a frame if anything changed since the last one: the rows that
@@ -529,6 +588,42 @@ impl<'t, T: Terminal> Shell<'t, T> {
             self.term.term.flush()?;
         }
         Ok(())
+    }
+
+    /// `e`: run the editor on `path` at `line` with the terminal put back,
+    /// then set it up again and read the file again.
+    fn edit(&mut self, path: &Path, line: usize) -> io::Result<Vec<Effect>> {
+        let argv = os::editor_command(&self.env, path, line);
+        self.term.term.leave()?;
+        self.images.reset(true);
+        self.term.term.set_cleanup(Vec::new());
+        let ran = self.term.term.run_foreground(&argv);
+        // Signals from the terminal while the editor ran were the editor's.
+        self.signals.forget_interrupt();
+        let _ = self.signals.take_stop();
+        let _ = self.signals.take_continued();
+        self.resume()?;
+        let program = argv
+            .first()
+            .map(|p| crate::text::sanitize(&p.to_string_lossy()).into_owned())
+            .unwrap_or_default();
+        Ok(match ran {
+            Ok(true) => self.reload(false),
+            Ok(false) => {
+                let mut effects = self.reload(true);
+                effects.extend(update(
+                    &mut self.state,
+                    Action::Error(format!("{program} ended with an error")),
+                ));
+                effects
+            }
+            Err(e) => update(
+                &mut self.state,
+                Action::Error(format!(
+                    "could not run {program}: {e} (set $VISUAL or $EDITOR)"
+                )),
+            ),
+        })
     }
 
     /// Read the file again; `auto` (from the watcher) is quiet when nothing
