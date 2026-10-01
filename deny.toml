@@ -23,7 +23,7 @@ allow = [
 confidence-threshold = 0.9
 
 [licenses.private]
-# The workspace crates are `publish = false`; the project licence is not chosen yet.
+# The workspace crates are `publish = false` (emde itself is MIT).
 ignore = true
 
 [bans]

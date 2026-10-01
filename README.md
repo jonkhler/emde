@@ -390,5 +390,5 @@ MIT, BSD and Apache licences whose notices `emde --credits` prints. The
 default theme uses the [Catppuccin](https://github.com/catppuccin/palette)
 palettes (MIT).
 
-emde's own licence has not been chosen yet. Every dependency is under a
-permissive licence (checked by `cargo deny`), so any choice remains open.
+emde is released under the [MIT licence](LICENSE). Every dependency is
+under a permissive licence, checked by `cargo deny`.
