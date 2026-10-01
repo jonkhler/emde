@@ -7,7 +7,7 @@
 //! whatever else is already queued before painting, so a burst of wheel
 //! events costs one frame. Signal flags are checked on every turn.
 
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -34,7 +34,7 @@ use super::term::{
 };
 use super::update::{Action, Effect, LoadRequest, Nav, update};
 use super::view::{Ctx, view};
-use super::watch::Watcher;
+use super::watch::{self, Stamp, Watcher};
 use super::{DocLoader, PagerExit, PagerSession};
 
 /// Quiet time after a resize before the layout follows.
@@ -92,6 +92,9 @@ pub(crate) struct Shell<'t, T: Terminal> {
     cfg: RenderConfig,
     screen: Screen,
     watcher: Option<Watcher>,
+    /// The stamp of each file when it was last read (for the watcher's
+    /// baseline when a document comes back from memory).
+    stamps: HashMap<PathBuf, Option<Stamp>>,
     resize: Option<((u16, u16), Instant)>,
     signals: Signals,
     /// Panic after the first frame (`EMDE_TEST_PANIC=1`).
@@ -148,6 +151,10 @@ impl<'t, T: Terminal> Shell<'t, T> {
             )
         });
         let key = key_of(&doc.source.origin);
+        let mut stamps = HashMap::new();
+        if let Origin::File(p) = &doc.source.origin {
+            stamps.insert(p.clone(), watch::stamp(p));
+        }
         let mut state = State::new(doc, key, first, size, &pager, settings);
         if let Some(anchor) = anchor {
             update(&mut state, Action::Anchor(anchor));
@@ -176,6 +183,7 @@ impl<'t, T: Terminal> Shell<'t, T> {
             cfg,
             screen: Screen::new(),
             watcher: None,
+            stamps,
             resize: None,
             signals,
             panic_test,
@@ -382,8 +390,12 @@ impl<'t, T: Terminal> Shell<'t, T> {
         if self.state.has_page(&key) {
             return update(&mut self.state, Action::Switch { key, request: req });
         }
+        let before = watch::stamp(&path);
         match self.loader.load(&path) {
             Ok(doc) => {
+                if let Origin::File(p) = &doc.source.origin {
+                    self.stamps.insert(p.clone(), before);
+                }
                 let key = key_of(&doc.source.origin);
                 update(
                     &mut self.state,
@@ -394,7 +406,13 @@ impl<'t, T: Terminal> Shell<'t, T> {
                     },
                 )
             }
-            Err(e) => update(&mut self.state, Action::Error(e.to_string())),
+            Err(e) => update(
+                &mut self.state,
+                Action::LoadFailed {
+                    request: req,
+                    error: e.to_string(),
+                },
+            ),
         }
     }
 
@@ -450,13 +468,15 @@ impl<'t, T: Terminal> Shell<'t, T> {
     /// Read the file again; `auto` (from the watcher) is quiet when nothing
     /// changed.
     fn reload(&mut self, auto: bool) -> Vec<Effect> {
-        let now = self.term.term.now();
-        if let Some(w) = &mut self.watcher {
-            w.rebase(now);
-        }
         let Some(path) = self.state.page.path().map(Path::to_path_buf) else {
             return Vec::new();
         };
+        let now = self.term.term.now();
+        let before = watch::stamp(&path);
+        if let Some(w) = self.watcher.as_mut().filter(|w| w.path() == path) {
+            w.rebase(before, now);
+        }
+        self.stamps.insert(path.clone(), before);
         match self.loader.load(&path) {
             Ok(doc) if doc.source.text == self.state.source().text => {
                 if auto {
@@ -480,9 +500,16 @@ impl<'t, T: Terminal> Shell<'t, T> {
         } else {
             None
         };
+        if let Some(w) = &self.watcher {
+            self.stamps.insert(w.path().to_path_buf(), w.baseline());
+        }
         match (&self.watcher, want) {
             (Some(w), Some(p)) if w.path() == p => {}
-            (_, Some(p)) => self.watcher = Some(Watcher::new(p, self.term.term.now())),
+            (_, Some(p)) => {
+                // Unknown files count as changed: read again to be sure.
+                let baseline = self.stamps.get(&p).copied().flatten();
+                self.watcher = Some(Watcher::new(p, baseline, self.term.term.now()));
+            }
             (_, None) => self.watcher = None,
         }
     }

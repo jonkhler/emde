@@ -229,8 +229,8 @@ pub const BINDINGS: &[Binding] = &[
     bind!(Other, [c('w')], ToggleWidth, "full width, on or off"),
     bind!(Other, [c('m')], ToggleMouse, "mouse, on or off (off: select text)"),
     bind!(Other, [c('h'), k(KeyCode::F(1))], Help, "this help"),
-    bind!(Other, [ctrl('l')], Redraw, "redraw the screen"),
-    bind!(Other, [ctrl('z')], Suspend, "suspend"),
+    bind!(Other, [ctrl('l')], Redraw, "redraw the screen (anywhere)"),
+    bind!(Other, [ctrl('z')], Suspend, "suspend (anywhere)"),
     bind!(Other, [c('q'), ctrl('c')], Quit, "quit"),
     bind!(Prompt, [k(KeyCode::Enter)], PromptAccept, "search"),
     bind!(Prompt, [k(KeyCode::Esc), ctrl('c')], PromptCancel, "cancel"),
@@ -257,11 +257,16 @@ pub const BINDINGS: &[Binding] = &[
     ),
 ];
 
-/// The command bound to `key` in `context`.
+/// Commands whose keys work in every context.
+pub const GLOBAL: [Command; 2] = [Command::Redraw, Command::Suspend];
+
+/// The command bound to `key` in `context` (or everywhere).
 pub fn lookup(context: Context, key: Key) -> Option<Command> {
     BINDINGS
         .iter()
-        .find(|b| b.section.context() == context && b.keys.contains(&key))
+        .find(|b| {
+            (b.section.context() == context || GLOBAL.contains(&b.command)) && b.keys.contains(&key)
+        })
         .map(|b| b.command)
 }
 
@@ -411,6 +416,28 @@ mod tests {
                     b.section.context()
                 );
             }
+        }
+        // Keys that work everywhere are bound nowhere else.
+        let global: Vec<Key> = BINDINGS
+            .iter()
+            .filter(|b| GLOBAL.contains(&b.command))
+            .flat_map(|b| b.keys.iter().copied())
+            .collect();
+        for b in BINDINGS.iter().filter(|b| !GLOBAL.contains(&b.command)) {
+            assert!(
+                !b.keys.iter().any(|k| global.contains(k)),
+                "{:?} takes a global key",
+                b.command
+            );
+        }
+        for context in [
+            Context::Prompt,
+            Context::Outline,
+            Context::Hints,
+            Context::Help,
+        ] {
+            assert_eq!(lookup(context, ctrl('z')), Some(Command::Suspend));
+            assert_eq!(lookup(context, ctrl('l')), Some(Command::Redraw));
         }
     }
 

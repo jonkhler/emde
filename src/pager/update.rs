@@ -53,6 +53,9 @@ pub enum Action {
     },
     /// [`Effect::Load`] asked for a document that is already in memory.
     Switch { key: DocKey, request: LoadRequest },
+    /// [`Effect::Load`] failed: say why (and drop a back or forward
+    /// entry that leads nowhere now).
+    LoadFailed { request: LoadRequest, error: String },
     /// The current file was read again and changed.
     Reloaded(PagerDoc),
     /// Show a message.
@@ -149,6 +152,19 @@ pub fn update(state: &mut State, action: Action) -> Vec<Effect> {
                 Vec::new()
             }
         },
+        Action::LoadFailed { request, error } => {
+            match request.nav {
+                Nav::Back => {
+                    state.history.back.pop();
+                }
+                Nav::Forward => {
+                    state.history.forward.pop();
+                }
+                Nav::Push => {}
+            }
+            state.complain(error);
+            Vec::new()
+        }
         Action::Reloaded(doc) => reloaded(state, doc),
         Action::Message(text) => {
             state.say(text);

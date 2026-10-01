@@ -656,6 +656,36 @@ fn documents_beyond_the_lru_are_loaded_again() {
 }
 
 #[test]
+fn a_back_entry_that_cannot_be_read_is_dropped() {
+    let mut s = state("# Start", 60, 10);
+    for i in 0..MAX_PAGES + 2 {
+        opened(&mut s, &format!("{i}.md"), &format!("# Doc {i}"), None);
+    }
+    for _ in 0..MAX_PAGES - 2 {
+        code(&mut s, KeyCode::Backspace);
+    }
+    let effects = code(&mut s, KeyCode::Backspace);
+    let [Effect::Load(req)] = effects.as_slice() else {
+        panic!("{effects:?}");
+    };
+    let back = s.back_len();
+    drive(
+        &mut s,
+        Action::LoadFailed {
+            request: req.clone(),
+            error: "2.md: gone".into(),
+        },
+    );
+    assert_eq!(s.message(), Some("2.md: gone"));
+    assert_eq!(s.back_len(), back - 1, "the next Back goes further");
+    let effects = code(&mut s, KeyCode::Backspace);
+    let [Effect::Load(req)] = effects.as_slice() else {
+        panic!("{effects:?}");
+    };
+    assert_eq!(req.path, file("1.md"));
+}
+
+#[test]
 fn switching_to_a_document_in_memory() {
     let mut s = state("# Start\n\n[self](#start)", 60, 10);
     opened(&mut s, "b.md", "# B", None);

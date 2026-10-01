@@ -55,15 +55,20 @@ pub(crate) struct Watcher {
 }
 
 impl Watcher {
-    /// Watch `path`, taking its current state as the baseline.
-    pub(crate) fn new(path: PathBuf, now: Instant) -> Watcher {
-        let last = stamp(&path);
+    /// Watch `path`, whose shown version had stamp `baseline` (`None`:
+    /// unknown, so the first reading counts as a change).
+    pub(crate) fn new(path: PathBuf, baseline: Option<Stamp>, now: Instant) -> Watcher {
         Watcher {
             path,
-            last,
+            last: baseline,
             candidate: None,
             next: now + INTERVAL,
         }
+    }
+
+    /// The stamp of the version shown.
+    pub(crate) fn baseline(&self) -> Option<Stamp> {
+        self.last
     }
 
     /// The file watched.
@@ -113,9 +118,9 @@ impl Watcher {
         false
     }
 
-    /// The file was just read: its current state is the baseline.
-    pub(crate) fn rebase(&mut self, now: Instant) {
-        self.last = stamp(&self.path);
+    /// The file was just read, as it was at `baseline`.
+    pub(crate) fn rebase(&mut self, baseline: Option<Stamp>, now: Instant) {
+        self.last = baseline;
         self.candidate = None;
         self.next = now + INTERVAL;
     }
@@ -188,10 +193,15 @@ mod tests {
         assert_ne!(a, b, "the size changed");
         assert_eq!(stamp(&dir.join("missing.md")), None);
         let t0 = Instant::now();
-        let mut w = Watcher::new(file.clone(), t0);
+        let mut w = Watcher::new(file.clone(), stamp(&file), t0);
         assert_eq!(w.path(), file);
-        w.rebase(t0);
+        assert_eq!(w.baseline(), Some(b));
+        w.rebase(stamp(&file), t0);
         assert!(!w.poll(t0 + INTERVAL));
+        // An old baseline: the file changed while it was not watched.
+        let mut w = Watcher::new(file.clone(), Some(a), t0);
+        assert!(!w.poll(t0 + INTERVAL));
+        assert!(w.poll(t0 + INTERVAL + SETTLE));
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

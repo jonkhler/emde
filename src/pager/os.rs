@@ -41,9 +41,30 @@ pub(crate) fn over_ssh(env: &Env) -> bool {
     env.is_set("SSH_CONNECTION") || env.is_set("SSH_TTY")
 }
 
+/// Schemes handed to the opener; other links (custom protocol handlers)
+/// are only copied.
+const OPENABLE: [&str; 5] = ["http", "https", "mailto", "ftp", "ftps"];
+
+/// `url` as the opener gets it: a web or mail link (`//host` becomes
+/// `https://host`), or `None` for any other scheme.
+pub(crate) fn openable(url: &str) -> Option<String> {
+    if let Some(rest) = url.strip_prefix("//") {
+        return Some(format!("https://{rest}"));
+    }
+    let (scheme, _) = url.split_once(':')?;
+    OPENABLE
+        .iter()
+        .any(|s| s.eq_ignore_ascii_case(scheme))
+        .then(|| url.to_owned())
+}
+
 /// How to open `url` (already made safe: printable ASCII, no scheme that
 /// runs code).
 pub(crate) fn open_plan(open: &OpenCommand, env: &Env, remote: bool, url: &str) -> OpenPlan {
+    let Some(url) = openable(url) else {
+        return OpenPlan::Copy("only web and mail links are opened");
+    };
+    let url = url.as_str();
     match open {
         OpenCommand::Never => OpenPlan::Copy("opening links is off (pager.open)"),
         OpenCommand::Command(cmd) => {
@@ -213,6 +234,28 @@ mod tests {
                 open_plan(&OpenCommand::Auto, &Env::default(), false, url),
                 OpenPlan::Copy("no display to open it on: ⌘-click the link")
             );
+        }
+    }
+
+    #[test]
+    fn only_web_and_mail_links_are_opened() {
+        let local = Env::from_pairs(&[("DISPLAY", ":0")]);
+        let cmd = OpenCommand::Command("opener".into());
+        for (url, want) in [
+            ("https://example.com", Some("https://example.com")),
+            ("HTTP://example.com", Some("HTTP://example.com")),
+            ("mailto:me@example.org", Some("mailto:me@example.org")),
+            ("//example.com/x", Some("https://example.com/x")),
+            ("vscode://file/etc/passwd", None),
+            ("ssh://host", None),
+            ("no-scheme", None),
+        ] {
+            assert_eq!(openable(url).as_deref(), want, "{url}");
+            let plan = open_plan(&cmd, &local, false, url);
+            match want {
+                Some(u) => assert_eq!(plan, OpenPlan::Spawn(vec!["opener".into(), u.into()])),
+                None => assert_eq!(plan, OpenPlan::Copy("only web and mail links are opened")),
+            }
         }
     }
 

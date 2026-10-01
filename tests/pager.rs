@@ -445,6 +445,30 @@ fn reload_when_the_file_changes() {
 }
 
 #[test]
+fn a_document_changed_while_away_is_reloaded_on_return() {
+    let dir = temp_dir("changed-away");
+    let a = dir.join("a.md");
+    std::fs::write(&a, "# A\n\nFirst version. [to b](b.md)\n").unwrap();
+    std::fs::write(dir.join("b.md"), "# B\n\nOther page.\n").unwrap();
+    let writer = a.clone();
+    let term = FakeTerminal::new(50, 8)
+        .code(KeyCode::Tab)
+        .code(KeyCode::Enter)
+        .mark("on b")
+        .run(move || {
+            std::fs::write(&writer, "# A\n\nSecond version, changed. [to b](b.md)\n").unwrap()
+        })
+        .code(KeyCode::Backspace)
+        .wait(ms(800))
+        .mark("back on a")
+        .keys("q");
+    let (term, _) = run(term, file_session(&a));
+    assert!(screen_text(&term, 50, 8, "on b").contains("Other page."));
+    let back = screen_text(&term, 50, 8, "back on a");
+    assert!(back.contains("Second version, changed."), "{back}");
+}
+
+#[test]
 fn manual_reload_and_watch_toggle() {
     let dir = temp_dir("manual-reload");
     let path = dir.join("doc.md");
