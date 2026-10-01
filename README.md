@@ -56,7 +56,7 @@ emde README.md
 
 ## Installing
 
-The repository is private, so the installer authenticates with the GitHub
+The repository (github.com/jonkhler/emde) is private, so the installer authenticates with the GitHub
 CLI (log in once with `gh auth login`). It picks the release archive for
 your system (Linux or macOS, x86-64 or ARM), checks its SHA-256, and puts
 `emde` in `~/.local/bin`, the man page in `~/.local/share/man` and shell
