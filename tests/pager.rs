@@ -608,6 +608,21 @@ fn copying_a_link_uses_osc52() {
 }
 
 #[test]
+fn copying_inside_an_unreachable_tmux_falls_back_to_osc52() {
+    let term = FakeTerminal::new(60, 8)
+        .code(KeyCode::Tab)
+        .keys("yy")
+        .keys("q");
+    let mut session = session("[a link](https://example.com/x)");
+    // Inside tmux, without a query result: tmux is asked (once), and as its
+    // server cannot be reached, OSC 52 it is.
+    session.env = Env::from_pairs(&[("TMUX", "/nonexistent/emde-test-socket,1,0")]);
+    let (term, _) = run(term, session);
+    let osc = b"\x1b]52;c;aHR0cHM6Ly9leGFtcGxlLmNvbS94\x1b\\";
+    assert_eq!(term.writes().iter().filter(|w| **w == osc).count(), 2);
+}
+
+#[test]
 fn links_are_copied_when_opening_is_off() {
     let term = FakeTerminal::new(80, 8)
         .code(KeyCode::Tab)
@@ -707,6 +722,42 @@ fn suspend_and_resume() {
         assert!(text.contains(&format!("\x1b[{row};1H")), "row {row}");
     }
     assert!(screen_text(&term, 40, 10, "resumed").contains("Long document"));
+}
+
+#[test]
+fn a_stop_from_outside_is_repainted_at_once() {
+    // Stopped by someone else (no Ctrl-Z) and continued: the terminal is set
+    // up again and repainted before anything else happens.
+    let signals = Signals::new();
+    let mut term = FakeTerminal::new(40, 10)
+        .with_signals(signals.clone())
+        .wait(ms(50))
+        .step(Step::Signal(signal_hook::consts::SIGCONT))
+        .step(Step::Mark("continued".into()))
+        .keys("q");
+    run_on(&mut term, session(&long_doc(5)), &signals).unwrap();
+    let chunks = term.chunks();
+    let mark = chunks
+        .iter()
+        .position(|c| *c == Chunk::Mark("continued".into()))
+        .unwrap();
+    let mut enter = ENTER.to_vec();
+    enter.extend_from_slice(MOUSE_ON);
+    let entered = chunks
+        .iter()
+        .rposition(|c| *c == Chunk::Write(enter.clone()))
+        .unwrap();
+    assert!(entered > 0, "set up again");
+    let Chunk::Write(frame) = &chunks[entered + 1] else {
+        panic!("{:?}", chunks[entered + 1]);
+    };
+    assert!(frame.starts_with(SYNC_ON));
+    let text = String::from_utf8_lossy(frame);
+    assert!(
+        text.contains("\x1b[1;1H") && text.contains("\x1b[10;1H"),
+        "every row"
+    );
+    assert!(entered + 1 < mark, "repainted before the next event");
 }
 
 #[test]

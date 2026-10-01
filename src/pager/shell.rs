@@ -86,7 +86,11 @@ pub(crate) struct Shell<'t, T: Terminal> {
     image_modes: Vec<ImageMode>,
     image_mode: usize,
     env: Env,
+    /// The tmux query result: from the session, else asked for the first
+    /// time something is copied inside tmux.
     tmux: Option<TmuxInfo>,
+    /// Whether tmux was asked already (it is asked once).
+    tmux_asked: bool,
     open: OpenCommand,
     ctx: Ctx,
     cfg: RenderConfig,
@@ -179,6 +183,7 @@ impl<'t, T: Terminal> Shell<'t, T> {
             image_modes,
             image_mode: 0,
             env,
+            tmux_asked: tmux.is_some(),
             tmux,
             open: pager.open,
             ctx,
@@ -206,7 +211,10 @@ impl<'t, T: Terminal> Shell<'t, T> {
                 return Ok(PagerExit::Signal(sig));
             }
             if self.signals.take_continued() {
+                // Stopped from outside and continued: set up again and
+                // repaint now, not after the next event.
                 self.resume()?;
+                self.paint()?;
             }
             let now = self.term.term.now();
             if let Some(exit) = self.fire_resize(now)? {
@@ -464,6 +472,13 @@ impl<'t, T: Terminal> Shell<'t, T> {
 
     /// Put `text` on the clipboard.
     fn copy(&mut self, text: &str) -> io::Result<()> {
+        if !self.tmux_asked && self.env.is_set("TMUX") {
+            // Inside tmux, OSC 52 only works with `set-clipboard on`. The
+            // query takes a few milliseconds: asked now rather than at
+            // every start.
+            self.tmux_asked = true;
+            self.tmux = crate::term::tmux::query(&self.env);
+        }
         let tmux_done = match os::clipboard_plan(&self.env, self.tmux.as_ref()) {
             ClipboardPlan::TmuxBuffer => os::tmux_load_buffer(&self.env, text).is_ok(),
             ClipboardPlan::Osc52 => false,

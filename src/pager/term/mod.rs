@@ -20,16 +20,18 @@
 //! Leaving writes the cleanup hook's bytes (kitty image deletion, once
 //! images use it) and [`EXIT`], then returns to cooked mode. It runs from
 //! the pager's drop guard, after SIGTERM/SIGHUP/SIGINT (checked by the
-//! event loop) and from the panic hook ([`install_panic_hook`]), and it is
-//! idempotent: a process-wide flag records whether the real terminal is
-//! set up, so the bytes are written at most once however the pager ends.
+//! event loop) and from the panic hook ([`install_panic_hook`]; for a
+//! panic on the pager's own thread), and it is idempotent: a process-wide
+//! flag records whether the real terminal is set up, so the bytes are
+//! written at most once however the pager ends.
 
 mod fake;
 mod real;
 
+use std::cell::Cell;
 use std::io::{self, Write};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex, Once};
+use std::sync::{Arc, Mutex, Once, TryLockError};
 use std::time::{Duration, Instant};
 
 use bitflags::bitflags;
@@ -241,9 +243,29 @@ pub fn set_cleanup(bytes: Vec<u8>) {
     *slot = bytes;
 }
 
-/// Record that the real terminal is set up.
+/// How many times the real terminal was set up. The thread that did it
+/// last keeps the count in its [`OWNED`]: that is how the panic hook tells
+/// the pager's thread from the others.
+static OWNER: AtomicUsize = AtomicUsize::new(0);
+
+thread_local! {
+    /// [`OWNER`] as it was when this thread last set the terminal up (0:
+    /// never).
+    static OWNED: Cell<usize> = const { Cell::new(0) };
+}
+
+/// Record that the real terminal is set up, by the current thread.
 pub(crate) fn mark_active() {
+    let count = OWNER.fetch_add(1, Ordering::SeqCst).wrapping_add(1);
+    let _ = OWNED.try_with(|owned| owned.set(count));
     ACTIVE.store(true, Ordering::SeqCst);
+}
+
+/// Whether the current thread is the one that set the terminal up last (or
+/// that cannot be told). Safe in a panic hook: no lock, no allocation.
+fn on_owner_thread() -> bool {
+    let owner = OWNER.load(Ordering::SeqCst);
+    OWNED.try_with(|owned| owned.get() == owner).unwrap_or(true)
 }
 
 /// Write the cleanup bytes and [`EXIT`] to `out` if the terminal is set
@@ -257,8 +279,8 @@ pub(crate) fn restore_into(out: &mut dyn Write) -> bool {
     // `try_lock`: the panic hook may run on a thread that holds the lock.
     let cleanup = match CLEANUP.try_lock() {
         Ok(bytes) => bytes.clone(),
-        Err(std::sync::TryLockError::Poisoned(e)) => e.into_inner().clone(),
-        Err(std::sync::TryLockError::WouldBlock) => Vec::new(),
+        Err(TryLockError::Poisoned(e)) => e.into_inner().clone(),
+        Err(TryLockError::WouldBlock) => Vec::new(),
     };
     let mut bytes = cleanup;
     bytes.extend_from_slice(EXIT);
@@ -269,8 +291,13 @@ pub(crate) fn restore_into(out: &mut dyn Write) -> bool {
 
 /// The panic hook's restore: the exit sequence straight to `/dev/tty`
 /// (standard output may be a locked or broken stream by now), then cooked
-/// mode.
+/// mode. Only for a panic on the pager's own thread: a panic on another
+/// thread leaves the pager running, so the terminal must stay as it needs
+/// it.
 fn restore_after_panic() {
+    if !on_owner_thread() {
+        return;
+    }
     let tty = std::fs::OpenOptions::new().write(true).open("/dev/tty");
     let restored = match tty {
         Ok(mut tty) => restore_into(&mut tty),
@@ -295,20 +322,47 @@ pub fn install_panic_hook() {
 // ---------------------------------------------------------------------------
 
 /// The flags behind [`Signals`].
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 struct Flags {
     /// Number of the signal that asked the pager to quit (0: none).
     exit: Arc<AtomicUsize>,
     /// SIGCONT arrived: the process was stopped and continued.
     cont: Arc<AtomicBool>,
-    /// The pager is gone: the default actions apply again.
+    /// No pager is running: the default actions apply.
     released: Arc<AtomicBool>,
 }
 
-impl Drop for Flags {
+/// Gives the signals their default actions back when the last [`Signals`]
+/// clone goes.
+#[derive(Debug, Default)]
+struct Release(Flags);
+
+impl Drop for Release {
     fn drop(&mut self) {
-        self.released.store(true, Ordering::SeqCst);
+        self.0.released.store(true, Ordering::SeqCst);
     }
+}
+
+/// The flags the process's signal handlers set. The handlers are installed
+/// once and then kept for every later pager: signal-hook cannot take a
+/// handler back without leaving its signal ignored, and a second set of
+/// handlers would leave the first set's "default action once released" in
+/// place, ending the process (with the terminal still set up) on a signal
+/// meant for the later pager.
+static HANDLERS: Mutex<Option<Flags>> = Mutex::new(None);
+
+/// Install the handlers that set `flags`.
+fn install_handlers(flags: &Flags) -> io::Result<()> {
+    use signal_hook::consts::{SIGCONT, SIGHUP, SIGINT, SIGTERM};
+    use signal_hook::flag;
+    for sig in [SIGTERM, SIGHUP, SIGINT] {
+        // While no pager runs, the signal gets its default action.
+        flag::register_conditional_default(sig, Arc::clone(&flags.released))?;
+        let value = usize::try_from(sig).unwrap_or(1);
+        flag::register_usize(sig, Arc::clone(&flags.exit), value)?;
+    }
+    flag::register(SIGCONT, Arc::clone(&flags.cont))?;
+    Ok(())
 }
 
 /// Signals the event loop checks at least every [`MAX_POLL`].
@@ -321,7 +375,7 @@ impl Drop for Flags {
 /// [`Signals::raise`] to simulate a signal.
 #[derive(Clone, Debug, Default)]
 pub struct Signals {
-    flags: Arc<Flags>,
+    flags: Arc<Release>,
 }
 
 impl Signals {
@@ -330,36 +384,42 @@ impl Signals {
         Signals::default()
     }
 
-    /// Register the flags with the process's signal handlers.
+    /// Flags set by the process's signal handlers (installed by the first
+    /// call and kept for later pagers), cleared for a new pager. For one
+    /// pager at a time: dropping the last clone gives the signals their
+    /// default actions back.
     pub fn register() -> io::Result<Signals> {
-        use signal_hook::consts::{SIGCONT, SIGHUP, SIGINT, SIGTERM};
-        use signal_hook::flag;
-        let signals = Signals::new();
-        let f = &signals.flags;
-        for sig in [SIGTERM, SIGHUP, SIGINT] {
-            // Once the pager is gone, the signal gets its default action.
-            flag::register_conditional_default(sig, Arc::clone(&f.released))?;
-            let value = usize::try_from(sig).unwrap_or(1);
-            flag::register_usize(sig, Arc::clone(&f.exit), value)?;
-        }
-        flag::register(SIGCONT, Arc::clone(&f.cont))?;
-        Ok(signals)
+        let mut slot = HANDLERS.lock().unwrap_or_else(|e| e.into_inner());
+        let flags = match slot.as_ref() {
+            Some(flags) => flags.clone(),
+            None => {
+                let flags = Flags::default();
+                install_handlers(&flags)?;
+                slot.insert(flags).clone()
+            }
+        };
+        flags.exit.store(0, Ordering::SeqCst);
+        flags.cont.store(false, Ordering::SeqCst);
+        flags.released.store(false, Ordering::SeqCst);
+        Ok(Signals {
+            flags: Arc::new(Release(flags)),
+        })
     }
 
     /// Simulate the arrival of signal `sig` (SIGCONT, or a signal that
     /// asks to quit).
     pub fn raise(&self, sig: i32) {
         if sig == signal_hook::consts::SIGCONT {
-            self.flags.cont.store(true, Ordering::SeqCst);
+            self.flags.0.cont.store(true, Ordering::SeqCst);
         } else {
             let value = usize::try_from(sig).unwrap_or(1);
-            self.flags.exit.store(value, Ordering::SeqCst);
+            self.flags.0.exit.store(value, Ordering::SeqCst);
         }
     }
 
     /// The signal that asked the pager to quit, if any.
     pub(crate) fn exit_requested(&self) -> Option<i32> {
-        match self.flags.exit.load(Ordering::SeqCst) {
+        match self.flags.0.exit.load(Ordering::SeqCst) {
             0 => None,
             n => Some(i32::try_from(n).unwrap_or(i32::MAX)),
         }
@@ -367,7 +427,7 @@ impl Signals {
 
     /// Whether SIGCONT arrived since the last call.
     pub(crate) fn take_continued(&self) -> bool {
-        self.flags.cont.swap(false, Ordering::SeqCst)
+        self.flags.0.cont.swap(false, Ordering::SeqCst)
     }
 }
 
@@ -377,6 +437,11 @@ mod tests {
 
     /// Serialises the tests that use the process-wide restore flag.
     static ACTIVE_LOCK: Mutex<()> = Mutex::new(());
+
+    /// Serialises the tests that install real signal handlers and raise
+    /// real signals (a SIGTERM while no pager holds the flags ends the
+    /// test process).
+    static SIGNALS_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn enter_and_exit_sequences() {
@@ -437,6 +502,22 @@ mod tests {
     }
 
     #[test]
+    fn panics_on_other_threads_leave_the_terminal_alone() {
+        let _lock = ACTIVE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        install_panic_hook();
+        // This thread runs the pager; a worker thread panics.
+        mark_active();
+        let worker = std::thread::spawn(|| panic!("a worker thread panics"));
+        assert!(worker.join().is_err());
+        let mut out = Vec::new();
+        assert!(
+            restore_into(&mut out),
+            "the pager's terminal is still set up"
+        );
+        assert!(out.ends_with(EXIT));
+    }
+
+    #[test]
     fn simulated_signals() {
         let s = Signals::new();
         assert_eq!(s.exit_requested(), None);
@@ -448,6 +529,28 @@ mod tests {
         assert_eq!(s.exit_requested(), Some(signal_hook::consts::SIGTERM));
         let clone = s.clone();
         assert_eq!(clone.exit_requested(), Some(signal_hook::consts::SIGTERM));
+    }
+
+    #[test]
+    fn signal_handlers_serve_one_pager_after_another() {
+        use signal_hook::consts::{SIGCONT, SIGTERM};
+        let _lock = SIGNALS_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        // A first pager comes and goes …
+        drop(Signals::register().unwrap());
+        // … and the next one still gets SIGTERM as a request to quit. (With
+        // a second set of handlers, the first set's default action would
+        // end this process here.)
+        let second = Signals::register().unwrap();
+        assert_eq!(second.exit_requested(), None);
+        signal_hook::low_level::raise(SIGTERM).unwrap();
+        assert_eq!(second.exit_requested(), Some(SIGTERM));
+        signal_hook::low_level::raise(SIGCONT).unwrap();
+        assert!(second.take_continued());
+        drop(second);
+        // A new pager starts with clear flags.
+        let third = Signals::register().unwrap();
+        assert_eq!(third.exit_requested(), None);
+        assert!(!third.take_continued());
     }
 
     #[test]

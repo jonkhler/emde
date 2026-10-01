@@ -175,7 +175,8 @@ pub struct PagerSession {
     pub open_toc: bool,
     /// The environment (SSH detection for opening links, tmux).
     pub env: Env,
-    /// The tmux query result, if it ran (the clipboard path inside tmux).
+    /// The tmux query result, if it ran (the clipboard path inside tmux);
+    /// without it, the pager asks tmux the first time it copies something.
     pub tmux: Option<TmuxInfo>,
     /// Swallows probe replies that arrive late (after a probe timeout).
     pub late_replies: LateReplyFilter,
