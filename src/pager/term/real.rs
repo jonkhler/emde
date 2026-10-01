@@ -71,7 +71,7 @@ impl Terminal for CrosstermTerminal {
         // shell has put its own settings back; crossterm, which still counts
         // raw mode as on, would leave them alone. Turning it off first (a
         // no-op when it is off) makes it set raw mode again.
-        crossterm::terminal::disable_raw_mode()?;
+        let _ = crossterm::terminal::disable_raw_mode();
         crossterm::terminal::enable_raw_mode()?;
         mark_active();
         let mut bytes = ENTER.to_vec();
