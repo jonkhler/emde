@@ -35,11 +35,14 @@
 //! 4. sixel when DA1 has `4` and the cell size is known;
 //! 5. blocks.
 //!
-//! Pixel protocols need a terminal on stdout; without colour, block images
-//! give way to alt-text boxes ([`Graphics::None`]).
+//! Detection only sends pixels to a terminal on stdout; without colour,
+//! block images give way to alt-text boxes ([`Graphics::None`]), and output
+//! that takes no escape sequences at all ([`ColorDepth::None`]) gets alt
+//! text in every mode.
 //!
-//! An explicit `images` mode skips detection and is only refused, with a
-//! reason, where it cannot work: iTerm2 images and classic kitty inside tmux,
+//! An explicit `images` mode skips detection (also when stdout is not a
+//! terminal: the user asked for it) and is only refused, with a reason,
+//! where it cannot work: iTerm2 images and classic kitty inside tmux,
 //! kitty placeholders in tmux without passthrough or `RGB`, tmux sixel
 //! without tmux sixel support, the client's `sixel` feature or a known cell
 //! size, and modes the binary was built without.
@@ -47,7 +50,7 @@
 use super::env::Env;
 use super::probe::ProbeReplies;
 use super::tmux::TmuxInfo;
-use super::{BlockGlyphSet, Caps, ColorDepth, Graphics, Reason};
+use super::{BlockGlyphSet, Caps, ColorDepth, Graphics, Reason, topic};
 use crate::color::xterm_rgb;
 use crate::options::{BlockGlyphs, ImageMode, ImageOptions};
 use crate::style::Rgb;
@@ -56,30 +59,6 @@ use crate::style::Rgb;
 const IMAGES_BUILT: bool = cfg!(feature = "images");
 /// The binary has the sixel encoder.
 const SIXEL_BUILT: bool = cfg!(feature = "sixel");
-
-/// Topics of the [`Reason`]s in [`Caps::reasons`].
-pub mod topic {
-    /// Colour depth (decided by `term::color`).
-    pub const COLOR: &str = "color";
-    /// OSC 8 hyperlinks (decided by `term::color`).
-    pub const HYPERLINKS: &str = "hyperlinks";
-    /// Styled underlines (decided by `term::color`).
-    pub const UNDERLINE: &str = "underline";
-    /// The terminal's identity.
-    pub const TERMINAL: &str = "terminal";
-    /// Whether emde runs inside tmux.
-    pub const TMUX: &str = "tmux";
-    /// Whether emde runs over SSH.
-    pub const SSH: &str = "ssh";
-    /// The background colour.
-    pub const BACKGROUND: &str = "background";
-    /// The cell size in pixels.
-    pub const CELL: &str = "cell";
-    /// The graphics path.
-    pub const GRAPHICS: &str = "graphics";
-    /// The glyph set for block images.
-    pub const BLOCKS: &str = "blocks";
-}
 
 /// A terminal emulator emde knows by name.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1286,6 +1265,7 @@ mod tests {
         let id = |s: &str| Identity::from_xtversion(s, IdentitySource::Xtversion).unwrap();
         for (text, emulator, placeholders) in [
             ("kitty(0.49.1)", Emulator::Kitty, true),
+            ("kitty(0.28.0)", Emulator::Kitty, true),
             ("kitty(0.27.1)", Emulator::Kitty, false),
             ("ghostty 1.3.1", Emulator::Ghostty, true),
             ("iTerm2 3.6.9", Emulator::Iterm2, true),
@@ -1295,6 +1275,7 @@ mod tests {
             ("XTerm(390)", Emulator::XTerm, false),
             ("xterm.js(6.0.0)", Emulator::XtermJs, false),
             ("tmux 3.4", Emulator::Tmux, false),
+            ("Konsole 24.02.1", Emulator::Konsole, false),
             ("Something 1.0", Emulator::Unknown, false),
         ] {
             let identity = id(text);
@@ -1939,6 +1920,114 @@ mod tests {
                 .mode(ImageMode::Kitty)
                 .decide_with(Caps::plain(), &ImageOptions::default());
             assert_eq!(caps.graphics, Graphics::None);
+        }
+
+        #[test]
+        fn no_signal_at_all_gives_blocks() {
+            let caps = Case::new(&[], None).decide();
+            assert_eq!(caps.graphics, Graphics::Blocks);
+            let sixel = if SIXEL_BUILT {
+                "sixel ✗ not probed"
+            } else {
+                "sixel ✗ built without sixel"
+            };
+            assert_eq!(
+                reason(&caps, topic::GRAPHICS),
+                format!("kitty ✗ not probed · {sixel}")
+            );
+        }
+
+        #[test]
+        fn no_escape_sequences_means_alt_text_in_every_mode() {
+            // `TERM=dumb` on a terminal that still answered everything: even
+            // a forced pixel mode must not write escape sequences.
+            let dumb = Caps {
+                color: ColorDepth::None,
+                ..Caps::full()
+            };
+            for probe in [KITTY, XTERM_VT340] {
+                for mode in [
+                    ImageMode::Auto,
+                    ImageMode::Kitty,
+                    ImageMode::Iterm,
+                    ImageMode::Sixel,
+                    ImageMode::Blocks,
+                    ImageMode::None,
+                ] {
+                    let caps = Case::new(&[("TERM", "dumb")], Some(probe))
+                        .mode(mode)
+                        .decide_with(dumb.clone(), &ImageOptions::default());
+                    assert_eq!(caps.graphics, Graphics::None, "{mode:?}");
+                }
+            }
+        }
+
+        #[test]
+        fn attributes_only_output_still_gets_pixels() {
+            // NO_COLOR: images are content, not decoration; only block images
+            // need colours.
+            let mono = Caps {
+                color: ColorDepth::Mono,
+                ..Caps::full()
+            };
+            let caps = Case::new(&[("TERM", "xterm-kitty")], Some(KITTY))
+                .decide_with(mono, &ImageOptions::default());
+            assert_eq!(caps.graphics, Graphics::KittyPlaceholders);
+        }
+
+        #[test]
+        fn forced_kitty_trusts_an_identity_from_the_environment() {
+            // Ghostty always has placeholders, so no version is needed; kitty
+            // without a reported version gets classic placements.
+            let ghostty = [
+                ("TERM_PROGRAM", "ghostty"),
+                ("TERM_PROGRAM_VERSION", "1.3.1"),
+            ];
+            let caps = Case::new(&ghostty, None).mode(ImageMode::Kitty).decide();
+            assert_eq!(caps.graphics, Graphics::KittyPlaceholders);
+            assert_eq!(
+                reason(&caps, topic::GRAPHICS),
+                "images = kitty · Ghostty 1.3.1 has Unicode placeholders"
+            );
+            let kitty = [("TERM", "xterm-kitty")];
+            let caps = Case::new(&kitty, None).mode(ImageMode::Kitty).decide();
+            assert_eq!(caps.graphics, Graphics::KittyClassic);
+        }
+
+        #[test]
+        fn explicit_modes_are_honoured_when_piped() {
+            // Automatic detection never sends pixels into a pipe, but an
+            // explicit request is the user's call (`emde --images kitty
+            // --color=always x.md > saved`), as long as escapes are allowed.
+            let piped = Caps {
+                is_tty: false,
+                ..Caps::full()
+            };
+            let iterm = [
+                ("TERM_PROGRAM", "iTerm.app"),
+                ("TERM_PROGRAM_VERSION", "3.6.9"),
+            ];
+            let caps = Case::new(&iterm, None).decide_with(piped.clone(), &ImageOptions::default());
+            assert_eq!(caps.graphics, Graphics::Blocks);
+            let caps = Case::new(&iterm, None)
+                .mode(ImageMode::Kitty)
+                .decide_with(piped, &ImageOptions::default());
+            assert_eq!(caps.graphics, Graphics::KittyPlaceholders);
+        }
+
+        #[test]
+        fn iterm_images_never_go_through_tmux() {
+            // Even with passthrough on: tmux neither moves the outer cursor
+            // for them nor redraws them.
+            let caps = Case::new(&[SSH], Some(ITERM2_VIA_TMUX))
+                .in_tmux(tmux_lines::USER_SESSION_PASSTHROUGH, true)
+                .mode(ImageMode::Iterm)
+                .decide();
+            assert_eq!(caps.graphics, Graphics::Blocks);
+            assert_eq!(
+                reason(&caps, topic::GRAPHICS),
+                "images = iterm · iterm ✗ never inside tmux"
+            );
         }
 
         #[test]

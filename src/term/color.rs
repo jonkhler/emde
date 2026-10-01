@@ -25,10 +25,12 @@
 //! 11. otherwise 16 colours.
 
 use super::env::Env;
-use super::{Caps, ColorDepth, Reason};
+use super::{Caps, ColorDepth, Reason, topic};
 use crate::options::When;
 
-/// `--color` / `render.color`.
+/// How the colour depth is chosen: `--color` and `render.color` (the one
+/// definition; `config` parses it and re-exports it as
+/// `config::ColorChoice`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum ColorChoice {
     /// Detect from the environment and the terminal.
@@ -44,16 +46,6 @@ pub enum ColorChoice {
     Ansi256,
     /// Force the 16 ANSI colours.
     Ansi16,
-}
-
-/// Reason topics (the same names `term::caps` and `--doctor` use).
-pub mod topic {
-    /// The colour depth.
-    pub const COLOR: &str = "color";
-    /// OSC 8 hyperlinks.
-    pub const HYPERLINKS: &str = "hyperlinks";
-    /// Styled underlines.
-    pub const UNDERLINE: &str = "underline";
 }
 
 /// The base capabilities: colour depth, hyperlinks and styled underlines.

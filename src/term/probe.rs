@@ -772,7 +772,7 @@ pub fn default_timeout(env: &Env, batch: &Batch) -> Duration {
 /// `timeout`, then drain late bytes for [`DRAIN`].
 ///
 /// Fails without touching the terminal when this process is not in its
-/// foreground process group (see [`ensure_foreground`]).
+/// foreground process group (see `ensure_foreground`).
 ///
 /// Raw mode is restored on every path out, including errors and panics; a
 /// terminal that already was in raw mode is left in it.

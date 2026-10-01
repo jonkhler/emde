@@ -1,0 +1,62 @@
+---
+source: tests/images.rs
+expression: shown
+---
+\e[1;38;5;234;48;5;111m Image gallery                                          \e[0m
+
+A gradient, 64×32 pixels:
+
+                        \e[38;5;196;48;5;202m▀\e[38;5;160;48;5;166m▀\e[38;5;125;48;5;131m▀\e[38;5;89;48;5;95m▀\e[38;5;90;48;5;60m▀\e[38;5;55;48;5;61m▀\e[38;5;20;48;5;26m▀\e[38;5;21;48;5;27m▀\e[0m
+                        \e[38;5;214;48;5;220m▀\e[38;5;172;48;5;184m▀\e[38;5;143;48;5;149m▀\e[38;5;108;48;5;113m▀\e[38;5;246;48;5;114m▀\e[38;5;73;48;5;79m▀\e[38;5;38;48;5;44m▀\e[38;5;39;48;5;45m▀\e[0m
+                 \e[3;38;5;146mA red-to-blue gradient\e[0m
+
+A disc with a transparent background:
+
+                          \e[38;5;41m▄\e[0;48;5;41m  \e[0;38;5;41m▄\e[0m
+                          \e[38;5;41m▀\e[0;48;5;41m  \e[0;38;5;41m▀\e[0m
+                          \e[3;38;5;146mDisc\e[0m
+
+\e[38;5;243m▎\e[0m \e[38;5;146mQuoted, a JPEG photo:\e[0m
+\e[38;5;243m▎\e[0m
+\e[38;5;243m▎\e[0m                        \e[38;5;196;48;5;202m▀\e[38;5;160;48;5;166m▀\e[38;5;125;48;5;131m▀\e[38;5;89;48;5;95m▀\e[38;5;90;48;5;60m▀\e[38;5;55;48;5;61m▀\e[38;5;20;48;5;26m▀\e[38;5;21;48;5;27m▀\e[0m
+\e[38;5;243m▎\e[0m                        \e[38;5;214;48;5;220m▀\e[38;5;172;48;5;184m▀\e[38;5;143;48;5;149m▀\e[38;5;108;48;5;113m▀\e[38;5;246;48;5;114m▀\e[38;5;73;48;5;79m▀\e[38;5;38;48;5;44m▀\e[38;5;39;48;5;45m▀\e[0m
+\e[38;5;243m▎\e[0m                         \e[3;38;5;146mPhoto\e[0m
+
+\e[38;5;111m•\e[0m A listed GIF (its first frame):
+
+                           \e[48;5;196m    \e[0m
+                        \e[3;38;5;146mAnimation\e[0m
+
+A WebP image, and a tiny icon from a data URI:
+
+                          \e[38;5;41m▄\e[0;48;5;41m  \e[0;38;5;41m▄\e[0m
+                          \e[38;5;41m▀\e[0;48;5;41m  \e[0;38;5;41m▀\e[0m
+                          \e[3;38;5;146mWebP\e[0m
+
+                           \e[48;5;214m \e[0m
+                          \e[3;38;5;146mIcon\e[0m
+
+                          \e[38;5;166;48;5;178m▀\e[38;5;131;48;5;143m▀\e[38;5;61;48;5;72m▀\e[38;5;26;48;5;38m▀\e[0m
+                   \e[3;38;5;146mHalf-size gradient\e[0m
+
+                          \e[38;5;41m▄\e[0;48;5;41m  \e[0;38;5;41m▄\e[0m
+                          \e[38;5;41m▀\e[0;48;5;41m  \e[0;38;5;41m▀\e[0m
+          \e[3;38;5;146mPicture that follows the background\e[0m
+
+Images that cannot be shown keep their alt text:
+
+                    \e[38;5;243m▣ \e[3mMissing image\e[0m
+
+                        \e[3;38;5;243m▣ Trunca\e[0m
+
+                     \e[3;38;5;146mTruncated PNG\e[0m
+
+                      \e[38;5;243m▣ \e[3mEmpty file\e[0m
+
+                     \e[38;5;243m▣ \e[3mNot an image\e[0m
+
+                     \e[38;5;243m▣ \e[3mAn SVG logo\e[0m
+
+                     \e[38;5;243m▣ \e[3mRemote image\e[0m
+
+Inline images such as \e[38;5;243m▣ \e[3mchip\e[0m stay chips.

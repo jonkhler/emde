@@ -19,6 +19,10 @@ use crate::options::{
 use crate::style::Underline;
 use emde_math::{Bold, Fractions, Letters, ScriptSet};
 
+/// `render.color` is the colour choice of terminal detection, parsed here
+/// with the same names as the `--color` flag.
+pub use crate::term::color::ColorChoice;
+
 /// A setting whose value is one of a fixed set of names.
 pub(crate) trait Named: Copy + PartialEq + 'static {
     /// The documented names (lowercase, `-` separated), in documentation order.
@@ -62,24 +66,6 @@ macro_rules! named_values {
             $( const ALIASES: &'static [(&'static str, Self)] = &[$(($alias, $aval)),*]; )?
         }
     };
-}
-
-/// `render.color`: how the colour depth is chosen.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
-pub enum ColorChoice {
-    /// Detect from the environment and the terminal.
-    #[default]
-    Auto,
-    /// Colour even when the output is not a terminal (depth still detected).
-    Always,
-    /// No colours and no escape sequences.
-    Never,
-    /// Force 24-bit colour.
-    TrueColor,
-    /// Force the xterm 256-colour palette.
-    Ansi256,
-    /// Force the 16 ANSI colours.
-    Ansi16,
 }
 
 /// `theme.background`: which variant of the theme to use.

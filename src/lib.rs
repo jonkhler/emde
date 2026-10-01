@@ -22,6 +22,7 @@ pub mod ir;
 pub mod layout;
 pub mod options;
 pub mod panic;
+mod parallel;
 pub mod parse;
 pub mod render;
 pub mod source;

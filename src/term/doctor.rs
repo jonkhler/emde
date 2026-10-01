@@ -19,11 +19,11 @@
 
 use std::time::Duration;
 
-use super::caps::{Emulator, Identity, IdentitySource, clean, glyph_name, topic};
+use super::caps::{Emulator, Identity, IdentitySource, clean, glyph_name};
 use super::env::Env;
 use super::probe::{LATE_REPLY_GRACE, ProbeOutcome, ProbeReplies, ProbeStatus};
 use super::tmux::TmuxInfo;
-use super::{Caps, ColorDepth, Graphics};
+use super::{Caps, ColorDepth, Graphics, topic};
 use crate::color::is_dark;
 use crate::style::Rgb;
 
