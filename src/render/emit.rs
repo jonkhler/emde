@@ -10,13 +10,22 @@
 //! and a reset at the end of every styled line so styles never bleed into
 //! the next line (or into `less -R`). [`super::debug`] renders the same
 //! pieces as tags.
+//!
+//! Figures are laid out as placeholder boxes ([`LineKind::Image`] rows).
+//! With an [`ImageRows`] provider ([`Emitter::with_images`]) a row shows
+//! the image instead: block-glyph cells, drawn with the same SGR diffing
+//! as text, or bytes a graphics protocol needs (kitty placeholder text, a
+//! pixel image drawn over its reserved rows). What the layout put left of
+//! the box (quote bars, list indentation, the centring pad) stays. Without
+//! a provider, or when it has nothing for a row, the box is shown.
 
 use std::ops::Range;
 
 use crate::color::mix_oklab;
+use crate::gfx::raster::RasterCell;
 use crate::highlight::HlSpan;
 use crate::ir::{Document, LinkId};
-use crate::layout::{Fill, Layout, LineKind, Span, SpanFlags};
+use crate::layout::{Fill, Layout, LineKind, Placement, Span, SpanFlags};
 use crate::style::{Color, Rgb, Style, StyleId, StylePatch, Underline};
 use crate::term::{Caps, ColorDepth};
 use crate::text::grapheme_width;
@@ -57,6 +66,26 @@ pub struct Mark {
     pub range: Range<u32>,
     /// What the mark changes about the style underneath.
     pub patch: StylePatch,
+}
+
+/// What one row of a figure shows instead of its placeholder box.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RowContent<'a> {
+    /// Block-glyph cells (a text-mode image row), written from the box's
+    /// left edge with their colours downsampled like any other style.
+    Cells(&'a [RasterCell]),
+    /// Bytes written as they are at the box's left edge, with every
+    /// attribute reset first; they must leave the attributes reset (kitty
+    /// placeholder text ends with `ESC[39m`). Empty for rows that another
+    /// row's bytes already drew.
+    Bytes(&'a [u8]),
+}
+
+/// Supplies the image content of [`LineKind::Image`] rows.
+pub trait ImageRows {
+    /// What row `row` of `placement` shows; `None` keeps the layout's
+    /// placeholder box (the image is not ready, or cannot be shown).
+    fn row(&self, placement: &Placement, row: u16) -> Option<RowContent<'_>>;
 }
 
 /// How output is encoded.
@@ -398,6 +427,8 @@ pub struct Emitter<'a> {
     styles: Vec<Style>,
     /// OSC 8 URL of each link, computed on first use.
     urls: Vec<Option<Option<String>>>,
+    /// Image content for figure rows.
+    images: Option<&'a dyn ImageRows>,
 }
 
 /// The terminal state while a line is written.
@@ -423,7 +454,15 @@ impl<'a> Emitter<'a> {
             palette,
             styles,
             urls: vec![None; doc.links.len()],
+            images: None,
         }
+    }
+
+    /// Show figures with the images `images` provides instead of their
+    /// placeholder boxes.
+    pub fn with_images(mut self, images: &'a dyn ImageRows) -> Emitter<'a> {
+        self.images = Some(images);
+        self
     }
 
     /// Whether a link gets an OSC 8 URL (computed once per link).
@@ -489,6 +528,10 @@ impl<'a> Emitter<'a> {
         let Some(line) = layout.lines.get(index) else {
             return;
         };
+        if let Some((placement, content)) = self.image_row(line.kind) {
+            self.write_image_row(index, &placement, content, out);
+            return;
+        }
         if line.n == 0 && matches!(line.fill, Fill::None) {
             out.push(b'\n');
             return;
@@ -501,6 +544,93 @@ impl<'a> Emitter<'a> {
         marked_segments(layout, index, marks, &mut |piece| {
             self.piece(out, &mut pen, piece);
         });
+        if pen.link.is_some() {
+            osc8::close(out);
+        }
+        if pen.style != Style::PLAIN {
+            out.extend_from_slice(sgr::RESET);
+        }
+        out.push(b'\n');
+    }
+
+    /// The image content of a figure row, when the provider has some.
+    fn image_row(&self, kind: LineKind) -> Option<(Placement, RowContent<'a>)> {
+        let LineKind::Image { placement, row } = kind else {
+            return None;
+        };
+        let placement = *self.layout.images.get(placement as usize)?;
+        let content = self.images?.row(&placement, row)?;
+        Some((placement, content))
+    }
+
+    /// Append a figure row showing `content`: what the layout put left of
+    /// the box, then the image from the box's left edge.
+    fn write_image_row(
+        &mut self,
+        index: usize,
+        placement: &Placement,
+        content: RowContent<'_>,
+        out: &mut Vec<u8>,
+    ) {
+        let layout = self.layout;
+        out.resize(out.len() + usize::from(layout.indent), b' ');
+        let mut pen = Pen {
+            style: Style::PLAIN,
+            link: None,
+        };
+        let mut col = 0u16;
+        for span in layout.line_spans(index) {
+            let end = col.saturating_add(span.cols);
+            if end > placement.col {
+                break;
+            }
+            let piece = Piece {
+                text: layout.span_text(span),
+                style: SegStyle::Id(span.style),
+                link: span.link,
+                off: Some(span.off),
+            };
+            self.piece(out, &mut pen, piece);
+            col = end;
+        }
+        spaces(placement.col.saturating_sub(col), &mut |pad| {
+            let piece = Piece {
+                text: pad,
+                style: SegStyle::Id(StyleId(0)),
+                link: None,
+                off: None,
+            };
+            self.piece(out, &mut pen, piece);
+        });
+        match content {
+            RowContent::Cells(cells) => {
+                // A linked figure stays a link: its cells are clickable.
+                let link = self.doc.image(placement.image).and_then(|i| i.link);
+                let mut buf = [0u8; 4];
+                for cell in cells {
+                    let style = Style {
+                        fg: cell.fg,
+                        bg: cell.bg,
+                        ..Style::PLAIN
+                    };
+                    let piece = Piece {
+                        text: cell.ch.encode_utf8(&mut buf),
+                        style: SegStyle::Style(style),
+                        link,
+                        off: None,
+                    };
+                    self.piece(out, &mut pen, piece);
+                }
+            }
+            RowContent::Bytes(bytes) => {
+                if pen.link.take().is_some() {
+                    osc8::close(out);
+                }
+                sgr::write_transition(&pen.style, &Style::PLAIN, out);
+                pen.style = Style::PLAIN;
+                out.extend_from_slice(bytes);
+            }
+        }
         if pen.link.is_some() {
             osc8::close(out);
         }
@@ -670,5 +800,125 @@ mod tests {
             super::super::plain_text(&doc, &l),
             "T\n══════════════════════════\n\n• a\n\n▎ b\n"
         );
+    }
+
+    /// Figures 4 × 2 cells.
+    struct FourByTwo;
+
+    impl crate::layout::ImageSizer for FourByTwo {
+        fn cells(&self, _: crate::ir::ImageId, _: u16, _: u16) -> Option<(u16, u16)> {
+            Some((4, 2))
+        }
+    }
+
+    /// Image rows: red-over-blue cells in row 0 (the last cell different),
+    /// bytes in row 1.
+    struct Rows(Vec<RasterCell>);
+
+    impl Rows {
+        fn new() -> Rows {
+            let red_blue = RasterCell {
+                ch: '▀',
+                fg: Color::Rgb(Rgb(255, 0, 0)),
+                bg: Color::Rgb(Rgb(0, 0, 255)),
+            };
+            let green = RasterCell {
+                ch: '▄',
+                fg: Color::Rgb(Rgb(0, 255, 0)),
+                bg: Color::Default,
+            };
+            Rows(vec![red_blue, red_blue, red_blue, green])
+        }
+    }
+
+    impl ImageRows for Rows {
+        fn row(&self, _: &Placement, row: u16) -> Option<RowContent<'_>> {
+            match row {
+                0 => Some(RowContent::Cells(&self.0)),
+                1 => Some(RowContent::Bytes(b"<image bytes>")),
+                _ => None,
+            }
+        }
+    }
+
+    fn figure(md: &str, caps: &Caps) -> (Document, Layout) {
+        let doc = parse(md, &ParseOptions::default());
+        let l = layout(
+            &doc,
+            20,
+            &Theme::test(),
+            caps,
+            &RenderOptions::default(),
+            &PlainHighlighter,
+            &FourByTwo,
+        );
+        (doc, l)
+    }
+
+    fn emitted(doc: &Document, l: &Layout, caps: &Caps, images: Option<&dyn ImageRows>) -> String {
+        let cfg = cfg(caps);
+        let mut e = Emitter::new(doc, l, &cfg);
+        if let Some(images) = images {
+            e = e.with_images(images);
+        }
+        let mut out = Vec::new();
+        e.write_all(&mut out);
+        String::from_utf8(out).unwrap()
+    }
+
+    #[test]
+    fn image_rows_without_a_provider_show_the_box() {
+        let caps = Caps::full();
+        let (doc, l) = figure("![alt](a.png)", &caps);
+        assert_eq!(l.images.len(), 1);
+        let out = emitted(&doc, &l, &caps, None);
+        assert!(out.contains("▣"), "{out:?}");
+        assert!(!out.contains("<image bytes>"));
+    }
+
+    #[test]
+    fn image_rows_show_cells_and_bytes_at_the_box() {
+        let caps = Caps::full();
+        let (doc, l) = figure("![alt](a.png)", &caps);
+        let rows = Rows::new();
+        let out = emitted(&doc, &l, &caps, Some(&rows));
+        let lines: Vec<&str> = out.lines().collect();
+        // Indent 2, then the box centred in the 16-column measure at 6.
+        let pad = " ".repeat(usize::from(l.indent + l.images[0].col));
+        assert_eq!(
+            lines[0],
+            format!("{pad}\x1b[38;2;255;0;0;48;2;0;0;255m▀▀▀\x1b[0;38;2;0;255;0m▄\x1b[0m"),
+            "one SGR for the run of equal cells, a reset when the background goes"
+        );
+        assert_eq!(lines[1], format!("{pad}<image bytes>"));
+        // Plain output gets the glyphs without escapes.
+        let plain = Caps::plain();
+        let (doc, l) = figure("![alt](a.png)", &plain);
+        let out = emitted(&doc, &l, &plain, Some(&rows));
+        let pad = " ".repeat(usize::from(l.indent + l.images[0].col));
+        assert!(out.starts_with(&format!("{pad}▀▀▀▄\n")), "{out:?}");
+    }
+
+    #[test]
+    fn image_rows_keep_quote_bars_and_links() {
+        let caps = Caps::full();
+        let (doc, l) = figure("> [![alt](a.png)](https://example.com)", &caps);
+        let rows = Rows::new();
+        let out = emitted(&doc, &l, &caps, Some(&rows));
+        let first = out.lines().next().unwrap();
+        assert!(first.contains("▎"), "the quote bar stays: {first:?}");
+        // A linked figure's cells are a link, closed before the line ends.
+        assert!(
+            first.contains("\x1b]8;id=t-0;https://example.com\x1b\\"),
+            "{first:?}"
+        );
+        assert!(first.ends_with("\x1b]8;;\x1b\\\x1b[0m"), "{first:?}");
+        // Bytes rows are written with every attribute reset first.
+        let second = out.lines().nth(1).unwrap();
+        let bytes_at = second.find("<image bytes>").unwrap();
+        let before = &second[..bytes_at];
+        let after_reset = before.rsplit("\x1b[0m").next().unwrap_or(before);
+        assert!(before.contains("▎\x1b[0m"), "{second:?}");
+        assert!(after_reset.chars().all(|c| c == ' '), "{second:?}");
     }
 }

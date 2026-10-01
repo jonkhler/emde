@@ -12,7 +12,7 @@ use std::io::{self, BufWriter, Write};
 use crate::ir::Document;
 use crate::layout::Layout;
 
-use super::emit::{Emitter, RenderConfig};
+use super::emit::{Emitter, ImageRows, RenderConfig};
 
 /// Size of the output buffer.
 pub const BUFFER: usize = 256 * 1024;
@@ -41,10 +41,24 @@ impl<W: Write> StreamSink<W> {
 
     /// Write one laid-out document; documents are one blank line apart.
     pub fn write_document(&mut self, doc: &Document, layout: &Layout) -> io::Result<()> {
+        self.write_document_with(doc, layout, None)
+    }
+
+    /// [`StreamSink::write_document`], showing figures with the images
+    /// `images` provides.
+    pub fn write_document_with(
+        &mut self,
+        doc: &Document,
+        layout: &Layout,
+        images: Option<&dyn ImageRows>,
+    ) -> io::Result<()> {
         if self.documents > 0 {
             self.out.write_all(b"\n")?;
         }
         let mut emitter = Emitter::new(doc, layout, &self.cfg);
+        if let Some(images) = images {
+            emitter = emitter.with_images(images);
+        }
         for i in 0..layout.lines.len() {
             emitter.write_line(i, &mut self.buf);
             if self.buf.len() >= CHUNK {

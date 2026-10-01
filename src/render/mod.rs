@@ -3,8 +3,8 @@
 //!
 //! * [`sgr`] — minimal SGR transitions and colour downsampling;
 //! * [`osc8`] — hyperlink sequences and URL safety;
-//! * [`emit`] — layout lines to bytes, with the highlight overlay and
-//!   gradient backgrounds applied;
+//! * [`emit`] — layout lines to bytes, with the highlight overlay,
+//!   gradient backgrounds and images ([`ImageRows`]) applied;
 //! * [`stream`] — the buffered sink for standard output;
 //! * [`debug`] — style tags instead of escapes, for snapshots.
 
@@ -15,7 +15,9 @@ pub mod sgr;
 pub mod stream;
 
 pub use debug::debug_text;
-pub use emit::{Emitter, Mark, Piece, RenderConfig, SegStyle, marked_segments, segments};
+pub use emit::{
+    Emitter, ImageRows, Mark, Piece, RenderConfig, RowContent, SegStyle, marked_segments, segments,
+};
 pub use stream::{StreamSink, is_broken_pipe};
 
 use crate::ir::Document;

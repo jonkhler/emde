@@ -9,6 +9,7 @@ pub mod color;
 pub mod doctor;
 pub mod env;
 pub mod probe;
+pub(crate) mod process;
 pub mod tmux;
 
 use crate::style::Rgb;
@@ -60,8 +61,35 @@ pub enum BlockGlyphSet {
 /// Why a capability was decided the way it was (shown by `--doctor`).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Reason {
+    /// What was decided: one of the [`topic`] names.
     pub topic: &'static str,
     pub detail: String,
+}
+
+/// The topics of the [`Reason`]s in [`Caps::reasons`]: [`color::decide`]
+/// records the first three, [`caps::decide`] the others, and `--doctor`
+/// looks them up by these names.
+pub mod topic {
+    /// The colour depth.
+    pub const COLOR: &str = "color";
+    /// OSC 8 hyperlinks.
+    pub const HYPERLINKS: &str = "hyperlinks";
+    /// Styled underlines.
+    pub const UNDERLINE: &str = "underline";
+    /// The terminal's identity.
+    pub const TERMINAL: &str = "terminal";
+    /// Whether emde runs inside tmux.
+    pub const TMUX: &str = "tmux";
+    /// Whether emde runs over SSH.
+    pub const SSH: &str = "ssh";
+    /// The background colour.
+    pub const BACKGROUND: &str = "background";
+    /// The cell size in pixels.
+    pub const CELL: &str = "cell";
+    /// The graphics path.
+    pub const GRAPHICS: &str = "graphics";
+    /// The glyph set for block images.
+    pub const BLOCKS: &str = "blocks";
 }
 
 /// Decided terminal capabilities.

@@ -16,13 +16,11 @@
 //!
 //! The query only reads; emde never changes a tmux option.
 
-use std::io::{self, Read};
-use std::os::fd::AsRawFd;
-use std::process::{Child, Command, ExitStatus, Stdio};
-use std::time::{Duration, Instant};
+use std::process::Command;
+use std::time::Duration;
 
 use super::env::Env;
-use super::probe::wait_readable;
+use super::process::output_with_deadline;
 
 /// The `tmux display-message -p` format: seven `|`-separated fields.
 pub const FORMAT: &str = "#{version}|#{client_termtype}|#{client_termname}|\
@@ -152,7 +150,7 @@ pub fn query(env: &Env) -> Option<TmuxInfo> {
     let mut cmd = Command::new("tmux");
     cmd.args(["display-message", "-p", FORMAT])
         .env("TMUX", socket);
-    let output = run_with_deadline(cmd, TIMEOUT)?;
+    let output = output_with_deadline(cmd, TIMEOUT, MAX_OUTPUT)?;
     parse(&String::from_utf8_lossy(&output))
 }
 
@@ -168,71 +166,6 @@ fn parse_cell(s: &str) -> Option<(u16, u16)> {
 /// never inject escape sequences into `--doctor` output.
 fn clean(s: &str) -> String {
     s.trim().chars().filter(|c| !c.is_control()).collect()
-}
-
-/// Run `cmd` with stdin and stderr closed and return its standard output.
-///
-/// Returns `None` if it fails to start, exits unsuccessfully or is still
-/// running after `limit`; a late child is killed and reaped.
-fn run_with_deadline(mut cmd: Command, limit: Duration) -> Option<Vec<u8>> {
-    let deadline = Instant::now() + limit;
-    let mut child = cmd
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn()
-        .ok()?;
-    let output = read_stdout(&mut child, deadline).ok();
-    let status = match output {
-        Some(_) => wait_until(&mut child, deadline),
-        None => None,
-    };
-    let Some(status) = status else {
-        let _ = child.kill();
-        let _ = child.wait();
-        return None;
-    };
-    output.filter(|_| status.success())
-}
-
-/// Read the child's stdout until EOF, failing at the deadline.
-fn read_stdout(child: &mut Child, deadline: Instant) -> io::Result<Vec<u8>> {
-    let mut stdout = child
-        .stdout
-        .take()
-        .ok_or_else(|| io::Error::other("stdout not captured"))?;
-    let mut out = Vec::new();
-    let mut buf = [0u8; 1024];
-    loop {
-        if !wait_readable(stdout.as_raw_fd(), deadline)? {
-            return Err(io::ErrorKind::TimedOut.into());
-        }
-        match stdout.read(&mut buf) {
-            Ok(0) => return Ok(out),
-            Ok(n) => {
-                out.extend_from_slice(buf.get(..n).unwrap_or_default());
-                if out.len() > MAX_OUTPUT {
-                    return Err(io::Error::other("tmux output too long"));
-                }
-            }
-            Err(e) if e.kind() == io::ErrorKind::Interrupted => {}
-            Err(e) => return Err(e),
-        }
-    }
-}
-
-/// Wait for the child to exit, polling until the deadline.
-fn wait_until(child: &mut Child, deadline: Instant) -> Option<ExitStatus> {
-    loop {
-        if let Some(status) = child.try_wait().ok()? {
-            return Some(status);
-        }
-        let now = Instant::now();
-        if now >= deadline {
-            return None;
-        }
-        std::thread::sleep((deadline - now).min(Duration::from_millis(1)));
-    }
 }
 
 /// `tmux display-message -p` output for the tests of the `term` modules.
@@ -402,17 +335,8 @@ mod tests {
     fn query_with_unreachable_server_is_none() {
         // A socket path that cannot exist: tmux (if installed) fails fast.
         let env = Env::from_pairs(&[("TMUX", "/nonexistent/emde-test/socket,1,0")]);
-        let start = Instant::now();
+        let start = std::time::Instant::now();
         assert_eq!(query(&env), None);
-        assert!(start.elapsed() < Duration::from_secs(2));
-    }
-
-    #[test]
-    fn deadline_kills_slow_commands() {
-        let mut cmd = Command::new("sleep");
-        cmd.arg("5");
-        let start = Instant::now();
-        assert_eq!(run_with_deadline(cmd, Duration::from_millis(50)), None);
         assert!(start.elapsed() < Duration::from_secs(2));
     }
 
@@ -420,17 +344,8 @@ mod tests {
     fn captures_output_of_fast_commands() {
         let mut cmd = Command::new("printf");
         cmd.arg("3.4|kitty(0.49.1)|xterm-kitty|RGB|10x21|on|off\\n");
-        let out = run_with_deadline(cmd, Duration::from_secs(2)).unwrap();
+        let out = output_with_deadline(cmd, Duration::from_secs(2), MAX_OUTPUT).unwrap();
         let t = parse(&String::from_utf8_lossy(&out)).unwrap();
         assert_eq!(t.client_termtype, "kitty(0.49.1)");
-    }
-
-    #[test]
-    fn failing_commands_are_none() {
-        let mut cmd = Command::new("sh");
-        cmd.args(["-c", "echo '3.4|a|b|c|1x1|on|on'; exit 3"]);
-        assert_eq!(run_with_deadline(cmd, Duration::from_secs(2)), None);
-        let missing = Command::new("/nonexistent/emde-test");
-        assert_eq!(run_with_deadline(missing, TIMEOUT), None);
     }
 }
