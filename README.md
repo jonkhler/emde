@@ -54,6 +54,40 @@ emde README.md
 - **Clickable links** (OSC 8) where the terminal supports them, numbered
   references (`docs[1]`) where it does not.
 
+## Installing
+
+The repository is private, so the installer authenticates with the GitHub
+CLI (log in once with `gh auth login`). It picks the release archive for
+your system (Linux or macOS, x86-64 or ARM), checks its SHA-256, and puts
+`emde` in `~/.local/bin`, the man page in `~/.local/share/man` and shell
+completions in `~/.local/share`:
+
+```sh
+gh api -H 'Accept: application/vnd.github.raw' repos/jonkhler/emde/contents/install.sh | sh
+```
+
+Without `gh`, use a token that can read the repository:
+
+```sh
+curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" -H 'Accept: application/vnd.github.raw' \
+  https://api.github.com/repos/jonkhler/emde/contents/install.sh | sh
+```
+
+The same command updates emde. Variants:
+
+| Command | What it does |
+|---|---|
+| `… \| EMDE_VERSION=v0.1.0 sh` | install that release instead of the latest |
+| `… \| EMDE_INSTALL_DIR=/usr/local/bin sh` | install the binary elsewhere |
+| `… \| sh -s -- --from-source` | build with `cargo install` (any platform with Rust) |
+| `… \| sh -s -- --uninstall` | remove everything the installer put in place |
+| `./install.sh --local` | in a checkout: build it and install that build |
+
+Releases are built by GitHub Actions when a `v*` tag is pushed
+(`.github/workflows/release.yml`), using `cargo xtask dist`, which you can
+also run yourself to get the archive for your machine in
+`$CARGO_TARGET_DIR/dist/`.
+
 ## Building
 
 emde is written in Rust (1.90 or newer). In this repository the toolchain

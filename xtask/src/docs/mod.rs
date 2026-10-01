@@ -24,7 +24,7 @@
 //! rendered in memory.
 
 pub(crate) mod examples;
-mod man;
+pub(crate) mod man;
 mod markdown;
 mod settings;
 mod theme;

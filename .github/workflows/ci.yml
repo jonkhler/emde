@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Everything `cargo xtask ci` checks: fmt, clippy (both feature sets), tests,
+  # docs freshness, rustdoc, banned crates, cargo deny, MSRV and binary size.
+  full:
+    name: xtask ci (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain (rust-toolchain.toml) and MSRV
+        run: |
+          rustup show active-toolchain || rustup toolchain install
+          rustup toolchain install 1.90 --profile minimal
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny
+      - run: cargo xtask ci
+
+  # The tests on macOS (select(2) on /dev/tty, BSD tools, Apple clang for onig).
+  macos:
+    name: tests (macOS)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --workspace --locked

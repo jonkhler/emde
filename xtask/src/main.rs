@@ -12,6 +12,8 @@
 //!   (see [`docs`]).
 //! * `fuzz [--secs N] [--jobs N] [--asan] [TARGET...]` – run the fuzz
 //!   targets of `fuzz/` (see [`fuzz`]; needs nightly and cargo-fuzz).
+//! * `dist [--target TRIPLE]` – build a release archive with its checksum
+//!   (see [`dist`]; used by the release workflow and `install.sh --local`).
 
 #![allow(clippy::print_stdout, clippy::print_stderr)]
 
@@ -19,6 +21,7 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
+mod dist;
 mod docs;
 mod fuzz;
 mod gen_gfx;
@@ -66,10 +69,11 @@ fn main() -> ExitCode {
         }
         "docs" => docs::run(args.iter().any(|a| a == "--check")),
         "fuzz" => fuzz::run(&args[1..]),
+        "dist" => dist::run_dist(&args[1..]),
         _ => {
             println!(
                 "usage: cargo xtask <ci [--full] | deps | size | gen [--check] | docs [--check] \
-                 | fuzz [--secs N] [--jobs N] [--asan] [TARGET...]>"
+                 | fuzz [--secs N] [--jobs N] [--asan] [TARGET...] | dist [--target TRIPLE]>"
             );
             Ok(())
         }
