@@ -22,10 +22,11 @@
 //! exact columns. Where layout only changes the spacing (the padding of
 //! code pills and key caps, tabs expanded in code), the same holds once
 //! whitespace is left out of both. Where layout transforms the text
-//! (typeset math, superscript footnote numbers, table rows that show
-//! several cells), the matched text is looked up in the line instead
-//! (again ignoring whitespace), and a match that cannot be found there is
-//! simply not highlighted on that line.
+//! (typeset math, superscript footnote numbers, table rows whose lines
+//! show parts of several cells), the matched text is looked up in the line
+//! instead, again ignoring whitespace: its whole cell, or the match with
+//! some text around it from the same cell. A match that cannot be found
+//! there is simply not highlighted on that line; marks never overlap.
 
 use std::borrow::Cow;
 use std::cell::OnceCell;
@@ -46,8 +47,12 @@ pub(crate) const MAX_MATCHES: usize = 100_000;
 /// Lines scanned for the end of a line's content range.
 const MAX_SCAN: usize = 256;
 
-/// Bytes of context on each side of a match looked up in a line.
-const CONTEXT: usize = 12;
+/// Bytes of context on each side of a match looked up in a line, tried
+/// longest first. A line that shares its position with others showing
+/// words (and is no table, code or math row) only gets the first: a short
+/// context could find the text in a decoration (the footnotes heading has
+/// "Footnotes" in it).
+const CONTEXTS: [usize; 3] = [12, 6, 3];
 
 fn to_u32(n: usize) -> u32 {
     u32::try_from(n).unwrap_or(u32::MAX)
@@ -254,6 +259,18 @@ impl Corpus {
         out
     }
 
+    /// The content offsets of the leaf of block `top` that holds offset
+    /// `off` (a table cell, a paragraph, …).
+    pub(crate) fn leaf_at(&self, top: u32, off: u32) -> Option<Range<u32>> {
+        let i = self
+            .leaves
+            .partition_point(|l| (l.top, l.off) <= (top, off))
+            .checked_sub(1)?;
+        let l = self.leaves.get(i)?;
+        let end = l.off.saturating_add(l.len);
+        (l.top == top && off < end).then_some(l.off..end)
+    }
+
     /// The content offset where footnote `index` starts in the footnote
     /// section, as layout counts it.
     pub(crate) fn footnote_offset(doc: &Document, index: usize) -> u32 {
@@ -423,6 +440,26 @@ fn line_range(layout: &Layout, index: usize) -> Option<(u32, Range<u32>)> {
     Some((pos.top, pos.off..end))
 }
 
+/// Whether no other line with the position of line `index` shows words
+/// (blank lines, rules and borders may share it): then the line is no
+/// decoration of the content (as a footnotes heading or an alert title
+/// sharing the position of the text after it are).
+fn alone(layout: &Layout, index: usize) -> bool {
+    let Some(pos) = layout.lines.get(index).map(|l| l.pos) else {
+        return false;
+    };
+    let words = |i: usize| {
+        layout
+            .line_spans(i)
+            .iter()
+            .any(|s| layout.span_text(s).chars().any(char::is_alphanumeric))
+    };
+    (layout.line_at(pos)..layout.len())
+        .take_while(|&i| layout.lines.get(i).is_some_and(|l| l.pos == pos))
+        .take(MAX_SCAN)
+        .all(|i| i == index || !words(i))
+}
+
 /// Byte offsets of the non-overlapping occurrences of `needle` in `hay`.
 fn occurrences(hay: &str, needle: &str) -> Vec<usize> {
     if needle.is_empty() {
@@ -431,21 +468,38 @@ fn occurrences(hay: &str, needle: &str) -> Vec<usize> {
     memmem::find_iter(hay.as_bytes(), needle.as_bytes()).collect()
 }
 
-/// Up to [`CONTEXT`] bytes of `s` before `at`, from the last line break.
-fn context_before(s: &str, at: usize) -> &str {
-    let mut from = at.saturating_sub(CONTEXT);
-    while from < at && !s.is_char_boundary(from) {
+/// The last `n` bytes of `s` or fewer (whole characters), after its last
+/// line break.
+fn tail(s: &str, n: usize) -> &str {
+    let mut from = s.len().saturating_sub(n);
+    while from < s.len() && !s.is_char_boundary(from) {
         from += 1;
     }
-    let before = safe_slice(s, from, at);
-    before.rsplit('\n').next().unwrap_or("")
+    s.get(from..)
+        .unwrap_or("")
+        .rsplit('\n')
+        .next()
+        .unwrap_or("")
 }
 
-/// Up to [`CONTEXT`] bytes of `s` from `at`, to the first line break,
-/// without trailing space.
-fn context_after(s: &str, at: usize) -> &str {
-    let after = safe_slice(s, at, at.saturating_add(CONTEXT));
-    after.split('\n').next().unwrap_or("").trim_end()
+/// The first `n` bytes of `s` or fewer (whole characters), before its
+/// first line break.
+fn head(s: &str, n: usize) -> &str {
+    s.split('\n')
+        .next()
+        .map_or("", |line| safe_slice(line, 0, n))
+}
+
+/// Where `needle` is in `hay`, if it is there exactly once.
+fn unique(hay: &str, needle: &str) -> Option<usize> {
+    if needle.is_empty() {
+        return None;
+    }
+    let first = memmem::find(hay.as_bytes(), needle.as_bytes())?;
+    let rest = hay.as_bytes().get(first + 1..).unwrap_or_default();
+    memmem::find(rest, needle.as_bytes())
+        .is_none()
+        .then_some(first)
 }
 
 /// Whether layout may add, drop or change `c` where it shows text:
@@ -453,11 +507,6 @@ fn context_after(s: &str, at: usize) -> &str {
 /// code, the space at a wrap) and soft hyphens.
 fn squeezable(c: char) -> bool {
     c.is_whitespace() || c == '\u{ad}'
-}
-
-/// `s` without [`squeezable`] characters.
-fn squeeze(s: &str) -> String {
-    s.chars().filter(|&c| !squeezable(c)).collect()
 }
 
 /// A line's text without [`squeezable`] characters, and where each byte
@@ -502,52 +551,95 @@ impl Squeezed {
 struct Lookup<'a> {
     /// The content the line shows.
     content: &'a str,
-    /// The line's text, folded when the search is, squeezed.
+    /// `content` folded when the search is, squeezed.
+    squeezed: &'a Squeezed,
+    /// The line's text, the same way.
     line: &'a Squeezed,
-    sensitive: bool,
-    /// Whether the matched text may be looked up on its own (table and
-    /// code rows, whose content is laid out in pieces); elsewhere some
-    /// context must come along, so that a decoration sharing the line's
-    /// position — a code block's label, the footnotes heading, an alert's
-    /// title — is not mistaken for the match.
+    /// The bytes of `content` from the leaf holding the match: one cell
+    /// when the line belongs to a table row (whose lines all show parts of
+    /// every cell), else all of it.
+    cell: Range<usize>,
+    /// Whether the matched text may be looked up on its own (table, code
+    /// and display math rows, whose content is laid out in pieces);
+    /// elsewhere some context must come along, so that a decoration
+    /// sharing the line's position — a code block's label, the footnotes
+    /// heading, an alert's title — is not mistaken for the match.
     bare: bool,
+    /// A code row: it shows its content from the start.
+    code: bool,
+    /// No other line with this line's position shows words, so it is no
+    /// decoration.
+    alone: bool,
 }
 
 impl Lookup<'_> {
-    /// `s` as it is compared with the line: folded when the search is,
-    /// squeezed.
-    fn key(&self, s: &str) -> String {
-        squeeze(&fold_for(s, self.sensitive))
+    /// Content bytes `a..b` as they are compared with the line: folded
+    /// when the search is, squeezed.
+    fn key(&self, a: usize, b: usize) -> &str {
+        let (x, y) = (self.squeezed.offset(a), self.squeezed.offset(b));
+        self.squeezed.text.get(x..y.max(x)).unwrap_or("")
     }
 
     /// Where content bytes `a..b` are in the line.
     fn find(&self, a: usize, b: usize) -> Option<Range<usize>> {
-        let part = safe_slice(self.content, a, b);
-        let key = self.key(part);
+        let key = self.key(a, b);
         if key.is_empty() {
             return None;
         }
-        let before = context_before(self.content, a);
-        let after = context_after(self.content, a + part.len());
-        for (pre, post) in [(before, after), ("", after), (before, "")] {
-            let (pre, post) = (self.key(pre), self.key(post));
-            if pre.is_empty() && post.is_empty() {
+        let cell = self.cell.start.min(a)..self.cell.end.max(b);
+        let single = cell == (0..self.content.len());
+        // The whole cell, where the line shows it once: exact. (One of the
+        // cells of a table row; or all the content, on a line that cannot
+        // be a decoration showing the same words.)
+        let whole = self.key(cell.start, cell.end);
+        if let Some(at) = unique(&self.line.text, whole).filter(|_| !single || self.alone) {
+            let start = at + self.key(cell.start, a).len();
+            return self.line.original(start..start + key.len());
+        }
+        // The matched text with some of the cell around it, shorter and
+        // shorter (where layout changed the text nearby: typeset math, link
+        // numbers, a wrapped table cell) unless decorations share the line.
+        let before = safe_slice(self.content, cell.start, a);
+        let after = safe_slice(self.content, b, cell.end);
+        let lengths = if self.bare || self.alone {
+            &CONTEXTS[..]
+        } else {
+            &CONTEXTS[..1]
+        };
+        let mut tried = ("", "");
+        for &n in lengths {
+            let pre = self.key(a - tail(before, n).len(), a);
+            let post = self.key(b, b + head(after, n).len());
+            if (pre.is_empty() && post.is_empty()) || (pre, post) == tried {
                 continue;
             }
-            let needle = format!("{pre}{key}{post}");
-            if let Some(at) = memmem::find(self.line.text.as_bytes(), needle.as_bytes()) {
-                let start = at + pre.len();
-                return self.line.original(start..start + key.len());
+            for (pre, post) in [(pre, post), ("", post), (pre, "")] {
+                if pre.is_empty() && post.is_empty() {
+                    continue;
+                }
+                let needle = format!("{pre}{key}{post}");
+                if let Some(at) = memmem::find(self.line.text.as_bytes(), needle.as_bytes()) {
+                    let start = at + pre.len();
+                    return self.line.original(start..start + key.len());
+                }
             }
+            tried = (pre, post);
         }
-        if !self.bare {
+        if !self.bare && !self.alone {
             return None;
         }
-        // The same text earlier in the content comes earlier in the line.
-        let earlier = self.key(safe_slice(self.content, 0, a + part.len()));
-        let nth = occurrences(&earlier, &key).len().saturating_sub(1);
-        let found = occurrences(&self.line.text, &key);
-        let at = *found.get(nth).or(found.last())?;
+        // The n-th occurrence in the content is the n-th in the line when
+        // the line shows all of the content's occurrences (a table row that
+        // fits on one line, the row of display math with the word, a line
+        // where layout changed the text around a match), or a code line
+        // shows its content from the start (clipped or not).
+        let found = occurrences(&self.line.text, key);
+        let all = occurrences(&self.squeezed.text, key).len();
+        if found.len() != all && !(self.code && single) {
+            return None;
+        }
+        let nth = occurrences(self.key(0, b), key).len().checked_sub(1)?;
+        let at = *found.get(nth)?;
         self.line.original(at..at + key.len())
     }
 }
@@ -578,6 +670,7 @@ pub(crate) fn line_marks(
     if hits.is_empty() {
         return out;
     }
+    let kind = layout.lines.get(index).map(|l| l.kind);
     let line = LineText::new(layout, index);
     let content = corpus.slice(top, range.clone());
     let shown = content.trim_end();
@@ -590,9 +683,15 @@ pub(crate) fn line_marks(
         let line = Squeezed::new(&fold_for(&line.text, search.sensitive));
         let content = Squeezed::new(&fold_for(&content, search.sensitive));
         let aligned = (!content.text.is_empty() && line.text.ends_with(&content.text))
-            .then(|| (line.text.len() - content.text.len(), content));
-        (line, aligned)
+            .then(|| line.text.len() - content.text.len());
+        (line, content, aligned)
     });
+    let bare = matches!(
+        kind,
+        Some(LineKind::Table | LineKind::Code { .. } | LineKind::Math)
+    );
+    let code = matches!(kind, Some(LineKind::Code { .. }));
+    let mut lone = None;
     for (i, m) in hits {
         let p = if Some(i) == search.current {
             current_patch
@@ -602,7 +701,7 @@ pub(crate) fn line_marks(
         let a = m.start.max(range.start) - range.start;
         let b = m.end.min(range.end) - range.start;
         let (a, b) = (a as usize, b as usize);
-        let Some((squeezed, aligned)) = &squeezed else {
+        let Some((squeezed, squeezed_content, aligned)) = &squeezed else {
             let b = b.min(shown.len());
             if a < b {
                 line.marks(content_start + a..content_start + b, p, &mut out);
@@ -610,18 +709,21 @@ pub(crate) fn line_marks(
             continue;
         };
         let at = match aligned {
-            Some((base, content)) => {
-                squeezed.original(base + content.offset(a)..base + content.offset(b))
-            }
+            Some(base) => squeezed
+                .original(base + squeezed_content.offset(a)..base + squeezed_content.offset(b)),
             // Transformed text: look the matched part up in the line.
             None => Lookup {
                 content: &content,
+                squeezed: squeezed_content,
                 line: squeezed,
-                sensitive: search.sensitive,
-                bare: matches!(
-                    layout.lines.get(index).map(|l| l.kind),
-                    Some(LineKind::Table | LineKind::Code { .. })
-                ),
+                cell: corpus.leaf_at(top, m.start).map_or(0..content.len(), |r| {
+                    let start = r.start.max(range.start) - range.start;
+                    let end = r.end.min(range.end).saturating_sub(range.start);
+                    start as usize..end as usize
+                }),
+                bare,
+                code,
+                alone: *lone.get_or_insert_with(|| alone(layout, index)),
             }
             .find(a, b),
         };
@@ -630,6 +732,16 @@ pub(crate) fn line_marks(
         }
     }
     out.sort_by_key(|m| m.range.start);
+    // Marks must not overlap: should two matches have been found at the
+    // same text, the first one keeps it.
+    let mut end = 0;
+    out.retain(|m| {
+        let keep = m.range.start >= end;
+        if keep {
+            end = m.range.end;
+        }
+        keep
+    });
     out
 }
 
@@ -864,7 +976,68 @@ mod tests {
         // A match running out of a pill covers the padding in between.
         let found = marked_texts("Use `cargo` here.", "cargo here", 80);
         let joined: String = found.concat();
-        assert_eq!(squeeze(&joined), "cargohere", "{found:?}");
+        assert_eq!(Squeezed::new(&joined).text, "cargohere", "{found:?}");
+    }
+
+    /// Every mark `pattern` gets in `md` at `width`: the line and the text,
+    /// checking that the marks of each line are sorted and do not overlap.
+    fn marked_lines(md: &str, pattern: &str, width: u16) -> Vec<(usize, String)> {
+        let d = doc(md);
+        let l = lay(&d, width);
+        let c = Corpus::new(&d, FrontMatterMode::Card);
+        let s = Search::run(&c, pattern, false, SearchCase::Smart);
+        let mut out = Vec::new();
+        for i in 0..l.len() {
+            let marks = line_marks(&c, &l, i, &s, StylePatch::default(), StylePatch::default());
+            for pair in marks.windows(2) {
+                assert!(pair[0].range.end <= pair[1].range.start, "{marks:?}");
+            }
+            out.extend(marked(&l, &marks).into_iter().map(|t| (i, t)));
+        }
+        out
+    }
+
+    #[test]
+    fn table_cells_are_found_cell_by_cell() {
+        // A cell wrapped over several lines (all with the row's position),
+        // with "the" three times in it: each one marked once at most, on
+        // its own line, never piled up on one.
+        let md = "| a | b |\n|---|---|\n| x | Another cell that wraps, because the \
+                  table is wider than the terminal |";
+        let found = marked_lines(md, "the", 40);
+        let lines: Vec<usize> = found.iter().map(|(i, _)| *i).collect();
+        let mut unique = lines.clone();
+        unique.dedup();
+        assert_eq!(lines, unique, "one mark per line: {found:?}");
+        assert!(found.len() >= 2, "{found:?}");
+        // Narrow tables become records ("a: one"): each match is marked on
+        // the record line showing its cell.
+        let md = "| a | b | c | d | e | f | g |\n|---|---|---|---|---|---|---|\n\
+                  | one | two | three | four | five | six | seven |";
+        let d = doc(md);
+        let l = lay(&d, 20);
+        let found = marked_lines(md, "three", 20);
+        assert_eq!(found.len(), 1, "{found:?}");
+        assert!(l.line_text(found[0].0).ends_with("three"));
+    }
+
+    #[test]
+    fn text_next_to_transformed_text_is_marked() {
+        for (md, pattern) in [
+            // Typeset math right after the match.
+            ("Inline: $e^{i\\pi} + 1 = 0$, and more.", "inline"),
+            // A footnote number shown as a superscript.
+            ("Another one.[^n] And so on.\n\n[^n]: Note.", "one"),
+            // A word that display math shows as it is.
+            (
+                "$$\nf(x) = \\begin{cases} 1 & x > 0 \\\\ 0 & \\text{otherwise} \\end{cases}\n$$",
+                "otherwise",
+            ),
+        ] {
+            let found = marked_lines(md, pattern, 60);
+            assert_eq!(found.len(), 1, "{md:?}: {found:?}");
+            assert_eq!(fold(&found[0].1), pattern, "{md:?}: {found:?}");
+        }
     }
 
     #[test]
@@ -878,7 +1051,7 @@ mod tests {
         assert_eq!(s.offset(4), 2, "a and b come before byte 4");
         assert_eq!(s.offset(0), 0);
         assert_eq!(s.offset(99), "abéc".len());
-        assert_eq!(squeeze("soft\u{ad}hy phen"), "softhyphen");
+        assert_eq!(Squeezed::new("soft\u{ad}hy phen").text, "softhyphen");
     }
 
     #[test]
