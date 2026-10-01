@@ -265,7 +265,7 @@ pub(crate) fn markdown(sections: &[Section]) -> Result<String, String> {
         for note in &section.notes {
             match note {
                 Note::Text(t) => {
-                    out.push_str(&markdown::text(t));
+                    out.push_str(&markdown::paragraph(t));
                     out.push_str("\n\n");
                 }
                 Note::Example(lines) => {

@@ -65,24 +65,45 @@ pub(crate) fn replace_generated(text: &str, name: &str, content: &str) -> Result
     Ok(out)
 }
 
-/// Prose for a Markdown paragraph or table cell: characters that Markdown
-/// (or GitHub's math and tables) would interpret are escaped, except inside
-/// `` `code` `` spans, which are kept as they are.
+/// Prose for a Markdown table cell: characters that Markdown (or GitHub's
+/// math and tables) would interpret are escaped, except inside `` `code` ``
+/// spans, where only a pipe is (a table takes `\|` as part of the cell
+/// everywhere).
+///
+/// `[` is not escaped: emde, like other readers of LLM-written Markdown,
+/// takes `\[` and `\(` after an odd number of backslashes for TeX math, so
+/// the escaped bracket in `\\\[` (a literal `\[`) would turn the text up to
+/// the next `\]` into a formula. An escaped `]` is enough to keep brackets
+/// from making links, images or footnote references.
 pub(crate) fn text(s: &str) -> String {
+    escape(s, true)
+}
+
+/// Prose for a Markdown paragraph: as [`text`], but code spans are kept
+/// exactly as they are (outside a table, `\|` in one shows the backslash).
+pub(crate) fn paragraph(s: &str) -> String {
+    escape(s, false)
+}
+
+/// [`text`], escaping pipes in code spans or not.
+fn escape(s: &str, in_table: bool) -> String {
     let mut out = String::with_capacity(s.len() + 8);
     for (i, part) in s.split('`').enumerate() {
         if i > 0 {
             out.push('`');
         }
         if i % 2 == 1 {
-            // Inside a code span only a pipe needs escaping (in a table).
-            out.push_str(&part.replace('|', "\\|"));
+            if in_table {
+                out.push_str(&part.replace('|', "\\|"));
+            } else {
+                out.push_str(part);
+            }
             continue;
         }
         for c in part.chars() {
             if matches!(
                 c,
-                '\\' | '*' | '_' | '$' | '|' | '<' | '>' | '[' | ']' | '~' | '&' | '#'
+                '\\' | '*' | '_' | '$' | '|' | '<' | '>' | ']' | '~' | '&' | '#'
             ) {
                 out.push('\\');
             }
@@ -158,9 +179,87 @@ mod tests {
             text(r"$...$ and \( x \), a|b, *not* <em>"),
             r"\$...\$ and \\( x \\), a\|b, \*not\* \<em\>"
         );
+        assert_eq!(text(r"\[ x \] and [1]"), r"\\[ x \\\] and [1\]");
         assert_eq!(text("`a_b|c` and a_b"), r"`a_b\|c` and a\_b");
+        assert_eq!(paragraph("`a_b|c` and a|b"), r"`a_b|c` and a\|b");
         assert_eq!(code("a|b"), r"`a\|b`");
         assert_eq!(code("x`y"), "`` x`y ``");
+    }
+
+    /// Prose that Markdown, GitHub or emde could take for markup: TeX
+    /// delimiters, math, links, footnotes, HTML, entities, emphasis.
+    const TRICKY: &[&str] = &[
+        r"Recognise \( ... \) and \[ ... \] as math.",
+        r"\mathbf: sgr (bold text) or unicode (𝐱).",
+        "$...$ and $$...$$ math, $5 and $10.",
+        "Numbered link references ([1]) where hyperlinks are off.",
+        "When your [style.h1] sets no background; [a_b] and [x^2 + 1].",
+        "[text](https://example.org) and ![alt](x.png), [^1] and [ref].",
+        "<b>bold</b> &amp; ~~struck~~ *em* _em_ #hash a|b \\ end",
+        "`code with | and \\(x\\)` and `[1]`",
+    ];
+
+    /// How emde shows `markdown`, as plain text without trailing space.
+    fn shown(markdown: &str) -> String {
+        use emde::highlight::PlainHighlighter;
+        use emde::layout::{NoImages, layout};
+        use emde::options::{RenderOptions, When};
+        use emde::parse::{ParseOptions, parse_source};
+        use emde::render::plain_text;
+        use emde::source::{Origin, Source};
+        use emde::term::Caps;
+        use emde::theme::Theme;
+
+        let opts = RenderOptions {
+            max_width: 0,
+            link_refs: When::Never,
+            ..RenderOptions::default()
+        };
+        let source = Source::from_bytes(markdown.as_bytes().to_vec(), Origin::Memory);
+        let doc = parse_source(&source, &ParseOptions::from(&opts));
+        let caps = Caps::plain();
+        let l = layout(
+            &doc,
+            400,
+            &Theme::test(),
+            &caps,
+            &opts,
+            &PlainHighlighter,
+            &NoImages,
+        );
+        let text = plain_text(&doc, &l);
+        let lines: Vec<&str> = text.lines().map(str::trim_end).collect();
+        lines.join("\n").trim().to_owned()
+    }
+
+    /// Escaped prose reads in emde as it was written, in a paragraph and in
+    /// a table cell (where emde draws the borders around it).
+    #[test]
+    fn escaped_text_reads_as_written_in_emde() {
+        for &s in TRICKY {
+            assert_eq!(shown(&paragraph(s)), s, "{:?}", paragraph(s));
+            let cell = shown(&table(&["x"], &[vec![text(s)]]));
+            assert!(cell.contains(&format!(" {s} ")), "{s:?}:\n{cell}");
+        }
+    }
+
+    /// The same for every description the settings reference shows.
+    #[test]
+    fn settings_read_as_written_in_emde() {
+        let defaults = include_str!("../../../assets/default.toml");
+        for section in super::super::settings::parse(defaults).unwrap() {
+            for setting in &section.keys {
+                let row = shown(&table(&["x"], &[vec![text(&setting.doc)]]));
+                let one_line: String = row.split_whitespace().collect::<Vec<_>>().join(" ");
+                let doc = setting.doc.split_whitespace().collect::<Vec<_>>().join(" ");
+                assert!(
+                    one_line.contains(&doc),
+                    "{}.{}: {doc:?} shows as\n{row}",
+                    section.name,
+                    setting.key
+                );
+            }
+        }
     }
 
     #[test]

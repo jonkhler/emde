@@ -16,8 +16,9 @@
 //! `$CARGO_TARGET_DIR/fuzz/seeds/<target>/`. libFuzzer reads them together
 //! with `fuzz/corpus/<target>/`, where it keeps the inputs that reach new
 //! code. A panic or a failed check stops the target; the input is saved in
-//! `fuzz/artifacts/<target>/` and can be replayed with
-//! `rustup run nightly cargo fuzz run --fuzz-dir fuzz -s none <target> <file>`.
+//! `fuzz/artifacts/<target>/` and can be replayed with the same build:
+//! `rustup run nightly cargo fuzz run --fuzz-dir fuzz -s none --target-dir
+//! $CARGO_TARGET_DIR/fuzz/build <target> <file>` (`fuzz/README.md` has more).
 //!
 //! The targets are built without a sanitizer: emde has no unsafe code and
 //! its checks are panics, and AddressSanitizer makes the runs about ten times

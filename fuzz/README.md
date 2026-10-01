@@ -23,10 +23,15 @@ cargo xtask fuzz --jobs 8 render    # eight processes
 TOML examples of the documentation and recorded terminal replies (see
 `xtask/src/fuzz.rs`). What libFuzzer finds is kept in `corpus/<target>/`;
 an input that fails a check, or takes more than 10 seconds, is saved in
-`artifacts/<target>/`. Replay one with
+`artifacts/<target>/`. Replay it, or shrink it to a smaller input that
+still fails, with the build `cargo xtask fuzz` made (`source scripts/env.sh`
+first):
 
 ```sh
-rustup run nightly cargo fuzz run --fuzz-dir fuzz -s none <target> fuzz/artifacts/<target>/<file>
+FUZZ="rustup run nightly cargo fuzz"
+OPTS="--fuzz-dir fuzz -s none --target-dir $CARGO_TARGET_DIR/fuzz/build"
+$FUZZ run $OPTS <target> fuzz/artifacts/<target>/<file>
+$FUZZ tmin $OPTS <target> fuzz/artifacts/<target>/<file>
 ```
 
 and add it as a regression test to the tests of the module it broke.
@@ -36,7 +41,7 @@ the time after that, so a large corpus makes runs start slowly. Shrink it
 to the inputs that matter now and then:
 
 ```sh
-rustup run nightly cargo fuzz cmin --fuzz-dir fuzz -s none <target>
+$FUZZ cmin $OPTS <target>
 ```
 
 Panics are findings, except panics inside pulldown-latex, which emde catches

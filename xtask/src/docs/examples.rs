@@ -2,6 +2,11 @@
 //! emde's configuration loader (`emde::config::check`, the same checks as
 //! `emde --check-config`) and must produce no warning and no error.
 //!
+//! Code theme names and languages are only looked up when emde is built
+//! with syntax highlighting: in `cargo test --workspace` (whose emde has
+//! its default features), not in `cargo xtask docs`, which builds emde
+//! without them (see `xtask/Cargo.toml`).
+//!
 //! A ```` ```toml ```` block is a config file. A ```` ```toml theme ```` block
 //! is a theme file: it is installed as `themes/example.toml` in a scratch
 //! configuration directory and selected with `theme.name = "example"`.

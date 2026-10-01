@@ -14,13 +14,13 @@ and whatever you leave out keeps its default.
 
 ## The config file
 
-emde reads the first of:
+emde reads one config file, the first of:
 
 1. the file named by `--config PATH`;
 2. the file named by `$EMDE_CONFIG`;
 3. `$XDG_CONFIG_HOME/emde/config.toml`, when `XDG_CONFIG_HOME` is an
-   absolute path;
-4. `~/.config/emde/config.toml`.
+   absolute path and the file exists;
+4. `~/.config/emde/config.toml`, when it exists.
 
 The paths are the same on Linux and macOS. `--no-config` reads no file.
 Config and theme files can be up to 1 MiB.
@@ -33,9 +33,10 @@ not exist, and unknown code themes and languages. It exits with status 1
 when it finds a problem.
 
 A mistake never stops emde from showing a document. It says what is wrong
-on standard error (in full with `-v`) and goes on without the setting: a bad
-value keeps the default, and a table with a type error is ignored as a
-whole.
+on standard error (in full with `-v`) and goes on without it: a number out
+of range is ignored, a value of the wrong kind (a word that is not one of
+the choices, text where a number goes) drops the whole table it is in, such
+as `[render]`, and a file that is not valid TOML is ignored altogether.
 
 ### Layers
 
@@ -81,7 +82,7 @@ Every key, with its default and the option that also sets it, if any.
 | `math` | `"unicode"` | Inline math: unicode, ascii or raw (the TeX source). Flag: `--math`. |
 | `color` | `"auto"` | Colours: auto, always, never, truecolor, 256 or 16. Flag: `--color`. |
 | `hyperlinks` | `"auto"` | OSC 8 hyperlinks: auto, always or never. Flag: `--hyperlinks`. |
-| `link_refs` | `"auto"` | Numbered link references (\[1\]) where hyperlinks are off: auto, always or never. Flag: `--link-refs`. |
+| `link_refs` | `"auto"` | Numbered link references ([1\]) where hyperlinks are off: auto, always or never. Flag: `--link-refs`. |
 | `ascii` | `false` | Plain ASCII decorations only. Flag: `--ascii`. |
 | `ambiguous_width` | `1` | Columns taken by East Asian "ambiguous" characters: 1, or 2 for terminals and fonts that draw them wide. With 2, images are never drawn with block characters (they are ambiguous too): pixels where the terminal has them, else the alt text. |
 | `gradients` | `"auto"` | Background gradients (the h1 bar): auto (24-bit colour only), always or never. |
@@ -92,7 +93,7 @@ Every key, with its default and the option that also sets it, if any.
 
 | Key | Default | Description |
 |---|---|---|
-| `h1` | `"bar"` | h1: bar (a full-width bar in h1's background colour), underline (styled text with its underline) or plain. When your \[style.h1\] sets no background, and this key is not set, h1 is drawn as underline. |
+| `h1` | `"bar"` | h1: bar (a full-width bar in h1's background colour), underline (styled text with its underline) or plain. When your [style.h1\] sets no background, and this key is not set, h1 is drawn as underline. |
 | `h2` | `"rule"` | h2: rule (text over a heavy rule) or plain. |
 | `markers` | `["", "", "▎ ", "", "", ""]` | Prefix for each level, h1 to h6. |
 | `numbers` | `false` | Number the headings (1., 1.1., ...). |
@@ -134,7 +135,7 @@ nu = "bash"
 | `scripts` | `"safe"` | Super- and subscript characters: safe (well supported by fonts) or full. |
 | `bold` | `"sgr"` | \\mathbf: sgr (bold text) or unicode (𝐱). |
 | `max_height` | `12` | 2D formulas taller than this are shown as one line. |
-| `tex_delimiters` | `true` | Recognise \\( ... \\) and \\\[ ... \\\] as math. |
+| `tex_delimiters` | `true` | Recognise \\( ... \\) and \\[ ... \\\] as math. |
 
 ### `[images]`
 
@@ -367,10 +368,11 @@ draws it (`—`: as its parent).
 ## Themes
 
 `--theme NAME`, or `name` in `[theme]`, picks a theme: a built-in one, a
-file `NAME.toml` in the `themes` directory next to the config file
-(`~/.config/emde/themes/`), or the path of a theme file. `emde
---list-themes` lists them. Unless you choose a theme, emde uses `ansi` on
-16-colour terminals and `mono` when colours are off (`NO_COLOR`).
+file `NAME.toml` in a themes directory (`$XDG_CONFIG_HOME/emde/themes/` when
+`XDG_CONFIG_HOME` is set, then `~/.config/emde/themes/`), or the path of a
+theme file. `emde --list-themes` lists them. Unless you choose a theme, emde
+uses `ansi` on 16-colour terminals and `mono` when colours are off
+(`NO_COLOR`).
 
 | Theme | What it is |
 |---|---|
@@ -379,8 +381,8 @@ file `NAME.toml` in the `themes` directory next to the config file
 | `mono` | Text attributes only, no colours. |
 
 Each theme has a dark and a light variant. `background` in `[theme]`
-chooses one; `auto` asks the terminal for its background colour and uses
-dark when it cannot tell.
+chooses one; `auto` asks the terminal for its background colour (or reads
+`COLORFGBG`) and uses dark when it cannot tell.
 
 ### The palette
 

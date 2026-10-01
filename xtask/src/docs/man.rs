@@ -9,7 +9,10 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use std::fmt::Write as _;
+
 use clap::CommandFactory as _;
+use clap::ValueHint;
 use clap_complete::{Generator as _, Shell};
 use clap_mangen::Man;
 use clap_mangen::roff::{Roff, bold, italic, roman};
@@ -45,7 +48,23 @@ pub(crate) fn man_page() -> Result<String, String> {
     ] {
         page.push_str(text.strip_prefix(preamble.as_str()).unwrap_or(&text));
     }
-    Ok(page)
+    Ok(ascii_roff(&page))
+}
+
+/// `page` with every non-ASCII character as a roff escape (`↓` is
+/// `\[u2193]`): groff reads its input as Latin-1 unless it is told
+/// otherwise, and groff and mandoc both know the escapes. Everything the
+/// roff writer adds is ASCII, so only text is changed.
+fn ascii_roff(page: &str) -> String {
+    let mut out = String::with_capacity(page.len());
+    for c in page.chars() {
+        if c.is_ascii() {
+            out.push(c);
+        } else {
+            let _ = write!(out, "\\[u{:04X}]", u32::from(c));
+        }
+    }
+    out
 }
 
 /// What `render` writes, as text.
@@ -64,45 +83,92 @@ pub(crate) fn write_man_page(dir: &Path) -> Result<PathBuf, String> {
     Ok(path)
 }
 
-/// The command line as completions offer it: clap_complete would also
-/// offer hidden options (`--dump`), so they are left out.
-fn completion_command() -> clap::Command {
+/// What some options take, for completion: numbers, `KEY=VALUE` and slugs
+/// are no file names (no files are offered), and `--config` names a file.
+/// Other options keep clap's default (any path), or their possible values.
+const VALUE_HINTS: [(&str, ValueHint); 5] = [
+    ("width", ValueHint::Other),
+    ("max_width", ValueHint::Other),
+    ("anchor", ValueHint::Other),
+    ("set", ValueHint::Other),
+    ("config", ValueHint::FilePath),
+];
+
+/// The command line as the completion script for `shell` offers it.
+///
+/// * Hidden options (`--dump`) are left out: clap_complete would offer them.
+/// * Numbers, `KEY=VALUE` and slugs get no file name completion
+///   ([`VALUE_HINTS`]).
+/// * An option whose value is optional and must follow `=`
+///   (`--doctor[=FORMAT]`) is a plain flag for bash and fish: their scripts
+///   would offer the values as the next word, which emde takes for a file.
+///   zsh completes `--doctor=json` as it is meant.
+fn completion_command(shell: Shell) -> Result<clap::Command, String> {
     let cli = Cli::command();
+    if let Some((id, _)) = VALUE_HINTS
+        .iter()
+        .find(|(id, _)| !cli.get_arguments().any(|a| a.get_id() == id))
+    {
+        return Err(format!("completions: emde has no option `{id}`"));
+    }
     let visible: Vec<clap::Arg> = cli
         .get_arguments()
         .filter(|a| !a.is_hide_set())
-        .cloned()
+        .map(|a| {
+            let hint = VALUE_HINTS.iter().find(|(id, _)| a.get_id() == id);
+            match hint {
+                Some(&(_, hint)) => a.clone().value_hint(hint),
+                None if shell != Shell::Zsh && optional_after_equals(a) => as_flag(a),
+                None => a.clone(),
+            }
+        })
         .collect();
     // xtask has the workspace's version, which is emde's.
-    clap::Command::new(BIN)
+    Ok(clap::Command::new(BIN)
         .version(env!("CARGO_PKG_VERSION"))
-        .args(visible)
+        .args(visible))
+}
+
+/// Whether an option's value is optional and must follow `=`.
+fn optional_after_equals(arg: &clap::Arg) -> bool {
+    arg.is_require_equals_set() && arg.get_num_args().is_some_and(|n| n.min_values() == 0)
+}
+
+/// `arg` as a flag that takes no value.
+fn as_flag(arg: &clap::Arg) -> clap::Arg {
+    arg.clone()
+        .num_args(0)
+        .require_equals(false)
+        .default_missing_value(None)
+        .value_name(None)
+        .value_parser(clap::value_parser!(bool))
+        .action(clap::ArgAction::SetTrue)
 }
 
 /// The completion scripts in memory: `(file name, script)`.
 pub(crate) fn completions() -> Result<Vec<(String, Vec<u8>)>, String> {
-    let mut cmd = completion_command();
-    let scripts = SHELLS
+    SHELLS
         .iter()
         .map(|&shell| {
+            let mut cmd = completion_command(shell)?;
             let mut script = Vec::new();
             clap_complete::generate(shell, &mut cmd, BIN, &mut script);
-            (shell.file_name(BIN), script)
+            let name = shell.file_name(BIN);
+            if script.is_empty() {
+                return Err(format!("the {name} completion script is empty"));
+            }
+            Ok((name, script))
         })
-        .collect::<Vec<_>>();
-    match scripts.iter().find(|(_, s)| s.is_empty()) {
-        Some((name, _)) => Err(format!("the {name} completion script is empty")),
-        None => Ok(scripts),
-    }
+        .collect()
 }
 
 /// Write the completion scripts into `dir`; returns their paths.
 pub(crate) fn write_completions(dir: &Path) -> Result<Vec<PathBuf>, String> {
     fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
-    let mut cmd = completion_command();
     SHELLS
         .iter()
         .map(|&shell| {
+            let mut cmd = completion_command(shell)?;
             clap_complete::generate_to(shell, &mut cmd, BIN, dir)
                 .map_err(|e| format!("{}: {shell} completions: {e}", dir.display()))
         })
@@ -193,14 +259,16 @@ fn reference() -> Roff {
     item(
         &mut roff,
         "~/.config/emde/config.toml",
-        "The configuration file, or $XDG_CONFIG_HOME/emde/config.toml when XDG_CONFIG_HOME is \
-         set (an absolute path). --config or $EMDE_CONFIG name another file; --no-config reads \
-         none. The same paths are used on Linux and macOS.",
+        "The configuration file. $XDG_CONFIG_HOME/emde/config.toml comes first when \
+         XDG_CONFIG_HOME is set (to an absolute path) and the file exists. --config or \
+         $EMDE_CONFIG name another file; --no-config reads none. The same paths are used on \
+         Linux and macOS.",
     );
     item(
         &mut roff,
         "~/.config/emde/themes/NAME.toml",
-        "Theme files, chosen with --theme NAME or theme.name in the configuration file.",
+        "Theme files, chosen with --theme NAME or theme.name in the configuration file; \
+         $XDG_CONFIG_HOME/emde/themes/ is searched first.",
     );
     item(
         &mut roff,
@@ -231,6 +299,11 @@ fn reference() -> Roff {
             "How many colours the terminal shows, and which terminal it is. Inside tmux, \
              COLORTERM is usually unset; emde uses 24-bit colours there, which tmux converts \
              for each client.",
+        ),
+        (
+            "COLORFGBG",
+            "The terminal's colours (fg;bg), for the dark or light variant of the theme when \
+             the terminal does not answer emde's question about its background.",
         ),
         (
             "COLUMNS",
@@ -264,7 +337,11 @@ fn reference() -> Roff {
             "An input could not be read (the others are still shown), or --check-config found \
              problems.",
         ),
-        ("2", "A usage error: an unknown option or a bad value."),
+        (
+            "2",
+            "A usage error: an unknown option, a bad value, or no FILE while standard input is \
+             a terminal.",
+        ),
     ] {
         item(&mut roff, code, text);
     }
@@ -316,10 +393,11 @@ mod tests {
     #[test]
     fn man_page_sections() {
         let page = man_page().unwrap();
-        assert!(
-            page.contains("\n.TH EMDE 1 \"\" \"emde 0.1.0\" \"User Commands\"\n"),
-            "{page}"
+        let title = format!(
+            "\n.TH EMDE 1 \"\" \"emde {}\" \"User Commands\"\n",
+            env!("CARGO_PKG_VERSION")
         );
+        assert!(page.contains(&title), "{page}");
         assert_eq!(page.matches(".ds Aq").count(), 2, "one preamble");
         for section in [
             "NAME",
@@ -345,6 +423,24 @@ mod tests {
         for section in Section::ALL {
             assert!(page.contains(section.title()), "{}", section.title());
         }
+        // The arrow keys, as escapes: the page is ASCII.
+        assert!(page.is_ascii());
+        assert!(page.contains("\\fBj \\[u2193] ^E ^N\\fR"), "{page}");
+    }
+
+    #[test]
+    fn roff_escapes() {
+        assert_eq!(ascii_roff("a ↓ b"), "a \\[u2193] b");
+        assert_eq!(ascii_roff("é😀"), "\\[u00E9]\\[u1F600]");
+        assert_eq!(ascii_roff(".TH X\n"), ".TH X\n");
+    }
+
+    /// The completion script for `shell`, as text.
+    fn script(shell: Shell) -> String {
+        let scripts = completions().unwrap();
+        let name = shell.file_name(BIN);
+        let (_, script) = scripts.iter().find(|(n, _)| *n == name).unwrap();
+        String::from_utf8(script.clone()).unwrap()
     }
 
     #[test]
@@ -358,12 +454,14 @@ mod tests {
             assert!(text.contains("truecolor"), "{name}: possible values");
             assert!(!text.contains("dump"), "{name}: a hidden option");
         }
-        assert_eq!(
-            completion_command().get_version(),
-            Cli::command().get_version()
-        );
+        for shell in SHELLS {
+            assert_eq!(
+                completion_command(shell).unwrap().get_version(),
+                Cli::command().get_version()
+            );
+        }
         // Hidden options are not offered.
-        let bash = String::from_utf8_lossy(&scripts[0].1);
+        let bash = script(Shell::Bash);
         let offered = bash
             .lines()
             .find(|l| l.trim_start().starts_with("opts=\"-"))
@@ -372,5 +470,52 @@ mod tests {
             offered.contains("--plain") && !offered.contains("--dump"),
             "{offered}"
         );
+    }
+
+    /// The body of the `case` branch of the bash script for `option`.
+    fn bash_case(bash: &str, option: &str) -> String {
+        let after = bash.split(&format!("\n                {option})\n")).nth(1);
+        let body = after.and_then(|a| a.split(";;").next());
+        body.unwrap_or_else(|| panic!("no case for {option}"))
+            .to_owned()
+    }
+
+    /// `--doctor json` would be `--doctor` and a file named `json`: bash and
+    /// fish offer no value after `--doctor`, zsh completes `--doctor=`.
+    #[test]
+    fn values_after_equals_only() {
+        let bash = script(Shell::Bash);
+        assert!(bash.contains(" --doctor "), "still offered");
+        assert!(!bash.contains("--doctor)"), "{bash}");
+        let fish = script(Shell::Fish);
+        let doctor = fish.lines().find(|l| l.contains("-l doctor")).unwrap();
+        assert!(
+            !doctor.contains("json") && !doctor.contains(" -r"),
+            "{doctor}"
+        );
+        let zsh = script(Shell::Zsh);
+        let doctor = zsh.split("'--doctor=[").nth(1).unwrap();
+        let doctor = doctor.split("' \\\n").next().unwrap();
+        assert!(
+            doctor.contains("::FORMAT:") && doctor.contains("json"),
+            "{doctor}"
+        );
+    }
+
+    /// Numbers and `KEY=VALUE` are not completed as file names, `--config`
+    /// is (names with spaces too).
+    #[test]
+    fn file_names_only_for_files() {
+        let bash = script(Shell::Bash);
+        for option in ["--width", "-m", "--set", "--anchor"] {
+            let case = bash_case(&bash, option);
+            assert!(!case.contains("compgen -f"), "{option}: {case}");
+        }
+        let config = bash_case(&bash, "--config");
+        assert!(config.contains("compgen -f") && config.contains("-o filenames"));
+        let zsh = script(Shell::Zsh);
+        let width = zsh.lines().find(|l| l.starts_with("'--width=")).unwrap();
+        assert!(width.ends_with(":N:' \\"), "{width}");
+        assert!(zsh.contains(":PATH:_files' \\"));
     }
 }

@@ -9,6 +9,7 @@
 use std::collections::BTreeSet;
 use std::path::Path;
 
+use emde::config::{self, LoadOptions};
 use emde::theme::{Element, builtin};
 
 use super::{markdown, read};
@@ -279,6 +280,33 @@ impl Themes {
     }
 }
 
+/// Every field of [`STYLE_FIELDS`] must be one that emde takes in a
+/// `[style.ELEMENT]` table, and `template` (the hand-written part of the
+/// reference) must describe it as `` `field` ``.
+pub(crate) fn check_style_fields(template: &str) -> Result<(), String> {
+    for &field in STYLE_FIELDS {
+        let value = match field {
+            "fg" | "bg" | "bg_to" | "underline_color" => "red",
+            "underline" => "curly",
+            _ => "true",
+        };
+        let set = format!("style.text.{field}={value}");
+        let report = config::check(&LoadOptions {
+            set: vec![set.clone()],
+            ..LoadOptions::default()
+        });
+        if !report.is_clean() {
+            return Err(format!(
+                "style field `{field}`: `--set {set}` does not load cleanly:\n{report}"
+            ));
+        }
+        if !template.contains(&format!("`{field}`")) {
+            return Err(format!("the style field `{field}` is not described"));
+        }
+    }
+    Ok(())
+}
+
 /// [`ELEMENT_GROUPS`] must name every element exactly once.
 fn check_groups() -> Result<(), String> {
     let mut described = BTreeSet::new();
@@ -385,6 +413,15 @@ mod tests {
     #[test]
     fn every_element_is_described_once() {
         check_groups().unwrap();
+    }
+
+    #[test]
+    fn style_fields_exist_and_are_described() {
+        let all: String = STYLE_FIELDS.iter().map(|f| format!("`{f}` ")).collect();
+        check_style_fields(&all).unwrap();
+        let missing = all.replace("`overline` ", "");
+        let err = check_style_fields(&missing).unwrap_err();
+        assert!(err.contains("`overline` is not described"), "{err}");
     }
 
     #[test]

@@ -18,12 +18,11 @@ emde README.md
   Every line ends with a reset, so styles never bleed, and a document can
   never send escape sequences of its own to the terminal.
 - **A built-in pager.** On a terminal, a document taller than the screen
-  opens in the pager: incremental search (smart case, regular expressions,
-  matches across wrapped lines), an outline, jumps between headings, link
-  focus and link hints, back and forward through linked documents, reload
-  when the file changes, the mouse wheel, and re-wrapping on resize that
-  keeps your place. Short documents and pipes get the rendered text, like
-  `bat` does.
+  opens in the pager: incremental search (smart case, and a phrase is found
+  even where it wraps), an outline, jumps between headings, link focus and
+  link hints, back and forward through linked documents, reload when the
+  file changes, the mouse wheel, and re-wrapping on resize that keeps your
+  place. Short documents and pipes get the rendered text, like `bat` does.
 - **Math.** `$…$`, `$$…$$`, `\(…\)`, `\[…\]` and ` ```math ` blocks.
   Inline math is one line of Unicode (`α² + a/b`); display math is laid out
   in two dimensions, with stacked fractions, limits above and below, tall
@@ -78,7 +77,7 @@ Cargo features (`cargo build --release --no-default-features --features …`):
 | `simd` | yes | Faster Markdown parsing with SSSE3 (detected at run time; x86-64 only). |
 
 `cargo build --release --no-default-features --features highlight,fancy,tmtheme,images,sixel,simd`
-builds without Oniguruma, so no C compiler is needed.
+builds without Oniguruma: then emde has no C code at all.
 
 ## Usage
 
@@ -101,7 +100,7 @@ emde --doctor                        # what emde found out about the terminal
 | `--paging auto\|always\|never` | When to use the pager (`auto`: on a terminal, for long documents). |
 | `-w`, `--width N` · `-m`, `--max-width N` | The width, and the widest text column (default 100). |
 | `--color auto\|always\|never\|truecolor\|256\|16` | Colours, also when piping. |
-| `-t`, `--theme NAME\|PATH` · `--background dark\|light` | The theme and its variant. |
+| `-t`, `--theme NAME\|PATH` · `--background auto\|dark\|light` | The theme and its variant. |
 | `--code-theme NAME\|PATH` | The code theme (`--list-code-themes`). |
 | `--images auto\|kitty\|iterm\|sixel\|blocks\|none` | How to show images. |
 | `--toc` | Open the pager with the outline shown. |
@@ -222,10 +221,10 @@ In the search prompt, the outline and link hints, other keys type text.
 
 ## Configuration
 
-emde reads `~/.config/emde/config.toml`, or `$XDG_CONFIG_HOME/emde/config.toml`
-when `XDG_CONFIG_HOME` is set (the same on Linux and macOS). `--config PATH`
-or `$EMDE_CONFIG` name another file, and `--no-config` reads none. Themes
-go in `~/.config/emde/themes/NAME.toml`.
+emde reads `~/.config/emde/config.toml` (the same on Linux and macOS), or
+`$XDG_CONFIG_HOME/emde/config.toml` when `XDG_CONFIG_HOME` is set and that
+file exists. `--config PATH` or `$EMDE_CONFIG` name another file, and
+`--no-config` reads none. Themes go in `~/.config/emde/themes/NAME.toml`.
 
 Everything is optional: a key you leave out keeps its default. For example,
 an accent colour of your own, and level-1 headings as bold accent text with
@@ -282,8 +281,9 @@ block images elsewhere. `NO_COLOR` turns colours off (the `mono` theme);
 
   emde never changes tmux options itself. Without passthrough, images are
   drawn with block characters.
-- Inside tmux `COLORTERM` is usually unset (tmux does not pass it on, and
-  SSH does not forward it), so programs think they have 256 colours. emde
+- Inside tmux `COLORTERM` is often unset: SSH does not forward it, and tmux
+  does not copy it from the terminal you attach from. With
+  `TERM=tmux-256color`, programs then think they have 256 colours. emde
   knows that tmux converts colours for each client and uses 24-bit colour
   inside tmux anyway. If colours look wrong in tmux, tell tmux your
   terminal has 24-bit colour: `set -as terminal-features ',xterm-256color:RGB'`.
@@ -310,12 +310,16 @@ terminal afterwards and run `emde --doctor --reprobe`.
 `emde --doctor` shows each decision with its reason, and tips for getting
 more out of the terminal. In iTerm2 → SSH → tmux 3.4 it says:
 
+<!-- BEGIN GENERATED doctor (`cargo xtask docs`, from the snapshot the tests of src/term/doctor.rs keep of this session) -->
+
 ```text
  terminal  tmux 3.4 → iTerm2 3.6.9, 214×54, SSH   colour truecolor (in tmux)   background dark (tmux OSC 11)
  links     OSC 8 ✓   underline curly ✓   images blocks(half) — kitty/iterm ✗ passthrough off · sixel ✗ client cell 0x0
  probe     tmux answered in 2 ms   cell size unknown (client cell 0x0)
  tip       `set -g allow-passthrough on` → kitty Unicode placeholders via iTerm2: real pixels that scroll with the text
 ```
+
+<!-- END GENERATED doctor -->
 
 - `emde --doctor=json` gives the same as JSON, with the terminal's raw
   answers.
