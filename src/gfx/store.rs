@@ -211,12 +211,15 @@ pub struct ImageStore {
     rows: HashMap<u32, Rows>,
     /// Why images are not shown, for `-v`.
     problems: Vec<String>,
+    /// Identifies the document the store was loaded for ([`ImageStore::belongs_to`]).
+    fingerprint: u64,
 }
 
 impl ImageStore {
     /// Read the images of `figures` (the figures of `doc`).
     pub fn load(doc: &Document, figures: &[ImageId], opts: StoreOptions) -> ImageStore {
         let mut store = ImageStore {
+            fingerprint: fingerprint(doc),
             opts,
             entries: vec![None; doc.images.len()],
             renditions: HashMap::new(),
@@ -356,6 +359,36 @@ fn overlay_rows(draw: &[u8], p: &Placement, indent: u16) -> Rows {
         first: over_reserved_rows(draw, p.rows, column, p.cols),
         rest: cursor_forward(p.cols),
     }
+}
+
+impl ImageStore {
+    /// Whether `doc` is (a reload of) the document this store was loaded
+    /// for: same base directory and the same image sources, so every
+    /// [`ImageId`] refers to the same file.
+    pub fn belongs_to(&self, doc: &Document) -> bool {
+        self.fingerprint == fingerprint(doc)
+    }
+}
+
+/// FNV-1a over the document's base directory and image sources.
+fn fingerprint(doc: &Document) -> u64 {
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    let mut eat = |bytes: &[u8]| {
+        for &b in bytes {
+            h ^= u64::from(b);
+            h = h.wrapping_mul(0x0100_0000_01b3);
+        }
+        // Separator, so ("ab", "c") and ("a", "bc") differ.
+        h ^= 0xff;
+        h = h.wrapping_mul(0x0100_0000_01b3);
+    };
+    if let Some(dir) = &doc.base_dir {
+        eat(dir.as_os_str().as_encoded_bytes());
+    }
+    for image in &doc.images {
+        eat(image.src.as_bytes());
+    }
+    h
 }
 
 impl ImageSizer for ImageStore {

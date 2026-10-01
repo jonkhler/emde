@@ -39,17 +39,19 @@ use bitflags::bitflags;
 pub use fake::{Chunk, FakeTerminal, Step};
 pub use real::CrosstermTerminal;
 
-/// Entering the pager: alternate screen, cursor hidden, autowrap off.
-pub const ENTER: &[u8] = b"\x1b[?1049h\x1b[?25l\x1b[?7l";
+/// Entering the pager: alternate screen, cursor hidden, autowrap off,
+/// bracketed paste on (so a pasted newline or `q` is text, not a command).
+pub const ENTER: &[u8] = b"\x1b[?1049h\x1b[?25l\x1b[?7l\x1b[?2004h";
 /// Mouse reporting on: button presses and releases (1000), SGR encoding
 /// (1006). Never any-motion tracking (1003).
 pub const MOUSE_ON: &[u8] = b"\x1b[?1000h\x1b[?1006h";
 /// Mouse reporting off.
 pub const MOUSE_OFF: &[u8] = b"\x1b[?1006l\x1b[?1000l";
-/// Leaving the pager: synchronized output off, mouse off, scroll region
-/// reset, autowrap on, attributes reset, cursor shown, main screen.
+/// Leaving the pager: synchronized output off, mouse off, bracketed paste
+/// off, scroll region reset, autowrap on, attributes reset, cursor shown,
+/// main screen.
 pub const EXIT: &[u8] =
-    b"\x1b[?2026l\x1b[?1006l\x1b[?1000l\x1b[r\x1b[?7h\x1b[0m\x1b[?25h\x1b[?1049l";
+    b"\x1b[?2026l\x1b[?1006l\x1b[?1000l\x1b[?2004l\x1b[r\x1b[?7h\x1b[0m\x1b[?25h\x1b[?1049l";
 
 /// Shortest poll timeout. Never zero: crossterm 0.29 does not return events
 /// it has already buffered when polled with `Duration::ZERO` (bug #839).
@@ -448,13 +450,13 @@ mod tests {
         let mut enter = ENTER.to_vec();
         enter.extend_from_slice(MOUSE_ON);
         assert_eq!(
-            enter, b"\x1b[?1049h\x1b[?25l\x1b[?7l\x1b[?1000h\x1b[?1006h",
+            enter, b"\x1b[?1049h\x1b[?25l\x1b[?7l\x1b[?2004h\x1b[?1000h\x1b[?1006h",
             "only 1000 and 1006: never any-motion tracking"
         );
         assert!(!String::from_utf8_lossy(&enter).contains("1003"));
         assert_eq!(
             EXIT,
-            b"\x1b[?2026l\x1b[?1006l\x1b[?1000l\x1b[r\x1b[?7h\x1b[0m\x1b[?25h\x1b[?1049l"
+            b"\x1b[?2026l\x1b[?1006l\x1b[?1000l\x1b[?2004l\x1b[r\x1b[?7h\x1b[0m\x1b[?25h\x1b[?1049l"
         );
     }
 

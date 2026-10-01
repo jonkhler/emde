@@ -109,8 +109,7 @@ fn convert(event: &Event) -> Option<TermEvent> {
         }),
         Event::FocusGained => Some(TermEvent::Focus(true)),
         Event::FocusLost => Some(TermEvent::Focus(false)),
-        #[allow(unreachable_patterns)]
-        _ => None,
+        Event::Paste(text) => Some(TermEvent::Paste(text.clone())),
     }
 }
 

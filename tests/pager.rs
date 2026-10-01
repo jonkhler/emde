@@ -653,12 +653,12 @@ fn setup_and_teardown_bytes() {
     assert_eq!(writes[0], enter.as_slice());
     assert_eq!(
         enter,
-        b"\x1b[?1049h\x1b[?25l\x1b[?7l\x1b[?1000h\x1b[?1006h".to_vec()
+        b"\x1b[?1049h\x1b[?25l\x1b[?7l\x1b[?2004h\x1b[?1000h\x1b[?1006h".to_vec()
     );
     assert_eq!(*writes.last().unwrap(), EXIT);
     assert_eq!(
         EXIT,
-        b"\x1b[?2026l\x1b[?1006l\x1b[?1000l\x1b[r\x1b[?7h\x1b[0m\x1b[?25h\x1b[?1049l"
+        b"\x1b[?2026l\x1b[?1006l\x1b[?1000l\x1b[?2004l\x1b[r\x1b[?7h\x1b[0m\x1b[?25h\x1b[?1049l"
     );
     assert!(!term.is_raw());
     let p = screen_at(&term, 40, 10, None);

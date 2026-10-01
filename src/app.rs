@@ -50,11 +50,12 @@ use crate::highlight::{self, Highlighter, PlainHighlighter};
 use crate::ir::Document;
 use crate::layout::{ImageSizer, Layout, NoImages, layout};
 use crate::options::{FrontMatterMode, Height, ImageMode, RenderOptions, When};
+use crate::pager::{self, FileLoader, PagerDoc, PagerSession};
 use crate::parse::{ParseOptions, parse_source};
 use crate::render::{ImageRows, RenderConfig, StreamSink, is_broken_pipe};
 use crate::source::{Input, Source, SourceError};
 use crate::term::env::Env;
-use crate::term::probe::{self, Needs, ProbeOutcome, ProbeRequest};
+use crate::term::probe::{self, LateReplyFilter, Needs, ProbeOutcome, ProbeRequest};
 use crate::term::tmux::{self, TmuxInfo};
 use crate::term::{Caps, ColorDepth, Graphics, caps, color, doctor};
 use crate::theme::Theme;
@@ -634,22 +635,70 @@ fn wants_pager(request: &PagerRequest, caps: &Caps, lines: usize) -> bool {
 
 /// Show the documents in the built-in pager.
 ///
-/// TODO(merge): the pager track provides `pager::run(PagerSession)`. Build
-/// the session from `setup` (theme, caps, `config.render`, `config.pager`,
-/// the shared highlighter, env, tmux, and `probe::LateReplyFilter::after`
-/// on the probe outcome), the first of `docs` (its `source` and `doc` make
-/// the `PagerDoc`; its image store sizes figures) and `request` (anchor,
-/// outline), map its exit to a status, and drop the fallback below.
-/// `layouts` are the stream-mode layouts the decision was made on (figures
-/// capped for stream mode), so the pager lays out for itself.
+/// The pager shows one document at a time: the first one opens, and linked
+/// local documents load in-app. `layouts` are the stream-mode layouts the
+/// paging decision was made on (figures capped for stream mode), so the
+/// pager lays out for itself with the configured image heights.
 fn run_pager(
     setup: Setup,
     mut docs: Vec<Doc>,
     layouts: Vec<Layout>,
     request: PagerRequest,
 ) -> ExitCode {
-    let _ = request;
-    stream(&setup, &mut docs, &layouts, None)
+    drop(layouts);
+    if docs.is_empty() {
+        return ExitCode::SUCCESS;
+    }
+    let first = docs.swap_remove(0);
+    let Doc {
+        source,
+        doc,
+        anchor,
+        images,
+        ..
+    } = first;
+    let render = setup.config.render.clone();
+    let parse = ParseOptions::from(&render);
+    let mut session =
+        PagerSession::new(PagerDoc::new(source, doc), setup.theme, setup.caps, render);
+    session.loader = Box::new(FileLoader::new(parse));
+    session.highlighter = setup.highlighter;
+    session.pager = setup.config.pager.clone();
+    session.anchor = request.anchor.or(anchor);
+    session.open_toc = request.toc;
+    session.env = setup.env;
+    session.tmux = setup.tmux;
+    session.late_replies = LateReplyFilter::after(setup.probe.as_ref(), Instant::now());
+    if let Some(store) = images {
+        session.images = Box::new(FirstDocImages(store));
+    }
+    match pager::run(session) {
+        Ok(exit) => ExitCode::from(exit.code()),
+        Err(e) => {
+            let _ = writeln!(io::stderr(), "emde: pager: {e}");
+            ExitCode::from(1)
+        }
+    }
+}
+
+/// Figure sizes for the pager from the first document's image store.
+/// Linked documents opened in the pager show their figures as alt boxes.
+struct FirstDocImages(ImageStore);
+
+impl pager::ImageProvider for FirstDocImages {
+    fn figure_cells(
+        &self,
+        doc: &Document,
+        image: crate::ir::ImageId,
+        max_cols: u16,
+        max_rows: u16,
+    ) -> Option<(u16, u16)> {
+        // Only the store's own document has its images loaded.
+        if !self.0.belongs_to(doc) {
+            return None;
+        }
+        self.0.cells(image, max_cols, max_rows)
+    }
 }
 
 /// Stream mode shows figures at most [`size::STREAM_MAX_ROWS`] rows tall,

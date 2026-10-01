@@ -51,7 +51,7 @@ simd = ["pulldown-cmark/simd"]
 emde-math = { path = "crates/emde-math" }
 bitflags = "2"
 clap = { version = "4.6", default-features = false, features = ["std", "help", "usage", "error-context", "suggestions", "derive"] }
-crossterm = { version = "0.29", default-features = false, features = ["events", "use-dev-tty"] }
+crossterm = { version = "0.29", default-features = false, features = ["events", "use-dev-tty", "bracketed-paste"] }
 filedescriptor = "0.8"
 linkify = "0.11"
 memchr = "2"
