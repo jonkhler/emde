@@ -33,7 +33,7 @@
 //! | Path | Upload | Scrolling, partly visible | Resize, exit |
 //! |---|---|---|---|
 //! | blocks | none: rows are text | free; rows are cut like text | re-raster |
-//! | kitty placeholders | `a=T,U=1` ([`kitty::transmit_placeholder`]); rows show blocks until it is sent | free: rows are text | a new [`kitty::ImageId`] (ids are never reused); `a=d,d=I` on exit |
+//! | kitty placeholders | `a=T,U=1` ([`kitty::transmit_placeholder`]), written ahead of the first row that shows it | free: rows are text | a new [`kitty::ImageId`] (ids are never reused); `a=d,d=I` on exit |
 //! | kitty classic (never in tmux) | `a=t` once ([`kitty::transmit`]) | re-place after each frame ([`kitty::place`], cropped with [`size::visible_pixel_rows`]) | `d=i` when off-screen, `d=I` on exit ([`kitty::delete`]) |
 //! | iTerm2 OSC 1337 | none | blocks while scrolling, pixels [`SCROLL_DEBOUNCE`] after the last scroll; a cropped slice when partly visible | redraw |
 //! | sixel | none | as iTerm2; crops end on whole sixel bands ([`sixel::crop_rows`]) | redraw |

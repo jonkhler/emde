@@ -32,10 +32,14 @@ fn modes_start_with_the_detected_one() {
         modes(Some(&options(Graphics::None, tc))),
         [Graphics::None, Graphics::Blocks]
     );
-    // Without colours there is nothing to show but alt text.
+    // Without colours there are no blocks: pixels or alt text.
     assert_eq!(
         modes(Some(&options(Graphics::None, ColorDepth::Mono))),
         [Graphics::None]
+    );
+    assert_eq!(
+        modes(Some(&options(Graphics::Iterm, ColorDepth::Mono))),
+        [Graphics::Iterm, Graphics::None]
     );
     assert_eq!(modes(None), [Graphics::None]);
 }

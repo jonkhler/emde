@@ -66,6 +66,12 @@ impl Terminal for CrosstermTerminal {
     }
 
     fn enter(&mut self, mouse: bool) -> io::Result<()> {
+        // Raw mode from scratch. After a stop the pager did not ask for
+        // (`kill -STOP`, reading the terminal from the background), the
+        // shell has put its own settings back; crossterm, which still counts
+        // raw mode as on, would leave them alone. Turning it off first (a
+        // no-op when it is off) makes it set raw mode again.
+        crossterm::terminal::disable_raw_mode()?;
         crossterm::terminal::enable_raw_mode()?;
         mark_active();
         let mut bytes = ENTER.to_vec();
@@ -84,8 +90,8 @@ impl Terminal for CrosstermTerminal {
     }
 
     fn suspend(&mut self) -> io::Result<()> {
-        // The pager's handler takes SIGTSTP, so the stop is emulated; this
-        // returns once the process is continued.
+        // The whole job stops (SIGSTOP: the pager's handler takes SIGTSTP);
+        // this returns once the process is continued.
         super::stop_process()
     }
 

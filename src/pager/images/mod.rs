@@ -33,17 +33,18 @@
 //!   The rows under it are blank.
 //! * **iTerm2 and sixel**: pixels are drawn over the rows after the text,
 //!   but only once the document has stood still for
-//!   [`SCROLL_DEBOUNCE`]; until then (and
-//!   while an overlay is open) the rows show the blocks rendition. A partly
-//!   visible image is drawn as a slice of whole cell rows. Pixels never
-//!   reach the status row, and inside tmux at most [`TMUX_MAX_SIXELS`]
-//!   sixel images are on screen at once.
+//!   [`SCROLL_DEBOUNCE`]; until then the rows show the blocks rendition. A
+//!   partly visible image is drawn as a slice of whole cell rows. Pixels
+//!   never reach the status row, and inside tmux at most
+//!   [`TMUX_MAX_SIXELS`] sixel images are on screen at once.
 //!
-//! While a classic or pixel image is on screen the painter's scroll fast
-//! path is off ([`super::Frame::images`]): the terminal would scroll
-//! pixels it does not track. Images are drawn again after an overlay
-//! closes, after ^L ([`Images::reset`], which also uploads kitty images
-//! again) and after a suspend.
+//! No image is placed or drawn on rows an overlay (outline, help, link
+//! hints) draws on: it would hide the overlay. While a classic or pixel
+//! image is on screen the painter's scroll fast path is off
+//! ([`super::Frame::images`]): the terminal would scroll pixels it does not
+//! track. Images are drawn (and kitty images placed) again after an
+//! overlay closes, after a resize, after ^L ([`Images::reset`], which also
+//! uploads kitty images again) and after a suspend.
 //!
 //! `i` cycles the mode ([`Images::cycle`]): the detected graphics path,
 //! blocks, and off (alt text boxes).
@@ -118,16 +119,15 @@ impl PagerImages {
 }
 
 /// The modes `i` goes through, starting with the detected one: then
-/// blocks, then off. Without colours nothing can be shown but alt text.
+/// blocks, then off. Blocks need colours (without them a blocks rendition
+/// cannot be made, and the figures would only show their boxes).
 fn modes(options: Option<&StoreOptions>) -> Vec<Graphics> {
     let Some(opts) = options else {
         return vec![Graphics::None];
     };
-    if opts.graphics == Graphics::None && opts.depth < ColorDepth::Ansi16 {
-        return vec![Graphics::None];
-    }
+    let blocks = (opts.depth >= ColorDepth::Ansi16).then_some(Graphics::Blocks);
     let mut modes = vec![opts.graphics];
-    for g in [Graphics::Blocks, Graphics::None] {
+    for g in blocks.into_iter().chain([Graphics::None]) {
         if !modes.contains(&g) {
             modes.push(g);
         }
@@ -240,9 +240,10 @@ impl Placed {
 /// What the terminal shows of the current layout's figures.
 #[derive(Debug, Default)]
 struct Shown {
-    /// The layout generation and top line of the last frame.
+    /// The layout generation, top line and screen size of the last frame.
     generation: u64,
     top: usize,
+    size: (u16, u16),
     /// What the rows of each visible figure show, by its first line.
     rows: HashMap<u32, RowsShow>,
     /// Pixel images and kitty placements on screen, by placement index.
@@ -255,8 +256,32 @@ struct At {
     top: usize,
     /// The layout's indent (figure columns are relative to it).
     indent: u16,
-    /// An overlay (outline, help, hints) is open.
-    overlay: bool,
+    /// The screen rows an overlay (outline, help, link hints) draws on;
+    /// empty without one.
+    covered: Vec<bool>,
+}
+
+impl At {
+    /// Where `frame` is.
+    fn new(state: &State, frame: &Frame) -> At {
+        let covered = if frame.overlay {
+            frame.lines.iter().map(|r| !r.overlays.is_empty()).collect()
+        } else {
+            Vec::new()
+        };
+        At {
+            top: state.top,
+            indent: state.layout.indent,
+            covered,
+        }
+    }
+
+    /// Whether an overlay draws on any of `rows` screen rows from `row`:
+    /// an image there would hide it (kitty draws placements above the
+    /// text, pixel images replace it).
+    fn covers(&self, row: usize, rows: usize) -> bool {
+        self.covered.iter().skip(row).take(rows).any(|&c| c)
+    }
 }
 
 /// A document's store.
@@ -583,7 +608,14 @@ impl Images {
         if new_layout {
             self.new_layout(state);
         }
-        if new_layout || state.top != self.shown.top {
+        // A resized terminal repaints every row and may have moved what it
+        // drew (kitty shifts placements when the screen gets shorter):
+        // everything is placed and drawn afresh, also without a new layout.
+        let resized = state.size() != self.shown.size;
+        if resized && !new_layout {
+            self.forget_shown();
+        }
+        if new_layout || resized || state.top != self.shown.top {
             self.moved_at = Some(now);
         }
         let mode = self.mode();
@@ -636,11 +668,7 @@ impl Images {
         let mut after = Vec::new();
         self.awaiting = false;
         if let Some(store) = self.current {
-            let at = At {
-                top: state.top,
-                indent: state.layout.indent,
-                overlay: frame.overlay,
-            };
+            let at = At::new(state, frame);
             let visible = placements_on(&state.layout, at.top..at.top + state.view_rows());
             self.upload(store, &visible, &mut before);
             match self.mode() {
@@ -655,6 +683,7 @@ impl Images {
         }
         self.shown.generation = state.generation;
         self.shown.top = state.top;
+        self.shown.size = state.size();
         (before, after)
     }
 
@@ -737,8 +766,8 @@ impl Images {
     }
 
     /// kitty classic: place every visible image that moved (cropped to its
-    /// visible rows), and delete the placements that left the screen (all
-    /// of them while an overlay is open).
+    /// visible rows), and delete the placements that left the screen, or
+    /// that an overlay draws on now.
     fn place(
         &mut self,
         store: StoreId,
@@ -749,8 +778,13 @@ impl Images {
     ) {
         let pass = self.passthrough();
         let mut placed = HashMap::new();
-        for (idx, p, shown) in visible.iter().filter(|_| !at.overlay) {
+        for (idx, p, shown) in visible {
             if self.shown.rows.get(&p.line) != Some(&RowsShow::Blank) {
+                continue;
+            }
+            let row = (p.line as usize + usize::from(shown.start)).saturating_sub(at.top);
+            let rows = shown.end - shown.start;
+            if at.covers(row, usize::from(rows)) {
                 continue;
             }
             let Some(Made::Kitty(k)) = self.cache.made(&key(store, p, Make::Kitty)) else {
@@ -768,13 +802,12 @@ impl Images {
                 }
             };
             let spot = Placed {
-                row: (p.line as usize + usize::from(shown.start)).saturating_sub(at.top),
+                row,
                 shown: shown.clone(),
                 kitty: Some((k.id, pid)),
             };
             if self.shown.placed.get(idx) != Some(&spot) {
-                cursor_to(after, spot.row, at.indent.saturating_add(p.col));
-                let rows = shown.end - shown.start;
+                cursor_to(after, row, at.indent.saturating_add(p.col));
                 after.extend(kitty::place(k.id, pid, p.cols, rows, crop, pass));
             }
             placed.insert(*idx, spot);
@@ -792,7 +825,7 @@ impl Images {
     /// iTerm2 and sixel: pixels this frame writes over are gone; once the
     /// document stands still, draw every visible image that is not on
     /// screen (as a slice of its visible rows) whose rendition is made (it
-    /// is asked for otherwise).
+    /// is asked for otherwise), unless an overlay draws on its rows.
     fn draw(
         &mut self,
         store: StoreId,
@@ -805,9 +838,6 @@ impl Images {
         self.shown
             .placed
             .retain(|_, placed| !placed.written_over(diff));
-        if at.overlay {
-            return;
-        }
         let settled = self
             .moved_at
             .is_none_or(|t| now.saturating_duration_since(t) >= SCROLL_DEBOUNCE);
@@ -818,7 +848,9 @@ impl Images {
             usize::MAX
         };
         for (idx, p, shown) in visible {
-            if self.shown.placed.contains_key(idx) {
+            let row = (p.line as usize + usize::from(shown.start)).saturating_sub(at.top);
+            let rows = usize::from(shown.end - shown.start);
+            if self.shown.placed.contains_key(idx) || at.covers(row, rows) {
                 continue;
             }
             if !settled {
@@ -845,7 +877,6 @@ impl Images {
                     continue;
                 }
             };
-            let row = (p.line as usize + usize::from(shown.start)).saturating_sub(at.top);
             cursor_to(after, row, at.indent.saturating_add(p.col));
             after.extend_from_slice(bytes);
             self.cache.touch(&k);

@@ -610,6 +610,95 @@ fn classic_kitty_images_are_placed_after_each_move() {
     assert!(term.writes().last().unwrap().starts_with(&deletion(id)));
 }
 
+#[test]
+fn classic_kitty_images_are_placed_again_after_a_resize() {
+    let doc = tall_figure("kitty-classic-resize");
+    // A taller screen keeps the layout (only a new width lays out again),
+    // but the terminal may have moved its placements.
+    let term = FakeTerminal::new(40, 12)
+        .keys("jjj")
+        .mark("placed")
+        .resize(40, 14)
+        .mark("taller")
+        .keys("q");
+    let (term, _) = run(term, session(&doc, options(Graphics::KittyClassic)));
+    let id = uploads(&term.output())[0];
+    let taller = kitty_commands(&written(&term, Some("placed"), Some("taller")));
+    assert_eq!(
+        taller,
+        [
+            format!("a=d,d=i,i={id},p=1,q=2"),
+            format!("a=p,i={id},p=1,c=7,r=7,C=1,q=2"),
+        ]
+    );
+    assert_eq!(uploads(&term.output()), [id], "not uploaded again");
+}
+
+#[test]
+fn overlays_hide_only_the_kitty_images_they_draw_on() {
+    let doc = tall_figure("kitty-classic-overlays");
+    let term = FakeTerminal::new(40, 12)
+        .mark("placed")
+        .keys("t")
+        .mark("outline")
+        .code(emde::pager::term::KeyCode::Esc)
+        .mark("closed")
+        .keys("h")
+        .mark("help")
+        .keys("q")
+        .mark("back")
+        .keys("q");
+    let (term, _) = run(term, session(&doc, options(Graphics::KittyClassic)));
+    let id = uploads(&term.output())[0];
+    let placed = format!("a=p,i={id},p=1,c=7,r=5,y=0,h=91,C=1,q=2");
+    let first = kitty_commands(&written(&term, None, Some("placed")));
+    assert_eq!(first.last(), Some(&placed));
+    // The outline's box (rows 2 to 5) is above the image: it stays.
+    let outline = screen_at(&term, 40, 12, Some("outline"))
+        .screen()
+        .contents();
+    assert!(outline.contains("Figures"), "{outline}");
+    assert!(kitty_commands(&written(&term, Some("placed"), Some("closed"))).is_empty());
+    // The help draws over it: the placement goes while it is open …
+    assert_eq!(
+        kitty_commands(&written(&term, Some("closed"), Some("help"))),
+        [format!("a=d,d=i,i={id},p=1,q=2")]
+    );
+    // … and comes back with the frame that closes it.
+    assert_eq!(
+        kitty_commands(&written(&term, Some("help"), Some("back"))),
+        [placed]
+    );
+}
+
+#[test]
+fn pixels_are_drawn_again_after_a_resize() {
+    let doc = tall_figure("iterm-resize");
+    let term = FakeTerminal::new(40, 12)
+        .keys("jjj")
+        .wait(ms(300))
+        .mark("drawn")
+        .resize(40, 14)
+        .mark("resized")
+        .wait(ms(300))
+        .mark("settled")
+        .keys("q");
+    let (term, _) = run(term, session(&doc, options(Graphics::Iterm)));
+    assert_eq!(
+        iterm_draws(&written(&term, None, Some("drawn"))),
+        [(4, 17, 7)]
+    );
+    // Every row is painted again: blocks first, as while scrolling …
+    let resized = written(&term, Some("drawn"), Some("resized"));
+    assert!(iterm_draws(&resized).is_empty());
+    assert_eq!(count(&resized, b"\x1b[48;2;255;0;0m"), 7, "blocks rows");
+    // … then the image, where it is now.
+    assert_eq!(
+        iterm_draws(&written(&term, Some("resized"), Some("settled"))),
+        [(4, 17, 7)]
+    );
+}
+
 // ---------------------------------------------------------------------------
 // Modes, documents, stopping
 // ---------------------------------------------------------------------------

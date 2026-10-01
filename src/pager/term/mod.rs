@@ -30,7 +30,7 @@
 //!
 //! Ctrl-Z arrives as a key in raw mode; a SIGTSTP from outside (`kill
 //! -TSTP`) only sets a flag ([`Signals`]). Either way the pager puts the
-//! terminal back first, then stops the process ([`stop_process`]), and
+//! terminal back first, then stops its whole job ([`stop_process`]), and
 //! sets it up again and redraws everything once it is continued.
 
 mod fake;
@@ -97,8 +97,9 @@ pub trait Terminal {
     /// nothing when the terminal is not set up.
     fn leave(&mut self) -> io::Result<()>;
 
-    /// Stop the process until it is continued (Ctrl-Z, SIGTSTP); called
-    /// after [`Terminal::leave`], and followed by [`Terminal::enter`].
+    /// Stop the process, with the rest of its job, until it is continued
+    /// (Ctrl-Z, SIGTSTP; [`stop_process`]); called after
+    /// [`Terminal::leave`], and followed by [`Terminal::enter`].
     fn suspend(&mut self) -> io::Result<()>;
 
     /// Whether [`Terminal::suspend`] can stop the process: a shell with job
@@ -409,14 +410,60 @@ pub fn job_control() -> bool {
     getsid(None).is_ok_and(|session| session != getpgrp())
 }
 
-/// Stop the process as SIGTSTP's default action would ([`job_control`]
-/// permitting): signal-hook emulates it with SIGSTOP, since the pager's own
-/// handler takes SIGTSTP. Returns once the process is continued.
+/// The longest [`stop_process`] waits for its stop to land: one that has
+/// not after this long never will (a debugger swallowed it).
+const STOP_LANDS: Duration = Duration::from_secs(1);
+
+/// Set by every SIGCONT (the handler is installed by the first
+/// [`stop_process`]); `None` if it could not be installed.
+fn continued() -> Option<&'static AtomicBool> {
+    static FLAG: std::sync::OnceLock<Option<Arc<AtomicBool>>> = std::sync::OnceLock::new();
+    FLAG.get_or_init(|| {
+        let flag = Arc::new(AtomicBool::new(false));
+        signal_hook::flag::register(signal_hook::consts::SIGCONT, Arc::clone(&flag))
+            .ok()
+            .map(|_| flag)
+    })
+    .as_deref()
+}
+
+/// Stop the process the way Ctrl-Z in a cooked terminal stops a job
+/// ([`job_control`] permitting), and return once it is continued.
+///
+/// The whole process group stops, not just this process: whatever started
+/// emde in the same job and waits for it (a script, `sh -c`, `cargo run`,
+/// the other end of a pipe) must stop too, or the shell, which waits for
+/// the job's first process, never gets the terminal back. The signal is
+/// SIGSTOP (what signal-hook's emulation of SIGTSTP's default action
+/// raises): the pager's own handler takes SIGTSTP, which would only set its
+/// flag again.
+///
+/// A signal sent to the process group may be taken by any of this
+/// process's threads, so the stop can land a moment after it was sent:
+/// this waits for the SIGCONT that ends it (giving the stop itself a
+/// second to land), so the caller never sets the terminal up again before
+/// the job stopped.
 pub fn stop_process() -> io::Result<()> {
+    use rustix::process::{Signal, kill_current_process_group};
+    use signal_hook::consts::SIGSTOP;
+    use signal_hook::low_level::raise;
     if !job_control() {
         return Ok(());
     }
-    signal_hook::low_level::emulate_default_handler(signal_hook::consts::SIGTSTP)
+    let Some(continued) = continued() else {
+        // Without word of the SIGCONT, stop this process only, which a
+        // signal to itself does at once.
+        return raise(SIGSTOP);
+    };
+    continued.store(false, Ordering::SeqCst);
+    if kill_current_process_group(Signal::STOP).is_err() {
+        return raise(SIGSTOP);
+    }
+    let sent = Instant::now();
+    while !continued.load(Ordering::SeqCst) && sent.elapsed() < STOP_LANDS {
+        std::thread::sleep(Duration::from_millis(1));
+    }
+    Ok(())
 }
 
 /// Signals the event loop checks at least every [`MAX_POLL`].
