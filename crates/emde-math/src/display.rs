@@ -44,7 +44,7 @@ use crate::spacing::{self, Class};
 use crate::style;
 use crate::tables;
 use crate::width::{is_zero_width, str_width, to_u16};
-use crate::{MathDisplay, MathLine, MathOptions, MathRole, MathSpan};
+use crate::{MathBox, MathDisplay, MathLine, MathOptions, MathRole, MathSpan};
 
 /// Lay out display math within `avail` columns.
 pub(crate) fn render(formula: &Formula, opts: &MathOptions, avail: u16) -> MathDisplay {
@@ -57,7 +57,14 @@ pub(crate) fn render(formula: &Formula, opts: &MathOptions, avail: u16) -> MathD
             max_h: usize::from(opts.max_height),
         };
         if let Some(b) = layout.formula(formula) {
-            return MathDisplay::Box(b.to_math_box(opts.ambiguous_wide));
+            let math = b.to_math_box(opts.ambiguous_wide);
+            // `\boxed{…}`: a frame when it fits (else the bare box).
+            let fits = usize::from(math.width) + 4 <= avail;
+            return MathDisplay::Box(if formula.boxed && fits {
+                framed(math)
+            } else {
+                math
+            });
         }
     }
     MathDisplay::Lines(lines(formula, opts, avail))
@@ -1115,6 +1122,80 @@ fn flatten(items: &[Node]) -> Vec<Node> {
     out
 }
 
+/// `b` inside a frame with one column of padding on each side:
+///
+/// ```text
+/// ┌─────┐
+/// │ x=1 │
+/// └─────┘
+/// ```
+fn framed(b: MathBox) -> MathBox {
+    let inner = usize::from(b.width) + 2;
+    let edge = |l: char, r: char| {
+        let mut text = String::with_capacity(inner * 3 + 6);
+        text.push(l);
+        text.extend(std::iter::repeat_n('─', inner));
+        text.push(r);
+        border_line(text, b.width + 4)
+    };
+    let mut rows = Vec::with_capacity(b.rows.len() + 2);
+    rows.push(edge('┌', '┐'));
+    for row in b.rows {
+        rows.push(side_line(row, b.width + 4));
+    }
+    rows.push(edge('└', '┘'));
+    MathBox {
+        width: b.width + 4,
+        height: b.height + 2,
+        baseline: b.baseline + 1,
+        rows,
+    }
+}
+
+/// A line of frame glyphs only.
+fn border_line(text: String, width: u16) -> MathLine {
+    MathLine {
+        spans: vec![MathSpan {
+            end: u32::try_from(text.len()).unwrap_or(u32::MAX),
+            role: MathRole::Delim,
+            bold: false,
+            dim: false,
+        }],
+        text,
+        breaks: Vec::new(),
+        width,
+        ok: true,
+    }
+}
+
+/// `row` between the frame's sides: `│ row │`.
+fn side_line(row: MathLine, width: u16) -> MathLine {
+    const LEFT: &str = "│ ";
+    const RIGHT: &str = " │";
+    let shift = LEFT.len() as u32;
+    let delim = |end: u32| MathSpan {
+        end,
+        role: MathRole::Delim,
+        bold: false,
+        dim: false,
+    };
+    let mut spans = Vec::with_capacity(row.spans.len() + 2);
+    spans.push(delim(shift));
+    spans.extend(row.spans.iter().map(|sp| MathSpan {
+        end: sp.end + shift,
+        ..*sp
+    }));
+    let text = format!("{LEFT}{}{RIGHT}", row.text);
+    spans.push(delim(u32::try_from(text.len()).unwrap_or(u32::MAX)));
+    MathLine {
+        text,
+        spans,
+        breaks: Vec::new(),
+        width,
+        ok: row.ok,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1131,7 +1212,7 @@ mod tests {
         }
     }
 
-    fn public_display_box(tex: &str, avail: u16) -> Option<crate::MathBox> {
+    fn public_display_box(tex: &str, avail: u16) -> Option<MathBox> {
         match public_display(tex, &MathOptions::default(), avail) {
             MathDisplay::Box(b) => Some(b),
             _ => None,

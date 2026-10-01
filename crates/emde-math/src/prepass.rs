@@ -61,6 +61,8 @@ pub(crate) struct Prepared {
     pub(crate) tex: String,
     /// The formatted tag: `(1)` for `\tag{1}`, `A` for `\tag*{A}`.
     pub(crate) tag: Option<String>,
+    /// The whole formula was one `\boxed{…}` (unwrapped in `tex`).
+    pub(crate) boxed: bool,
 }
 
 /// Rewrite `tex` for the parser.
@@ -71,6 +73,10 @@ pub(crate) fn prepare(tex: &str) -> Result<Prepared, Rejected> {
     if longest_chain(tex) > MAX_CHAIN {
         return Err(Rejected::TooDeep);
     }
+    let (tex, boxed) = match whole_box(tex) {
+        Some(inner) => (inner, true),
+        None => (tex, false),
+    };
     let mut rw = Rewriter::default();
     let body = rw.rewrite(tex, true, 0);
     if rw.deepest > MAX_NESTING {
@@ -82,7 +88,28 @@ pub(crate) fn prepare(tex: &str) -> Result<Prepared, Rejected> {
         (true, false) => format!("\\begin{{gathered}}{body}\\end{{gathered}}"),
         (false, false) => body.to_string(),
     };
-    Ok(Prepared { tex, tag: rw.tag })
+    Ok(Prepared {
+        tex,
+        tag: rw.tag,
+        boxed,
+    })
+}
+
+/// The content of a formula that is one `\boxed{…}` and nothing else
+/// (so the frame can go around the whole display), else `None`.
+fn whole_box(tex: &str) -> Option<&str> {
+    let t = tex.trim();
+    let rest = t.strip_prefix("\\boxed")?;
+    if rest.starts_with(|c: char| c.is_ascii_alphabetic()) {
+        return None;
+    }
+    let off = t.len() - rest.len();
+    let open = skip_space(t, off);
+    if !t[open..].starts_with('{') {
+        return None;
+    }
+    let close = matching(t, open, '{', '}')?;
+    (t[close + 1..].trim().is_empty()).then(|| &t[open + 1..close])
 }
 
 /// State of one rewrite pass.
@@ -207,6 +234,9 @@ impl Rewriter {
                 out.push(' ');
                 next
             }
+            // A box inside a formula: its content, unframed (only a whole
+            // boxed display gets a frame, see `whole_box`).
+            "boxed" => next,
             "mathscr" => {
                 out.push_str("\\mathcal");
                 next

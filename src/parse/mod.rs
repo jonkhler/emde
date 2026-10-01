@@ -14,6 +14,7 @@
 //! stored as TeX and typeset there.
 
 mod builder;
+mod display_math;
 mod front_matter;
 mod html;
 mod inline;
@@ -101,8 +102,12 @@ impl ParseOptions {
 
 /// Parse Markdown text into a document. Total: any input gives a document.
 pub fn parse(src: &str, opts: &ParseOptions) -> Document {
+    let math = opts.markdown.math;
+    let tex = math && opts.tex_delimiters;
+    // Multi-line display math becomes a fence first, so that its content
+    // (a line of `=`, `- x`) cannot start a heading or a list.
+    let src = &*display_math::fence(src, tex, math);
     let events = Parser::new_ext(src, opts.pulldown()).into_offset_iter();
-    let tex = opts.markdown.math && opts.tex_delimiters;
     let mut builder = builder::Builder::new(*opts);
     for (event, range) in math_fixup::MathFixup::new(events, src, tex) {
         builder.event_at(event, range);

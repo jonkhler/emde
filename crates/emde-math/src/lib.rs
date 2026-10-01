@@ -278,6 +278,7 @@ fn parse(tex: &str) -> Option<Formula> {
     Some(Formula {
         body,
         tag: prepared.tag,
+        boxed: prepared.boxed,
     })
 }
 
@@ -311,6 +312,32 @@ fn raw(tex: &str, opts: &MathOptions) -> MathLine {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn rows(d: &MathDisplay) -> Vec<&str> {
+        match d {
+            MathDisplay::Box(b) => b.rows.iter().map(|r| r.text.trim_end()).collect(),
+            other => panic!("not a box: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn a_boxed_display_gets_a_frame() {
+        let opts = MathOptions::default();
+        let d = display(r"\boxed{x=1}", &opts, 40);
+        assert_eq!(rows(&d), ["┌───────┐", "│ x = 1 │", "└───────┘"]);
+        let MathDisplay::Box(b) = &d else {
+            unreachable!()
+        };
+        assert_eq!((b.width, b.height, b.baseline), (9, 3, 1));
+        assert!(b.rows.iter().all(|r| r.width == b.width));
+        // Too narrow for the frame: the bare formula.
+        assert_eq!(rows(&display(r"\boxed{x=1}", &opts, 6)), ["x = 1"]);
+        // A box inside a formula shows its content.
+        assert_eq!(rows(&display(r"a+\boxed{b}=c", &opts, 40)), ["a + b = c"]);
+        assert_eq!(inline(r"\boxed{x=1}", &opts).text, "x = 1");
+        // `\boxedx` is another command, not a box.
+        assert!(prepass::prepare(r"\boxedx{a}").is_ok_and(|p| !p.boxed));
+    }
 
     #[test]
     fn parse_errors_are_raw() {

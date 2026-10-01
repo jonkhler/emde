@@ -14,6 +14,8 @@ pub(crate) struct Formula {
     /// The equation tag, already formatted (`(1)` for `\tag{1}`, `A` for
     /// `\tag*{A}`).
     pub(crate) tag: Option<String>,
+    /// The whole formula was `\boxed{…}`: display math draws a frame.
+    pub(crate) boxed: bool,
 }
 
 /// One node of the math tree.

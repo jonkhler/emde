@@ -643,6 +643,29 @@ fn tex_delimiters() {
 }
 
 #[test]
+fn multi_line_display_math_survives_block_syntax() {
+    // A line of `=` would make a setext heading, `- x` a list item.
+    let d = doc(
+        "Write it as\n\\[\n\\mathrm{KL}(q'\\|p_*)\n=\n\\mathbb E_q[x]\n\\]\nafter\n\n$$\na\n- b\n$$\n",
+    );
+    let [
+        Block::Para(before),
+        Block::Math(m1),
+        Block::Para(after),
+        Block::Math(m2),
+    ] = d.blocks.as_slice()
+    else {
+        panic!("{:#?}", d.blocks)
+    };
+    assert_eq!(before.text, "Write it as");
+    // Markdown escapes (`\|`, `p_*`) reach the TeX untouched.
+    assert_eq!(&*m1.tex, "\\mathrm{KL}(q'\\|p_*)\n=\n\\mathbb E_q[x]");
+    assert_eq!(after.text, "after");
+    assert_eq!(&*m2.tex, "a\n- b");
+    assert!(d.headings.is_empty());
+}
+
+#[test]
 fn code_spans_stop_tex_delimiters() {
     let d = doc("\\( a `b` c \\)");
     assert_eq!(only_para(&d).text, "( a b c )");
