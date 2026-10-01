@@ -743,14 +743,7 @@ fn focus_step(state: &mut State, n: usize, forward: bool) {
         return;
     }
     let (top, rows) = (state.top, state.view_rows());
-    let visible_focus = state.focus.map(|f| f.occ).filter(|&i| {
-        state
-            .derived
-            .links
-            .get(i)
-            .is_some_and(|o| links::visible(o, top, rows))
-    });
-    let mut cur = visible_focus;
+    let mut cur = visible_focus(state);
     for _ in 0..n {
         cur = Some(match cur {
             Some(i) if forward => (i + 1) % total,
@@ -777,9 +770,21 @@ fn focus_step(state: &mut State, n: usize, forward: bool) {
     }
 }
 
+/// The focused link occurrence, if it is on screen.
+fn visible_focus(state: &State) -> Option<usize> {
+    let (top, rows) = (state.top, state.view_rows());
+    state.focus.map(|f| f.occ).filter(|&i| {
+        state
+            .derived
+            .links
+            .get(i)
+            .is_some_and(|o| links::visible(o, top, rows))
+    })
+}
+
 fn follow_focus(state: &mut State) -> Vec<Effect> {
-    match state.focus {
-        Some(f) => follow(state, f.occ),
+    match visible_focus(state) {
+        Some(occ) => follow(state, occ),
         None => {
             state.say("no link focused: Tab or o picks one");
             Vec::new()
@@ -814,7 +819,7 @@ fn follow(state: &mut State, occ: usize) -> Vec<Effect> {
 }
 
 fn copy_focus(state: &mut State) -> Vec<Effect> {
-    let Some(f) = state.focus else {
+    let Some(occ) = visible_focus(state) else {
         state.say("no link focused: Tab or o picks one");
         return Vec::new();
     };
@@ -822,7 +827,7 @@ fn copy_focus(state: &mut State) -> Vec<Effect> {
     let text = state
         .derived
         .links
-        .get(f.occ)
+        .get(occ)
         .and_then(|o| links::copy_text(&state.page.doc, &base, o));
     match text {
         Some(t) => vec![Effect::Copy(t)],
@@ -1069,6 +1074,7 @@ fn resize(state: &mut State, cols: u16, rows: u16) -> Vec<Effect> {
         state.mode = Mode::Normal;
     }
     fix_outline_scroll(state);
+    help_scroll(state, 0);
     if width_changed {
         return vec![Effect::Relayout];
     }

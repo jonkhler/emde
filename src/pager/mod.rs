@@ -30,6 +30,34 @@
 //! Whether to page at all is the caller's decision: with `pager.enabled =
 //! "auto"` the pager is for a terminal and a document taller than it, like
 //! `less -F` ([`fits_on_screen`]).
+//!
+//! # Starting the pager
+//!
+//! ```no_run
+//! use std::sync::Arc;
+//!
+//! use emde::config::PagerOptions;
+//! use emde::options::RenderOptions;
+//! use emde::pager::{FileLoader, PagerDoc, PagerSession};
+//! use emde::parse::ParseOptions;
+//! use emde::term::Caps;
+//! use emde::theme::{Theme, Variant};
+//!
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! let opts = RenderOptions::default();
+//! let parse = ParseOptions::from(&opts);
+//! let doc = PagerDoc::load("README.md".as_ref(), &parse)?;
+//! let theme = Theme::fallback(Variant::Dark, None);
+//! let (highlighter, _warning) = emde::highlight::create(&theme.code_theme, &opts.code);
+//! let caps = Caps::full(); // from term::color::decide and term::caps::decide
+//! let mut session = PagerSession::new(doc, theme, caps, opts);
+//! session.loader = Box::new(FileLoader::new(parse));
+//! session.highlighter = Arc::from(highlighter);
+//! session.pager = PagerOptions::default(); // config.pager
+//! let exit = emde::pager::run(session)?;
+//! std::process::exit(i32::from(exit.code()));
+//! # }
+//! ```
 
 mod diff;
 mod images;
@@ -51,7 +79,6 @@ use std::sync::Arc;
 
 pub use diff::{SYNC_OFF, SYNC_ON, Screen};
 pub use images::ImageProvider;
-pub use search::Match;
 pub use state::{DocKey, Place, Settings, State};
 pub use term::{Signals, Terminal};
 pub use update::{Action, Effect, LoadRequest, Nav, update};
@@ -204,11 +231,19 @@ impl PagerExit {
 
 /// Show the session on the terminal until the reader quits.
 ///
-/// Installs the panic hook that restores the terminal and the signal flags,
-/// then runs on a [`term::CrosstermTerminal`]. With `EMDE_TEST_PANIC=1` in
-/// the environment it panics right after the first frame (to test the
+/// Standard output must be a terminal (keys are read from `/dev/tty` when
+/// standard input is not one). Installs the panic hook that restores the
+/// terminal and the signal flags, then runs on a
+/// [`term::CrosstermTerminal`]. With `EMDE_TEST_PANIC=1` in the
+/// environment it panics right after the first frame (to test the
 /// restore).
 pub fn run(session: PagerSession) -> io::Result<PagerExit> {
+    use std::io::IsTerminal as _;
+    if !io::stdout().is_terminal() {
+        return Err(io::Error::other(
+            "the pager needs a terminal on standard output",
+        ));
+    }
     term::install_panic_hook();
     let signals = Signals::register()?;
     let mut terminal = term::CrosstermTerminal::new(session.late_replies.clone());

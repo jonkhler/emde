@@ -52,15 +52,15 @@ fn to_u32(n: usize) -> u32 {
 
 /// A match: block `top`, content bytes `start..end` (see [`SrcPos`]).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Match {
-    pub top: u32,
-    pub start: u32,
-    pub end: u32,
+pub(crate) struct Match {
+    pub(crate) top: u32,
+    pub(crate) start: u32,
+    pub(crate) end: u32,
 }
 
 impl Match {
     /// Where the match starts.
-    pub fn pos(&self) -> SrcPos {
+    pub(crate) fn pos(&self) -> SrcPos {
         SrcPos {
             top: self.top,
             off: self.start,

@@ -467,6 +467,10 @@ fn tab_focus_and_following_anchors() {
     code(&mut s, KeyCode::Enter);
     assert_eq!(top_text(&s).trim(), "Install");
     assert_eq!(s.back_len(), 1);
+    // The focused link is off screen now: Enter does not follow it again.
+    code(&mut s, KeyCode::Enter);
+    assert_eq!(s.back_len(), 1);
+    assert_eq!(s.message(), Some("no link focused: Tab or o picks one"));
     code(&mut s, KeyCode::Backspace);
     assert_eq!(s.top(), 0);
     assert_eq!(s.forward_len(), 1);
@@ -838,6 +842,19 @@ fn help_overlay() {
     assert_eq!(s.mode_name(), "help");
     code(&mut s, KeyCode::Esc);
     assert_eq!(s.mode_name(), "normal");
+    // Scrolled to the end, then the screen grows: still in range.
+    keys(&mut s, "h");
+    for _ in 0..200 {
+        keys(&mut s, "j");
+    }
+    drive(&mut s, Action::Resize { cols: 80, rows: 60 });
+    keys(&mut s, "k");
+    let Mode::Help { scroll } = s.mode else {
+        panic!("help")
+    };
+    let lines = keymap::help_lines().len();
+    let shown = toc::help_box(80, 60, lines).inner_rows();
+    assert_eq!(scroll, lines.saturating_sub(shown).saturating_sub(1));
 }
 
 #[test]
@@ -895,6 +912,41 @@ fn fits_on_screen_leaves_a_line_for_the_prompt() {
 }
 
 #[test]
+fn empty_documents_and_tiny_screens_are_fine() {
+    let ctx = Ctx::new(&Theme::test(), &Caps::full());
+    for (md, cols, rows) in [
+        ("", 80, 24),
+        ("", 1, 1),
+        ("# T\n\ntext [l](#t)", 1, 1),
+        ("x", 3, 2),
+    ] {
+        let mut s = state(md, cols, rows);
+        for k in "jkGg /x\nnNt\x1bo\x1bh\x1b]\x1b[}{w".chars() {
+            let k = match k {
+                '\n' => Key::plain(KeyCode::Enter),
+                '\x1b' => Key::plain(KeyCode::Esc),
+                c => Key::char(c),
+            };
+            drive(&mut s, Action::Key(k));
+            let frame = view(&s, &ctx);
+            assert_eq!(frame.lines.len(), usize::from(rows));
+        }
+        code(&mut s, KeyCode::Tab);
+        code(&mut s, KeyCode::Enter);
+        drive(&mut s, Action::Resize { cols: 2, rows: 1 });
+        let frame = view(&s, &ctx);
+        let mut screen = Screen::new();
+        let bytes = screen.paint(
+            &frame,
+            s.document(),
+            s.layout(),
+            &crate::render::RenderConfig::from_caps(&Caps::full()),
+        );
+        assert!(!bytes.is_empty());
+    }
+}
+
+#[test]
 fn pager_exit_codes() {
     assert_eq!(PagerExit::Quit.code(), 0);
     assert_eq!(PagerExit::Signal(15).code(), 143);
@@ -912,4 +964,76 @@ fn file_loader_reads_readmes() {
     assert!(matches!(&doc.source.origin, Origin::File(p) if p.ends_with("README.md")));
     assert!(loader.load(Path::new("/nonexistent/emde.md")).is_err());
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+// ---------------------------------------------------------------------------
+// Random input
+// ---------------------------------------------------------------------------
+
+/// One random input for the property test.
+fn input(n: u32, col: u16, row: u16) -> Action {
+    const CHARS: &[char] = &[
+        'j', 'k', 'd', 'u', 'f', 'b', 'g', 'G', '%', ']', '[', '}', '{', 't', 'n', 'N', '/', '?',
+        'o', 'a', 's', 'h', 'H', 'L', 'y', 'w', 'q', 'x', 'e', '1', '5', ' ',
+    ];
+    const CODES: &[KeyCode] = &[
+        KeyCode::Enter,
+        KeyCode::Esc,
+        KeyCode::Backspace,
+        KeyCode::Tab,
+        KeyCode::BackTab,
+        KeyCode::Up,
+        KeyCode::Down,
+        KeyCode::PageUp,
+        KeyCode::PageDown,
+        KeyCode::Home,
+        KeyCode::End,
+    ];
+    let pick = n as usize;
+    match n % 7 {
+        0..=3 => Action::Key(Key::char(CHARS[pick / 7 % CHARS.len()])),
+        4 => Action::Key(Key::plain(CODES[pick / 7 % CODES.len()])),
+        5 => Action::Mouse(Mouse {
+            kind: [
+                MouseKind::WheelDown,
+                MouseKind::WheelUp,
+                MouseKind::Press(Button::Left),
+            ][pick / 7 % 3],
+            col,
+            row,
+        }),
+        _ => Action::Resize {
+            cols: col.max(1),
+            rows: row.max(1),
+        },
+    }
+}
+
+proptest::proptest! {
+    #![proptest_config(proptest::prelude::ProptestConfig::with_cases(128))]
+
+    #[test]
+    fn random_input_keeps_the_invariants(
+        doc in 0usize..3,
+        cols in 1u16..140,
+        rows in 1u16..50,
+        steps in proptest::collection::vec((0u32..10_000, 0u16..150, 0u16..60), 1..80),
+    ) {
+        let md = match doc {
+            0 => include_str!("../../tests/fixtures/md/kitchen-sink.md").to_owned(),
+            1 => include_str!("../../tests/fixtures/md/links.md").to_owned(),
+            _ => long_doc(6, 3),
+        };
+        let mut s = state(&md, cols, rows);
+        let ctx = Ctx::new(&Theme::test(), &Caps::full());
+        let cfg = crate::render::RenderConfig::from_caps(&Caps::full());
+        let mut screen = Screen::new();
+        for (n, col, row) in steps {
+            drive(&mut s, input(n, col, row));
+            proptest::prop_assert!(s.top() <= s.max_top(), "{} > {}", s.top(), s.max_top());
+            let frame = view(&s, &ctx);
+            proptest::prop_assert_eq!(frame.lines.len(), usize::from(s.size().1));
+            let _ = screen.paint(&frame, s.document(), s.layout(), &cfg);
+        }
+    }
 }

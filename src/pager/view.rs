@@ -499,7 +499,7 @@ fn status_right(state: &State) -> String {
         parts.push(format!(
             "L {}/{total} {}%",
             state.top + 1,
-            seen * 100 / total
+            seen.saturating_mul(100) / total
         ));
     }
     parts.join("  ")

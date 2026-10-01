@@ -337,7 +337,7 @@ impl Signals {
         let signals = Signals::new();
         let f = &signals.flags;
         for sig in [SIGTERM, SIGHUP, SIGINT] {
-            // After the pager, the signal does what it did before.
+            // Once the pager is gone, the signal gets its default action.
             flag::register_conditional_default(sig, Arc::clone(&f.released))?;
             let value = usize::try_from(sig).unwrap_or(1);
             flag::register_usize(sig, Arc::clone(&f.exit), value)?;
