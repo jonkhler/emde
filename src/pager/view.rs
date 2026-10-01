@@ -176,8 +176,9 @@ pub struct Frame {
     /// Whether an overlay is drawn (no scroll fast path then).
     pub overlay: bool,
     /// Whether an image drawn by a pixel protocol that does not scroll
-    /// with the text (iTerm2, sixel, kitty classic) is on screen. Nothing
-    /// draws such images yet, so this is always `false`.
+    /// with the text (iTerm2, sixel, kitty classic) is on screen: no scroll
+    /// fast path then. [`view`] leaves it `false`; the shell's image layer
+    /// sets it.
     pub images: bool,
 }
 
@@ -320,7 +321,7 @@ pub fn view(state: &State, ctx: &Ctx) -> Frame {
             Mode::Outline(o) => outline(state, ctx, o, &mut building),
             Mode::Help { scroll } => help(state, ctx, *scroll, &mut building),
             Mode::Hints(h) => hints(state, ctx, h, &mut building),
-            Mode::Normal | Mode::Prompt(_) => {}
+            Mode::Normal | Mode::Prompt(_) | Mode::Command(_) => {}
         }
         building.push(Building {
             body: Body::Text(status_bar(state, ctx)),
@@ -508,31 +509,38 @@ fn status_right(state: &State) -> String {
     parts.join("  ")
 }
 
-/// The left part: the prompt, a message, or name and breadcrumb.
+/// `input` cut from the left to leave room for a sigil and the cursor in
+/// `room` columns (the end of a long input stays in view).
+fn prompt_tail(input: &str, room: usize, amb: bool) -> Cow<'_, str> {
+    let input = clean(input);
+    let width = str_width(&input, amb);
+    if width + 2 <= room {
+        return input;
+    }
+    let skip = width + 2 - room;
+    let mut pos = 0;
+    let mut dropped = 0;
+    while dropped < skip && pos < input.len() {
+        let end = next_grapheme_end(&input, pos);
+        dropped += grapheme_width(input.get(pos..end).unwrap_or(""), amb);
+        pos = end;
+    }
+    Cow::Owned(input.get(pos..).unwrap_or("").to_owned())
+}
+
+/// The left part: a prompt, a message, or name and breadcrumb.
 fn status_left<'a>(state: &'a State, ctx: &Ctx, room: usize) -> Vec<(Style, Cow<'a, str>)> {
     let st = &ctx.styles;
     let amb = state.settings.ambiguous_wide;
-    if let Mode::Prompt(p) = &state.mode {
-        let sigil = if p.backward { "?" } else { "/" };
-        // Keep the end of a long pattern in view.
-        let input = clean(&p.input);
-        let width = str_width(&input, amb);
-        let input = if width + 2 > room {
-            let skip = width + 2 - room;
-            let mut pos = 0;
-            let mut dropped = 0;
-            while dropped < skip && pos < input.len() {
-                let end = next_grapheme_end(&input, pos);
-                dropped += grapheme_width(input.get(pos..end).unwrap_or(""), amb);
-                pos = end;
-            }
-            Cow::Owned(input.get(pos..).unwrap_or("").to_owned())
-        } else {
-            input
-        };
+    let prompt = match &state.mode {
+        Mode::Prompt(p) => Some((if p.backward { "?" } else { "/" }, p.input.as_str())),
+        Mode::Command(input) => Some((":", input.as_str())),
+        _ => None,
+    };
+    if let Some((sigil, input)) = prompt {
         return vec![
             (st.prompt, Cow::Borrowed(sigil)),
-            (st.prompt, input),
+            (st.prompt, prompt_tail(input, room, amb)),
             (st.cursor, Cow::Borrowed(" ")),
         ];
     }
@@ -541,6 +549,11 @@ fn status_left<'a>(state: &'a State, ctx: &Ctx, room: usize) -> Vec<(Style, Cow<
         return vec![(style, clean(&m.text))];
     }
     let name = clean(&state.page.name);
+    // Which of the files named on the command line: ` (1/2)`.
+    let position = match state.file_position() {
+        Some((i, n)) if n > 1 => format!(" ({}/{n})", i + 1),
+        _ => String::new(),
+    };
     let mut crumbs: Vec<Cow<'_, str>> = state
         .derived
         .section_at(state.top)
@@ -550,7 +563,9 @@ fn status_left<'a>(state: &'a State, ctx: &Ctx, room: usize) -> Vec<(Style, Cow<
         .map(clean)
         .collect();
     let width = |crumbs: &[Cow<'_, str>]| {
-        str_width(&name, amb) + crumbs.iter().map(|c| 3 + str_width(c, amb)).sum::<usize>()
+        str_width(&name, amb)
+            + position.len()
+            + crumbs.iter().map(|c| 3 + str_width(c, amb)).sum::<usize>()
     };
     // Too long: the outer sections give way first, the innermost stays.
     while width(&crumbs) > room && crumbs.len() > 1 {
@@ -563,6 +578,9 @@ fn status_left<'a>(state: &'a State, ctx: &Ctx, room: usize) -> Vec<(Style, Cow<
         }
     }
     let mut out = vec![(st.name, name)];
+    if !position.is_empty() {
+        out.push((st.status, Cow::Owned(position)));
+    }
     for c in crumbs {
         out.push((st.status, Cow::Borrowed(" › ")));
         out.push((st.status, c));

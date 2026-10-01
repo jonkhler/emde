@@ -23,6 +23,8 @@ pub enum Context {
     Hints,
     /// The help overlay.
     Help,
+    /// The `:` prompt.
+    Command,
 }
 
 /// A group of bindings in the help.
@@ -37,17 +39,19 @@ pub enum Section {
     Outline,
     Hints,
     Help,
+    Command,
 }
 
 impl Section {
     /// Every section, in help order.
-    pub const ALL: [Section; 9] = [
+    pub const ALL: [Section; 10] = [
         Section::Scroll,
         Section::Jump,
         Section::Search,
         Section::Links,
         Section::Other,
         Section::Prompt,
+        Section::Command,
         Section::Outline,
         Section::Hints,
         Section::Help,
@@ -60,6 +64,7 @@ impl Section {
             Section::Outline => Context::Outline,
             Section::Hints => Context::Hints,
             Section::Help => Context::Help,
+            Section::Command => Context::Command,
             Section::Scroll | Section::Jump | Section::Search | Section::Links | Section::Other => {
                 Context::Normal
             }
@@ -78,6 +83,7 @@ impl Section {
             Section::Outline => "In the outline",
             Section::Hints => "With link hints",
             Section::Help => "In this help",
+            Section::Command => "At the : prompt",
         }
     }
 }
@@ -118,6 +124,8 @@ pub enum Command {
     CycleImages,
     ToggleWidth,
     ToggleMouse,
+    /// Open the `:` prompt.
+    CommandLine,
     Help,
     Redraw,
     Suspend,
@@ -140,6 +148,10 @@ pub enum Command {
     HelpPageDown,
     HelpPageUp,
     HelpClose,
+    CommandRun,
+    CommandCancel,
+    CommandErase,
+    CommandClear,
 }
 
 /// One row of the table.
@@ -228,6 +240,7 @@ pub const BINDINGS: &[Binding] = &[
     bind!(Other, [c('i')], CycleImages, "cycle the image mode"),
     bind!(Other, [c('w')], ToggleWidth, "full width, on or off"),
     bind!(Other, [c('m')], ToggleMouse, "mouse, on or off (off: select text)"),
+    bind!(Other, [c(':')], CommandLine, "command: :n next file, :p previous file, :q quit"),
     bind!(Other, [c('h'), k(KeyCode::F(1))], Help, "this help"),
     bind!(Other, [ctrl('l')], Redraw, "redraw the screen (anywhere)"),
     bind!(Other, [ctrl('z')], Suspend, "suspend (anywhere)"),
@@ -236,6 +249,10 @@ pub const BINDINGS: &[Binding] = &[
     bind!(Prompt, [k(KeyCode::Esc), ctrl('c')], PromptCancel, "cancel"),
     bind!(Prompt, [k(KeyCode::Backspace)], PromptErase, "delete a character"),
     bind!(Prompt, [ctrl('u')], PromptClear, "clear the pattern"),
+    bind!(Command, [k(KeyCode::Enter)], CommandRun, "run the command"),
+    bind!(Command, [k(KeyCode::Esc), ctrl('c')], CommandCancel, "cancel"),
+    bind!(Command, [k(KeyCode::Backspace)], CommandErase, "delete a character"),
+    bind!(Command, [ctrl('u')], CommandClear, "clear the command"),
     bind!(Outline, [k(KeyCode::Down), ctrl('n'), ctrl('j')], OutlineDown, "next entry"),
     bind!(Outline, [k(KeyCode::Up), ctrl('p'), ctrl('k')], OutlineUp, "previous entry"),
     bind!(Outline, [k(KeyCode::PageDown)], OutlinePageDown, "down a page"),
@@ -353,6 +370,7 @@ pub fn help_lines() -> Vec<HelpLine> {
         }
         let note = match section {
             Section::Prompt => Some("other keys type the pattern (smart case)"),
+            Section::Command => Some("other keys type the command: n, p, x (first file) or q"),
             Section::Outline => Some("other keys type a filter"),
             Section::Hints => Some("other keys type the label of a link"),
             _ => None,
@@ -435,6 +453,7 @@ mod tests {
             Context::Outline,
             Context::Hints,
             Context::Help,
+            Context::Command,
         ] {
             assert_eq!(lookup(context, ctrl('z')), Some(Command::Suspend));
             assert_eq!(lookup(context, ctrl('l')), Some(Command::Redraw));
@@ -493,6 +512,7 @@ mod tests {
             (c('i'), C::CycleImages),
             (c('w'), C::ToggleWidth),
             (c('m'), C::ToggleMouse),
+            (c(':'), C::CommandLine),
             (c('h'), C::Help),
             (k(KeyCode::F(1)), C::Help),
             (c('q'), C::Quit),
@@ -514,6 +534,11 @@ mod tests {
             Some(C::OutlineJump)
         );
         assert_eq!(lookup(Context::Help, c('q')), Some(C::HelpClose));
+        assert_eq!(
+            lookup(Context::Command, k(KeyCode::Enter)),
+            Some(C::CommandRun)
+        );
+        assert_eq!(lookup(Context::Command, c('n')), None, "n types");
     }
 
     #[test]

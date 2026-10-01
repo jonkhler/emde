@@ -17,13 +17,21 @@
 //! encoding (1006) only. Any-motion tracking (1003, which crossterm's
 //! `EnableMouseCapture` turns on) would flood an SSH connection.
 //!
-//! Leaving writes the cleanup hook's bytes (kitty image deletion, once
-//! images use it) and [`EXIT`], then returns to cooked mode. It runs from
-//! the pager's drop guard, after SIGTERM/SIGHUP/SIGINT (checked by the
-//! event loop) and from the panic hook ([`install_panic_hook`]; for a
-//! panic on the pager's own thread), and it is idempotent: a process-wide
-//! flag records whether the real terminal is set up, so the bytes are
-//! written at most once however the pager ends.
+//! Leaving writes the cleanup bytes ([`Terminal::set_cleanup`]: the kitty
+//! images the pager uploaded are deleted) and [`EXIT`], then returns to
+//! cooked mode. It runs from the pager's drop guard, after
+//! SIGTERM/SIGHUP/SIGINT (checked by the event loop) and from the panic
+//! hook ([`install_panic_hook`]; for a panic on the pager's own thread),
+//! and it is idempotent: a process-wide flag records whether the real
+//! terminal is set up, so the bytes are written at most once however the
+//! pager ends.
+//!
+//! # Stopping
+//!
+//! Ctrl-Z arrives as a key in raw mode; a SIGTSTP from outside (`kill
+//! -TSTP`) only sets a flag ([`Signals`]). Either way the pager puts the
+//! terminal back first, then stops the process ([`stop_process`]), and
+//! sets it up again and redraws everything once it is continued.
 
 mod fake;
 mod real;
@@ -89,9 +97,22 @@ pub trait Terminal {
     /// nothing when the terminal is not set up.
     fn leave(&mut self) -> io::Result<()>;
 
-    /// Stop the process until it is continued (Ctrl-Z); called after
-    /// [`Terminal::leave`], and followed by [`Terminal::enter`].
+    /// Stop the process until it is continued (Ctrl-Z, SIGTSTP); called
+    /// after [`Terminal::leave`], and followed by [`Terminal::enter`].
     fn suspend(&mut self) -> io::Result<()>;
+
+    /// Whether [`Terminal::suspend`] can stop the process: a shell with job
+    /// control must be there to continue it ([`job_control`]).
+    fn can_suspend(&self) -> bool {
+        true
+    }
+
+    /// Set the bytes [`Terminal::leave`] writes before [`EXIT`] (the image
+    /// layer's kitty deletions). The real terminal keeps them process-wide
+    /// ([`set_cleanup`]), so a panic deletes the images too.
+    fn set_cleanup(&mut self, bytes: Vec<u8>) {
+        set_cleanup(bytes);
+    }
 
     /// The current time (a virtual clock in tests).
     fn now(&self) -> Instant {
@@ -330,6 +351,8 @@ struct Flags {
     exit: Arc<AtomicUsize>,
     /// SIGCONT arrived: the process was stopped and continued.
     cont: Arc<AtomicBool>,
+    /// SIGTSTP arrived: the pager should put the terminal back and stop.
+    stop: Arc<AtomicBool>,
     /// No pager is running: the default actions apply.
     released: Arc<AtomicBool>,
 }
@@ -355,7 +378,7 @@ static HANDLERS: Mutex<Option<Flags>> = Mutex::new(None);
 
 /// Install the handlers that set `flags`.
 fn install_handlers(flags: &Flags) -> io::Result<()> {
-    use signal_hook::consts::{SIGCONT, SIGHUP, SIGINT, SIGTERM};
+    use signal_hook::consts::{SIGCONT, SIGHUP, SIGINT, SIGTERM, SIGTSTP};
     use signal_hook::flag;
     for sig in [SIGTERM, SIGHUP, SIGINT] {
         // While no pager runs, the signal gets its default action.
@@ -363,16 +386,46 @@ fn install_handlers(flags: &Flags) -> io::Result<()> {
         let value = usize::try_from(sig).unwrap_or(1);
         flag::register_usize(sig, Arc::clone(&flags.exit), value)?;
     }
+    // A stop from outside: while no pager runs the process just stops
+    // (emulated with SIGSTOP); a pager first puts the terminal back.
+    flag::register_conditional_default(SIGTSTP, Arc::clone(&flags.released))?;
+    flag::register(SIGTSTP, Arc::clone(&flags.stop))?;
     flag::register(SIGCONT, Arc::clone(&flags.cont))?;
     Ok(())
+}
+
+/// Whether the process can be stopped and continued again: its process
+/// group is not orphaned, i.e. a shell with job control is there to
+/// continue it. The kernel discards a SIGTSTP whose default action would
+/// stop an orphaned group; since the pager's handler takes SIGTSTP, it
+/// makes that decision itself.
+///
+/// A process group that is its session's own (the program was started
+/// straight by a terminal emulator, tmux or sshd, or by a shell that is
+/// itself a session leader without job control) is orphaned: no member
+/// has a parent in another group of the session.
+pub fn job_control() -> bool {
+    use rustix::process::{getpgrp, getsid};
+    getsid(None).is_ok_and(|session| session != getpgrp())
+}
+
+/// Stop the process as SIGTSTP's default action would ([`job_control`]
+/// permitting): signal-hook emulates it with SIGSTOP, since the pager's own
+/// handler takes SIGTSTP. Returns once the process is continued.
+pub fn stop_process() -> io::Result<()> {
+    if !job_control() {
+        return Ok(());
+    }
+    signal_hook::low_level::emulate_default_handler(signal_hook::consts::SIGTSTP)
 }
 
 /// Signals the event loop checks at least every [`MAX_POLL`].
 ///
 /// [`Signals::register`] turns SIGTERM, SIGHUP and SIGINT into a request
-/// to quit (the pager then restores the terminal on its normal way out)
-/// and notes SIGCONT, after which the terminal is set up again and fully
-/// redrawn. Once the last clone is dropped, the three signals get their
+/// to quit (the pager then restores the terminal on its normal way out),
+/// SIGTSTP into a request to stop (the terminal is put back first), and
+/// notes SIGCONT, after which the terminal is set up again and fully
+/// redrawn. Once the last clone is dropped, those signals get their
 /// default action back. [`Signals::new`] registers nothing; tests use
 /// [`Signals::raise`] to simulate a signal.
 #[derive(Clone, Debug, Default)]
@@ -402,20 +455,24 @@ impl Signals {
         };
         flags.exit.store(0, Ordering::SeqCst);
         flags.cont.store(false, Ordering::SeqCst);
+        flags.stop.store(false, Ordering::SeqCst);
         flags.released.store(false, Ordering::SeqCst);
         Ok(Signals {
             flags: Arc::new(Release(flags)),
         })
     }
 
-    /// Simulate the arrival of signal `sig` (SIGCONT, or a signal that
-    /// asks to quit).
+    /// Simulate the arrival of signal `sig` (SIGCONT, SIGTSTP, or a signal
+    /// that asks to quit).
     pub fn raise(&self, sig: i32) {
-        if sig == signal_hook::consts::SIGCONT {
-            self.flags.0.cont.store(true, Ordering::SeqCst);
-        } else {
-            let value = usize::try_from(sig).unwrap_or(1);
-            self.flags.0.exit.store(value, Ordering::SeqCst);
+        use signal_hook::consts::{SIGCONT, SIGTSTP};
+        match sig {
+            SIGCONT => self.flags.0.cont.store(true, Ordering::SeqCst),
+            SIGTSTP => self.flags.0.stop.store(true, Ordering::SeqCst),
+            _ => {
+                let value = usize::try_from(sig).unwrap_or(1);
+                self.flags.0.exit.store(value, Ordering::SeqCst);
+            }
         }
     }
 
@@ -430,6 +487,11 @@ impl Signals {
     /// Whether SIGCONT arrived since the last call.
     pub(crate) fn take_continued(&self) -> bool {
         self.flags.0.cont.swap(false, Ordering::SeqCst)
+    }
+
+    /// Whether SIGTSTP arrived since the last call.
+    pub(crate) fn take_stop(&self) -> bool {
+        self.flags.0.stop.swap(false, Ordering::SeqCst)
     }
 }
 
@@ -521,16 +583,45 @@ mod tests {
 
     #[test]
     fn simulated_signals() {
+        use signal_hook::consts::{SIGCONT, SIGTERM, SIGTSTP};
         let s = Signals::new();
         assert_eq!(s.exit_requested(), None);
         assert!(!s.take_continued());
-        s.raise(signal_hook::consts::SIGCONT);
+        assert!(!s.take_stop());
+        s.raise(SIGCONT);
         assert!(s.take_continued());
         assert!(!s.take_continued(), "taken");
-        s.raise(signal_hook::consts::SIGTERM);
-        assert_eq!(s.exit_requested(), Some(signal_hook::consts::SIGTERM));
+        s.raise(SIGTSTP);
+        assert!(s.take_stop());
+        assert!(!s.take_stop(), "taken");
+        assert_eq!(s.exit_requested(), None, "a stop is not a quit");
+        s.raise(SIGTERM);
+        assert_eq!(s.exit_requested(), Some(SIGTERM));
         let clone = s.clone();
-        assert_eq!(clone.exit_requested(), Some(signal_hook::consts::SIGTERM));
+        assert_eq!(clone.exit_requested(), Some(SIGTERM));
+    }
+
+    #[test]
+    fn a_real_sigtstp_only_sets_the_flag_while_a_pager_runs() {
+        use signal_hook::consts::SIGTSTP;
+        let _lock = SIGNALS_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let signals = Signals::register().unwrap();
+        // With the flags registered the process is not stopped: the pager
+        // puts the terminal back first and stops itself.
+        signal_hook::low_level::raise(SIGTSTP).unwrap();
+        assert!(signals.take_stop());
+        assert!(!signals.take_stop());
+        drop(signals);
+    }
+
+    #[test]
+    fn job_control_follows_the_process_group() {
+        // `cargo test` runs this in a process group that is not its
+        // session's (or it is, under some harnesses): either way the check
+        // agrees with the ids, and never fails.
+        let session = rustix::process::getsid(None).unwrap();
+        let group = rustix::process::getpgrp();
+        assert_eq!(job_control(), session != group);
     }
 
     #[test]

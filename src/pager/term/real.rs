@@ -84,10 +84,13 @@ impl Terminal for CrosstermTerminal {
     }
 
     fn suspend(&mut self) -> io::Result<()> {
-        // No handler is registered for SIGTSTP, so this stops the process
-        // (unless its process group is orphaned, when it is discarded) and
-        // returns once it is continued.
-        signal_hook::low_level::raise(signal_hook::consts::SIGTSTP)
+        // The pager's handler takes SIGTSTP, so the stop is emulated; this
+        // returns once the process is continued.
+        super::stop_process()
+    }
+
+    fn can_suspend(&self) -> bool {
+        super::job_control()
     }
 }
 
