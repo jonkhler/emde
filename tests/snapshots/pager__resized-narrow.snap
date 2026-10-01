@@ -1,0 +1,20 @@
+---
+source: tests/pager.rs
+expression: "screen_text(&term, 80, 20, \"narrow\")"
+---
+ 1│  Section 6                             │
+ 2│  ━━━━━━━━━───────────────────────────  │
+ 3│                                        │
+ 4│  Paragraph 6 has a few words of text   │
+ 5│  in it.                                │
+ 6│                                        │
+ 7│  Section 7                             │
+ 8│  ━━━━━━━━━───────────────────────────  │
+ 9│                                        │
+10│  Paragraph 7 has a few words of text   │
+11│  in it.                                │
+12│                                        │
+13│  Section 8                             │
+14│  ━━━━━━━━━───────────────────────────  │
+15│                                        │
+16│ text › … › Section 6      L 33/121 38% │

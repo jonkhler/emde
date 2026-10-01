@@ -1,0 +1,28 @@
+---
+source: tests/pager.rs
+expression: "screen_text(&term, 80, 24, \"a page\")"
+---
+ 1│  ━━━━━───────────────────────────────────────────────────────────────────────  │
+ 2│                                                                                │
+ 3│  • Tight item one                                                              │
+ 4│  • Tight item with bold                                                        │
+ 5│    ◦ Nested item                                                               │
+ 6│      ‣ Deeper item                                                             │
+ 7│  ☐ Unchecked task                                                              │
+ 8│  ☒ Checked task                                                                │
+ 9│                                                                                │
+10│  1. First                                                                      │
+11│                                                                                │
+12│  2. Second                                                                     │
+13│                                                                                │
+14│     With a second paragraph.                                                   │
+15│                                                                                │
+16│  3. Third                                                                      │
+17│                                                                                │
+18│  Quotes and alerts                                                             │
+19│  ━━━━━━━━━━━━━━━━━───────────────────────────────────────────────────────────  │
+20│                                                                                │
+21│  ▎ A plain quote with a reference link.                                        │
+22│  ▎                                                                             │
+23│  ▎ ▎ A nested quote.                                                           │
+24│ text › Kitchen Sink › Lists                                       L 27/129 37% │

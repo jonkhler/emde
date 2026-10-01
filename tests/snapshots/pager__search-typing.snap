@@ -1,0 +1,30 @@
+---
+source: tests/pager.rs
+expression: "screen_text(&term, 80, 24, \"typing\")"
+---
+ 1│  ┌──────────────────────────┐                                                  │
+ 2│  │ title   Kitchen Sink     │                                                  │
+ 3│  │ author  emde             │                                                  │
+ 4│  │ tags    [markdown, test] │                                                  │
+ 5│  └──────────────────────────┘                                                  │
+ 6│                                                                                │
+ 7│   Kitchen Sink                                                                 │
+ 8│                                                                                │
+ 9│  A paragraph with emphasis, strong, both, strikethrough,  inline code , a      │
+10│  link, an autolink https://example.org/path, and a bare URL https://www.rust-  │
+11│  lang.org/learn. Hard break at the end of this line                            │
+12│  and a backslash hard break                                                    │
+13│  then more text. Footnote reference¹ and another².                             │
+  │                  ^^^^^^^^│
+14│                                                                                │
+15│  Headings                                                                      │
+16│  ━━━━━━━━────────────────────────────────────────────────────────────────────  │
+17│                                                                                │
+18│  ▎ Third level                                                                 │
+19│                                                                                │
+20│  Fourth level                                                                  │
+21│                                                                                │
+22│  Fifth level                                                                   │
+23│                                                                                │
+24│ /footnote                                               3 matches  L 1/129 17% │
+  │          =│

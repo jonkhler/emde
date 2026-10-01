@@ -1,0 +1,28 @@
+---
+source: tests/pager.rs
+expression: "screen_text(&term, 80, 24, \"help\")"
+---
+ 1│  ┌─╭─ Keys ───────────────────────────────────────────────────────────────╮    │
+ 2│  │ │ Scrolling                                                            │    │
+ 3│  │ │  0-9                 count for the next command (5j, 50%, 120g)      │    │
+ 4│  │ │  j ↓ ^E ^N           down a line                                     │    │
+ 5│  └─│  k ↑ ^Y ^P           up a line                                       │    │
+ 6│    │  Space f PgDn ^F     down a page                                     │    │
+ 7│   K│  b PgUp ^B           up a page                                       │    │
+ 8│    │  d ^D                down half a page                                │    │
+ 9│  A │  u ^U                up half a page                                  │    │
+10│  li│  g Home <            top (line N with a count)                       │t-  │
+11│  la│  G End >             bottom (line N with a count)                    │    │
+12│  an│  %                   N percent into the document                     │    │
+13│  th│                                                                      │    │
+14│    │ Jumping                                                              │    │
+15│  He│  ]                   next heading                                    │    │
+16│  ━━│  [                   previous heading                                │──  │
+17│    │  }                   next heading of the same or a higher level      │    │
+18│  ▎ │  {                   previous heading of the same or a higher level  │    │
+19│    │  t                   outline (type to filter)                        │    │
+20│  Fo│                                                                      │    │
+21│    │ Searching                                                            │    │
+22│  Fi│  /                   search forward                                  │    │
+23│    ╰─ more: j, Space ─────────────────────────────────────────────────────╯    │
+24│ text                                                               L 1/129 17% │

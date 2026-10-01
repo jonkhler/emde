@@ -21,6 +21,7 @@ pub mod highlight;
 pub mod ir;
 pub mod layout;
 pub mod options;
+pub mod pager;
 pub mod panic;
 pub mod parse;
 pub mod render;

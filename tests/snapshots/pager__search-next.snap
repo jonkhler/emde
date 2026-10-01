@@ -1,0 +1,30 @@
+---
+source: tests/pager.rs
+expression: "screen_text(&term, 80, 24, \"next\")"
+---
+ 1│  ━━━━━━━━━━━━────────────────────────────────────────────────────────────────  │
+ 2│                                                                                │
+ 3│  Term                                                                          │
+ 4│      Its definition.                                                           │
+ 5│                                                                                │
+ 6│  ────────────────────────────────────────────────────────────────────────────  │
+ 7│                                                                                │
+ 8│  ▾ Click to expand                                                             │
+ 9│    Hidden content with  Ctrl + C  and H₂O and x².                              │
+10│                                                                                │
+11│                      Centred text, marked and underlined.                      │
+12│                                                                                │
+13│                                   ▣ A figure                                   │
+14│                                 Figure caption                                 │
+15│                                                                                │
+16│  Text with an ▣ inline image chip and a ▣ badge badge.                         │
+17│                                                                                │
+18│  日本語のテキストと English mixed with emoji 👨‍👩‍👧 and ❤️.                     │
+19│                                                                                │
+20│  ── Footnotes ───────────────────────────────────────────────────────────────  │
+21│                                                                                │
+22│  1. The footnote text, with emphasis. ↑ ↑²                                     │
+  │         ^^^^^^^^│
+23│  2. Second footnote. ↑                                                         │
+  │            ~~~~~~~~│
+24│ text › Kitchen Sink › Other blocks                         2/3  L 107/129 100% │
