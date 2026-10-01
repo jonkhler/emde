@@ -672,9 +672,22 @@ fn zz_zt_zb_in_normal_mode() {
     assert!(line.contains("Detail 7"), "{line} (was {found})");
     keys(&mut s, "zz");
     assert!(s.layout().line_text(s.top() + 5).contains("Detail 7"));
-    // A pending z is dropped by a key that does not continue it.
+    // A pending z is dropped by a key that does not continue it, and by
+    // a click; so is a mark being typed.
     keys(&mut s, "zx");
     assert!(!s.keys_pending());
+    let click = Action::Mouse(Mouse {
+        kind: MouseKind::Press(Button::Left),
+        col: 0,
+        row: 0,
+    });
+    keys(&mut s, "z");
+    drive(&mut s, click.clone());
+    assert!(!s.keys_pending());
+    keys(&mut s, "m");
+    drive(&mut s, click);
+    keys(&mut s, "a");
+    assert_eq!(s.message(), None, "a is not taken as a mark");
 }
 
 // ---------------------------------------------------------------------------
@@ -720,6 +733,60 @@ fn e_opens_the_editor_at_the_source_line() {
         }]
     );
     assert_eq!(s.mode_name(), "normal");
+}
+
+#[test]
+fn edge_documents_never_trip_the_modes() {
+    let docs = [
+        "",
+        "\n\n",
+        "one line",
+        "# Only a heading",
+        "```\n```",
+        "$$\n$$",
+    ];
+    let scripts = [
+        "f", "y", "v", "o", "V", "Vy", "VY", "Vo", "V}}", "V{{", "V]", "V[", "Vn", "VG", "Vgg",
+        "V5j", "Vzz", "Ve", "zz", "zt", "zb", "gg", "G", "ma'a", "''", "e", "fa", "ya", "va",
+    ];
+    for md in docs {
+        for script in scripts {
+            for (cols, rows) in [(30, 5), (1, 1), (4, 2)] {
+                let mut s = state(md, cols, rows);
+                keys(&mut s, script);
+                if let Some((lo, hi)) = s.selection() {
+                    assert!(lo <= hi && hi < s.layout().len().max(1), "{md:?} {script}");
+                }
+                drive(&mut s, Action::Resize { cols: 2, rows: 3 });
+                keys(&mut s, "jky");
+                assert!(s.top() <= s.max_top(), "{md:?} {script}");
+            }
+        }
+    }
+    // One line: both copies are the line.
+    let mut s = state("one line", 30, 5);
+    assert_eq!(
+        copied(&keys(&mut s, "Vy")),
+        Some((
+            "one line".into(),
+            "copied 1 block of Markdown (1 line)".into()
+        ))
+    );
+    assert_eq!(copied(&keys(&mut s, "VY")).unwrap().0, "one line");
+    // Nothing at all: nothing to select or copy.
+    let mut s = state("", 30, 5);
+    assert_eq!(keys(&mut s, "Vy"), []);
+    assert_eq!(s.mode_name(), "normal");
+}
+
+#[test]
+fn yanking_a_heading_of_standard_input_gives_its_anchor() {
+    let mut s = state_for(pdoc("# The Title\n\ntext", Origin::Stdin), 40, 10);
+    keys(&mut s, "y");
+    assert_eq!(
+        copied(&keys(&mut s, "a")),
+        Some(("#the-title".into(), "copied #the-title".into()))
+    );
 }
 
 #[test]

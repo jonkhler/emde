@@ -1206,7 +1206,8 @@ fn file_loader_reads_readmes() {
 fn input(n: u32, col: u16, row: u16) -> Action {
     const CHARS: &[char] = &[
         'j', 'k', 'd', 'u', 'f', 'b', 'g', 'G', '%', ']', '[', '}', '{', 't', 'n', 'N', '/', '?',
-        'o', 'a', 's', 'h', 'H', 'L', 'y', 'w', 'q', 'x', 'e', '1', '5', ' ',
+        'o', 'a', 's', 'h', 'H', 'L', 'y', 'w', 'q', 'x', 'e', '1', '5', ' ', 'v', 'V', 'Y', 'z',
+        'm', '\'', ';', 'M', 'c',
     ];
     const CODES: &[KeyCode] = &[
         KeyCode::Enter,
@@ -1222,6 +1223,10 @@ fn input(n: u32, col: u16, row: u16) -> Action {
         KeyCode::End,
     ];
     let pick = n as usize;
+    if n.is_multiple_of(61) {
+        // The pause that ends a key sequence (`g` of `gg`).
+        return Action::KeyTimeout;
+    }
     match n % 7 {
         0..=3 => Action::Key(Key::char(CHARS[pick / 7 % CHARS.len()])),
         4 => Action::Key(Key::plain(CODES[pick / 7 % CODES.len()])),
@@ -1246,7 +1251,7 @@ proptest::proptest! {
 
     #[test]
     fn random_input_keeps_the_invariants(
-        doc in 0usize..3,
+        doc in 0usize..6,
         cols in 1u16..140,
         rows in 1u16..50,
         steps in proptest::collection::vec((0u32..10_000, 0u16..150, 0u16..60), 1..80),
@@ -1254,6 +1259,9 @@ proptest::proptest! {
         let md = match doc {
             0 => include_str!("../../tests/fixtures/md/kitchen-sink.md").to_owned(),
             1 => include_str!("../../tests/fixtures/md/links.md").to_owned(),
+            2 => String::new(),
+            3 => "one line".to_owned(),
+            4 => "Text $x$.\n\n\\[\na\n=\nb\n\\]\n\n| a |\n|---|\n| 1 |\n\n- i\n\n  > q\n".to_owned(),
             _ => long_doc(6, 3),
         };
         let mut s = state(&md, cols, rows);
@@ -1263,6 +1271,13 @@ proptest::proptest! {
         for (n, col, row) in steps {
             drive(&mut s, input(n, col, row));
             proptest::prop_assert!(s.top() <= s.max_top(), "{} > {}", s.top(), s.max_top());
+            if let Some((lo, hi)) = s.selection() {
+                proptest::prop_assert!(lo <= hi && hi < s.layout().len().max(1), "{lo}..={hi}");
+            }
+            if let Mode::Hints(h) = &s.mode {
+                proptest::prop_assert!(!h.labels.is_empty());
+                proptest::prop_assert!(h.labels.iter().all(|(_, t)| t.line < s.layout().len()));
+            }
             let frame = view(&s, &ctx);
             proptest::prop_assert_eq!(frame.lines.len(), usize::from(s.size().1));
             let _ = screen.paint(&frame, s.document(), s.layout(), &cfg);

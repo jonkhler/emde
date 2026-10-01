@@ -227,10 +227,7 @@ fn on_key(state: &mut State, key: Key) -> Vec<Effect> {
         return argument(state, cmd, key);
     }
     let ctx = context(&state.mode);
-    if matches!(
-        ctx,
-        Context::Prompt | Context::Outline | Context::Hints | Context::Command
-    ) {
+    if ctx.types_text() {
         // Text input: single keys, the rest types.
         return match state.settings.keymap.command(ctx, key) {
             Some(cmd) => command(state, cmd),
@@ -1437,6 +1434,10 @@ fn on_mouse(state: &mut State, m: Mouse) -> Vec<Effect> {
         }
         MouseKind::Press(Button::Left) => {
             state.message = None;
+            // A click ends a key sequence or a mark being typed.
+            state.keys.clear();
+            state.awaiting = None;
+            state.count = None;
             click(state, m.col, m.row)
         }
         _ => Vec::new(),

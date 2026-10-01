@@ -597,7 +597,10 @@ impl<'t, T: Terminal> Shell<'t, T> {
         self.term.term.leave()?;
         self.images.reset(true);
         self.term.term.set_cleanup(Vec::new());
+        // Ctrl-Z in the editor stops its whole job, the pager included.
+        self.signals.lend_terminal(true);
         let ran = self.term.term.run_foreground(&argv);
+        self.signals.lend_terminal(false);
         // Signals from the terminal while the editor ran were the editor's.
         self.signals.forget_interrupt();
         let _ = self.signals.take_stop();

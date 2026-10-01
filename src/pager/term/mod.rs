@@ -363,6 +363,9 @@ struct Flags {
     stop: Arc<AtomicBool>,
     /// No pager is running: the default actions apply.
     released: Arc<AtomicBool>,
+    /// Another program (the editor) has the terminal: a SIGTSTP stops the
+    /// pager with it, so the whole job stops and `fg` continues both.
+    lent: Arc<AtomicBool>,
 }
 
 /// Gives the signals their default actions back when the last [`Signals`]
@@ -372,6 +375,7 @@ struct Release(Flags);
 
 impl Drop for Release {
     fn drop(&mut self) {
+        self.0.lent.store(false, Ordering::SeqCst);
         self.0.released.store(true, Ordering::SeqCst);
     }
 }
@@ -398,6 +402,8 @@ fn install_handlers(flags: &Flags) -> io::Result<()> {
     // (emulated with SIGSTOP); a pager first puts the terminal back.
     flag::register_conditional_default(SIGTSTP, Arc::clone(&flags.released))?;
     flag::register(SIGTSTP, Arc::clone(&flags.stop))?;
+    // While another program has the terminal, it stops the pager as well.
+    flag::register_conditional_default(SIGTSTP, Arc::clone(&flags.lent))?;
     flag::register(SIGCONT, Arc::clone(&flags.cont))?;
     Ok(())
 }
@@ -511,6 +517,7 @@ impl Signals {
         flags.cont.store(false, Ordering::SeqCst);
         flags.stop.store(false, Ordering::SeqCst);
         flags.released.store(false, Ordering::SeqCst);
+        flags.lent.store(false, Ordering::SeqCst);
         Ok(Signals {
             flags: Arc::new(Release(flags)),
         })
@@ -546,6 +553,19 @@ impl Signals {
     /// Whether SIGTSTP arrived since the last call.
     pub(crate) fn take_stop(&self) -> bool {
         self.flags.0.stop.swap(false, Ordering::SeqCst)
+    }
+
+    /// Whether another program has the terminal (the editor, run in the
+    /// foreground): then SIGTSTP stops the pager too, as it stops a job
+    /// (Ctrl-Z in the editor stops its process group, the pager in it).
+    pub(crate) fn lend_terminal(&self, lent: bool) {
+        self.flags.0.lent.store(lent, Ordering::SeqCst);
+    }
+
+    /// Whether the terminal is lent ([`Signals::lend_terminal`]).
+    #[cfg(test)]
+    pub(crate) fn terminal_lent(&self) -> bool {
+        self.flags.0.lent.load(Ordering::SeqCst)
     }
 
     /// Forget a SIGINT (one from the terminal while another program had
@@ -677,6 +697,23 @@ mod tests {
         assert!(signals.take_stop());
         assert!(!signals.take_stop());
         drop(signals);
+    }
+
+    #[test]
+    fn lending_the_terminal_is_undone_for_the_next_pager() {
+        let _lock = SIGNALS_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let signals = Signals::register().unwrap();
+        assert!(!signals.terminal_lent());
+        signals.lend_terminal(true);
+        assert!(signals.terminal_lent());
+        signals.lend_terminal(false);
+        assert!(!signals.terminal_lent());
+        // A pager that ends while the terminal is lent does not leave the
+        // next one stopping with every SIGTSTP.
+        signals.lend_terminal(true);
+        drop(signals);
+        let next = Signals::register().unwrap();
+        assert!(!next.terminal_lent());
     }
 
     #[test]

@@ -225,7 +225,9 @@ A key is a character (`j`, `G`, `?`), `C-x` (Ctrl), `M-x` (Alt), a name
 and keys separated by spaces follow each other (`g Home`, `C-w j`). A word
 that looks like a misspelt name (`PgDwn`) is reported rather than typed
 letter by letter. A sequence that is also the start of a longer one (`g`
-and `gg`) waits for the next key, or runs after a moment.
+and `gg`) waits for the next key, or runs after a moment. Where other
+keys type text (the search and `:` prompts, the outline, hints), only
+single keys can be bound.
 
 `[]` leaves an action without keys. A key bound to two actions goes to the
 one bound later, an action of your file winning over a default one; `emde

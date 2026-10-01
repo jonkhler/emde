@@ -49,6 +49,18 @@ pub enum Context {
     Command,
 }
 
+impl Context {
+    /// Whether keys that are not bound type text here (the search prompt,
+    /// the outline filter, hints, the `:` prompt): bindings are single
+    /// keys.
+    pub const fn types_text(self) -> bool {
+        matches!(
+            self,
+            Context::Prompt | Context::Outline | Context::Hints | Context::Command
+        )
+    }
+}
+
 /// A group of bindings in the help.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Section {
@@ -661,6 +673,12 @@ impl Keymap {
             set.push(b);
             for k in seqs {
                 match parse_keys(k) {
+                    Ok(seq) if seq.len() > 1 && b.section.context().types_text() => {
+                        issues.push(KeyIssue {
+                            action: action.clone(),
+                            message: format!("`{k}`: only single keys work while typing text"),
+                        });
+                    }
                     Ok(seq) => {
                         if !keys.iter().any(|(o, s)| std::ptr::eq(*o, b) && *s == seq) {
                             keys.push((b, seq));
@@ -1169,6 +1187,20 @@ mod tests {
         );
         assert_eq!(map.command(Context::Normal, ctrl('l')), None);
         assert_eq!(issues.len(), 1, "{issues:?}");
+        // Sequences cannot work where keys type text.
+        let (map, issues) = Keymap::new(&overrides(&[("prompt-cancel", &["jk", "C-g"])]));
+        assert_eq!(
+            issues,
+            [KeyIssue {
+                action: "prompt-cancel".into(),
+                message: "`jk`: only single keys work while typing text".into()
+            }]
+        );
+        assert_eq!(
+            map.command(Context::Prompt, ctrl('g')),
+            Some(Command::PromptCancel)
+        );
+        assert_eq!(map.lookup(Context::Prompt, &[c('j')]), Lookup::default());
         // Unknown actions and keys.
         let (map, issues) = Keymap::new(&overrides(&[
             ("pgae-down", &["x"]),
