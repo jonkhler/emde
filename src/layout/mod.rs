@@ -34,7 +34,7 @@
 //! fallbacks), `style` resolves element styles and `scripts` maps
 //! super- and subscripts to Unicode.
 
-mod blocks;
+pub(crate) mod blocks;
 mod build;
 mod code;
 mod deco;

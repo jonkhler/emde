@@ -1,9 +1,10 @@
 # tokyonight: Tokyo Night: the Night style (dark) and the Day style (light).
 # Source: tokyonight.nvim by Folke Lemaitre (https://github.com/folke/tokyonight.nvim), Apache-2.0 licence.
 #
-# The dark variant is the Night style, the light one the Day style. Code
-# blocks use Catppuccin, whose syntax colours are the closest of the
-# built-in code themes (`emde --list-code-themes`).
+# The dark variant is the Night style, the light one the Day style. Tokyo
+# Night has no code theme among the built-in ones (`emde --list-code-themes`):
+# dark code uses Catppuccin Mocha, whose syntax colours are the closest;
+# light code uses Coldark-Cold, the most legible on the Day page.
 #
 # Colours marked "darkened" or "lightened" are the upstream colour with only
 # its OKLab lightness moved, so that text drawn in it has a WCAG contrast of
@@ -11,7 +12,7 @@
 
 name = "tokyonight"
 inherits = "emde"
-code = { dark = "Catppuccin Mocha", light = "Catppuccin Latte" }
+code = { dark = "Catppuccin Mocha", light = "Coldark-Cold" }
 
 [palette.dark]
 text = "#c0caf5"     # fg
@@ -36,14 +37,14 @@ subtext = "#495a80"  # fg_dark #6172b0, darkened
 muted = "#68709a"    # dark5
 surface = "#c4c8da"  # bg_highlight
 base = "#e1e2e7"     # bg
-blue = "#105fcb"     # blue #2e7de9, darkened
+blue = "#0255c1"     # blue #2e7de9, darkened
 accent = "#0255c1"   # blue #2e7de9, darkened
-mauve = "#8936d3"    # magenta #9854f1, darkened
+mauve = "#832ac7"    # magenta #9854f1, darkened
 teal = "#007261"     # teal #118c74, darkened
-green = "#506d31"    # green #587539, darkened
+green = "#476428"    # green #587539, darkened
 yellow = "#725628"   # yellow #8c6c3e, darkened
 peach = "#8d4800"    # orange #b15c00, darkened
-red = "#b6333b"      # red1 #c64343, darkened
+red = "#ac2936"      # red1 #c64343, darkened
 pink = "#7847bd"     # purple
 sky = "#007197"      # cyan
 

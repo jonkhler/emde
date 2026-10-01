@@ -4,7 +4,7 @@
 # Dracula has no blue: blue roles (headings, links, notes) are purple. It
 # has one text colour, so `subtext` (quotes, footnotes, the status bar) is
 # its comment colour lightened. Alucard has no code theme of its own; code
-# uses OneHalfLight, as emde does.
+# uses Coldark-Cold, the most legible light code theme on its page.
 #
 # Colours marked "darkened" or "lightened" are the upstream colour with only
 # its OKLab lightness moved, so that text drawn in it has a WCAG contrast of
@@ -12,12 +12,12 @@
 
 name = "dracula"
 inherits = "emde"
-code = { dark = "Dracula", light = "OneHalfLight" }
+code = { dark = "Dracula", light = "Coldark-Cold" }
 
 [palette.dark]
 text = "#f8f8f2"     # foreground
 subtext = "#82a5e2"  # comment #6272a4, lightened
-muted = "#6272a4"    # comment
+muted = "#6f81be"    # comment #6272a4, lightened
 surface = "#44475a"  # selection
 base = "#282a36"     # background
 blue = "#bd93f9"     # purple
@@ -27,7 +27,7 @@ teal = "#8be9fd"     # cyan
 green = "#50fa7b"    # green
 yellow = "#f1fa8c"   # yellow
 peach = "#ffb86c"    # orange
-red = "#ff5555"      # red
+red = "#ff7168"      # red #ff5555, lightened
 pink = "#ff79c6"     # pink
 sky = "#8be9fd"      # cyan
 
@@ -45,7 +45,7 @@ teal = "#036a96"     # cyan
 green = "#14710a"    # green
 yellow = "#7c6600"   # yellow #846e15, darkened
 peach = "#a34d14"    # orange
-red = "#cb3a2a"      # red
+red = "#c53424"      # red #cb3a2a, darkened
 pink = "#a3144d"     # pink
 sky = "#036a96"      # cyan
 

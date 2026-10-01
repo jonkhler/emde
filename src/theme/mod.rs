@@ -584,7 +584,8 @@ mod tests {
     /// Every element whose colours are less than the WCAG minimum apart, on
     /// the variant's own page colour: `(element, contrast, minimum)`. The
     /// terminal's default foreground is taken to be the palette's `text`,
-    /// and a gradient bar is checked at both ends.
+    /// a gradient bar is checked at both ends, code labels and gutters on
+    /// the code panel, and alerts (title and text) on their tint.
     fn contrast_failures(t: &Theme) -> Vec<(&'static str, f32, f32)> {
         let text = t.color("text").unwrap_or(t.base);
         let rgb = |c: Color, default: Rgb| match c {
@@ -601,10 +602,32 @@ mod tests {
             if let Some((_, Color::Rgb(to))) = t.gradient(e) {
                 backgrounds.push(to);
             }
+            if matches!(e, Element::CodeLabel | Element::CodeGutter) {
+                backgrounds.extend(rgb(t.style(Element::CodeBlock).bg, t.base));
+            }
             for bg in backgrounds {
                 let ratio = crate::color::contrast(fg, bg);
                 if ratio < min {
                     out.push((e.name(), ratio, min));
+                }
+            }
+        }
+        // Alerts are drawn on a tint of their colour (layout's ALERT_TINT).
+        for e in [
+            Element::AlertNote,
+            Element::AlertTip,
+            Element::AlertImportant,
+            Element::AlertWarning,
+            Element::AlertCaution,
+        ] {
+            let Some(fg) = rgb(t.style(e).fg, text) else {
+                continue;
+            };
+            let tint = mix_oklab(t.base, fg, crate::layout::blocks::ALERT_TINT);
+            for (what, c) in [(e.name(), fg), ("text on an alert", text)] {
+                let ratio = crate::color::contrast(c, tint);
+                if ratio < 4.5 {
+                    out.push((what, ratio, 4.5));
                 }
             }
         }
@@ -616,9 +639,20 @@ mod tests {
         for name in palette_themes() {
             let loaded = builtin_theme(name);
             for variant in Variant::ALL {
-                let (t, _) = build::build(name, &loaded.patch, variant, None);
-                let failures = contrast_failures(&t);
-                assert!(failures.is_empty(), "{name} {variant:?}: {failures:?}");
+                // The palette's page colour, and the terminal's when it is
+                // pure black or white.
+                let terminal = match variant {
+                    Variant::Dark => Rgb(0, 0, 0),
+                    Variant::Light => Rgb(255, 255, 255),
+                };
+                for bg in [None, Some(terminal)] {
+                    let (t, _) = build::build(name, &loaded.patch, variant, bg);
+                    let failures = contrast_failures(&t);
+                    assert!(
+                        failures.is_empty(),
+                        "{name} {variant:?} on {bg:?}: {failures:?}"
+                    );
+                }
             }
         }
     }
@@ -631,8 +665,16 @@ mod tests {
         let failures = contrast_failures(&latte);
         assert!(failures.iter().any(|f| f.0 == "code"), "{failures:?}");
         assert!(failures.iter().any(|f| f.0 == "alert_warning"));
+        assert!(failures.iter().any(|f| f.0 == "alert_tip"), "on its tint");
         let mocha = Theme::fallback(Variant::Dark, None);
-        assert!(contrast_failures(&mocha).iter().all(|f| f.0 == "h6"));
+        let failures = contrast_failures(&mocha);
+        // Mocha's overlay0 is faint on the code panel, and as a heading.
+        assert!(
+            failures
+                .iter()
+                .all(|f| ["h6", "code_label", "code_gutter"].contains(&f.0)),
+            "{failures:?}"
+        );
     }
 
     #[test]
