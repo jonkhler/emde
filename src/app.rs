@@ -243,13 +243,14 @@ fn prepare(
     trace.stage("parse+probe", &hints);
 
     let replies = answers.probe.as_ref().and_then(ProbeOutcome::answers);
-    let caps = caps::decide(
+    let mut caps = caps::decide(
         &env,
         base,
         answers.tmux.as_ref(),
         replies,
         &config.render.images,
     );
+    caps::refuse_wide_blocks(&mut caps, config.render.ambiguous_wide);
     let theme = config::build_theme(&config, caps.background, caps.color);
     let (highlighter, stores) =
         highlighter_and_images(&docs, &caps, &config, &theme, &loaded.diagnostics);
@@ -363,13 +364,14 @@ fn run_doctor(
         Answers::default()
     };
     let replies = answers.probe.as_ref().and_then(ProbeOutcome::answers);
-    let caps = caps::decide(
+    let mut caps = caps::decide(
         &env,
         base,
         answers.tmux.as_ref(),
         replies,
         &config.render.images,
     );
+    caps::refuse_wide_blocks(&mut caps, config.render.ambiguous_wide);
     let tmux = answers.tmux.as_ref();
     let probe = answers.probe.as_ref();
     print(&match format {

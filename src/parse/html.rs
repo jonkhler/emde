@@ -451,12 +451,80 @@ pub(crate) fn parse_length(s: &str) -> Option<Length> {
     })
 }
 
+/// Lex `input` the way the parser does, and panic if the lexer breaks a
+/// promise: every token consumes input and the tokens cover it in order;
+/// text tokens are the input as it is; tags, comments and other markup start
+/// and end as their kind says; attributes have names; and attribute lookup,
+/// entity decoding and length parsing work on anything. Used by the `html`
+/// fuzz target (through `parse::fuzz_html`) and by the tests.
+#[cfg(any(test, fuzzing))]
+pub(crate) fn check_lexer(input: &str) {
+    let mut lexer = Lexer::new(input);
+    let mut done = 0;
+    loop {
+        let before = lexer.rest.len();
+        let Some(token) = lexer.next() else {
+            break;
+        };
+        let len = before - lexer.rest.len();
+        assert!(len > 0, "a token that consumes nothing: {token:?}");
+        let raw = &input[done..done + len];
+        match &token {
+            Token::Text(text) => assert_eq!(*text, raw),
+            Token::Start(tag) => {
+                assert!(!tag.name.is_empty(), "a tag without a name: {raw:?}");
+                assert!(raw.ends_with('>'), "{raw:?}");
+                assert!(raw[1..].starts_with(tag.name), "{raw:?}");
+                for (name, value) in (Attrs { rest: tag.attrs }) {
+                    assert!(!name.is_empty(), "an attribute without a name: {raw:?}");
+                    let _ = decode_entities(value);
+                }
+                for name in ["href", "src", "srcset", "media", "alt", "align", "width"] {
+                    if let Some(value) = tag.attr(name) {
+                        let _ = parse_length(&value);
+                    }
+                }
+            }
+            Token::End(name) => {
+                assert!(raw.ends_with('>'), "{raw:?}");
+                assert!(raw[2..].starts_with(name), "{raw:?}");
+            }
+            Token::Comment => assert!(raw.starts_with("<!--"), "{raw:?}"),
+            Token::Other => assert!(raw.starts_with("<!") || raw.starts_with("<?"), "{raw:?}"),
+        }
+        done += len;
+    }
+    assert_eq!(done, input.len(), "the tokens do not cover the input");
+    let decoded = decode_entities(input);
+    if !input.contains('&') {
+        assert_eq!(decoded, input);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     fn tokens(s: &str) -> Vec<Token<'_>> {
         Lexer::new(s).collect()
+    }
+
+    #[test]
+    fn lexer_invariants() {
+        for input in [
+            "",
+            "a <b>bold</b> c",
+            r#"<IMG src="a.png" alt='x > y' width=200 hidden data-x = "1"/>"#,
+            r#"<a href="?a=1&amp;b=2" title="&quot;hi&quot;">"#,
+            "<!-- x -->y<!-- open",
+            "<!-->a<!--->a<!DOCTYPE html><?php x ?><![CDATA[x<y]]>z<![CDATA[",
+            "a < b <3 <b </ b> <me@x.org> <x.y> </DIV > </p foo>",
+            r#"<a title="unterminated>"#,
+            "<img width=50% height=12.5px/><p align=center>&#27;&#x9b;&#99999999999;</p>",
+            "<é></é><a\u{0}b='\u{1b}'>",
+        ] {
+            check_lexer(input);
+        }
     }
 
     fn start<'a>(t: &Token<'a>) -> Tag<'a> {

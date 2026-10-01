@@ -1,12 +1,21 @@
 [package]
 name = "xtask"
-description = "Development tasks for emde (CI, size checks, table generation)"
+description = "Development tasks for emde (CI, size checks, table and documentation generation, fuzzing)"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+# The documentation is generated from emde's own tables: the CLI definition,
+# the key bindings, the theme elements and the config loader (which checks
+# every example). No default features, so that `--no-default-features`
+# builds of the workspace really build emde without them.
+emde = { path = "..", default-features = false }
+clap = { version = "4.6", default-features = false, features = ["std"] }
+clap_complete = "4.6.11"
+clap_mangen = "0.3.3"
+toml = { version = "1.1", default-features = false, features = ["std", "serde", "parse"] }
 
 [lints]
 workspace = true

@@ -120,5 +120,14 @@ pub fn parse_source(source: &Source, opts: &ParseOptions) -> Document {
     doc
 }
 
+/// The `html` fuzz target's entry point (built with `--cfg fuzzing` only):
+/// lexes `input` as the HTML lexer does and panics if it breaks one of its
+/// invariants.
+#[cfg(fuzzing)]
+#[doc(hidden)]
+pub fn fuzz_html(input: &str) {
+    html::check_lexer(input);
+}
+
 #[cfg(test)]
 mod tests;

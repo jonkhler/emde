@@ -12,6 +12,8 @@ publish = false
 unsafe_code = "forbid"
 unreachable_pub = "warn"
 unused_qualifications = "warn"
+# cargo-fuzz builds with `--cfg fuzzing` (entry points for fuzz/).
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(fuzzing)"] }
 
 [workspace.lints.clippy]
 dbg_macro = "warn"
