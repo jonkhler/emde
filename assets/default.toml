@@ -177,7 +177,8 @@ remote = false
 # Inside tmux: if-enabled (use passthrough only when allow-passthrough is on;
 # emde never changes tmux options) or never.
 tmux_passthrough = "if-enabled"
-# Images with more pixels are not decoded.
+# Images with more pixels are not decoded (SVG images, which are drawn at
+# the size of their figure, are drawn at most this large).
 max_pixels = 40_000_000
 
 [markdown]

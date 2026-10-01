@@ -45,7 +45,8 @@ emde README.md
   iTerm2 inline images and sixel. Everywhere else, images are drawn with
   coloured block characters. Figures are sized from the image's header
   before it is decoded, so the text never jumps. Remote images are only
-  fetched when you ask (`--remote-images`).
+  fetched when you ask (`--remote-images`). SVG images need the optional
+  `svg` feature ([building](#building)).
 - **Themes.** The default theme has Catppuccin colours for dark and light
   backgrounds and picks the variant from the terminal's background colour.
   `dracula`, `gruvbox`, `nord`, `solarized` and `tokyonight` bring those
@@ -77,11 +78,28 @@ Cargo features (`cargo build --release --no-default-features --features …`):
 | `tmtheme` | yes | Code themes from `.tmTheme` files. |
 | `images` | yes | PNG, JPEG, GIF and WebP images. |
 | `sixel` | yes | Sixel output, for terminals without kitty or iTerm2 graphics. |
-| `svg` | no | SVG images (resvg; off by default because of its size). |
+| `svg` | no | SVG images (resvg; off by default because of its size, see below). |
 | `simd` | yes | Faster Markdown parsing with SSSE3 (detected at run time; x86-64 only). |
 
 `cargo build --release --no-default-features --features highlight,fancy,tmtheme,images,sixel,simd`
 builds without Oniguruma: then emde has no C code at all.
+
+**SVG images** are an optional feature:
+
+```sh
+cargo build --release --features svg
+```
+
+Without it, an SVG figure shows its alt text. With it, SVG files, `data:`
+URIs and remote SVGs (recognised by their content, so URLs without `.svg`
+work too) are drawn with [resvg](https://github.com/linebender/resvg) at
+the exact pixel size of the figure's box, through every graphics path
+(blocks, kitty, iTerm2, sixel). The feature makes the stripped release
+binary about 2.6 MiB larger (x86-64 Linux: 6.84 MiB without it, 9.40 MiB
+with it). An SVG never makes emde read another file or fetch a URL;
+system fonts are loaded once, only for SVGs with text. Badges such as
+shields.io's are remote SVGs, so they also need `--remote-images` (or
+`images.remote = true`).
 
 ## Usage
 

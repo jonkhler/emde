@@ -4,9 +4,9 @@
 //! Recognising an SVG is always built, so that a build without the feature
 //! can say why a figure keeps its alt text. With the feature:
 //!
-//! * [`dimensions`] is the size the SVG asks for (its `width`/`height`, or
+//! * `dimensions` is the size the SVG asks for (its `width`/`height`, or
 //!   its `viewBox`), which sizes the figure like a raster image's header;
-//! * [`rasterize`] draws it at exactly the pixel size the caller asks for
+//! * `rasterize` draws it at exactly the pixel size the caller asks for
 //!   (the figure's box, or twice it for kitty and iTerm2), on a transparent
 //!   background, so the block raster and every pixel protocol take it like
 //!   any decoded image.
@@ -15,10 +15,12 @@
 //! in: files over [`MAX_BYTES`] are refused, `<image>` elements that name
 //! a file or URL are dropped (nothing is read or fetched; usvg makes no
 //! network requests), embedded raster images over the pixel limit are
-//! dropped before anything decodes them, gzip-compressed SVG (`.svgz`) is
-//! not inflated, and usvg itself stops at a million elements and a nesting
-//! depth of 1024. System fonts are loaded only for an SVG with text, once
-//! per run, on the thread that draws it ([`rasterize`] runs on the image
+//! dropped before anything decodes them, an embedded SVG is drawn only one
+//! level deep and under the same limits, gzip-compressed SVG (`.svgz`) is
+//! not inflated, nesting deeper than [`MAX_DEPTH`] is refused before
+//! parsing ([`check_markup`]), and usvg itself stops at a million
+//! elements. System fonts are loaded only for an SVG with text, once
+//! per run, on the thread that draws it (`rasterize` runs on the image
 //! workers). Parsing and drawing run inside [`crate::panic::guarded`].
 
 /// Largest SVG file drawn (the same limit as for fetched images).
@@ -179,6 +181,7 @@ pub use render::{SvgError, dimensions, rasterize};
 
 #[cfg(feature = "svg")]
 mod render {
+    use std::cell::Cell;
     use std::sync::{Arc, OnceLock};
 
     use resvg::tiny_skia::{Pixmap, Transform};
@@ -251,14 +254,17 @@ mod render {
             let scale =
                 Transform::from_scale(width as f32 / size.width(), height as f32 / size.height());
             resvg::render(&tree, scale, &mut pixmap.as_mut());
-            let pixels: Vec<u8> = pixmap
-                .pixels()
-                .iter()
-                .flat_map(|p| {
-                    let c = p.demultiply();
-                    [c.red(), c.green(), c.blue(), c.alpha()]
-                })
-                .collect();
+            // tiny-skia's pixels are premultiplied; ours are not.
+            let mut pixels = pixmap.take();
+            for [r, g, b, a] in pixels.as_chunks_mut::<4>().0 {
+                if *a != 0 && *a != 255 {
+                    let alpha = u32::from(*a);
+                    for c in [r, g, b] {
+                        let straight = (u32::from(*c) * 255 + alpha / 2) / alpha;
+                        *c = u8::try_from(straight).unwrap_or(u8::MAX);
+                    }
+                }
+            }
             Rgba::new(width, height, pixels)
                 .ok_or_else(|| SvgError::Invalid("renderer returned a short buffer".into()))
         })
@@ -299,6 +305,17 @@ mod render {
                             return None;
                         }
                     }
+                    if !raster {
+                        // An SVG in the SVG: one level only (each level
+                        // parses on top of the stack of the one around
+                        // it), and the markup limits apply to it too.
+                        if data.len() > MAX_BYTES || super::check_markup(&data).is_err() {
+                            return None;
+                        }
+                        let _level = Nested::enter()?;
+                        return embedded(mime, data, opts)
+                            .filter(|kind| matches!(kind, ImageKind::SVG(_)));
+                    }
                     let kind = embedded(mime, data, opts)?;
                     // Only formats that were sniffed: a mime type alone
                     // does not get bytes to a raster decoder.
@@ -314,20 +331,108 @@ mod render {
         }
     }
 
-    /// Whether the SVG may draw text (and so needs fonts).
+    thread_local! {
+        /// How many embedded SVGs are being parsed on this thread.
+        static NESTED: Cell<u8> = const { Cell::new(0) };
+    }
+
+    /// The parse of an embedded SVG on this thread; it ends when dropped
+    /// (also when a panic unwinds through it).
+    struct Nested;
+
+    impl Nested {
+        /// `None` when an embedded SVG is already being parsed.
+        fn enter() -> Option<Nested> {
+            NESTED.with(|n| {
+                (n.get() == 0).then(|| {
+                    n.set(1);
+                    Nested
+                })
+            })
+        }
+    }
+
+    impl Drop for Nested {
+        fn drop(&mut self) {
+            NESTED.with(|n| n.set(0));
+        }
+    }
+
+    /// Whether the SVG may draw text (and so needs fonts): text elements,
+    /// or embedded SVGs, which are base64 and may have some.
     fn has_text(bytes: &[u8]) -> bool {
-        memchr::memmem::find(bytes, b"<text").is_some()
-            || memchr::memmem::find(bytes, b":text").is_some()
+        use memchr::memmem::find;
+        find(bytes, b"<text").is_some()
+            || find(bytes, b":text").is_some()
+            || find(bytes, b"image/svg+xml").is_some()
     }
 
     /// The system's fonts, loaded the first time an SVG needs them.
-    fn system_fonts() -> Arc<fontdb::Database> {
+    pub(super) fn system_fonts() -> Arc<fontdb::Database> {
         static FONTS: OnceLock<Arc<fontdb::Database>> = OnceLock::new();
         Arc::clone(FONTS.get_or_init(|| {
             let mut db = fontdb::Database::new();
             db.load_system_fonts();
+            generic_families(&mut db);
             Arc::new(db)
         }))
+    }
+
+    /// Point the generic families (`serif`, `sans-serif`, `monospace`) at
+    /// installed fonts. fontdb assumes Times New Roman, Arial and Courier
+    /// New, which Linux systems rarely have; usvg falls back to `serif` for
+    /// a family that is not installed (badges ask for Verdana), so without
+    /// this such text would not be drawn at all.
+    fn generic_families(db: &mut fontdb::Database) {
+        const SERIF: &[&str] = &[
+            "Times New Roman",
+            "Times",
+            "DejaVu Serif",
+            "Liberation Serif",
+            "Noto Serif",
+            "FreeSerif",
+        ];
+        const SANS: &[&str] = &[
+            "Arial",
+            "Helvetica",
+            "DejaVu Sans",
+            "Liberation Sans",
+            "Noto Sans",
+            "FreeSans",
+        ];
+        const MONO: &[&str] = &[
+            "Courier New",
+            "Menlo",
+            "DejaVu Sans Mono",
+            "Liberation Mono",
+            "Noto Sans Mono",
+            "FreeMono",
+        ];
+        let installed = |names: &[&str]| -> Option<String> {
+            names
+                .iter()
+                .find(|&&name| {
+                    db.faces()
+                        .any(|f| f.families.iter().any(|(family, _)| family == name))
+                })
+                .map(|name| (*name).to_owned())
+        };
+        let any = db
+            .faces()
+            .find_map(|f| f.families.first())
+            .map(|(family, _)| family.clone());
+        let sans = installed(SANS).or_else(|| any.clone());
+        let serif = installed(SERIF).or_else(|| sans.clone());
+        let mono = installed(MONO).or_else(|| sans.clone());
+        if let Some(name) = serif {
+            db.set_serif_family(name);
+        }
+        if let Some(name) = sans {
+            db.set_sans_serif_family(name);
+        }
+        if let Some(name) = mono {
+            db.set_monospace_family(name);
+        }
     }
 }
 
@@ -401,6 +506,8 @@ mod tests {
 
     #[cfg(feature = "svg")]
     mod drawing {
+        use std::sync::Arc;
+
         use super::super::*;
         use crate::gfx::Rgba;
 
@@ -559,6 +666,81 @@ mod tests {
             );
             let img = rasterize(&doc, (4, 4), 100).unwrap();
             assert!(all(&img, [0, 255, 0, 255]));
+        }
+
+        #[test]
+        fn text_is_drawn_with_system_fonts() {
+            let ink = |family: &str| {
+                let doc = svg(
+                    &format!("<text x=\"2\" y=\"20\" font-size=\"16\" {family}>Hi</text>"),
+                    "width=\"60\" height=\"30\"",
+                );
+                let img = rasterize(&doc, (60, 30), 10_000).unwrap();
+                img.pixels
+                    .as_chunks::<4>()
+                    .0
+                    .iter()
+                    .filter(|p| p[3] > 0)
+                    .count()
+            };
+            let fonts = render::system_fonts();
+            if fonts.is_empty() {
+                // Nothing to draw text with: it is left out, not an error.
+                assert_eq!(ink(""), 0);
+                return;
+            }
+            // A family that is not installed falls back to an installed one,
+            // as does text that names no family, and generic families.
+            for family in [
+                "",
+                "font-family=\"sans-serif\"",
+                "font-family=\"monospace\"",
+                "font-family=\"No Such Font, Verdana\"",
+            ] {
+                assert!(ink(family) > 0, "{family}");
+            }
+            // The fonts are loaded once.
+            assert!(Arc::ptr_eq(&fonts, &render::system_fonts()));
+        }
+
+        #[test]
+        fn embedded_svg_is_drawn_one_level_deep_within_the_limits() {
+            let image = |inner: &[u8]| {
+                format!(
+                    "<image href=\"data:image/svg+xml;base64,{}\" width=\"4\" height=\"4\"/>",
+                    crate::gfx::b64::encode_string(inner)
+                )
+            };
+            let lime = svg(
+                "<rect width=\"4\" height=\"4\" fill=\"lime\"/>",
+                "width=\"4\" height=\"4\"",
+            );
+            let one = svg(&image(&lime), "width=\"4\" height=\"4\"");
+            assert!(all(
+                &rasterize(&one, (4, 4), 100).unwrap(),
+                [0, 255, 0, 255]
+            ));
+            // An SVG in an SVG in an SVG: the innermost is not drawn.
+            let two = svg(&image(&one), "width=\"4\" height=\"4\"");
+            assert!(all(&rasterize(&two, (4, 4), 100).unwrap(), [0; 4]));
+            // Nesting hidden in an embedded SVG is refused like any other,
+            // without touching the stack.
+            let deep = svg(
+                &format!(
+                    "{}<rect width=\"4\" height=\"4\"/>{}",
+                    "<g>".repeat(100_000),
+                    "</g>".repeat(100_000)
+                ),
+                "width=\"4\" height=\"4\"",
+            );
+            let hidden = svg(&image(&deep), "width=\"4\" height=\"4\"");
+            let drawn = on_worker_stack(move || rasterize(&hidden, (4, 4), 100)).unwrap();
+            assert!(all(&drawn, [0; 4]));
+            // The level count is per parse: the next SVG may embed again.
+            assert!(all(
+                &rasterize(&one, (4, 4), 100).unwrap(),
+                [0, 255, 0, 255]
+            ));
         }
 
         /// `f` on a thread with the stack of emde's image workers.

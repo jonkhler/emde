@@ -145,7 +145,7 @@ nu = "bash"
 | `max_height` | `"60%"` | Maximum figure height: rows (e.g. 20) or a share of the screen ("60%"). |
 | `remote` | `false` | Download remote images (with curl). Flag: `--remote-images` (true). |
 | `tmux_passthrough` | `"if-enabled"` | Inside tmux: if-enabled (use passthrough only when allow-passthrough is on; emde never changes tmux options) or never. |
-| `max_pixels` | `40_000_000` | Images with more pixels are not decoded. |
+| `max_pixels` | `40_000_000` | Images with more pixels are not decoded (SVG images, which are drawn at the size of their figure, are drawn at most this large). |
 
 ### `[markdown]`
 

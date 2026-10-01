@@ -422,7 +422,14 @@ impl ImageStore {
         let largest = missing
             .iter()
             .filter_map(|&(id, _)| entry(id))
-            .map(|e| u64::from(e.size.0) * u64::from(e.size.1))
+            .map(|e| {
+                let pixels = u64::from(e.size.0) * u64::from(e.size.1);
+                // An SVG is drawn at its boxes' sizes, within the limit.
+                match e.kind {
+                    Kind::Raster => pixels,
+                    Kind::Svg => pixels.min(opts.max_pixels),
+                }
+            })
             .max()
             .unwrap_or(0);
         let threads = decode_threads(largest);
