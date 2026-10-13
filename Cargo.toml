@@ -45,7 +45,7 @@ tmtheme = ["highlight", "syntect/plist-load"]
 # Image decoding (PNG, JPEG, GIF, WebP) and header-only sizing.
 images = ["dep:image", "dep:imagesize"]
 # Sixel output for terminals without kitty/iTerm2 graphics.
-sixel = ["images", "dep:icy_sixel"]
+sixel = ["images"]
 # SVG images (resvg, with text and embedded raster images; no .svgz);
 # off by default because of its size.
 svg = ["images", "dep:resvg"]
@@ -76,7 +76,6 @@ syntect = { version = "5.3", default-features = false, features = ["parsing"], o
 two-face = { version = "0.5.2", default-features = false, optional = true }
 image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "gif", "webp"], optional = true }
 imagesize = { version = "0.15", default-features = false, features = ["png", "jpeg", "gif", "webp"], optional = true }
-icy_sixel = { version = "0.7", optional = true }
 # No `svgz`: inflating gzip has no size limit in usvg.
 resvg = { version = "0.48.1", optional = true, default-features = false, features = ["text", "system-fonts", "memmap-fonts", "raster-images"] }
 
@@ -101,3 +100,43 @@ opt-level = 2
 
 [profile.test.package."*"]
 opt-level = 2
+
+# Cold crates (the command line, configuration and theme files, .tmTheme
+# plists) are optimised for size: each runs once per start on a few KiB of
+# input. Hot code (pulldown-cmark, emde's layout and rendering, syntect and
+# Oniguruma, the image decoders) stays at opt-level 3.
+[profile.release.package.clap_builder]
+opt-level = "s"
+[profile.release.package.clap_lex]
+opt-level = "s"
+[profile.release.package.toml]
+opt-level = "s"
+[profile.release.package.toml_parser]
+opt-level = "s"
+[profile.release.package.toml_datetime]
+opt-level = "s"
+[profile.release.package.serde_spanned]
+opt-level = "s"
+[profile.release.package.serde_ignored]
+opt-level = "s"
+[profile.release.package.plist]
+opt-level = "s"
+[profile.release.package.quick-xml]
+opt-level = "s"
+[profile.release.package.serde_json]
+opt-level = "s"
+# Terminal events, signals and file descriptors: a handful of calls per
+# key press or per run.
+[profile.release.package.crossterm]
+opt-level = "s"
+[profile.release.package.signal-hook]
+opt-level = "s"
+[profile.release.package.signal-hook-registry]
+opt-level = "s"
+[profile.release.package.filedescriptor]
+opt-level = "s"
+# Image headers (sizes only) and clap's suggestions for mistyped flags.
+[profile.release.package.imagesize]
+opt-level = "s"
+[profile.release.package.strsim]
+opt-level = "s"

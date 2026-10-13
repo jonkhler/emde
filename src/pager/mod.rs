@@ -75,6 +75,7 @@ mod images;
 pub mod keymap;
 mod links;
 mod os;
+mod partial;
 mod search;
 mod shell;
 mod sidebar;

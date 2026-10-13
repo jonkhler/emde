@@ -5,9 +5,18 @@
 //! No thread pool is kept: a run does this once or twice, and a scoped
 //! thread costs tens of microseconds.
 
+use std::sync::OnceLock;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::panic::guarded;
+
+/// The number of CPUs this process may use, asked once: the standard
+/// library reads the cgroup's CPU quota from `/proc` and `/sys` on every
+/// call (a dozen system calls).
+pub(crate) fn cpus() -> usize {
+    static CPUS: OnceLock<usize> = OnceLock::new();
+    *CPUS.get_or_init(|| std::thread::available_parallelism().map_or(1, usize::from))
+}
 
 /// `f` applied to every item, results in the items' order, on up to
 /// `max_threads` threads (never more than one per CPU or per item). The
@@ -19,8 +28,10 @@ pub(crate) fn map<T: Sync, R: Send>(
     max_threads: usize,
     f: impl Fn(&T) -> R + Sync,
 ) -> Vec<Option<R>> {
-    let cpus = std::thread::available_parallelism().map_or(1, usize::from);
-    let threads = cpus.min(max_threads).min(items.len());
+    if items.len() <= 1 {
+        return items.iter().map(|item| guarded(|| f(item))).collect();
+    }
+    let threads = cpus().min(max_threads).min(items.len());
     if threads <= 1 {
         return items.iter().map(|item| guarded(|| f(item))).collect();
     }
@@ -85,7 +96,7 @@ mod tests {
     fn work_is_spread_over_threads() {
         use std::collections::HashSet;
         use std::sync::Mutex;
-        if std::thread::available_parallelism().map_or(1, usize::from) < 2 {
+        if cpus() < 2 {
             return;
         }
         let seen = Mutex::new(HashSet::new());

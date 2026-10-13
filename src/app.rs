@@ -183,12 +183,22 @@ pub fn run(cli: &Cli) -> ExitCode {
 
     let (setup, docs) = prepare(cli, env, is_tty, loaded, sources, hints, &mut trace);
     let request = pager_request(cli, &setup.config, &docs);
-    let layouts = lay_out(&setup, &docs);
-    trace.stage("layout", &hints);
-    let lines: usize = layouts.iter().map(Layout::len).sum();
-    let code = if cli.dump.is_none() && wants_pager(&request, &setup.caps, lines) {
-        run_pager(setup, docs, layouts, request)
+    // The pager lays the documents out itself: stream mode's layouts are
+    // made for stream mode, and for `Paging::Auto` (which pages only
+    // documents taller than the screen).
+    let mut layouts = None;
+    let paged = cli.dump.is_none()
+        && wants_pager(&request, &setup.caps, || {
+            let made = lay_out(&setup, &docs);
+            let lines = made.iter().map(Layout::len).sum();
+            layouts = Some(made);
+            lines
+        });
+    let code = if paged {
+        run_pager(setup, docs, request)
     } else {
+        let layouts = layouts.unwrap_or_else(|| lay_out(&setup, &docs));
+        trace.stage("layout", &hints);
         let mut docs = docs;
         stream(&setup, &mut docs, &layouts, cli.dump)
     };
@@ -623,8 +633,9 @@ fn pager_request(cli: &Cli, config: &Config, docs: &[Doc]) -> PagerRequest {
 
 /// Whether the pager would run: never unless standard output is a
 /// terminal; then unless paging is off, always, or with `auto` for output
-/// taller than the screen.
-fn wants_pager(request: &PagerRequest, caps: &Caps, lines: usize) -> bool {
+/// taller than the screen. `lines` (the height of the output) is only
+/// asked for with `auto`.
+fn wants_pager(request: &PagerRequest, caps: &Caps, lines: impl FnOnce() -> usize) -> bool {
     if !caps.is_tty {
         return false;
     }
@@ -633,25 +644,18 @@ fn wants_pager(request: &PagerRequest, caps: &Caps, lines: usize) -> bool {
         Paging::Always => true,
         Paging::Auto => caps
             .size
-            .is_some_and(|(_, rows)| lines >= usize::from(rows)),
+            .is_some_and(|(_, rows)| lines() >= usize::from(rows)),
     }
 }
 
 /// Show the documents in the built-in pager.
 ///
 /// The first document opens; `:n` and `:p` go through the others, and
-/// linked local documents load in-app. `layouts` are the stream-mode layouts
-/// the paging decision was made on (figures capped for stream mode), so the
-/// pager lays out for itself with the configured image heights; the image
+/// linked local documents load in-app. The pager lays out for itself, with
+/// the configured image heights (stream mode caps figures); the image
 /// stores loaded for stream mode are handed over (the pager loads stores
 /// for the documents it opens later).
-fn run_pager(
-    setup: Setup,
-    docs: Vec<Doc>,
-    layouts: Vec<Layout>,
-    request: PagerRequest,
-) -> ExitCode {
-    drop(layouts);
+fn run_pager(setup: Setup, docs: Vec<Doc>, request: PagerRequest) -> ExitCode {
     let Some(session) = pager_session(setup, docs, request) else {
         return ExitCode::SUCCESS;
     };

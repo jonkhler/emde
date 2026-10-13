@@ -4,7 +4,7 @@
 //! [`StyleTable`] so spans only carry a 16-bit [`StyleId`]; colours are
 //! downsampled to the terminal's colour depth when bytes are emitted.
 
-use std::collections::HashMap;
+use crate::hash::FastMap;
 
 use bitflags::bitflags;
 
@@ -146,10 +146,10 @@ pub struct StylePatch {
 pub struct StyleId(pub u16);
 
 /// Interning table for styles used by one layout.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct StyleTable {
     styles: Vec<Style>,
-    index: HashMap<Style, StyleId>,
+    index: FastMap<Style, StyleId>,
 }
 
 impl Default for StyleTable {
@@ -161,7 +161,7 @@ impl Default for StyleTable {
 impl StyleTable {
     /// A table containing only [`Style::PLAIN`] as `StyleId(0)`.
     pub fn new() -> Self {
-        let mut index = HashMap::new();
+        let mut index = FastMap::default();
         index.insert(Style::PLAIN, StyleId(0));
         StyleTable {
             styles: vec![Style::PLAIN],

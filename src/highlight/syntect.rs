@@ -15,7 +15,6 @@
 use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::fmt::{self, Write as _};
-use std::num::NonZeroUsize;
 use std::sync::{Arc, Mutex, OnceLock};
 use std::thread::JoinHandle;
 
@@ -361,7 +360,7 @@ impl SyntectHighlighter {
                 unique.push_back(lang);
             }
         }
-        let cpus = std::thread::available_parallelism().map_or(1, NonZeroUsize::get);
+        let cpus = crate::parallel::cpus();
         let threads = cpus.min(unique.len());
         let queue = Arc::new(Mutex::new(unique));
         (0..threads)
@@ -843,7 +842,7 @@ mod tests {
             .filter_map(|t| h.resolve(t))
             .collect();
         let handles = h.warm_up(&langs);
-        let cpus = std::thread::available_parallelism().map_or(1, NonZeroUsize::get);
+        let cpus = crate::parallel::cpus();
         assert_eq!(
             handles.len(),
             cpus.min(2),
@@ -858,7 +857,7 @@ mod tests {
     #[test]
     fn warm_up_threads_are_bounded_by_the_cpus() {
         let h = highlighter("Nord");
-        let cpus = std::thread::available_parallelism().map_or(1, NonZeroUsize::get);
+        let cpus = crate::parallel::cpus();
         // More distinct languages than CPUs (ids that name no syntax, so
         // nothing is compiled).
         let many: Vec<LangId> = (0..u32::try_from(cpus + 3).unwrap())

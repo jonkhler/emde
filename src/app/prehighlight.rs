@@ -1,49 +1,154 @@
-//! Highlighting code blocks in parallel before layout.
+//! Highlighting code blocks in parallel, ahead of layout.
 //!
 //! Layout highlights code blocks one after another as it meets them. With
 //! syntect, the first block of each language pays for loading its grammar
 //! and compiling its regexes (several milliseconds), and every block then
-//! costs tens of microseconds per line. [`Prehighlighted`] does that work up
-//! front on several threads, the first block of each language first, so
-//! languages are compiled side by side; layout then reads the results. A
-//! block without a result (it was too large, or its language unknown) is
-//! handled by the wrapped highlighter as usual.
+//! costs tens of microseconds per line. [`Prehighlighted`] starts that work
+//! on background threads, the first block of each language first, so
+//! languages are compiled side by side, and returns at once: layout goes
+//! on meanwhile and takes each block's result when it gets there, waiting
+//! for one being made, or making it itself when no thread has started it
+//! yet. A block without a result (it was too large, or its language
+//! unknown) is handled by the wrapped highlighter as usual.
 
 use std::collections::{HashMap, HashSet};
+use std::sync::{Arc, Condvar, Mutex, MutexGuard, PoisonError};
 
 use crate::highlight::{CodeColors, Highlighter, HlBlock, LangId};
 use crate::ir::CodeBlock;
+use crate::panic::guarded;
 
-/// Most threads used for highlighting.
+/// Most threads used for highlighting (the layout thread included).
 const MAX_THREADS: usize = 8;
 
-/// A highlighter that answers from highlights made in advance.
-pub(super) struct Prehighlighted {
+/// Where a block's highlighting is.
+enum Slot {
+    /// Nobody started it.
+    Waiting,
+    /// A thread is making it.
+    Running,
+    /// Made: its language and highlighting (`None`: an unknown language,
+    /// or highlighting panicked).
+    Done(Option<(LangId, HlBlock)>),
+}
+
+/// What the threads share.
+struct Shared {
     inner: Box<dyn Highlighter>,
-    /// Results by language, then by code.
-    done: HashMap<LangId, HashMap<Box<str>, HlBlock>>,
+    /// The blocks to highlight, in the order they are started.
+    jobs: Vec<(Box<str>, Arc<str>)>,
+    slots: Mutex<Vec<Slot>>,
+    /// Signalled whenever a slot becomes [`Slot::Done`].
+    done: Condvar,
+}
+
+impl Shared {
+    fn slots(&self) -> MutexGuard<'_, Vec<Slot>> {
+        self.slots.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    /// Highlight job `i` (claimed by the caller) and record the result.
+    fn run(&self, i: usize) -> Option<(LangId, HlBlock)> {
+        let (token, code) = &self.jobs[i];
+        let result = guarded(|| {
+            let lang = self.inner.resolve(token)?;
+            Some((lang, self.inner.highlight(lang, code)))
+        })
+        .flatten();
+        self.slots()[i] = Slot::Done(result.clone());
+        self.done.notify_all();
+        result
+    }
+
+    /// Claim the next waiting job, if any.
+    fn claim_next(&self) -> Option<usize> {
+        let mut slots = self.slots();
+        let i = slots.iter().position(|s| matches!(s, Slot::Waiting))?;
+        slots[i] = Slot::Running;
+        Some(i)
+    }
+
+    /// The result of job `i`: made already, waited for, or made now.
+    fn result(&self, i: usize) -> Option<(LangId, HlBlock)> {
+        let mut slots = self.slots();
+        loop {
+            match &slots[i] {
+                Slot::Done(result) => return result.clone(),
+                Slot::Running => {
+                    slots = self
+                        .done
+                        .wait(slots)
+                        .unwrap_or_else(PoisonError::into_inner);
+                }
+                Slot::Waiting => {
+                    slots[i] = Slot::Running;
+                    drop(slots);
+                    return self.run(i);
+                }
+            }
+        }
+    }
+}
+
+/// A highlighter that answers from highlights made ahead, on other threads.
+pub(super) struct Prehighlighted {
+    shared: Arc<Shared>,
+    /// The jobs of each code text.
+    by_code: HashMap<Arc<str>, Vec<usize>>,
 }
 
 impl Prehighlighted {
-    /// Highlight `blocks` with `inner` in parallel. Blocks larger than
-    /// `max_bytes` are left alone, as layout leaves them unhighlighted.
+    /// Start highlighting `blocks` with `inner` in the background. Blocks
+    /// larger than `max_bytes` are left alone, as layout leaves them
+    /// unhighlighted.
     pub(super) fn new(
         inner: Box<dyn Highlighter>,
         blocks: &[&CodeBlock],
         max_bytes: usize,
     ) -> Prehighlighted {
-        let jobs = schedule(blocks, max_bytes);
-        let results = crate::parallel::map(&jobs, MAX_THREADS, |&(token, code)| {
-            let lang = inner.resolve(token)?;
-            Some((lang, inner.highlight(lang, code)))
+        let jobs: Vec<(Box<str>, Arc<str>)> = schedule(blocks, max_bytes)
+            .into_iter()
+            .map(|(token, code)| (token.into(), code.into()))
+            .collect();
+        let mut by_code: HashMap<Arc<str>, Vec<usize>> = HashMap::new();
+        for (i, (_, code)) in jobs.iter().enumerate() {
+            by_code.entry(Arc::clone(code)).or_default().push(i);
+        }
+        let slots = jobs.iter().map(|_| Slot::Waiting).collect();
+        let shared = Arc::new(Shared {
+            inner,
+            jobs,
+            slots: Mutex::new(slots),
+            done: Condvar::new(),
         });
-        let mut done: HashMap<LangId, HashMap<Box<str>, HlBlock>> = HashMap::new();
-        for ((_, code), result) in jobs.iter().zip(results) {
-            if let Some(Some((lang, block))) = result {
-                done.entry(lang).or_default().insert((*code).into(), block);
+        // The layout thread is one of the threads: it makes what nobody
+        // started when it gets there.
+        let helpers = crate::parallel::cpus()
+            .min(MAX_THREADS)
+            .min(shared.jobs.len())
+            .saturating_sub(1);
+        for _ in 0..helpers {
+            let shared = Arc::clone(&shared);
+            let spawned = std::thread::Builder::new()
+                .name("emde-highlight".into())
+                .spawn(move || {
+                    while let Some(i) = shared.claim_next() {
+                        shared.run(i);
+                    }
+                });
+            if spawned.is_err() {
+                break;
             }
         }
-        Prehighlighted { inner, done }
+        Prehighlighted { shared, by_code }
+    }
+
+    /// Wait until every block is highlighted (for tests).
+    #[cfg(test)]
+    fn wait_all(&self) {
+        for i in 0..self.shared.jobs.len() {
+            self.shared.result(i);
+        }
     }
 }
 
@@ -72,22 +177,26 @@ fn schedule<'b>(blocks: &[&'b CodeBlock], max_bytes: usize) -> Vec<(&'b str, &'b
 
 impl Highlighter for Prehighlighted {
     fn resolve(&self, token: &str) -> Option<LangId> {
-        self.inner.resolve(token)
+        self.shared.inner.resolve(token)
     }
 
     fn highlight(&self, lang: LangId, code: &str) -> HlBlock {
-        match self.done.get(&lang).and_then(|by_code| by_code.get(code)) {
-            Some(block) => block.clone(),
-            None => self.inner.highlight(lang, code),
+        for &i in self.by_code.get(code).into_iter().flatten() {
+            if let Some((made, block)) = self.shared.result(i)
+                && made == lang
+            {
+                return block;
+            }
         }
+        self.shared.inner.highlight(lang, code)
     }
 
     fn colors(&self) -> CodeColors {
-        self.inner.colors()
+        self.shared.inner.colors()
     }
 
     fn language_name(&self, lang: LangId) -> String {
-        self.inner.language_name(lang)
+        self.shared.inner.language_name(lang)
     }
 }
 
@@ -183,8 +292,8 @@ mod tests {
         let calls = Arc::clone(&recording.calls);
         let count = || calls.lock().map(|c| c.len()).unwrap_or(0);
         let h = Prehighlighted::new(Box::new(recording), &refs, 1000);
-        assert_eq!(h.done.len(), 2, "go is unknown");
-        assert_eq!(count(), 2);
+        h.wait_all();
+        assert_eq!(count(), 2, "go is unknown");
         let rust = h.resolve("rust").unwrap();
         assert_eq!(h.highlight(rust, "fn x").lines[0][0].end, 4);
         assert_eq!(count(), 2, "answered from the advance work");
@@ -194,5 +303,38 @@ mod tests {
         assert_eq!(h.language_name(rust), "lang1");
         assert_eq!(h.colors(), CodeColors::default());
         assert_eq!(h.resolve("go"), None);
+    }
+
+    #[test]
+    fn layout_takes_results_as_they_come() {
+        // Many blocks, asked for at once while the threads work: every
+        // answer is what the highlighter itself gives, whoever made it.
+        let blocks: Vec<CodeBlock> = (0..200)
+            .map(|i| {
+                let lang = if i % 3 == 0 { "python" } else { "rust" };
+                block(lang, &"x".repeat(i % 17 + 1))
+            })
+            .chain([block("python", "shared"), block("rust", "shared")])
+            .collect();
+        let refs: Vec<&CodeBlock> = blocks.iter().collect();
+        for _ in 0..5 {
+            let h = Prehighlighted::new(Box::new(Recording::default()), &refs, 1000);
+            let reference = Recording::default();
+            for b in &blocks {
+                let lang = h.resolve(b.lang.as_deref().unwrap()).unwrap();
+                assert_eq!(
+                    h.highlight(lang, &b.code),
+                    reference.highlight(lang, &b.code)
+                );
+            }
+            // The same code in two languages: each gets its own.
+            let python = h.resolve("python").unwrap();
+            let rust = h.resolve("rust").unwrap();
+            assert_ne!(python, rust);
+            assert_eq!(
+                h.highlight(python, "shared"),
+                reference.highlight(python, "shared")
+            );
+        }
     }
 }

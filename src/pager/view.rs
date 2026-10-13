@@ -601,7 +601,10 @@ fn status_right(state: &State) -> String {
         });
     }
     let total = state.layout.len();
-    if total == 0 {
+    if state.partial {
+        // The total is not known yet.
+        parts.push(format!("L {}/…", state.top + 1));
+    } else if total == 0 {
         parts.push("L 0/0".to_owned());
     } else {
         let seen = (state.top + state.view_rows()).min(total);

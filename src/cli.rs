@@ -10,7 +10,10 @@
 //! Pager-only requests (`--toc`, `--anchor`, `FILE#anchor`) are carried in
 //! [`crate::app::PagerRequest`].
 
+use std::ffi::OsString;
+use std::io::{self, Write as _};
 use std::path::{Path, PathBuf};
+use std::process::ExitCode;
 
 use clap::{Parser, ValueEnum};
 
@@ -504,10 +507,44 @@ impl Cli {
     }
 }
 
+/// What `emde --version` prints: clap's version line.
+const VERSION_LINE: &str = concat!("emde ", env!("CARGO_PKG_VERSION"), "\n");
+
+/// Whether the arguments (without the program name) are exactly
+/// `--version` or `-V`, which [`print_version`] answers without parsing.
+pub fn asks_only_for_version(mut args: impl Iterator<Item = OsString>) -> bool {
+    let first = args.next();
+    args.next().is_none() && first.is_some_and(|a| a == "--version" || a == "-V")
+}
+
+/// Print the version line, as clap does for `--version`.
+pub fn print_version() -> ExitCode {
+    // Like clap: a reader that went away is not an error.
+    let _ = io::stdout().lock().write_all(VERSION_LINE.as_bytes());
+    ExitCode::SUCCESS
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use clap::CommandFactory as _;
+
+    #[test]
+    fn the_version_line_is_clap_s() {
+        assert_eq!(VERSION_LINE, Cli::command().render_version());
+        let parsed = parse(&["--version"]).unwrap_err();
+        assert_eq!(parsed.kind(), clap::error::ErrorKind::DisplayVersion);
+        assert_eq!(parsed.to_string(), VERSION_LINE);
+        let args = |a: &[&str]| a.iter().map(OsString::from).collect::<Vec<_>>().into_iter();
+        assert!(asks_only_for_version(args(&["--version"])));
+        assert!(asks_only_for_version(args(&["-V"])));
+        // Anything else goes through clap (`-V` with another flag, an
+        // unknown flag, a file named like a flag after `--`).
+        assert!(!asks_only_for_version(args(&[])));
+        assert!(!asks_only_for_version(args(&["-V", "-p"])));
+        assert!(!asks_only_for_version(args(&["--", "--version"])));
+        assert!(!asks_only_for_version(args(&["--versions"])));
+    }
 
     fn parse(args: &[&str]) -> Result<Cli, clap::Error> {
         Cli::try_parse_from(std::iter::once("emde").chain(args.iter().copied()))

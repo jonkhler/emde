@@ -58,6 +58,7 @@ mod scripts;
 mod style;
 mod table;
 
+use std::mem;
 use std::ops::Range;
 
 use bitflags::bitflags;
@@ -96,8 +97,9 @@ pub fn max_image_rows(opts: &RenderOptions, caps: &Caps) -> u16 {
     }
 }
 
-/// A laid-out document; see the module docs.
-#[derive(Clone, Debug)]
+/// A laid-out document; see the module docs. The default is an empty
+/// layout (no lines, zero width).
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Layout {
     /// Total width in columns the layout was made for.
     pub width: u16,
@@ -412,7 +414,7 @@ pub fn layout(
     highlighter: &dyn Highlighter,
     sizer: &dyn ImageSizer,
 ) -> Layout {
-    let inputs = build::Inputs {
+    let inputs = LayoutInputs {
         doc,
         theme,
         caps,
@@ -438,7 +440,7 @@ pub fn layout_with(
     sizer: &dyn ImageSizer,
     interactive: Interactive<'_>,
 ) -> Layout {
-    let inputs = build::Inputs {
+    let inputs = LayoutInputs {
         doc,
         theme,
         caps,
@@ -451,9 +453,84 @@ pub fn layout_with(
 }
 
 #[inline(never)]
-fn run(inputs: build::Inputs<'_>, width: u16) -> Layout {
+fn run(inputs: LayoutInputs<'_>, width: u16) -> Layout {
     let (indent, measure) = geometry(width, inputs.opts, inputs.caps);
     build::Builder::new(inputs, width.max(1), indent, measure).run()
+}
+
+/// Everything a layout is made from but the width: the arguments of
+/// [`layout_with`].
+#[derive(Clone, Copy)]
+pub struct LayoutInputs<'a> {
+    pub doc: &'a Document,
+    pub theme: &'a Theme,
+    pub caps: &'a Caps,
+    pub opts: &'a RenderOptions,
+    pub highlighter: &'a dyn Highlighter,
+    pub sizer: &'a dyn ImageSizer,
+    pub interactive: Interactive<'a>,
+}
+
+/// A layout made a few top-level blocks at a time, so that the pager can
+/// show the first screen of a long document before the rest is laid out.
+///
+/// [`LayoutJob::start`] gives an empty layout; [`LayoutJob::advance`] adds
+/// top-level blocks to it until the caller has enough (the lines for a
+/// screen, a time slice used up) or the document ends. A partial layout is
+/// the beginning of the complete one, line for line: blocks are only ever
+/// appended, so the lines already there never change as more come in. Its
+/// [`Layout::block_lines`] cover the blocks laid out so far, its other side
+/// tables what those blocks hold. Once [`LayoutJob::is_done`], the layout
+/// is exactly what [`layout_with`] makes in one go.
+pub struct LayoutJob {
+    /// What laying out the next block needs; `None` once every block is
+    /// laid out.
+    saved: Option<build::Saved>,
+}
+
+impl LayoutJob {
+    /// Start laying out `inputs.doc` for `width` columns: the job, and the
+    /// layout it fills (no lines yet).
+    pub fn start(inputs: LayoutInputs<'_>, width: u16) -> (LayoutJob, Layout) {
+        let (indent, measure) = geometry(width, inputs.opts, inputs.caps);
+        let (layout, saved) = build::Builder::new(inputs, width.max(1), indent, measure).suspend();
+        (LayoutJob { saved: Some(saved) }, layout)
+    }
+
+    /// Whether every block is laid out.
+    pub fn is_done(&self) -> bool {
+        self.saved.is_none()
+    }
+
+    /// Lay out more top-level blocks into `layout` (the one
+    /// [`LayoutJob::start`] gave, always with the same `inputs`) until
+    /// `enough(layout)` holds after a block, or every block is laid out.
+    /// `enough` should only look at the lines: the side tables are brought
+    /// up to date when this returns. Returns whether the layout is
+    /// complete.
+    pub fn advance(
+        &mut self,
+        layout: &mut Layout,
+        inputs: LayoutInputs<'_>,
+        enough: &mut dyn FnMut(&Layout) -> bool,
+    ) -> bool {
+        let Some(saved) = self.saved.take() else {
+            return true;
+        };
+        let mut builder = build::Builder::resume(inputs, mem::take(layout), saved);
+        let done = builder.advance(enough);
+        let (out, saved) = builder.suspend();
+        *layout = out;
+        if !done {
+            self.saved = Some(saved);
+        }
+        done
+    }
+
+    /// Lay out every block that is left.
+    pub fn finish(&mut self, layout: &mut Layout, inputs: LayoutInputs<'_>) {
+        self.advance(layout, inputs, &mut |_| false);
+    }
 }
 
 /// The glyphs of quote bars and code wrap markers as layout draws them

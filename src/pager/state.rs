@@ -557,6 +557,9 @@ pub struct State {
     /// show again later).
     pub(crate) spare: Option<Layout>,
     pub(crate) derived: Derived,
+    /// The layout is the start of the document's, the rest still being
+    /// laid out (see [`super::partial`]).
+    pub(crate) partial: bool,
     /// Bumped with every new layout (row hashes include it).
     pub(crate) generation: u64,
     pub(crate) cols: u16,
@@ -625,6 +628,7 @@ impl State {
         let watch = pager.watch;
         let mut state = State {
             derived: Derived::new(&layout),
+            partial: false,
             page,
             layout,
             spare: None,
@@ -722,6 +726,13 @@ impl State {
         } else {
             0
         }
+    }
+
+    /// More of the layout was laid out (lines only ever come after those
+    /// shown, so the screen stays as it is): the indexes follow.
+    pub(crate) fn layout_grew(&mut self, complete: bool) {
+        self.derived = Derived::new(&self.layout);
+        self.partial = !complete;
     }
 
     /// Rows for the document (all but the status bar).

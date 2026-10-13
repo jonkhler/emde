@@ -131,26 +131,17 @@ pub(crate) struct Parsed<T> {
 }
 
 impl<T> Parsed<T> {
-    /// Line numbers of keys, when the document is a file.
-    fn key_lines(&self) -> Option<KeyLines<'_>> {
-        if self.origin.has_lines() {
-            KeyLines::new(&self.src)
-        } else {
-            None
-        }
-    }
-
-    /// `origin:line`, or just the origin.
-    fn location_at(&self, line: Option<usize>) -> String {
-        match line {
-            Some(line) => format!("{}:{line}", self.origin),
-            None => self.origin.to_string(),
+    /// Where messages about the document point.
+    fn located(&self) -> Located<'_> {
+        Located {
+            origin: &self.origin,
+            src: &self.src,
         }
     }
 
     /// `origin:line` for a key path, or just the origin.
     pub(crate) fn location(&self, path: &[&str]) -> String {
-        self.location_at(self.key_lines().and_then(|k| k.line(path)))
+        self.located().location(path)
     }
 
     /// A diagnostic about the value at `path`.
@@ -175,6 +166,42 @@ impl<T> Parsed<T> {
         items: Vec<Deferred<'_>>,
         diags: &mut Vec<Diagnostic>,
     ) {
+        self.located().report(severity, items, diags);
+    }
+}
+
+/// A document's origin and text, for messages that point into it (the
+/// part of [`Parsed`] that does not depend on its type, compiled once).
+struct Located<'a> {
+    origin: &'a Origin,
+    src: &'a str,
+}
+
+impl Located<'_> {
+    /// Line numbers of keys, when the document is a file.
+    fn key_lines(&self) -> Option<KeyLines<'_>> {
+        if self.origin.has_lines() {
+            KeyLines::new(self.src)
+        } else {
+            None
+        }
+    }
+
+    /// `origin:line`, or just the origin.
+    fn location_at(&self, line: Option<usize>) -> String {
+        match line {
+            Some(line) => format!("{}:{line}", self.origin),
+            None => self.origin.to_string(),
+        }
+    }
+
+    /// `origin:line` for a key path, or just the origin.
+    fn location(&self, path: &[&str]) -> String {
+        self.location_at(self.key_lines().and_then(|k| k.line(path)))
+    }
+
+    /// See [`Parsed::report`].
+    fn report(&self, severity: Severity, items: Vec<Deferred<'_>>, diags: &mut Vec<Diagnostic>) {
         if items.is_empty() {
             return;
         }
@@ -320,10 +347,27 @@ where
         }
     };
     let mut unknown = Vec::new();
-    match serde_ignored::deserialize(de, |path| unknown.push(segments(&path))) {
+    match deserialize_noting_unknown(de, &mut unknown) {
         Ok(value) => (value, unknown),
         Err(first) => recover(src, origin, first, diags),
     }
+}
+
+/// Deserialise `de` into `T`, adding the key path of every unknown key to
+/// `unknown`.
+///
+/// Every caller goes through here with the same type-erased callback:
+/// `serde_ignored` wraps each deserializer in a type generic over its
+/// callback, so a closure per call site would compile the whole tree of
+/// configuration and theme deserializers once per call site (about 300 KiB
+/// of machine code for nothing).
+fn deserialize_noting_unknown<T: DeserializeOwned>(
+    de: toml::Deserializer<'_>,
+    unknown: &mut Vec<Vec<String>>,
+) -> Result<T, toml::de::Error> {
+    let mut note = |path: serde_ignored::Path<'_>| unknown.push(segments(&path));
+    let note: &mut dyn FnMut(serde_ignored::Path<'_>) = &mut note;
+    serde_ignored::deserialize(de, note)
 }
 
 /// Deserialise a document with a type error piece by piece, keeping every
@@ -337,15 +381,61 @@ where
 fn recover<T>(
     src: &str,
     origin: &Origin,
-    mut first: toml::de::Error,
+    first: toml::de::Error,
     diags: &mut Vec<Diagnostic>,
 ) -> (T, Vec<Vec<String>>)
 where
     T: DeserializeOwned + Default + Merge,
 {
+    let mut acc = Accumulator(T::default());
+    match recover_pieces(src, origin, first, diags, &mut acc) {
+        Some(unknown) => (acc.0, unknown),
+        None => (T::default(), Vec::new()),
+    }
+}
+
+/// The pieces of a recovered document merged so far.
+struct Accumulator<T>(T);
+
+/// What [`recover_pieces`] needs from the document's type: everything
+/// else is the same for every type, and compiled once.
+trait Pieces {
+    /// Deserialise a piece; with `keep`, merge it into what is kept.
+    fn piece(
+        &mut self,
+        de: toml::Deserializer<'_>,
+        unknown: &mut Vec<Vec<String>>,
+        keep: bool,
+    ) -> Result<(), toml::de::Error>;
+}
+
+impl<T: DeserializeOwned + Merge> Pieces for Accumulator<T> {
+    fn piece(
+        &mut self,
+        de: toml::Deserializer<'_>,
+        unknown: &mut Vec<Vec<String>>,
+        keep: bool,
+    ) -> Result<(), toml::de::Error> {
+        let part: T = deserialize_noting_unknown(de, unknown)?;
+        if keep {
+            self.0.merge(part);
+        }
+        Ok(())
+    }
+}
+
+/// [`recover`] into `acc`: the unknown keys of the pieces kept, or `None`
+/// when no piece can be trusted (and nothing is kept).
+fn recover_pieces(
+    src: &str,
+    origin: &Origin,
+    mut first: toml::de::Error,
+    diags: &mut Vec<Diagnostic>,
+    acc: &mut dyn Pieces,
+) -> Option<Vec<Vec<String>>> {
     let mut r = Recovery {
         root_span: 0..src.len(),
-        acc: T::default(),
+        acc,
         unknown: Vec::new(),
         errors: Vec::new(),
     };
@@ -368,7 +458,7 @@ where
                 first.to_string().trim_end()
             ),
         });
-        return (T::default(), Vec::new());
+        return None;
     }
     // Rendering an error scans the document, so only the shown ones are.
     r.errors
@@ -393,7 +483,7 @@ where
     // again.
     r.unknown.sort();
     r.unknown.dedup();
-    (r.acc, r.unknown)
+    Some(r.unknown)
 }
 
 /// A key of a spanned TOML table.
@@ -406,17 +496,17 @@ type PathSeg<'i> = (Key<'i>, Range<usize>);
 const MAX_SPLIT_DEPTH: usize = 4;
 
 /// The state of [`recover`].
-struct Recovery<T> {
+struct Recovery<'a> {
     /// Span of the whole document (for the tables built around pieces).
     root_span: Range<usize>,
     /// The pieces merged so far.
-    acc: T,
+    acc: &'a mut dyn Pieces,
     unknown: Vec<Vec<String>>,
     /// Each dropped piece's error, and what the piece is (`[style.h1]`).
     errors: Vec<(toml::de::Error, String)>,
 }
 
-impl<T: DeserializeOwned + Merge> Recovery<T> {
+impl Recovery<'_> {
     /// One top-level entry: kept whole if it works, else split if it is a
     /// table of tables, else dropped.
     fn root_entry<'i>(&mut self, key: Key<'i>, value: Spanned<DeValue<'i>>) {
@@ -467,11 +557,11 @@ impl<T: DeserializeOwned + Merge> Recovery<T> {
     /// Whether a failing table at `path` is worth splitting: it holds tables,
     /// is not nested too deep, and a table is allowed there at all (else
     /// every piece would fail for the same reason).
-    fn can_split<'i>(&self, path: &[PathSeg<'i>], table: &DeTable<'i>) -> bool {
+    fn can_split<'i>(&mut self, path: &[PathSeg<'i>], table: &DeTable<'i>) -> bool {
         path.len() < MAX_SPLIT_DEPTH
             && has_sub_tables(table)
             && self
-                .deserialize(path, DeTable::new(), &mut Vec::new())
+                .deserialize(path, DeTable::new(), &mut Vec::new(), false)
                 .is_ok()
     }
 
@@ -483,21 +573,22 @@ impl<T: DeserializeOwned + Merge> Recovery<T> {
         leaf: DeTable<'i>,
     ) -> Result<(), toml::de::Error> {
         let mut unknown = Vec::new();
-        let part = self.deserialize(path, leaf, &mut unknown);
+        let part = self.deserialize(path, leaf, &mut unknown, true);
         // Unknown keys count even in a piece that fails: it may be
         // dropped as a whole.
         self.unknown.append(&mut unknown);
-        self.acc.merge(part?);
-        Ok(())
+        part
     }
 
-    /// Deserialise a document holding only `leaf` at `path`.
+    /// Deserialise a document holding only `leaf` at `path`, and with
+    /// `keep` merge it into what is kept.
     fn deserialize<'i>(
-        &self,
+        &mut self,
         path: &[PathSeg<'i>],
         leaf: DeTable<'i>,
         unknown: &mut Vec<Vec<String>>,
-    ) -> Result<T, toml::de::Error> {
+        keep: bool,
+    ) -> Result<(), toml::de::Error> {
         let mut table = leaf;
         for (key, span) in path.iter().rev() {
             let mut outer = DeTable::new();
@@ -508,7 +599,7 @@ impl<T: DeserializeOwned + Merge> Recovery<T> {
             table = outer;
         }
         let de = toml::Deserializer::from(Spanned::new(self.root_span.clone(), table));
-        serde_ignored::deserialize(de, |p| unknown.push(segments(&p)))
+        self.acc.piece(de, unknown, keep)
     }
 }
 

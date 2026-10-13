@@ -17,6 +17,7 @@ pub mod cli;
 pub mod color;
 pub mod config;
 pub mod gfx;
+mod hash;
 pub mod highlight;
 pub mod ir;
 pub mod layout;
@@ -35,6 +36,11 @@ pub mod theme;
 /// Entry point used by the binary: parse the arguments (usage errors exit
 /// with status 2, `--help` and `--version` with 0) and run.
 pub fn main() -> ExitCode {
+    // Answered before clap builds the whole command line, which is about
+    // 0.15 ms of the 1.3 ms `emde --version` took.
+    if cli::asks_only_for_version(std::env::args_os().skip(1)) {
+        return cli::print_version();
+    }
     let cli = match cli::Cli::try_parse() {
         Ok(cli) => cli,
         Err(e) => {

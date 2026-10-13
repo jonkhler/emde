@@ -31,14 +31,47 @@ pub fn grapheme_width(g: &str, ambiguous_wide: bool) -> usize {
 
 /// Width of a string: the sum of its grapheme widths.
 ///
-/// ASCII strings take a fast path (one column per byte).
+/// ASCII strings take a fast path (one column per byte), and so do strings
+/// of characters that are clusters on their own (`stands_alone`): rules,
+/// bars and accented Latin text need no segmentation.
 pub fn str_width(s: &str, ambiguous_wide: bool) -> usize {
     if s.is_ascii() {
         return s.len();
     }
+    if s.chars().all(stands_alone) {
+        return s.chars().map(|c| char_width(c, ambiguous_wide)).sum();
+    }
     s.graphemes(true)
         .map(|g| grapheme_width(g, ambiguous_wide))
         .sum()
+}
+
+/// Width of a character that is a grapheme cluster on its own.
+fn char_width(c: char, ambiguous_wide: bool) -> usize {
+    let mut buf = [0u8; 4];
+    grapheme_width(c.encode_utf8(&mut buf), ambiguous_wide)
+}
+
+/// Whether `c` is a grapheme cluster on its own whatever surrounds it: it
+/// is none of the characters that join clusters in UAX #29 (Extend, ZWJ,
+/// SpacingMark, Prepend, Regional_Indicator, Hangul jamo and syllables, CR,
+/// LF, Control), so there is a boundary before and after it. Only ranges
+/// that are known to hold none of them are listed: printable ASCII, the
+/// Latin letters and symbols (but the soft hyphen), general punctuation
+/// (dashes, quotes, bullets), arrows, box drawing, blocks and shapes. Every
+/// one is checked against the segmentation tables in the tests.
+#[inline]
+fn stands_alone(c: char) -> bool {
+    matches!(
+        c,
+        ' '..='~'
+            | '\u{a0}'..='\u{ac}'
+            | '\u{ae}'..='\u{2ff}'
+            | '\u{2010}'..='\u{2027}'
+            | '\u{2030}'..='\u{205e}'
+            | '\u{2190}'..='\u{21ff}'
+            | '\u{2500}'..='\u{25ff}'
+    )
 }
 
 /// Byte offset where the grapheme cluster starting at `pos` ends.
@@ -58,8 +91,16 @@ pub fn next_grapheme_end(s: &str, pos: usize) -> usize {
     {
         return pos + 1;
     }
-    s.get(pos..)
-        .and_then(|rest| rest.graphemes(true).next())
+    let rest = s.get(pos..).unwrap_or("");
+    let mut chars = rest.chars();
+    if let Some(c) = chars.next()
+        && stands_alone(c)
+        && chars.next().is_none_or(stands_alone)
+    {
+        return pos + c.len_utf8();
+    }
+    rest.graphemes(true)
+        .next()
         .map_or(s.len(), |g| pos + g.len())
 }
 
@@ -87,6 +128,99 @@ fn is_hangul(c: char) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Every character of the [`stands_alone`] ranges.
+    fn standalone() -> impl Iterator<Item = char> {
+        (0..=0x2fff_u32)
+            .filter_map(char::from_u32)
+            .filter(|&c| stands_alone(c))
+    }
+
+    #[test]
+    fn standalone_characters_stand_alone() {
+        // Joiners on either side would merge clusters: a combining mark,
+        // ZWJ, a spacing mark, a Prepend character, a regional indicator,
+        // Hangul jamo.
+        let neighbours = [
+            'a',
+            '\u{301}',
+            '\u{200d}',
+            '\u{903}',
+            '\u{600}',
+            '\u{1f1e6}',
+            '\u{1100}',
+            '\u{1161}',
+            '\u{11a8}',
+            '\u{ac00}',
+            'é',
+            '─',
+        ];
+        let mut n = 0;
+        for c in standalone() {
+            n += 1;
+            let alone = c.to_string();
+            assert_eq!(alone.graphemes(true).count(), 1, "{c:?}");
+            for x in neighbours {
+                // A boundary before `c` (after anything but a Prepend
+                // character) and after it (before anything but a joiner).
+                let before = format!("{x}{c}");
+                let after = format!("{c}{x}");
+                let joins_after = matches!(x, '\u{301}' | '\u{200d}' | '\u{903}');
+                let joins_before = x == '\u{600}';
+                assert_eq!(
+                    before.graphemes(true).next_back(),
+                    if joins_before {
+                        Some(before.as_str())
+                    } else {
+                        Some(alone.as_str())
+                    },
+                    "{x:?} then {c:?}"
+                );
+                assert_eq!(
+                    after.graphemes(true).next(),
+                    if joins_after {
+                        Some(after.as_str())
+                    } else {
+                        Some(alone.as_str())
+                    },
+                    "{c:?} then {x:?}"
+                );
+            }
+        }
+        assert!(n > 900, "{n} characters");
+    }
+
+    #[test]
+    fn fast_paths_measure_like_segmentation() {
+        let slow = |s: &str, amb: bool| -> usize {
+            s.graphemes(true).map(|g| grapheme_width(g, amb)).sum()
+        };
+        let all: String = standalone().collect();
+        for amb in [false, true] {
+            assert_eq!(str_width(&all, amb), slow(&all, amb));
+            for c in standalone() {
+                let s = format!("{c}x{c}");
+                assert_eq!(str_width(&s, amb), slow(&s, amb), "{c:?}");
+            }
+        }
+        // Mixed with joiners: the slow path, the same answer.
+        for s in [
+            "é\u{301}─",
+            "─\u{200d}─",
+            "↑\u{fe0f}",
+            "a\u{1f1fa}\u{1f1f8}",
+        ] {
+            assert_eq!(str_width(s, false), slow(s, false), "{s:?}");
+            let mut pos = 0;
+            let mut ends = Vec::new();
+            while pos < s.len() {
+                pos = next_grapheme_end(s, pos);
+                ends.push(pos);
+            }
+            let want: Vec<usize> = s.grapheme_indices(true).map(|(i, g)| i + g.len()).collect();
+            assert_eq!(ends, want, "{s:?}");
+        }
+    }
 
     #[test]
     fn ascii_fast_path() {
