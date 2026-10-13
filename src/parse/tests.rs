@@ -979,6 +979,27 @@ fn br_everywhere() {
 }
 
 #[test]
+fn closing_br_breaks_the_line_as_in_browsers() {
+    // The HTML standard reads `</br>` as `<br>`; READMEs rely on it in
+    // centred headings.
+    let d = doc(
+        "<div align=\"center\">\n  <h2>\n    First line. </br>\n    Second line. </br>\n  </h2>\n</div>\n\na</br>b</BR>c\n\n<pre>x</br>y</pre>\n",
+    );
+    let Block::Align { body, .. } = &d.blocks[0] else {
+        panic!("{:#?}", d.blocks)
+    };
+    let [Block::Heading { text, .. }] = body.as_slice() else {
+        panic!("{body:#?}")
+    };
+    assert_eq!(text.text, "First line.\nSecond line.");
+    assert_eq!(paras(&d), ["a\nb\nc"]);
+    let Some(Block::Code(c)) = d.blocks.last() else {
+        panic!("{:#?}", d.blocks)
+    };
+    assert_eq!(c.code, "x\ny");
+}
+
+#[test]
 fn script_style_and_comments_are_dropped() {
     let d = doc(
         "<script>\nalert('x')\n</script>\n\n<style>p{}</style>\n\ntext <script>bad()</script> more\n\n\

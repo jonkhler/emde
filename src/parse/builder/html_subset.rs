@@ -78,6 +78,7 @@ impl Builder {
             match tok {
                 Token::Text(t) => pre.push_str(&html::decode_entities(t)),
                 Token::Start(tag) if tag.is("br") => pre.push('\n'),
+                Token::End(n) if n.eq_ignore_ascii_case("br") => pre.push('\n'),
                 Token::End(n)
                     if n.eq_ignore_ascii_case("pre") || n.eq_ignore_ascii_case("textarea") =>
                 {
@@ -159,12 +160,7 @@ impl Builder {
                 }
             }
             "img" => self.html_img(tag),
-            "br" => {
-                let style = self.style();
-                if let Some(leaf) = self.leaf.as_mut() {
-                    leaf.buf.hard_break(style);
-                }
-            }
+            "br" => self.html_br(),
             "wbr" => {
                 if let Some(leaf) = self.leaf.as_mut() {
                     leaf.buf.break_here();
@@ -256,6 +252,14 @@ impl Builder {
         }
     }
 
+    /// A line break (`<br>`, or `</br>`) in the current leaf.
+    fn html_br(&mut self) {
+        let style = self.style();
+        if let Some(leaf) = self.leaf.as_mut() {
+            leaf.buf.hard_break(style);
+        }
+    }
+
     /// A closing tag.
     pub(super) fn html_end(&mut self, name: &str, block: bool) {
         let name = name.to_ascii_lowercase();
@@ -268,6 +272,9 @@ impl Builder {
         match name.as_str() {
             "a" => self.end_link(true),
             "picture" => self.picture = None,
+            // Browsers read `</br>` as `<br>` (the HTML standard says so),
+            // and READMEs written against them use it.
+            "br" => self.html_br(),
             _ if !block => {}
             "details" => {
                 self.flush_leaf(true);
