@@ -19,7 +19,7 @@ use super::gallery::{self, Location};
 use super::hints::{self, Act};
 use super::keymap::{Command, Context};
 use super::links::{self, Follow};
-use super::search::{Search, current_cols};
+use super::search::{Corpus, Search, current_cols};
 use super::state::{
     Derived, DocKey, Focus, Goto, HintKind, ImagePage, Mode, Outline, Page, Place, Prompt, State,
     Viewer, Visit,
@@ -867,11 +867,17 @@ fn jump_heading(state: &mut State, h: HeadingId) -> Vec<Effect> {
         }
         return Vec::new();
     }
+    unfold_recorded(state, &folds, Goto::Heading(h))
+}
+
+/// A jump into collapsed `<details>` `folds`: recorded in the history
+/// (as [`jump_recorded`] does), they open and the view goes to `goto`.
+fn unfold_recorded(state: &mut State, folds: &[u32], goto: Goto) -> Vec<Effect> {
     let here = state.visit();
     state.history.push_back(here);
     state.history.forward.clear();
     state.record_jump();
-    unfold(state, &folds, Goto::Heading(h))
+    unfold(state, folds, goto)
 }
 
 // ---------------------------------------------------------------------------
@@ -1302,6 +1308,21 @@ fn follow(state: &mut State, occ: usize) -> Vec<Effect> {
         && !state.layout.heading_folds(h).is_empty()
     {
         return jump_heading(state, h);
+    }
+    // A footnote back-link to a reference inside a collapsed `<details>`
+    // (shown, the reference has a hit to go to).
+    if o.back
+        && !state
+            .layout
+            .link_hits
+            .iter()
+            .any(|h| h.link == o.link && !h.back)
+        && let Some(pos) = Corpus::link_pos(doc, o.link)
+    {
+        let folds = state.layout.folded_at(pos);
+        if !folds.is_empty() {
+            return unfold_recorded(state, &folds, Goto::Place(Place { pos, extra: 0 }));
+        }
     }
     let base = state.page.base_dir();
     match links::target(&state.page.doc, &base, &state.layout, &o) {

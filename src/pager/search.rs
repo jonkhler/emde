@@ -35,7 +35,7 @@ use std::ops::Range;
 use memchr::memmem;
 
 use crate::config::SearchCase;
-use crate::ir::{Block, Document, SrcPos};
+use crate::ir::{Block, Document, Inlines, LinkId, SrcPos};
 use crate::layout::{Layout, LineKind};
 use crate::options::FrontMatterMode;
 use crate::render::Mark;
@@ -104,9 +104,34 @@ struct Walker<'a> {
     top: u32,
     off: u32,
     corpus: Corpus,
+    /// A link to look for (see [`Corpus::link_pos`]), and where its text
+    /// was found first.
+    want: Option<LinkId>,
+    found: Option<SrcPos>,
 }
 
 impl Walker<'_> {
+    /// A leaf of styled text: as [`Walker::leaf`], noting where the link
+    /// looked for starts.
+    fn inlines(&mut self, t: &Inlines) {
+        if let Some(want) = self.want
+            && self.found.is_none()
+        {
+            let mut start = 0;
+            for run in &t.runs {
+                if run.link == Some(want) {
+                    self.found = Some(SrcPos {
+                        top: self.top,
+                        off: self.off.saturating_add(start),
+                    });
+                    break;
+                }
+                start = run.end;
+            }
+        }
+        self.leaf(&t.text);
+    }
+
     fn leaf(&mut self, s: &str) {
         let len = to_u32(s.len());
         if len > 0 {
@@ -132,7 +157,7 @@ impl Walker<'_> {
     fn block(&mut self, b: &Block) {
         let doc = self.doc;
         match b {
-            Block::Para(t) | Block::Heading { text: t, .. } => self.leaf(&t.text),
+            Block::Para(t) | Block::Heading { text: t, .. } => self.inlines(t),
             Block::Code(c) => self.leaf(&c.code),
             Block::Math(m) => self.leaf(&m.tex),
             Block::Quote { body, .. } | Block::Align { body, .. } => self.blocks(body),
@@ -143,21 +168,21 @@ impl Walker<'_> {
             }
             Block::Table(t) => {
                 for cell in t.head.iter().chain(t.rows.iter().flatten()) {
-                    self.leaf(&cell.text);
+                    self.inlines(cell);
                 }
             }
             Block::Rule => {}
             Block::Figure(f) => self.leaf(doc.caption(f)),
             Block::DefList(items) => {
                 for item in items {
-                    self.leaf(&item.term.text);
+                    self.inlines(&item.term);
                     for def in &item.defs {
                         self.blocks(def);
                     }
                 }
             }
             Block::Details { summary, body, .. } => {
-                self.leaf(&summary.text);
+                self.inlines(summary);
                 self.blocks(body);
             }
             Block::FrontMatter(fm) if self.hide_front_matter => {
@@ -183,6 +208,8 @@ impl Corpus {
             top: 0,
             off: 0,
             corpus: Corpus::default(),
+            want: None,
+            found: None,
         };
         for (i, b) in doc.blocks.iter().enumerate() {
             w.top = to_u32(i);
@@ -280,11 +307,37 @@ impl Corpus {
             top: 0,
             off: 0,
             corpus: Corpus::default(),
+            want: None,
+            found: None,
         };
         for f in doc.footnotes.iter().take(index) {
             w.blocks(&f.body);
         }
         w.off
+    }
+
+    /// Where the text of `link` first starts in the document, as layout
+    /// counts positions (for a footnote reference hidden in a collapsed
+    /// `<details>`, which has no line to find it by).
+    pub(crate) fn link_pos(doc: &Document, link: LinkId) -> Option<SrcPos> {
+        let mut w = Walker {
+            doc,
+            hide_front_matter: false,
+            top: 0,
+            off: 0,
+            corpus: Corpus::default(),
+            want: Some(link),
+            found: None,
+        };
+        for (i, b) in doc.blocks.iter().enumerate() {
+            w.top = to_u32(i);
+            w.off = 0;
+            w.block(b);
+            if w.found.is_some() {
+                break;
+            }
+        }
+        w.found
     }
 }
 

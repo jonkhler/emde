@@ -658,3 +658,25 @@ fn the_selection_fills_what_shifted_lines_leave() {
     // The long line fills the text column itself.
     assert!(f.lines[0].overlays.is_empty());
 }
+
+/// A footnote back-link whose reference is inside a collapsed block opens
+/// it and goes to the reference (it said there was no reference).
+#[test]
+fn footnote_back_links_open_the_block_of_their_reference() {
+    let filler = "Filler paragraph.\n\n".repeat(20);
+    let md = format!(
+        "# Top\n\n<details>\n<summary>More</summary>\n\nA hidden note[^n].\n\n</details>\n\n\
+         {filler}[^n]: The note.\n"
+    );
+    let mut s = state(&md, 60, 12);
+    assert!(!s.layout().details[0].open);
+    keys(&mut s, "G");
+    code(&mut s, KeyCode::Tab);
+    code(&mut s, KeyCode::Enter);
+    assert_eq!(s.message(), None);
+    assert!(s.layout().details[0].open);
+    assert!(top_text(&s).contains("A hidden note"), "{:?}", top_text(&s));
+    // Back where the note is.
+    code(&mut s, KeyCode::Backspace);
+    assert_eq!(s.top(), s.max_top());
+}
