@@ -8,6 +8,13 @@
 //! are picked up at every turn). After an event it takes whatever else is
 //! already queued before painting, so a burst of wheel events costs one
 //! frame. Signal flags are checked on every turn.
+//!
+//! Documents of [`STEPWISE_FROM`] bytes and more are laid out in steps
+//! ([`LayoutJob`]): the first screens before the first frame (and after a
+//! resize, the screens around the place shown), the rest in idle slices of
+//! [`LAYOUT_SLICE`]. Before every action the layout is taken as far as the
+//! action needs ([`super::partial`]): all of it for `G`, a search or the
+//! outline.
 
 use std::collections::{HashMap, VecDeque};
 use std::io;
@@ -18,7 +25,7 @@ use std::time::{Duration, Instant};
 
 use crate::config::OpenCommand;
 use crate::highlight::Highlighter;
-use crate::layout::{self, Layout};
+use crate::layout::{self, Folds, Layout, LayoutInputs, LayoutJob};
 use crate::options::Height;
 use crate::options::RenderOptions;
 use crate::render::RenderConfig;
@@ -33,6 +40,7 @@ use super::gallery;
 use super::images::{self, Images, WORK_POLL};
 use super::keymap::{Command, SEQUENCE_TIMEOUT};
 use super::os::{self, ClipboardPlan, OpenPlan};
+use super::partial::{self, Need};
 use super::sidebar;
 use super::state::{DocKey, Page, Settings, State};
 use super::term::{
@@ -45,6 +53,13 @@ use super::{DocLoader, PagerExit, PagerSession};
 
 /// Quiet time after a resize before the layout follows.
 pub(crate) const RESIZE_DEBOUNCE: Duration = Duration::from_millis(30);
+/// Documents of this many bytes of Markdown and more are laid out in steps
+/// (see the module docs); smaller ones take a few milliseconds at most and
+/// are laid out at once.
+const STEPWISE_FROM: usize = 256 * 1024;
+/// The longest an idle slice of laying out runs: a key pressed meanwhile
+/// waits at most this long.
+const LAYOUT_SLICE: Duration = Duration::from_millis(4);
 /// Layouts kept to show again without laying out (a `<details>` closed
 /// again, a match's block opened again): those the last relayouts
 /// replaced.
@@ -127,6 +142,28 @@ fn document_path(path: &Path) -> PathBuf {
     }
 }
 
+/// The rest of the current layout, while it is laid out in steps.
+struct Job {
+    job: LayoutJob,
+    /// The `<details>` toggled when it started.
+    toggled: Vec<u32>,
+}
+
+/// Lay `layout` out further with `job` until `need` is met (nothing if it
+/// already is); whether the layout is complete.
+fn advance_to(
+    job: &mut LayoutJob,
+    layout: &mut Layout,
+    inputs: LayoutInputs<'_>,
+    need: Need,
+) -> bool {
+    let mut seen = None;
+    if need.met(layout, &mut seen) {
+        return job.is_done();
+    }
+    job.advance(layout, inputs, &mut |l| need.met(l, &mut seen))
+}
+
 /// The event loop and everything it needs; see the module docs.
 pub(crate) struct Shell<'t, T: Terminal> {
     term: Guard<'t, T>,
@@ -157,6 +194,8 @@ pub(crate) struct Shell<'t, T: Terminal> {
     layouts: Vec<(LayoutKey, Layout)>,
     /// What the layout shown was made from.
     made: Option<LayoutKey>,
+    /// Laying out the rest of the layout shown, when it is not complete.
+    job: Option<Job>,
     /// Effects of the first actions, carried out when the loop starts.
     startup: Vec<Effect>,
     /// When an unfinished key sequence stops waiting for its next key.
@@ -212,24 +251,42 @@ impl<'t, T: Terminal> Shell<'t, T> {
         // `<details>` (collapsed here) nor wide blocks (cut there).
         let first = first.filter(|l| l.width == width && l.details.is_empty() && !l.narrowed);
         let made_here = first.is_none();
+        let mut job = None;
         let first = first.unwrap_or_else(|| {
-            let it = settings.interactive();
-            layout::layout_with(
-                &doc.doc,
-                width,
-                &theme,
-                &caps,
-                &opts,
-                &*highlighter,
+            let inputs = LayoutInputs {
+                doc: &doc.doc,
+                theme: &theme,
+                caps: &caps,
+                opts: &opts,
+                highlighter: &*highlighter,
                 sizer,
-                it,
-            )
+                interactive: settings.interactive(),
+            };
+            let (mut steps, mut layout) = LayoutJob::start(inputs, width);
+            // An anchor, the outline or the sidebar need every heading.
+            let stepwise = doc.source.text.len() >= STEPWISE_FROM
+                && anchor.is_none()
+                && !open_toc
+                && width == size.0;
+            let need = if stepwise {
+                partial::first_screens(size.1)
+            } else {
+                Need::Whole
+            };
+            if !advance_to(&mut steps, &mut layout, inputs, need) {
+                job = Some(Job {
+                    job: steps,
+                    toggled: Vec::new(),
+                });
+            }
+            layout
         });
         let mut stamps = HashMap::new();
         if let Origin::File(p) = &doc.source.origin {
             stamps.insert(p.clone(), watch::stamp(p));
         }
         let mut state = State::new(doc, key, first, size, &pager, settings);
+        state.partial = job.is_some();
         let made = made_here.then(|| LayoutKey {
             page: Rc::clone(&state.page),
             size,
@@ -282,6 +339,7 @@ impl<'t, T: Terminal> Shell<'t, T> {
             resize: None,
             layouts: Vec::new(),
             made,
+            job,
             startup,
             key_deadline: None,
             signals,
@@ -369,6 +427,10 @@ impl<'t, T: Terminal> Shell<'t, T> {
     /// How long to wait for the next event.
     fn timeout(&self, now: Instant) -> Duration {
         let mut due = MAX_POLL;
+        if self.job.is_some() {
+            // Laying out goes on between polls.
+            due = MIN_POLL;
+        }
         if let Some((_, at)) = self.resize {
             due = due.min(at.saturating_duration_since(now));
         }
@@ -429,6 +491,10 @@ impl<'t, T: Terminal> Shell<'t, T> {
     /// Nothing happened: time for the watcher, and for images (the end of
     /// the debounce, or the worker's results when they are waited for).
     fn idle(&mut self) -> io::Result<Option<PagerExit>> {
+        if self.job.is_some() {
+            let end = Instant::now() + LAYOUT_SLICE;
+            self.lay_out_more(&mut |_| Instant::now() >= end);
+        }
         let now = self.term.term.now();
         if self.images.deadline().is_some_and(|at| now >= at) {
             self.dirty = true;
@@ -450,6 +516,13 @@ impl<'t, T: Terminal> Shell<'t, T> {
     /// Update the state, then carry out the effects (which may update the
     /// state again).
     fn dispatch(&mut self, action: Action) -> io::Result<Option<PagerExit>> {
+        if self.job.is_some() {
+            let need = partial::action_need(&self.state, &action);
+            let mut seen = None;
+            if !need.met(&self.state.layout, &mut seen) {
+                self.lay_out_more(&mut |l| need.met(l, &mut seen));
+            }
+        }
         let effects = update(&mut self.state, action);
         self.run_effects(effects)
     }
@@ -461,11 +534,14 @@ impl<'t, T: Terminal> Shell<'t, T> {
             let more = match effect {
                 Effect::Quit => return Ok(Some(PagerExit::Quit)),
                 Effect::Relayout => {
+                    let was_partial = self.job.is_some();
                     let (key, layout) = self.layout();
                     let more = update(&mut self.state, Action::Layout(layout));
-                    // The layout it replaced, for later.
+                    self.state.partial = self.job.is_some();
+                    // The layout it replaced, for later (when complete).
                     if let (Some(made), Some(old)) =
                         (self.made.replace(key), self.state.spare.take())
+                        && !was_partial
                     {
                         if self.layouts.len() >= LAYOUT_CACHE {
                             self.layouts.remove(0);
@@ -540,19 +616,61 @@ impl<'t, T: Terminal> Shell<'t, T> {
         self.layouts.retain(|(k, _)| Rc::ptr_eq(&k.page, &key.page));
         if let Some(i) = self.layouts.iter().position(|(k, _)| *k == key) {
             let (_, layout) = self.layouts.remove(i);
+            self.job = None;
             return (key, layout);
         }
-        let layout = layout::layout_with(
+        let inputs = LayoutInputs {
             doc,
-            key.cols,
-            &self.theme,
-            &self.caps,
-            &self.opts,
-            &*self.highlighter,
+            theme: &self.theme,
+            caps: &self.caps,
+            opts: &self.opts,
+            highlighter: &*self.highlighter,
             sizer,
-            self.state.interactive(),
-        );
+            interactive: self.state.interactive(),
+        };
+        let (mut job, mut layout) = LayoutJob::start(inputs, key.cols);
+        let need = if self.state.source().text.len() >= STEPWISE_FROM {
+            partial::relayout_need(&self.state)
+        } else {
+            Need::Whole
+        };
+        let done = advance_to(&mut job, &mut layout, inputs, need);
+        self.job = (!done).then(|| Job {
+            job,
+            toggled: key.toggled.clone(),
+        });
         (key, layout)
+    }
+
+    /// Lay out more of the layout shown, until `enough` says so or it is
+    /// complete (see [`LayoutJob::advance`]).
+    fn lay_out_more(&mut self, enough: &mut dyn FnMut(&Layout) -> bool) {
+        let Some(Job { job, toggled }) = self.job.as_mut() else {
+            return;
+        };
+        let page = Rc::clone(&self.state.page);
+        let key = page.key.clone();
+        let mut interactive = self.state.settings.interactive();
+        interactive.details = Some(Folds {
+            open: self.state.settings.details_open,
+            toggled,
+        });
+        let inputs = LayoutInputs {
+            doc: &page.doc,
+            theme: &self.theme,
+            caps: &self.caps,
+            opts: &self.opts,
+            highlighter: &*self.highlighter,
+            sizer: self.images.sizer(&key, &page.doc),
+            interactive,
+        };
+        let done = job.advance(&mut self.state.layout, inputs, enough);
+        if done {
+            self.job = None;
+            // The status bar shows the total now.
+            self.dirty = true;
+        }
+        self.state.layout_grew(done);
     }
 
     /// The image view's image: read (or found among those read already, a
