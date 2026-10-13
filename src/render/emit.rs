@@ -553,33 +553,28 @@ impl<'a> Emitter<'a> {
             style: Style::PLAIN,
             link: None,
         };
-        match layout.wide_at(index) {
-            Some(w) => {
-                let extent = match line.fill {
-                    Fill::Panel { to_col, .. } => line.cols.max(to_col),
-                    _ => line.cols,
-                };
-                let win = Window {
-                    keep: w.x0,
-                    from: w.x0.saturating_add(shift),
-                    cols: layout.measure.saturating_sub(w.x0),
-                    extent,
-                };
-                let mut clip = Clip::new(
-                    win,
-                    SegStyle::Id(w.marker),
-                    layout.clip,
-                    layout.ambiguous_wide,
-                );
-                let mut put = |piece: Piece<'_>| self.piece(out, &mut pen, piece);
-                marked_segments(layout, index, marks, &mut |piece| {
-                    clip.piece(piece, &mut put)
-                });
-                clip.finish(&mut put);
-            }
-            None => marked_segments(layout, index, marks, &mut |piece| {
-                self.piece(out, &mut pen, piece);
-            }),
+        // A line of a wide block goes through a window on it.
+        let mut clip = layout.wide_at(index).map(|w| {
+            let extent = match line.fill {
+                Fill::Panel { to_col, .. } => line.cols.max(to_col),
+                _ => line.cols,
+            };
+            let win = Window {
+                keep: w.x0,
+                from: w.x0.saturating_add(shift),
+                cols: layout.measure.saturating_sub(w.x0),
+                extent,
+            };
+            let marker = SegStyle::Id(w.marker);
+            Clip::new(win, marker, layout.clip, layout.ambiguous_wide)
+        });
+        let mut put = |piece: Piece<'_>| self.piece(out, &mut pen, piece);
+        marked_segments(layout, index, marks, &mut |piece| match clip.as_mut() {
+            Some(c) => c.piece(piece, &mut put),
+            None => put(piece),
+        });
+        if let Some(c) = clip.as_mut() {
+            c.finish(&mut put);
         }
         if pen.link.is_some() {
             osc8::close(out);

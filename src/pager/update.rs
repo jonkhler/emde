@@ -943,6 +943,7 @@ fn open_prompt(state: &mut State, backward: bool) {
         backward,
         input: String::new(),
         origin: state.top_place(),
+        hscroll: state.hscroll(),
         saved,
     });
 }
@@ -982,11 +983,12 @@ fn incremental(state: &mut State) {
     let Mode::Prompt(p) = &state.mode else {
         return;
     };
-    let (origin, backward, input) = (p.origin, p.backward, p.input.clone());
+    let (origin, backward, input, hscroll) = (p.origin, p.backward, p.input.clone(), p.hscroll);
     if input.is_empty() {
         state.search = None;
         state.top = origin.line(&state.layout);
         state.clamp_top();
+        state.doc_view_mut().hscroll = hscroll;
         return;
     }
     search_from(state, &input, backward, origin);
@@ -1045,6 +1047,7 @@ fn cancel_prompt(state: &mut State) {
     state.search = p.saved;
     state.top = p.origin.line(&state.layout);
     state.clamp_top();
+    state.doc_view_mut().hscroll = p.hscroll;
 }
 
 /// `n` (or `N` with `reverse`), `count` times.
@@ -1164,34 +1167,44 @@ enum Stop {
 /// bottom and left to right.
 fn stops(state: &State) -> Vec<(usize, usize, u16, Stop)> {
     let layout = &state.layout;
-    let mut out: Vec<(usize, usize, u16, Stop)> = state
-        .derived
-        .links
+    let mut links = state.derived.links.iter().enumerate().map(|(i, o)| {
+        let col = layout
+            .link_hits
+            .get(o.first as usize)
+            .map_or(0, |h| h.cols.start);
+        let line = o.line as usize;
+        let last = line + o.hits.saturating_sub(1) as usize;
+        (line, last, col, Stop::Link(i))
+    });
+    // Shown summaries are in order too.
+    let mut summaries = layout
+        .details
         .iter()
         .enumerate()
-        .map(|(i, o)| {
-            let col = layout
-                .link_hits
-                .get(o.first as usize)
-                .map_or(0, |h| h.cols.start);
-            let line = o.line as usize;
-            (
-                line,
-                line + o.hits.saturating_sub(1) as usize,
-                col,
-                Stop::Link(i),
-            )
-        })
-        .collect();
-    for (id, d) in layout.details.iter().enumerate() {
-        if d.line != u32::MAX {
+        .filter(|(_, d)| d.line != u32::MAX)
+        .map(|(id, d)| {
             let line = d.line as usize;
             let last = line + d.rows.saturating_sub(1) as usize;
             let id = u32::try_from(id).unwrap_or(u32::MAX);
-            out.push((line, last, d.col, Stop::Summary(id)));
+            (line, last, d.col, Stop::Summary(id))
+        });
+    let mut out = Vec::new();
+    let (mut a, mut b) = (links.next(), summaries.next());
+    loop {
+        let first = match (a, b) {
+            (Some(x), Some(y)) => (x.0, x.2) <= (y.0, y.2),
+            (Some(_), None) => true,
+            (None, Some(_)) => false,
+            (None, None) => break,
+        };
+        if first {
+            out.extend(a);
+            a = links.next();
+        } else {
+            out.extend(b);
+            b = summaries.next();
         }
     }
-    out.sort_by_key(|&(line, _, col, _)| (line, col));
     out
 }
 

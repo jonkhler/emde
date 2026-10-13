@@ -245,6 +245,8 @@ pub(crate) struct Prompt {
     /// Where the screen was when the prompt opened (incremental search
     /// starts there, cancelling returns there).
     pub(crate) origin: Place,
+    /// How far wide blocks were shifted then.
+    pub(crate) hscroll: u16,
     /// The search before the prompt opened.
     pub(crate) saved: Option<Search>,
 }
