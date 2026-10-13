@@ -11,7 +11,7 @@
 use std::ops::Range;
 
 use crate::ir::Block;
-use crate::layout::{Layout, LineKind, SpanFlags};
+use crate::layout::{Fill, Layout, LineKind, SpanFlags};
 
 use super::hints::{self, Copied, Kind, block_at, count, element_lines, line_count};
 use super::keymap::Command;
@@ -334,14 +334,14 @@ fn is_border(c: char, ascii: bool) -> bool {
 
 /// Whether line `i` is the header of a code block (its language label or
 /// title, on the panel or in the frame's top border): decoration, not text.
-fn is_code_header(layout: &crate::layout::Layout, i: usize) -> bool {
+fn is_code_header(layout: &Layout, i: usize) -> bool {
     let (Some(line), Some(next)) = (layout.lines.get(i), layout.lines.get(i + 1)) else {
         return false;
     };
     if line.kind != LineKind::Text || !matches!(next.kind, LineKind::Code { .. }) {
         return false;
     }
-    let panel = matches!(line.fill, crate::layout::Fill::Panel { .. }) && line.fill == next.fill;
+    let panel = matches!(line.fill, Fill::Panel { .. }) && line.fill == next.fill;
     let frame = layout
         .line_text(i)
         .trim_start()
