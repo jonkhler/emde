@@ -698,6 +698,50 @@ fn the_selection_fills_what_shifted_lines_leave() {
     assert!(f.lines[0].overlays.is_empty());
 }
 
+/// Found in a pty run: in a cut code panel, a short line's selection
+/// stopped after its text (the panel after it was not selected), and
+/// after a shift there was none.
+#[test]
+fn the_selection_covers_code_panels_after_short_lines() {
+    let long = "x".repeat(150);
+    let md = format!("```\n{long}\nshort();\n```\n");
+    let mut opts = RenderOptions::default();
+    opts.code.wrap = false;
+    let doc = pdoc(&md, Origin::Memory);
+    let pager = PagerOptions::default();
+    let settings = Settings::new(&pager, &opts);
+    let l = crate::layout::layout_with(
+        &doc.doc,
+        60,
+        &Theme::test(),
+        &Caps::full(),
+        &opts,
+        &PlainHighlighter,
+        &NoImages,
+        settings.interactive(),
+    );
+    let mut s = State::new(doc, None, l, (60, 12), &pager, settings);
+    let short = (0..s.layout().len())
+        .find(|&i| s.layout().line_text(i).contains("short();"))
+        .unwrap();
+    let ctx = Ctx::new(&Theme::test(), &Caps::full());
+    let indent = s.layout().indent;
+    let measure = s.layout().measure;
+    keys(&mut s, "VG");
+    for shift in ["", "zl"] {
+        keys(&mut s, shift);
+        let f = view(&s, &ctx);
+        let fill = &f.lines[short - s.top()].overlays;
+        assert_eq!(fill.len(), 1, "{shift:?}: {fill:?}");
+        // From after the text (or the `‹`) to before the `›`.
+        let cols = String::from_utf8_lossy(&fill[0].bytes).matches(' ').count();
+        assert_eq!(
+            usize::from(fill[0].col) + cols,
+            usize::from(indent + measure - 1)
+        );
+    }
+}
+
 /// A footnote back-link whose reference is inside a collapsed block opens
 /// it and goes to the reference (it said there was no reference).
 #[test]

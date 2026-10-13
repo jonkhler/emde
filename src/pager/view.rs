@@ -1146,21 +1146,25 @@ fn selection(state: &State, ctx: &Ctx, rows: &mut [Building]) {
         let Some(line) = layout.lines.get(index) else {
             break;
         };
-        // Where the text ends: a shifted line shows less of itself (its
-        // `‹` stays).
-        let shown = match layout.wide_at(index) {
+        // Where the text ends (a code panel's background after it is
+        // selected too): a shifted line shows less of itself, and its `‹`
+        // and `›` stay.
+        let (shown, end) = match layout.wide_at(index) {
             Some(w) => {
                 let shift = layout.shift_at(index, state.hscroll());
                 let extent = layout.extent(index);
-                let marker = u16::from(shift > 0 && extent > w.x0);
-                extent
+                let left = u16::from(shift > 0 && extent > w.x0);
+                let right = u16::from(extent > shift.saturating_add(layout.measure));
+                let shown = line
+                    .cols
                     .saturating_sub(shift)
-                    .max(w.x0.saturating_add(marker))
-                    .min(layout.measure)
+                    .max(w.x0.saturating_add(left))
+                    .min(layout.measure);
+                (shown, layout.measure.saturating_sub(right))
             }
-            None => line.cols,
+            None => (line.cols, layout.measure),
         };
-        let pad = layout.measure.saturating_sub(shown);
+        let pad = end.saturating_sub(shown);
         let col = layout
             .indent
             .saturating_add(shown)
