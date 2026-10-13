@@ -1,0 +1,20 @@
+---
+source: tests/pager_images.rs
+expression: huge
+---
+
+
+
+
+╭──────────────────────────────────────────────────────────╮
+│ a red square — Red                                       │
+│ red.png                                                  │
+│ red.png: 128×64 pixels is more than images.max_pixels    │
+│ (1000)                                                   │
+╰──────────────────────────────────────────────────────────╯
+
+
+
+
+
+ image 1/3 · red.png

@@ -1,0 +1,20 @@
+---
+source: tests/pager_images.rs
+expression: fake
+---
+
+
+
+
+╭──────────────────────────────────────╮
+│ a fake                               │
+│ fake.png                             │
+│ fake.png: not a PNG, JPEG, GIF or    │
+│ WebP image                           │
+╰──────────────────────────────────────╯
+
+
+
+
+
+ image 3/3 · fake.png

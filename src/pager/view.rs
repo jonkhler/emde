@@ -28,6 +28,8 @@ use super::toc::{self, BoxGeom};
 
 /// Width of the keys column in the help.
 const HELP_KEYS: usize = 22;
+/// Widest box the image view shows when it cannot show the image.
+const MAX_IMAGE_BOX: u16 = 72;
 
 /// A style as a patch: its colours and attributes replace those
 /// underneath (default colours leave them alone).
@@ -960,7 +962,17 @@ fn image_view(state: &State, ctx: &Ctx, rows: &mut Vec<Building>) {
     let cols = state.cols;
     let w = u16::try_from(widest.saturating_add(4))
         .unwrap_or(u16::MAX)
-        .clamp(cols.min(24), cols);
+        .clamp(cols.min(24), cols.min(MAX_IMAGE_BOX));
+    // Lines too long for the box go on over more rows.
+    let room = usize::from(w).saturating_sub(4).max(1);
+    let lines: Vec<(Style, Cow<'_, str>)> = lines
+        .into_iter()
+        .flat_map(|(style, text)| {
+            wrap(&text, room, amb)
+                .into_iter()
+                .map(move |l| (style, Cow::Owned(l)))
+        })
+        .collect();
     let area = u16::try_from(state.view_rows()).unwrap_or(u16::MAX);
     let h = u16::try_from(lines.len() + 2).unwrap_or(u16::MAX).min(area);
     let g = BoxGeom {
@@ -987,6 +999,48 @@ fn image_view(state: &State, ctx: &Ctx, rows: &mut Vec<Building>) {
     }
     let bottom = y + usize::from(g.h) - 1;
     put_segment(rows, bottom, g.x, border(ctx, &g, false, "", ascii, amb));
+}
+
+/// `text` in lines of at most `cols` columns, broken at spaces (a word
+/// longer than that is cut).
+fn wrap(text: &str, cols: usize, amb: bool) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    let mut line = String::new();
+    for word in text.split(' ').filter(|w| !w.is_empty()) {
+        let mut word = word;
+        loop {
+            let used = str_width(&line, amb);
+            let need = str_width(word, amb) + usize::from(used > 0);
+            if used + need <= cols {
+                if used > 0 {
+                    line.push(' ');
+                }
+                line.push_str(word);
+                break;
+            }
+            if used > 0 {
+                out.push(std::mem::take(&mut line));
+                continue;
+            }
+            // Longer than a line on its own.
+            let (head, _) = fit(word, cols.max(1), amb);
+            let head = if head.is_empty() {
+                word.get(..word.chars().next().map_or(0, char::len_utf8))
+                    .unwrap_or(word)
+            } else {
+                head
+            };
+            out.push(head.to_owned());
+            word = word.get(head.len()..).unwrap_or("");
+            if word.is_empty() {
+                break;
+            }
+        }
+    }
+    if !line.is_empty() || out.is_empty() {
+        out.push(line);
+    }
+    out
 }
 
 /// The outline sidebar beside the document rows: one heading per row,
@@ -1169,5 +1223,16 @@ mod tests {
         assert_eq!(ellipsize("short", 8, false), "short");
         assert_eq!(ellipsize("x", 0, false), "");
         assert_eq!(clean("a\u{1b}b\tc"), "a␛b c");
+    }
+
+    #[test]
+    fn wrapping_text() {
+        assert_eq!(wrap("one two three", 7, false), ["one two", "three"]);
+        assert_eq!(wrap("abcdefghij", 4, false), ["abcd", "efgh", "ij"]);
+        assert_eq!(wrap("a  b", 9, false), ["a b"]);
+        assert_eq!(wrap("", 5, false), [""]);
+        assert_eq!(wrap("日本語", 3, false), ["日", "本", "語"]);
+        assert_eq!(wrap("日本", 1, false), ["日", "本"], "never stuck");
+        assert_eq!(wrap("x y", 0, false), ["x", "y"]);
     }
 }
