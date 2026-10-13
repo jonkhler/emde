@@ -1045,4 +1045,125 @@ mod tests {
             assert_eq!(bg(first, col), Some(vt100::Color::Rgb(255, 0, 0)));
         }
     }
+
+    /// What a line of output shows: its text without escapes, whether its
+    /// OSC 8 links are all closed, and whether it ends with the SGR state
+    /// reset (or never set one).
+    fn scan(line: &str) -> (String, bool, bool) {
+        let mut text = String::new();
+        let mut link_open = false;
+        let mut balanced = true;
+        let mut last_sgr: Option<String> = None;
+        let mut chars = line.chars().peekable();
+        while let Some(c) = chars.next() {
+            if c != '\u{1b}' {
+                text.push(c);
+                continue;
+            }
+            match chars.next() {
+                Some('[') => {
+                    let mut seq = String::new();
+                    for d in chars.by_ref() {
+                        seq.push(d);
+                        if ('\u{40}'..='\u{7e}').contains(&d) {
+                            break;
+                        }
+                    }
+                    if seq.ends_with('m') {
+                        last_sgr = Some(seq);
+                    }
+                }
+                Some(']') => {
+                    let mut seq = String::new();
+                    while let Some(d) = chars.next() {
+                        if d == '\u{1b}' && chars.peek() == Some(&'\\') {
+                            chars.next();
+                            break;
+                        }
+                        seq.push(d);
+                    }
+                    if let Some(rest) = seq.strip_prefix("8;") {
+                        let opens = !rest.ends_with(';');
+                        // An open while open, or a close while closed.
+                        balanced &= opens != link_open;
+                        link_open = opens;
+                    }
+                }
+                _ => balanced = false,
+            }
+        }
+        let reset = last_sgr.is_none_or(|s| s == "0m");
+        (text, balanced && !link_open, reset)
+    }
+
+    /// Cells for generated tables: text, CJK, emoji, combining marks, links
+    /// (some wrapping over lines).
+    const CELLS: [&str; 8] = [
+        "plain",
+        "日本語テキスト",
+        "😀 emoji 😀",
+        "e\u{301}e\u{301}e\u{301}",
+        "[a link](https://example.com/a)",
+        "[日本 link 😀](https://example.com/b)",
+        "x",
+        "a longer cell that wraps over several lines in its column [and a link that wraps too](https://example.com/c)",
+    ];
+
+    proptest::proptest! {
+        #![proptest_config(proptest::prelude::ProptestConfig::with_cases(64))]
+        #[test]
+        fn shifted_lines_fill_the_text_column_and_balance_their_escapes(
+            cells in proptest::collection::vec(0..CELLS.len(), 24..40),
+            shift in 0u16..400,
+            width in 30u16..70,
+            quoted: bool,
+        ) {
+            let cols = cells.len() / 2;
+            let row = |r: &[usize]| {
+                let texts: Vec<&str> = r.iter().map(|&i| CELLS[i]).collect();
+                format!("| {} |", texts.join(" | "))
+            };
+            let (head, body) = cells.split_at(cols);
+            let table = [
+                row(head),
+                format!("|{}", "---|".repeat(cols)),
+                row(body.get(..cols).unwrap_or(body)),
+            ];
+            // Inside a quote: the bar stays, the table moves.
+            let prefix = if quoted { "> " } else { "" };
+            let md: String = table.iter().map(|l| format!("{prefix}{l}\n")).collect();
+            let doc = parse(&md, &ParseOptions::default());
+            let caps = Caps::full();
+            let l = crate::layout::layout_with(
+                &doc,
+                width,
+                &Theme::test(),
+                &caps,
+                &RenderOptions::default(),
+                &PlainHighlighter,
+                &NoImages,
+                crate::layout::Interactive { hscroll: true, details: None },
+            );
+            // Twelve columns or more never fit: a wide block.
+            proptest::prop_assert!(!l.wide.is_empty(), "{}", l.dump());
+            let cfg = cfg(&caps);
+            let mut e = Emitter::new(&doc, &l, &cfg);
+            for i in 0..l.len() {
+                let mut out = Vec::new();
+                e.write_line_shifted(i, &[], l.shift_at(i, shift), &mut out);
+                let line = String::from_utf8(out).unwrap();
+                let (text, balanced, reset) = scan(line.trim_end_matches('\n'));
+                proptest::prop_assert!(balanced, "line {i}: {line:?}");
+                proptest::prop_assert!(reset, "line {i}: {line:?}");
+                if l.wide_at(i).is_some() {
+                    let w = crate::text::str_width(&text, false);
+                    proptest::prop_assert_eq!(
+                        w,
+                        usize::from(l.indent + l.measure),
+                        "line {} {:?}", i, text
+                    );
+                }
+            }
+        }
+    }
 }

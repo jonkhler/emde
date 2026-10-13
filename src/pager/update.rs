@@ -1481,12 +1481,18 @@ fn flip(state: &mut State, id: u32) {
 
 /// Open or close `<details>` `id`, keeping what is at the top of the
 /// screen where it is.
-fn toggle(state: &mut State, id: u32) -> Vec<Effect> {
-    if state.layout.details.get(id as usize).is_none() {
+pub(crate) fn toggle(state: &mut State, id: u32) -> Vec<Effect> {
+    let Some(d) = state.layout.details.get(id as usize).copied() else {
         return Vec::new();
-    }
+    };
+    // Closing the block the top line is in: its summary goes to the top.
+    let place = if d.open && d.line != u32::MAX && d.holds(state.top_pos()) {
+        Place::of(&state.layout, d.line as usize)
+    } else {
+        state.top_place()
+    };
     flip(state, id);
-    state.pending = Some(Goto::Place(state.top_place()));
+    state.pending = Some(Goto::Place(place));
     vec![Effect::Relayout]
 }
 

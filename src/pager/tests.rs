@@ -1314,3 +1314,4 @@ proptest::proptest! {
 mod gallery_view;
 mod modes;
 mod sidebar;
+mod wide;

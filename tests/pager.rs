@@ -1562,7 +1562,10 @@ fn details_collapse_and_expand() {
     insta::assert_snapshot!("details-focused", screen_text(&term, 60, 20, "focused"));
     insta::assert_snapshot!("details-expanded", screen_text(&term, 60, 20, "expanded"));
     let again = screen_text(&term, 60, 20, "again");
-    assert!(again.contains("▸ Installation (6 lines)"), "Enter closes it again: {again}");
+    assert!(
+        again.contains("▸ Installation (6 lines)"),
+        "Enter closes it again: {again}"
+    );
     let clicked = screen_text(&term, 60, 20, "clicked");
     assert!(clicked.contains("Run the needle installer"), "{clicked}");
 }
