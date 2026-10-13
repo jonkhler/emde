@@ -25,7 +25,7 @@ use std::panic::{self, AssertUnwindSafe};
 use pulldown_latex::event::{
     ArrayColumn, ColumnAlignment, Content, DelimiterType, Dimension, DimensionUnit,
     EnvironmentFlow, Event, Font as LatexFont, Grouping, Line, ScriptPosition, ScriptType,
-    StateChange, Visual,
+    StateChange, Style as LatexStyle, Visual,
 };
 use pulldown_latex::{Parser, Storage};
 
@@ -79,6 +79,7 @@ fn build(events: &[Event<'_>]) -> Result<Node, ParseError> {
         events,
         pos: 0,
         depth: 0,
+        text_style: false,
     };
     let (items, _) = builder.sequence(Scope::Top)?;
     Ok(Node::Row(items))
@@ -113,6 +114,9 @@ struct Builder<'e, 'a> {
     events: &'e [Event<'a>],
     pos: usize,
     depth: usize,
+    /// After `\textstyle` (or a script style) in the current group: large
+    /// operators take their limits to the right, as inline.
+    text_style: bool,
 }
 
 impl<'e, 'a> Builder<'e, 'a> {
@@ -134,10 +138,12 @@ impl<'e, 'a> Builder<'e, 'a> {
     }
 
     /// Elements up to the end of `scope`. A font change wraps the rest of the
-    /// sequence; colour and style changes are dropped (the output has no
-    /// colour channel, and sizes do not exist in a terminal).
+    /// sequence; colour changes are dropped (the output has no colour
+    /// channel), and of style changes only where limits go is kept (sizes
+    /// do not exist in a terminal).
     fn sequence(&mut self, scope: Scope) -> Result<(Vec<Node>, Stop), ParseError> {
         self.enter()?;
+        let outer_style = self.text_style;
         let mut items = Vec::new();
         let stop = loop {
             let Some(event) = self.peek() else {
@@ -175,6 +181,10 @@ impl<'e, 'a> Builder<'e, 'a> {
                     });
                     break stop;
                 }
+                Event::StateChange(StateChange::Style(style)) => {
+                    self.text_style = !matches!(style, LatexStyle::Display);
+                    self.pos += 1;
+                }
                 Event::StateChange(_) => self.pos += 1,
                 Event::Space { .. } if self.is_pmod() => {
                     self.pos += 1;
@@ -183,6 +193,7 @@ impl<'e, 'a> Builder<'e, 'a> {
                 _ => push_item(&mut items, self.element()?),
             }
         };
+        self.text_style = outer_style;
         self.leave();
         Ok((items, stop))
     }
@@ -373,6 +384,10 @@ impl<'e, 'a> Builder<'e, 'a> {
                 let sub = self.element()?;
                 (Some(sub), Some(self.element()?), None)
             }
+        };
+        let position = match position {
+            ScriptPosition::Movable if self.text_style => ScriptPosition::Right,
+            other => other,
         };
         Ok(classify_script(base, sub, sup, position, mark))
     }

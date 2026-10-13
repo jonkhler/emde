@@ -1253,6 +1253,19 @@ mod tests {
         );
     }
 
+    /// Found in a real report: `\textstyle\sum_i` kept its limit below.
+    #[test]
+    fn textstyle_puts_limits_to_the_right() {
+        assert_eq!(rows(r"\left[\textstyle\sum_i s_i\right]", 80), ["[∑ᵢ sᵢ]"]);
+        // Until the end of its group.
+        assert_eq!(
+            rows(r"{\textstyle\sum_i x} + \sum_j y", 80),
+            ["∑ᵢ x + ∑ y", "       j"]
+        );
+        // `\displaystyle` puts them back below.
+        assert_eq!(rows(r"\textstyle\displaystyle\sum_i x", 80), ["∑ x", "i"]);
+    }
+
     #[test]
     fn scripts_in_2d() {
         assert_eq!(rows(r"e^{-x^2}", 80), [" −x²", "e"]);
