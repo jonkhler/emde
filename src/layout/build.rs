@@ -1018,20 +1018,13 @@ impl<'a> Builder<'a> {
         self.limit = super::MAX_WIDE;
         f(self);
         self.limit = saved;
-        let lines = self.out.lines.get(start..).unwrap_or(&[]);
-        let cols = lines
-            .iter()
-            .map(|l| match l.fill {
-                Fill::Panel { to_col, .. } => l.cols.max(to_col),
-                _ => l.cols,
-            })
-            .max()
-            .unwrap_or(0);
+        let end = self.out.lines.len();
+        let cols = (start..end).map(|i| self.out.extent(i)).max().unwrap_or(0);
         if cols > self.out.measure {
             let marker = self.sty.el(Element::Muted);
             self.out.wide.push(Wide {
                 start: to_u32(start),
-                end: to_u32(self.out.lines.len()),
+                end: to_u32(end),
                 x0,
                 cols,
                 marker,

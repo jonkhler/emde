@@ -556,15 +556,11 @@ impl<'a> Emitter<'a> {
         };
         // A line of a wide block goes through a window on it.
         let mut clip = wide.map(|w| {
-            let extent = match line.fill {
-                Fill::Panel { to_col, .. } => line.cols.max(to_col),
-                _ => line.cols,
-            };
             let win = Window {
                 keep: w.x0,
                 from: w.x0.saturating_add(shift),
                 cols: layout.measure.saturating_sub(w.x0),
-                extent,
+                extent: layout.extent(index),
             };
             let marker = SegStyle::Id(w.marker);
             Clip::new(win, marker, layout.clip, layout.ambiguous_wide)

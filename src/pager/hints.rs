@@ -402,10 +402,11 @@ pub(crate) fn targets(state: &State, kind: HintKind) -> Vec<Target> {
     let screen =
         |line: usize, col: u16| layout.shown_col(line, col, layout.shift_at(line, hscroll));
     for (i, o) in state.derived.links.iter().enumerate() {
-        let Some((line, col)) = links::first_visible_hit(layout, o, top, rows) else {
+        let Some((line, cols)) = links::first_visible_hit(layout, o, top, rows) else {
             continue;
         };
-        let Some(col) = screen(line, col) else {
+        // Its first column shown (a link may be cut by an edge).
+        let Some(col) = cols.clone().find_map(|c| screen(line, c)) else {
             continue;
         };
         let act = match kind {

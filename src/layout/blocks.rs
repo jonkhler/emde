@@ -644,11 +644,12 @@ impl Builder<'_> {
             self.compose(summary, strong)
         };
         let c = match hidden {
+            // Nothing to count: no count.
+            Some(0) | None => c,
             Some(n) => {
                 let s = if n == 1 { "" } else { "s" };
                 suffixed(c, &format!(" ({n} line{s})"), marker_style)
             }
-            None => c,
         };
         let c = self.prefixed(&marker, marker_style, c);
         let width = self.avail();

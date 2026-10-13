@@ -540,14 +540,25 @@ impl Layout {
             .map_or(0, |w| hscroll.min(w.max_shift(self.measure)))
     }
 
+    /// Columns line `line` covers: its spans and its background.
+    pub fn extent(&self, line: usize) -> u16 {
+        self.lines.get(line).map_or(0, |l| match l.fill {
+            Fill::Panel { to_col, .. } => l.cols.max(to_col),
+            _ => l.cols,
+        })
+    }
+
     /// Where column `col` of line `line` (relative to the text column) is
     /// shown when the line is shifted by `shift`: `None` when it is
-    /// shifted out of view.
+    /// shifted out of view, or under the `‹` or `›` at an edge.
     pub fn shown_col(&self, line: usize, col: u16, shift: u16) -> Option<u16> {
         match self.wide_at(line) {
             Some(w) if col >= w.x0 => {
                 let shown = col.checked_sub(shift).filter(|&c| c >= w.x0)?;
-                (shown < self.measure).then_some(shown)
+                let left = shift > 0 && shown == w.x0;
+                let right = shown.saturating_add(1) == self.measure
+                    && self.extent(line) > self.measure.saturating_add(shift);
+                (shown < self.measure && !left && !right).then_some(shown)
             }
             _ => Some(col),
         }

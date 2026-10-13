@@ -570,7 +570,10 @@ fn clicks_on_a_link_cut_by_the_left_edge() {
         .shown_col(line, hit.cols.start + 3, shift)
         .unwrap();
     let indent = s.layout().indent;
-    let effects = click(&mut s, indent + shown, u16::try_from(line).unwrap());
+    let row = u16::try_from(line).unwrap();
+    // The `‹` covers a column of the link: a click on it does nothing.
+    assert!(click(&mut s, indent + x0, row).is_empty());
+    let effects = click(&mut s, indent + shown, row);
     assert_eq!(effects, [Effect::Open("https://example.com/6".into())]);
 }
 
@@ -599,4 +602,22 @@ fn a_narrower_terminal_clamps_the_shift_it_shows() {
     assert!(matches!(f.lines[2].body, Body::Line { shift: 0, .. }));
     drive(&mut s, Action::Resize { cols: 60, rows: 12 });
     assert_eq!(s.hscroll(), wide_max, "kept for when it is wide again");
+}
+
+#[test]
+fn a_link_cut_by_the_left_edge_gets_its_hint_where_it_shows() {
+    let mut s = state(&table_doc(20, 0), 60, 12);
+    let hit = s.layout().link_hits[0].clone();
+    let line = hit.line as usize;
+    let x0 = s.layout().wide_at(line).unwrap().x0;
+    s.doc_view_mut().hscroll = hit.cols.start - x0 + 2;
+    keys(&mut s, "o");
+    let Mode::Hints(h) = &s.mode else {
+        panic!("{:?}", s.message());
+    };
+    let [(_, t)] = h.labels.as_slice() else {
+        panic!("{:?}", h.labels);
+    };
+    // Right after the `‹`.
+    assert_eq!((t.line, t.col), (line, x0 + 1));
 }

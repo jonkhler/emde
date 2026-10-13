@@ -362,6 +362,7 @@ style = "frame"
 Foo = "rust"
 [tables]
 zebra = false
+overflow = "records"
 [math]
 letters = "unicode-italic"
 fractions = "slash"
@@ -394,6 +395,7 @@ search_case = "insensitive"
 open = "firefox"
 toc_sidebar = "never"
 toc_width = 40
+details = "expanded"
 [pager.keys]
 quit = ["Q", "ZZ"]
 top = ["X"]
@@ -421,6 +423,7 @@ probe_timeout_ms = 500
     assert_eq!(r.code.style, crate::options::CodeStyle::Frame);
     assert_eq!(r.code.aliases, vec![("foo".to_owned(), "rust".to_owned())]);
     assert!(!r.tables.zebra);
+    assert_eq!(r.tables.overflow, crate::options::TableOverflow::Records);
     assert_eq!(r.math.opts.letters, emde_math::Letters::UnicodeItalic);
     assert_eq!(r.math.opts.fractions, emde_math::Fractions::Slash);
     assert_eq!(r.math.opts.scripts, emde_math::ScriptSet::Full);
@@ -442,6 +445,7 @@ probe_timeout_ms = 500
     assert_eq!(c.pager.search_case, SearchCase::Insensitive);
     assert_eq!(c.pager.open, OpenCommand::Command("firefox".into()));
     assert_eq!((c.pager.toc_sidebar, c.pager.toc_width), (When::Never, 40));
+    assert_eq!(c.pager.details, crate::options::DetailsMode::Expanded);
     assert_eq!(
         c.pager.keys,
         [
@@ -574,6 +578,43 @@ fn invalid_values_are_ignored_with_a_warning() {
     assert_eq!(loaded.config.render.code.tab_width, 4);
     assert_eq!(loaded.config.pager.toc_width, 60, "clamped");
     assert_eq!(loaded.config.render.glyphs.quote, "x");
+}
+
+#[test]
+fn table_overflow_and_details_names() {
+    let (setup, loaded) = load_config(
+        "names",
+        "[tables]\noverflow = \"scrol\"\n[pager]\ndetails = \"open\"\n",
+    );
+    let report = setup.report(&loaded);
+    assert!(
+        report.contains(
+            "invalid value `scrol`, expected `records` or `scroll` (did you mean `scroll`?)"
+        ),
+        "{report}"
+    );
+    assert!(
+        report.contains("invalid value `open`, expected `collapsed` or `expanded`"),
+        "{report}"
+    );
+    // The defaults stay.
+    let c = &loaded.config;
+    assert_eq!(
+        c.render.tables.overflow,
+        crate::options::TableOverflow::Scroll
+    );
+    assert_eq!(c.pager.details, crate::options::DetailsMode::Collapsed);
+    let setup = Setup::new("names-set");
+    let loaded = setup.load(&["tables.overflow=Records", "pager.details=EXPANDED"]);
+    no_diagnostics(&loaded);
+    assert_eq!(
+        loaded.config.render.tables.overflow,
+        crate::options::TableOverflow::Records
+    );
+    assert_eq!(
+        loaded.config.pager.details,
+        crate::options::DetailsMode::Expanded
+    );
 }
 
 #[test]

@@ -1239,3 +1239,19 @@ fn borderless_wide_tables_with_empty_rows() {
     check_interactive(&l);
     assert_eq!(l.wide.len(), 1, "{}", l.dump());
 }
+
+#[test]
+fn empty_details_have_no_count() {
+    let it = Interactive {
+        hscroll: false,
+        details: Some(Folds::default()),
+    };
+    let l = lay_interactive(
+        "<details><summary>Nothing</summary>\n</details>\n",
+        40,
+        &RenderOptions::default(),
+        it,
+    );
+    assert_eq!(lines(&l), ["▸ Nothing"]);
+    assert_eq!(l.details[0].body_lines, 0);
+}

@@ -2100,11 +2100,13 @@ fn click(state: &mut State, col: u16, row: u16) -> Vec<Effect> {
                 return Vec::new();
             };
             // The column of the line under the pointer (a wide block may be
-            // shifted).
-            let col =
-                state
-                    .layout
-                    .layout_col(line, col, state.layout.shift_at(line, state.hscroll()));
+            // shifted); under a `‹` or `›`, none.
+            let shift = state.layout.shift_at(line, state.hscroll());
+            let at = state.layout.layout_col(line, col, shift);
+            let col = match state.layout.shown_col(line, at, shift) {
+                Some(_) => at,
+                None => u16::MAX,
+            };
             if let Some(occ) = links::occurrence_at(&state.layout, &state.derived, line, col) {
                 state.summary_focus = None;
                 set_focus(state, occ);
