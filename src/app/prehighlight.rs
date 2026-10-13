@@ -123,8 +123,7 @@ impl Prehighlighted {
         });
         // The layout thread is one of the threads: it makes what nobody
         // started when it gets there.
-        let cpus = std::thread::available_parallelism().map_or(1, usize::from);
-        let helpers = cpus
+        let helpers = crate::parallel::cpus()
             .min(MAX_THREADS)
             .min(shared.jobs.len())
             .saturating_sub(1);
