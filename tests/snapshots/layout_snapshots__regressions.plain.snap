@@ -62,12 +62,12 @@ glamour 149: wrapped
 hyperlinks
 ────────────────────
 
-See https://
-github.com/
-ValveSoftware/steam-
-for-linux/issues/
-1234567890 for the
-details.
+See
+https://github.com/
+ValveSoftware/
+steam-for-linux/
+issues/1234567890
+for the details.
 
 glamour 84: two
 trailing spaces
@@ -261,8 +261,8 @@ paragraphs
 1. According to many LLMs[1] ↑
 
 [1]: https://techcrunch.com/2024/08/
-     27/why-ai-cant-spell-
-     strawberry/
+     27/
+     why-ai-cant-spell-strawberry/
 ━━ width 80 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Regressions
 ════════════════════════════════════════════════════════════════════════════

@@ -8,9 +8,11 @@
 //! brackets where nothing would set them apart), and links without OSC 8 a
 //! numbered reference (unless their text is the URL). Line-breaking
 //! constraints follow: atoms for math, footnote numbers, reference numbers,
-//! key caps and code spans up to 24 columns; extra break points for URLs
-//! and at math break hints. Plain prose skips all of it and borrows the IR
-//! text.
+//! key caps, image chips and code spans up to 24 columns; extra break
+//! points for URLs and at math break hints. *Groups* hold pieces together
+//! where the whole fits a line: a URL (else it breaks between its pieces), a
+//! reference number with what it follows. Plain prose skips all of it and
+//! borrows the IR text.
 //!
 //! A composed text keeps a map back to IR offsets, so every line records
 //! where its content came from ([`crate::ir::SrcPos`]).
@@ -68,6 +70,11 @@ pub(super) struct Composed<'t> {
     pub(super) runs: Vec<CRun>,
     pub(super) atoms: Vec<Range<u32>>,
     pub(super) breaks: Vec<u32>,
+    /// Ranges kept on one line where they fit one (each then one atom, the
+    /// atoms inside it included), else left to their atoms and breaks: a
+    /// URL, a reference number with the end of its link. Sorted by start;
+    /// they nest or are apart.
+    pub(super) groups: Vec<Range<u32>>,
     /// Empty when the text is the IR text itself.
     map: Vec<MapEntry>,
 }
@@ -118,6 +125,7 @@ impl Composed<'static> {
             runs,
             atoms,
             breaks,
+            groups: Vec::new(),
             map: vec![MapEntry {
                 disp: 0,
                 ir: 0,
@@ -134,6 +142,7 @@ impl Composed<'static> {
         let mut runs = Vec::new();
         let mut atoms = Vec::new();
         let mut breaks = Vec::new();
+        let mut groups = Vec::new();
         for part in parts {
             let shift = to_u32(text.len());
             text.push_str(&part.text);
@@ -147,12 +156,18 @@ impl Composed<'static> {
                     .map(|a| a.start.saturating_add(shift)..a.end.saturating_add(shift)),
             );
             breaks.extend(part.breaks.iter().map(|b| b.saturating_add(shift)));
+            groups.extend(
+                part.groups
+                    .iter()
+                    .map(|g| g.start.saturating_add(shift)..g.end.saturating_add(shift)),
+            );
         }
         Composed {
             text: Cow::Owned(text),
             runs,
             atoms,
             breaks,
+            groups,
             map: vec![MapEntry {
                 disp: 0,
                 ir: 0,
@@ -243,6 +258,51 @@ fn to_u32(n: usize) -> u32 {
     u32::try_from(n).unwrap_or(u32::MAX)
 }
 
+/// The atoms to wrap with: every group that fits a line (`group_fits`) as
+/// one atom (the atoms inside it included), and the atoms outside such
+/// groups that `fits`; the rest break like long words. `groups` are sorted
+/// by start, outer ones first, and nest or are apart.
+fn wrap_atoms(
+    atoms: &[Range<u32>],
+    groups: &[Range<u32>],
+    fits: impl Fn(&Range<u32>) -> bool,
+    group_fits: impl Fn(&Range<u32>) -> bool,
+) -> Vec<Range<u32>> {
+    // The outermost groups that fit.
+    let mut kept: Vec<Range<u32>> = Vec::with_capacity(groups.len());
+    for g in groups {
+        if kept.last().is_some_and(|k| g.start < k.end) {
+            continue; // inside a group kept already
+        }
+        if group_fits(g) {
+            kept.push(g.clone());
+        }
+    }
+    let mut out: Vec<Range<u32>> = Vec::with_capacity(atoms.len() + kept.len());
+    let mut k = kept.iter().peekable();
+    for a in atoms.iter().filter(|a| fits(a)) {
+        while let Some(g) = k.next_if(|g| g.end <= a.start) {
+            out.push(g.clone());
+        }
+        // An atom inside a kept group is held by it.
+        if !k.peek().is_some_and(|g| g.start < a.end) {
+            out.push(a.clone());
+        }
+    }
+    out.extend(k.cloned());
+    // Sorted, and an atom crossing a group's edge merges into it.
+    out.sort_by_key(|r| r.start);
+    let mut merged: Vec<Range<u32>> = Vec::with_capacity(out.len());
+    for r in out {
+        match merged.last_mut() {
+            Some(last) if r.start < last.end => last.end = last.end.max(r.end),
+            _ => merged.push(r),
+        }
+    }
+    merged.retain(|r| fits(r));
+    merged
+}
+
 /// `c` with `suffix` after it in `style`, as one unbreakable piece (a
 /// collapsed `<details>`' line count); offsets in it map to the end of the
 /// IR text.
@@ -284,6 +344,7 @@ pub(super) fn suffixed<'t>(c: Composed<'t>, suffix: &str, style: StyleId) -> Com
         runs,
         atoms,
         breaks: c.breaks,
+        groups: c.groups,
         map,
     }
 }
@@ -319,6 +380,7 @@ struct Out {
     runs: Vec<CRun>,
     atoms: Vec<Range<u32>>,
     breaks: Vec<u32>,
+    groups: Vec<Range<u32>>,
     map: Vec<MapEntry>,
 }
 
@@ -389,6 +451,38 @@ impl Out {
             self.atoms.push(r);
         }
     }
+
+    /// Where what comes at `at` attaches to the text before it: the start
+    /// of the atom ending there, else of the last character.
+    fn attach_point(&self, at: u32) -> u32 {
+        if let Some(a) = self.atoms.last()
+            && a.end == at
+        {
+            return a.start;
+        }
+        let before = self.text.get(..at as usize).unwrap_or("");
+        before
+            .char_indices()
+            .next_back()
+            .map_or(at, |(i, _)| to_u32(i))
+    }
+}
+
+/// The URLs among the links of `inl` (link text that looks like one): the
+/// groups of plain prose.
+fn url_groups(inl: &Inlines) -> Vec<Range<u32>> {
+    let mut out: Vec<Range<u32>> = Vec::new();
+    let mut prev: Option<LinkId> = None;
+    for (range, run) in inl.runs_with_ranges() {
+        match (run.link, out.last_mut()) {
+            (Some(l), Some(g)) if prev == Some(l) && g.end == range.start => g.end = range.end,
+            (Some(_), _) => out.push(range),
+            (None, _) => {}
+        }
+        prev = run.link;
+    }
+    out.retain(|g| crate::parse::looks_like_url(inl.slice(g.clone())));
+    out
 }
 
 /// What a line-emitting caller wants around the text.
@@ -444,6 +538,7 @@ impl<'a> Builder<'a> {
                 runs,
                 atoms: inl.atoms.clone(),
                 breaks: inl.extra_breaks.clone(),
+                groups: url_groups(inl),
                 map: Vec::new(),
             };
         }
@@ -453,13 +548,16 @@ impl<'a> Builder<'a> {
         };
         let runs: Vec<(Range<u32>, &crate::ir::Run)> = inl.runs_with_ranges().collect();
         let mut kbd_start: Option<u32> = None;
-        // Where the current link's text starts in the IR text.
+        // Where the current link's text starts in the IR text, and in the
+        // composed text.
         let mut link_start = 0u32;
+        let mut link_out_start = 0u32;
         for (i, (range, run)) in runs.iter().enumerate() {
             let src = inl.slice(range.clone());
             let link = run.link;
             if link.is_some() && (i == 0 || runs.get(i - 1).is_none_or(|(_, r)| r.link != link)) {
                 link_start = range.start;
+                link_out_start = out.len();
             }
             let has_link = link.is_some();
             match run.kind {
@@ -503,6 +601,20 @@ impl<'a> Builder<'a> {
                             for &b in breaks.get(lo..hi).unwrap_or(&[]) {
                                 if b > 0 {
                                     out.breaks.push(at + (b - range.start));
+                                }
+                            }
+                            // Likewise its atoms (the pieces of a URL). A key
+                            // cap is an atom of its own as a whole.
+                            if !kbd {
+                                let atoms = &inl.atoms;
+                                let lo = atoms.partition_point(|a| a.start < range.start);
+                                for a in atoms.get(lo..).unwrap_or(&[]) {
+                                    if a.end > range.end {
+                                        break;
+                                    }
+                                    out.atom(
+                                        at + (a.start - range.start)..at + (a.end - range.start),
+                                    );
                                 }
                             }
                         }
@@ -564,16 +676,27 @@ impl<'a> Builder<'a> {
                     let glyph = self.sty.inline(base, run.flags, Kind::ChipGlyph, has_link);
                     let alt = self.sty.inline(base, run.flags, Kind::ChipAlt, has_link);
                     out.map(range.clone(), false);
+                    let start = out.len();
                     let chip = format!("{}{NBSP}", self.deco.chip);
                     out.push(&chip, glyph, link, SpanFlags::empty(), true);
                     out.push(src, alt, link, SpanFlags::empty(), false);
+                    // An image is one piece, as in a browser: a row of
+                    // badges breaks between them, never inside a label. A
+                    // chip wider than the line is released like a long word
+                    // (`wrap_composed`); inside a key cap, the cap's atom
+                    // already holds it (atoms never nest).
+                    if kbd_start.is_none() {
+                        let end = out.len();
+                        out.atom(start..end);
+                    }
                 }
             }
+            let link_ends = link.is_some() && runs.get(i + 1).is_none_or(|(_, r)| r.link != link);
             // A numbered reference after the last run of a link, unless its
             // text already shows the URL.
             if let Some(l) = link
+                && link_ends
                 && self.refs.enabled
-                && runs.get(i + 1).is_none_or(|(_, r)| r.link != Some(l))
                 && let Some(target) = self.doc.link(l)
                 && wants_ref(target)
                 && !shows_url(inl.slice(link_start..range.end), &target.url)
@@ -584,9 +707,18 @@ impl<'a> Builder<'a> {
                     .inline(base, InlineFlags::empty(), Kind::LinkRef, false);
                 out.map(range.end..range.end, false);
                 // An atom: a word too long for its line (a code span in a
-                // narrow table cell) never splits the number.
+                // narrow table cell) never splits the number. It stays with
+                // what it follows where both fit a line: UAX #14 would let
+                // `(Bullseye)` / `[1]` or `▣ Build Status` / `[1]` part.
+                let attach = out.attach_point(out.len());
                 let r = out.push(&format!("[{n}]"), style, None, SpanFlags::empty(), false);
+                out.groups.push(attach..r.end);
                 out.atom(r);
+            }
+            // A URL is kept whole where it fits a line.
+            if link_ends && crate::parse::looks_like_url(inl.slice(link_start..range.end)) {
+                let end = out.len();
+                out.groups.push(link_out_start..end);
             }
         }
         let ir_end = to_u32(inl.text.len());
@@ -598,11 +730,15 @@ impl<'a> Builder<'a> {
             .retain(|&b| b > 0 && (b as usize) < out.text.len());
         out.breaks.sort_unstable();
         out.breaks.dedup();
+        // Outer groups first where they start together.
+        out.groups
+            .sort_by_key(|g| (g.start, std::cmp::Reverse(g.end)));
         Composed {
             text: Cow::Owned(out.text),
             runs: out.runs,
             atoms: out.atoms,
             breaks: out.breaks,
+            groups: out.groups,
             map: out.map,
         }
     }
@@ -675,10 +811,25 @@ impl<'a> Builder<'a> {
             let s = c.text.get(a.start as usize..a.end as usize).unwrap_or("");
             str_width(s, amb) <= narrowest
         };
-        let atoms: Cow<'_, [Range<u32>]> = if c.atoms.iter().all(fits) {
-            Cow::Borrowed(&c.atoms)
+        let atoms: Cow<'_, [Range<u32>]> = if c.groups.is_empty() {
+            if c.atoms.iter().all(fits) {
+                Cow::Borrowed(&c.atoms)
+            } else {
+                Cow::Owned(c.atoms.iter().filter(|a| fits(a)).cloned().collect())
+            }
         } else {
-            Cow::Owned(c.atoms.iter().filter(|a| fits(a)).cloned().collect())
+            // A group fits with what sticks to its end up to the next break
+            // opportunity (`path.` after a URL), which could not follow it
+            // on its line otherwise and would start the next line alone.
+            let mut opps = Vec::new();
+            crate::text::break_opportunities(&c.text, &c.breaks, &mut opps);
+            let group_fits = |g: &Range<u32>| {
+                let i = opps.partition_point(|&b| b < g.end);
+                let end = opps.get(i).copied().unwrap_or(to_u32(c.text.len()));
+                let s = c.text.get(g.start as usize..end as usize).unwrap_or("");
+                str_width(s.trim_end(), amb) <= narrowest
+            };
+            Cow::Owned(wrap_atoms(&c.atoms, &c.groups, fits, group_fits))
         };
         let constraints = Constraints {
             atoms: &atoms,
@@ -795,19 +946,21 @@ impl<'a> Builder<'a> {
     /// URL break points.
     pub(super) fn url_lines(&mut self, url: &str, style: StyleId, link: Option<LinkId>, off: u32) {
         let text = crate::text::sanitize(url).replace(['\n', '\t'], " ");
-        let mut breaks = Vec::new();
-        crate::parse::url_break_points(&text, 0..text.len(), &mut breaks);
+        let (mut breaks, mut atoms) = (Vec::new(), Vec::new());
+        crate::parse::url_constraints(&text, 0..text.len(), &mut breaks, &mut atoms);
+        let len = to_u32(text.len());
         let c = Composed {
             runs: vec![CRun {
-                end: to_u32(text.len()),
+                end: len,
                 style,
                 link,
                 flags: SpanFlags::empty(),
                 pill: false,
             }],
             text: Cow::Owned(text),
-            atoms: Vec::new(),
+            atoms,
             breaks,
+            groups: std::iter::once(0..len).collect(),
             map: Vec::new(),
         };
         let width = self.avail();
@@ -834,6 +987,7 @@ impl<'a> Builder<'a> {
             text: Cow::Owned(text),
             atoms: Vec::new(),
             breaks: Vec::new(),
+            groups: Vec::new(),
             map: Vec::new(),
         }
     }
@@ -891,6 +1045,11 @@ impl<'a> Builder<'a> {
                 .map(|a| a.start.saturating_add(shift)..a.end.saturating_add(shift))
                 .collect(),
             breaks: c.breaks.iter().map(|b| b.saturating_add(shift)).collect(),
+            groups: c
+                .groups
+                .iter()
+                .map(|g| g.start.saturating_add(shift)..g.end.saturating_add(shift))
+                .collect(),
             map,
         }
     }

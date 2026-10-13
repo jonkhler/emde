@@ -73,10 +73,10 @@ expression: "styled(\"edge-cases\", & Caps :: full(), & WIDTHS)"
   Control characters are shown, never
   executed: ␛[31m red? ␛[2J
 
-  A very long URL: ⟦fg=#89b4fa ul link 0⟧https://⟦/⟧
-  ⟦fg=#89b4fa ul link 0⟧example.com/a/very/long/path/that/⟦/⟧
-  ⟦fg=#89b4fa ul link 0⟧keeps/going/and/going?with=query&⟦/⟧
-  ⟦fg=#89b4fa ul link 0⟧and=more#fragment⟦/⟧
+  A very long URL:
+  ⟦fg=#89b4fa ul link 0⟧https://example.com/a/very/long/⟦/⟧
+  ⟦fg=#89b4fa ul link 0⟧path/that/keeps/going/and/going?⟦/⟧
+  ⟦fg=#89b4fa ul link 0⟧with=query&and=more#fragment⟦/⟧
 
   Softhyphenated words and
   no break spaces.
@@ -165,8 +165,8 @@ expression: "styled(\"edge-cases\", & Caps :: full(), & WIDTHS)"
 
           Control characters are shown, never executed: ␛[31m red? ␛[2J
 
-          A very long URL: ⟦fg=#89b4fa ul link 0⟧https://example.com/a/very/long/path/that/keeps/going/and/going?with=query&and=⟦/⟧
-          ⟦fg=#89b4fa ul link 0⟧more#fragment⟦/⟧
+          A very long URL:
+          ⟦fg=#89b4fa ul link 0⟧https://example.com/a/very/long/path/that/keeps/going/and/going?with=query&and=more#fragment⟦/⟧
 
           Softhyphenated words and no break spaces.
 

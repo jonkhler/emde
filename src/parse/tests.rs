@@ -358,10 +358,12 @@ fn bare_urls_are_linkified_outside_code_and_links() {
             "https://in.link"
         ]
     );
-    // Break points inside the bare URL.
+    // Break points inside the bare URL, none right after the scheme, and
+    // the pieces between them atoms.
     let start = t.text.find("https://example").unwrap() as u32;
-    assert!(t.extra_breaks.contains(&(start + 8)));
+    assert!(!t.extra_breaks.contains(&(start + 8)));
     assert!(t.extra_breaks.contains(&(start + 20)));
+    assert!(t.atoms.contains(&(start..start + 20)));
 }
 
 #[test]

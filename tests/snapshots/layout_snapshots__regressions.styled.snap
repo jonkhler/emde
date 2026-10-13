@@ -61,12 +61,12 @@ expression: "styled(\"regressions\", & Caps :: full(), & WIDTHS)"
   ⟦fg=#cba6f7 bold⟧hyperlinks⟦/⟧
   ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━⟦/⟧
 
-  See ⟦fg=#89b4fa ul link 0⟧https://⟦/⟧
-  ⟦fg=#89b4fa ul link 0⟧github.com/⟦/⟧
-  ⟦fg=#89b4fa ul link 0⟧ValveSoftware/steam-⟦/⟧
-  ⟦fg=#89b4fa ul link 0⟧for-linux/issues/⟦/⟧
-  ⟦fg=#89b4fa ul link 0⟧1234567890⟦/⟧ for the
-  details.
+  See
+  ⟦fg=#89b4fa ul link 0⟧https://github.com/⟦/⟧
+  ⟦fg=#89b4fa ul link 0⟧ValveSoftware/⟦/⟧
+  ⟦fg=#89b4fa ul link 0⟧steam-for-linux/⟦/⟧
+  ⟦fg=#89b4fa ul link 0⟧issues/1234567890⟦/⟧
+  for the details.
 
   ⟦fg=#cba6f7 bold⟧glamour 84: two⟦/⟧
   ⟦fg=#cba6f7 bold⟧trailing spaces⟦/⟧

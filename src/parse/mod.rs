@@ -26,7 +26,8 @@ mod target;
 
 use pulldown_cmark::{Options, Parser};
 
-pub(crate) use inline::url_break_points;
+pub(crate) use inline::url_constraints;
+pub(crate) use linkify::looks_like_url;
 pub use slug::{Slugger, slug};
 pub(crate) use target::classify;
 

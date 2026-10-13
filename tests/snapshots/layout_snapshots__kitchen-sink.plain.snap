@@ -197,9 +197,9 @@ Kitchen Sink
 
 A paragraph with emphasis, strong,
 both, strikethrough, `inline code`,
-a link[1], an autolink https://
-example.org/path, and a bare URL
-https://www.rust-lang.org/learn.
+a link[1], an autolink
+https://example.org/path, and a bare
+URL https://www.rust-lang.org/learn.
 Hard break at the end of this line
 and a backslash hard break
 then more text. Footnote reference¹
@@ -346,8 +346,8 @@ Kitchen Sink
 ════════════════════════════════════════════════════════════════════════════
 
 A paragraph with emphasis, strong, both, strikethrough, `inline code`, a
-link[1], an autolink https://example.org/path, and a bare URL https://
-www.rust-lang.org/learn. Hard break at the end of this line
+link[1], an autolink https://example.org/path, and a bare URL
+https://www.rust-lang.org/learn. Hard break at the end of this line
 and a backslash hard break
 then more text. Footnote reference¹ and another².
 

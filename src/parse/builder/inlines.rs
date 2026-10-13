@@ -11,7 +11,7 @@ use crate::ir::{
     Block, FootnoteId, ImageId, ImageRef, InlineFlags, Inlines, Link, LinkId, LinkKind, MathBlock,
     Run, RunKind, Target,
 };
-use crate::parse::inline::{Style, url_break_points};
+use crate::parse::inline::{Style, normalize_atoms, url_constraints};
 use crate::parse::{linkify, target};
 use crate::text::sanitize::sanitize;
 
@@ -69,12 +69,18 @@ impl Builder {
                 });
                 links.push((f.range.clone(), id));
                 if !f.email {
-                    url_break_points(&inl.text, f.range.clone(), &mut inl.extra_breaks);
+                    url_constraints(
+                        &inl.text,
+                        f.range.clone(),
+                        &mut inl.extra_breaks,
+                        &mut inl.atoms,
+                    );
                 }
             }
             inl.runs = split_at_links(&inl.runs, &links);
             inl.extra_breaks.sort_unstable();
             inl.extra_breaks.dedup();
+            normalize_atoms(&mut inl.atoms);
         }
         self.found = found;
     }

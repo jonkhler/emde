@@ -5,7 +5,8 @@ expression: "dump(\"edge-cases\")"
 h1 H0: "Edge cases"
 para: "Control characters are shown, never executed: ␛[31m red? ␛[2J"
 para: "A very long URL: " "https://example.com/a/very/long/path/that/keeps/going/and/going?with=query&and=more#fragment"[L0]
-  breaks [25, 37, 39, 44, 49, 54, 59, 65, 71, 75, 81, 86, 92, 96, 101]
+  atoms 17..37 37..39 39..44 44..49 49..54 54..59 59..65 65..71 71..75 75..81 81..86 86..92 92..96 96..101 101..109
+  breaks [37, 39, 44, 49, 54, 59, 65, 71, 75, 81, 86, 92, 96, 101]
 para: "Soft\u{ad}hyphen\u{ad}ated words and no\u{a0}break\u{a0}spaces."
 para: "Unclosed " "bold that ends with the paragraph"[strong]
 para: "Next paragraph is not bold. Unknown tags keep text."
