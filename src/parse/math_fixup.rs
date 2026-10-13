@@ -5,6 +5,10 @@
 //!
 //! * **Digit rule.** A closing `$` followed by an ASCII digit does not
 //!   close math (`$5-$10` stays prose): such `InlineMath` reverts to text.
+//! * **Shell variables.** Neither does a `$` that starts another shell
+//!   variable after one (`$PATH:$HOME`): math that starts with an
+//!   upper-case name of two or more characters, closed by a `$` with a
+//!   letter or `_` after it. `$n$th` stays math.
 //! * **GitHub's `` $`…`$ `` form**: the backticks are stripped.
 //! * **`\(…\)` and `\[…\]`** (when enabled). CommonMark reads `\(` as an
 //!   escaped `(`: the `Text` event starts at the `(` and the backslash
@@ -373,10 +377,9 @@ fn fix_inline_math<'a>(item: Item<'a>, src: &str) -> Item<'a> {
     let (Event::InlineMath(tex), range) = item else {
         return item;
     };
-    if src
-        .as_bytes()
-        .get(range.end)
-        .is_some_and(u8::is_ascii_digit)
+    let next = src.as_bytes().get(range.end).copied();
+    if next.is_some_and(|b| b.is_ascii_digit())
+        || (next.is_some_and(|b| b.is_ascii_alphabetic() || b == b'_') && is_shell_name(&tex))
     {
         return (Event::Text(CowStr::from(format!("${tex}$"))), range);
     }
@@ -384,6 +387,16 @@ fn fix_inline_math<'a>(item: Item<'a>, src: &str) -> Item<'a> {
         Some(inner) => (Event::InlineMath(CowStr::from(inner.to_string())), range),
         None => (Event::InlineMath(tex), range),
     }
+}
+
+/// Whether `tex` starts like a shell variable's name: an upper-case
+/// letter or `_`, then at least one more of those or digits.
+fn is_shell_name(tex: &str) -> bool {
+    let name = tex
+        .bytes()
+        .take_while(|b| b.is_ascii_uppercase() || b.is_ascii_digit() || *b == b'_')
+        .count();
+    name >= 2 && tex.bytes().next().is_some_and(|b| !b.is_ascii_digit())
 }
 
 /// `` `x` `` (GitHub's `` $`x`$ `` form) → `x`; `None` if not in that form.
@@ -438,6 +451,26 @@ mod tests {
             show("from $x$ to $y$2", true),
             r#"t"from " $"x" t" to " t"$y$" t"2""#
         );
+    }
+
+    /// Found in real READMEs: `PATH=$PATH:$HOME/bin` lost its dollars to
+    /// math.
+    #[test]
+    fn shell_variables_stay_prose() {
+        assert_eq!(
+            show("Set PATH=$PATH:$HOME/bin now.", true),
+            r#"t"Set PATH=" t"$PATH:$" t"HOME/bin now.""#
+        );
+        assert_eq!(
+            show("$LD_LIBRARY_PATH:$X", true),
+            r#"t"$LD_LIBRARY_PATH:$" t"X""#
+        );
+        // Ordinary math, before letters too.
+        assert_eq!(show("the $n$th one", true), r#"t"the " $"n" t"th one""#);
+        assert_eq!(show("$AB$", true), r#"$"AB""#);
+        assert_eq!(show("$X$s", true), r#"$"X" t"s""#);
+        assert!(!is_shell_name("1A"));
+        assert!(is_shell_name("_A"));
     }
 
     #[test]
