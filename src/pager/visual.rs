@@ -342,10 +342,10 @@ fn is_code_header(layout: &Layout, i: usize) -> bool {
         return false;
     }
     let panel = matches!(line.fill, Fill::Panel { .. }) && line.fill == next.fill;
-    let frame = layout
-        .line_text(i)
-        .trim_start()
-        .starts_with(|c: char| is_border(c, true));
+    // A frame's top border: a corner (`+-` in ASCII).
+    let text = layout.line_text(i);
+    let text = text.trim_start();
+    let frame = text.starts_with(['┌', '╭', '┏', '╔']) || text.starts_with("+-");
     panel || frame
 }
 

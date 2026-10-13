@@ -1726,14 +1726,18 @@ fn go_file(state: &mut State, i: usize) -> Vec<Effect> {
     let Some(key) = state.files.get(i).cloned() else {
         return Vec::new();
     };
-    // Back where the reader last was in it, as less does.
-    let restore = state
-        .history
-        .back
-        .iter()
-        .rev()
-        .find(|v| v.key == key)
-        .map(|v| v.place);
+    // Back where the reader last was in another file, as less does.
+    let restore = if key == state.page.key {
+        None
+    } else {
+        state
+            .history
+            .back
+            .iter()
+            .rev()
+            .find(|v| v.key == key)
+            .map(|v| v.place)
+    };
     let request = LoadRequest {
         path: key.path().map(PathBuf::from).unwrap_or_default(),
         anchor: None,
