@@ -288,3 +288,45 @@ fn a_reload_with_fewer_headings_keeps_the_selection_in_range() {
     assert_eq!(s.mode, Mode::Normal);
     assert_eq!(s.back_len(), 1, "it went to Two (all on screen)");
 }
+
+#[test]
+fn the_sidebar_rows_fill_its_width_exactly() {
+    let mut s = wide(&long_doc(3, 1), 150, 12);
+    let ctx = Ctx::new(&Theme::test(), &Caps::full());
+    let side = |s: &State| -> Vec<String> {
+        view(s, &ctx)
+            .lines
+            .iter()
+            .take(s.view_rows())
+            .map(|r| plain(&String::from_utf8_lossy(&r.side)))
+            .collect()
+    };
+    for row in side(&s) {
+        assert_eq!(crate::text::str_width(&row, false), 32, "{row:?}");
+        assert!(row.ends_with('│'), "{row:?}");
+    }
+    // Where ambiguous characters are wide, the border and the marker are
+    // ASCII (box glyphs would take two columns).
+    s.settings.ambiguous_wide = true;
+    let rows = side(&s);
+    assert!(rows.iter().all(|r| r.ends_with('|')), "{rows:?}");
+    assert!(rows.iter().any(|r| r.contains("> ")), "{rows:?}");
+}
+
+/// `s` without its SGR sequences.
+fn plain(s: &str) -> String {
+    let mut out = String::new();
+    let mut chars = s.chars();
+    while let Some(c) = chars.next() {
+        if c == '\u{1b}' {
+            for c in chars.by_ref() {
+                if c == 'm' {
+                    break;
+                }
+            }
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}

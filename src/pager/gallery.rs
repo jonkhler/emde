@@ -124,13 +124,17 @@ pub(crate) fn locate(src: &str, base: &Path) -> Option<Location> {
         }
         Target::External => {
             if let Some(rest) = src.strip_prefix("//") {
-                return Some(Location::Url(format!("https://{rest}")));
+                return crate::render::osc8::encode_url(&format!("https://{rest}"))
+                    .map(Location::Url);
             }
+            // Only `http(s)`, made safe to pass on (as remote images are).
             let scheme = src.split_once(':').map_or("", |(s, _)| s);
-            ["http", "https"]
+            let web = ["http", "https"]
                 .iter()
-                .any(|s| scheme.eq_ignore_ascii_case(s))
-                .then(|| Location::Url(src.to_owned()))
+                .any(|s| scheme.eq_ignore_ascii_case(s));
+            web.then(|| crate::render::osc8::encode_url(src))
+                .flatten()
+                .map(Location::Url)
         }
         Target::Anchor(_) | Target::Email | Target::Footnote(_) => None,
     }
@@ -167,6 +171,11 @@ fn figure_src(img: &ImageRef) -> &str {
     } else {
         &img.src
     }
+}
+
+/// A local file as the gallery knows it.
+pub(crate) fn file(path: &Path) -> Location {
+    Location::File(tidy(path))
 }
 
 /// Where the image of figure `id` of the current document is.
@@ -254,8 +263,8 @@ pub(crate) fn build(state: &State, extra: Option<&Path>) -> Vec<Picture> {
         let at = match link_location(state, o) {
             Some(at) => at,
             None => match (extra, doc.link(o.link)) {
-                (Some(file), Some(link)) if !o.back => match locate(&link.url, &base) {
-                    Some(Location::File(p)) if p == tidy(file) => Location::File(p),
+                (Some(path), Some(link)) if !o.back => match locate(&link.url, &base) {
+                    Some(Location::File(p)) if p == tidy(path) => Location::File(p),
                     _ => continue,
                 },
                 _ => continue,
@@ -415,6 +424,16 @@ mod tests {
         // Relative base directories stay relative.
         assert_eq!(locate("a.png", Path::new(".")), file("a.png"));
         assert_eq!(short_name("data:image/png;base64,AAAA"), "data:image/png");
+        // URLs are made safe to pass on.
+        assert_eq!(
+            locate("https://e.com/a b.png", base),
+            Some(Location::Url("https://e.com/a%20b.png".into()))
+        );
+        assert_eq!(locate("https://e.com/\u{1b}.png", base), None);
+        assert_eq!(
+            super::file(Path::new("/d/./x.png")),
+            Location::File("/d/x.png".into())
+        );
         assert_eq!(short_name(" figures/x.png "), "figures/x.png");
     }
 

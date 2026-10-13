@@ -439,7 +439,7 @@ pub struct Settings {
     pub remote_images: bool,
 }
 
-/// The outline sidebar's settings (see [`super::sidebar`]).
+/// The outline sidebar's settings (`[pager] toc_sidebar` and `toc_width`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SidebarSettings {
     /// `pager.toc_sidebar`.

@@ -985,8 +985,11 @@ fn sidebar(state: &State, ctx: &Ctx, rows: &mut [Building]) {
         Mode::Sidebar(i) => Some(i),
         _ => None,
     };
-    let [.., bar] = box_glyphs(ascii);
-    let marker = if ascii { "> " } else { "▸ " };
+    // Box glyphs are East Asian Ambiguous: two columns wide where those
+    // are, which the sidebar's border cannot be.
+    let plain = ascii || amb;
+    let [.., bar] = box_glyphs(plain);
+    let marker = if plain { "> " } else { "▸ " };
     // A space, the entry, a space, the border.
     let inner = width.saturating_sub(3);
     for (r, row) in rows.iter_mut().enumerate() {

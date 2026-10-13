@@ -186,17 +186,21 @@ fn clicking_a_figure_shown_as_an_image_views_it() {
         cols: 10,
         rows: 1,
     });
+    // (Without the link on its label, which a click would follow.)
+    l.link_hits.retain(|h| h.line as usize != line);
     drive(&mut s, Action::Layout(l));
-    let col = s.layout().indent + 40;
-    let effects = drive(
-        &mut s,
-        Action::Mouse(Mouse {
-            kind: MouseKind::Press(Button::Left),
-            col,
-            row: u16::try_from(line).unwrap(),
-        }),
-    );
-    assert_eq!(effects, [Effect::ShowImage]);
+    let click = |s: &mut State, col: u16| {
+        drive(
+            s,
+            Action::Mouse(Mouse {
+                kind: MouseKind::Press(Button::Left),
+                col: s.layout().indent + col,
+                row: u16::try_from(line).unwrap(),
+            }),
+        )
+    };
+    assert_eq!(click(&mut s, 40), [], "beside the image");
+    assert_eq!(click(&mut s, 3), [Effect::ShowImage]);
     assert_eq!(s.image_view(), Some((3, 4)), "the arch figure");
 }
 
@@ -286,6 +290,18 @@ fn files_that_turn_out_to_be_images() {
     // The shell sniffed it.
     assert_eq!(drive(&mut s, Action::ViewFile(path)), [Effect::ShowImage]);
     assert_eq!(s.image_view(), Some((2, 5)));
+    // Written with `./`, it is the same file.
+    let mut s = state_for(
+        pdoc("[shot](./shots/screen)\n", Origin::File(file("x.md"))),
+        60,
+        10,
+    );
+    let effects = drive(
+        &mut s,
+        Action::ViewFile(PathBuf::from("/virtual/./shots/screen")),
+    );
+    assert_eq!(effects, [Effect::ShowImage]);
+    assert_eq!(s.image_view(), Some((0, 1)));
     // A file no link leads to is not in the gallery.
     let mut s = pics();
     drive(&mut s, Action::ViewFile(PathBuf::from("/elsewhere/x")));

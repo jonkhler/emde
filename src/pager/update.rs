@@ -257,9 +257,7 @@ fn apply(state: &mut State, action: Action) -> Vec<Effect> {
             }
             Vec::new()
         }
-        Action::ViewFile(path) => {
-            view_image(state, Some(Location::File(path.clone())), Some(&path))
-        }
+        Action::ViewFile(path) => view_image(state, Some(gallery::file(&path)), Some(&path)),
     }
 }
 
@@ -1734,9 +1732,12 @@ fn click(state: &mut State, col: u16, row: u16) -> Vec<Effect> {
             }
             // A figure shown as an image: the image view.
             let figure = match state.layout.lines.get(line).map(|l| l.kind) {
-                Some(LineKind::Image { placement, .. }) => {
-                    state.layout.images.get(placement as usize).map(|p| p.image)
-                }
+                Some(LineKind::Image { placement, .. }) => state
+                    .layout
+                    .images
+                    .get(placement as usize)
+                    .filter(|p| (p.col..p.col.saturating_add(p.cols)).contains(&col))
+                    .map(|p| p.image),
                 _ => None,
             };
             match figure {
