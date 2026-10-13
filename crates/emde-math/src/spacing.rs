@@ -180,8 +180,9 @@ fn pair_bars(
     if left == [0, 0] {
         return nesting;
     }
-    // The bars still open: their kind, index and class before opening.
-    let mut open: Vec<(char, usize, Option<(Class, Class)>)> = Vec::new();
+    /// A bar still open: its kind, index and classes before opening.
+    type OpenBar = (char, usize, Option<(Class, Class)>);
+    let mut open: Vec<OpenBar> = Vec::new();
     let mut prev = lead;
     for (i, found) in bars.iter().enumerate() {
         if let Some((c, scripted)) = *found {
