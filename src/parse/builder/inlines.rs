@@ -286,8 +286,25 @@ impl Builder {
             let text = leaf.buf.text().get(frame.start..end).unwrap_or("");
             let text = text.trim_end_matches(' ');
             let url_end = frame.start + text.len();
-            if frame.url_like || linkify::looks_like_url(text) {
+            // A URL breaks only at its break points; in link text with a
+            // URL among other words, so does each URL, and the words wrap.
+            if frame.url_like || linkify::is_url(text) {
                 leaf.buf.url_breaks(frame.start..url_end);
+            } else if linkify::looks_like_url(text) {
+                let mut at = frame.start;
+                let urls: Vec<_> = text
+                    .split(' ')
+                    .map(|word| {
+                        let range = at..at + word.len();
+                        at += word.len() + 1;
+                        (range, linkify::is_url(word))
+                    })
+                    .filter(|(_, url)| *url)
+                    .map(|(range, _)| range)
+                    .collect();
+                for range in urls {
+                    leaf.buf.url_breaks(range);
+                }
             }
         }
     }

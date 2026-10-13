@@ -936,6 +936,30 @@ fn urls_move_whole_else_break_at_their_slashes() {
     );
 }
 
+/// Found in review: link text with a URL among other words wraps as words
+/// (it became URL pieces that could not break, and one block).
+#[test]
+fn link_text_with_a_url_among_words_wraps_as_words() {
+    let md =
+        "See [the manual at https://example.com/manual for details](https://example.com/manual).";
+    let (d, l) = lay(md, 30);
+    check(&l, &d);
+    assert_eq!(
+        lines(&l)[..3],
+        [
+            "See the manual at",
+            "https://example.com/manual",
+            "for details[1]."
+        ]
+    );
+    let (_, l) = lay(md, 80);
+    assert!(
+        lines(&l)[0].starts_with("See the manual at https://"),
+        "{:?}",
+        lines(&l)
+    );
+}
+
 /// Found in real READMEs: a reference number alone on a line after link
 /// text ending in `)` or `.`, and image chips split inside their label.
 #[test]

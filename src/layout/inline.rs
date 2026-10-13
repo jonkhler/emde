@@ -481,7 +481,7 @@ fn url_groups(inl: &Inlines) -> Vec<Range<u32>> {
         }
         prev = run.link;
     }
-    out.retain(|g| crate::parse::looks_like_url(inl.slice(g.clone())));
+    out.retain(|g| crate::parse::is_url(inl.slice(g.clone())));
     out
 }
 
@@ -716,7 +716,7 @@ impl<'a> Builder<'a> {
                 out.atom(r);
             }
             // A URL is kept whole where it fits a line.
-            if link_ends && crate::parse::looks_like_url(inl.slice(link_start..range.end)) {
+            if link_ends && crate::parse::is_url(inl.slice(link_start..range.end)) {
                 let end = out.len();
                 out.groups.push(link_out_start..end);
             }
