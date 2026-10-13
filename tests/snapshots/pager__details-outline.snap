@@ -1,0 +1,27 @@
+---
+source: tests/pager.rs
+expression: outline
+---
+ 1│   Guide                                                    │
+ 2│  ╭─ Outline ────────────────────────────────────────────╮  │
+ 3│  │ type to filter                                       │  │
+ 4│  │▸ Guide                                               │  │
+  │   ======================================================│
+ 5│  │    Install steps                                     │  │
+ 6│  ╰─ 1/2 ────────────────────────────────────────────────╯  │
+ 7│  Middle text.                                              │
+ 8│                                                            │
+ 9│  ▾ Notes                                                   │
+10│    Open by default.                                        │
+11│                                                            │
+12│  The end.                                                  │
+13│                                                            │
+14│  More text.                                                │
+15│                                                            │
+16│  More text.                                                │
+17│                                                            │
+18│  More text.                                                │
+19│                                                            │
+20│ text › Guide                                    L 1/52 36% │
+dimmed:
+ 5│   -----------------│
