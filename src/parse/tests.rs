@@ -1044,6 +1044,29 @@ fn html_modes() {
         },
     );
     assert_eq!(paras(&strip), ["x", "a b c"]);
+    // Found in the plan audit: "strip" rendered the subset. Now tags only
+    // end lines and paragraphs; links, images, headings, alignment and
+    // collapsible blocks are gone, their text kept.
+    let src = "<p align=\"center\"><a href=\"https://x.org\"><img src=\"l.png\" alt=\"Logo\"></a></p>\n\
+               <h2>Title</h2>\n<details><summary>More</summary>Hidden<br>text</details>\n\n\
+               a <b>b</b> <a href=\"https://y.org\">c</a><script>bad()</script>\n";
+    let strip = doc_with(
+        src,
+        &ParseOptions {
+            html: HtmlMode::Strip,
+            ..ParseOptions::default()
+        },
+    );
+    assert_eq!(paras(&strip), ["Title", "More", "Hidden\ntext", "a b c"]);
+    assert!(
+        strip.links.is_empty() && strip.images.is_empty(),
+        "{strip:#?}"
+    );
+    assert!(
+        strip.blocks.iter().all(|b| matches!(b, Block::Para(_))),
+        "{:#?}",
+        strip.blocks
+    );
 }
 
 // ----- robustness -----------------------------------------------------------------------------
