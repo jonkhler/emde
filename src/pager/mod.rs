@@ -69,6 +69,7 @@
 //! ```
 
 mod diff;
+mod gallery;
 mod hints;
 mod images;
 pub mod keymap;

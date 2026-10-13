@@ -215,7 +215,7 @@ back to it, and `''` to where you were before the last jump.
 | `?` | search backward |
 | `n` | next match |
 | `N` | previous match |
-| `Esc` | clear the zoomed image, the search, the link focus |
+| `Esc` | clear the search, the link focus |
 
 **Links**
 
@@ -232,7 +232,7 @@ back to it, and `''` to where you were before the last jump.
 
 | Keys | Action |
 |---|---|
-| `f` | hints: follow a link, go to a heading or block, zoom an image |
+| `f` | hints: follow a link, go to a heading or block, view an image |
 | `y` | copy the focused link's URL, else hints: copy code, math, a table… |
 | `v` | hints: select a block (Visual mode) |
 | `V` | Visual mode: select lines |
@@ -245,6 +245,7 @@ back to it, and `''` to where you were before the last jump.
 | `r` | reload the file |
 | `R` | watch the file for changes, on or off |
 | `i` | cycle the image mode |
+| `gi` | image view: the document's images, from the first |
 | `w` | full width, on or off |
 | `M` | mouse, on or off (off: select text) |
 | `:` | command: :n next file, :p previous file, :q quit |
@@ -322,6 +323,19 @@ back to it, and `''` to where you were before the last jump.
 | `Enter` | go to the heading |
 | `Esc` `q` `^C` | back to the document |
 | `T` | hide the sidebar |
+
+**In the image view**
+
+| Keys | Action |
+|---|---|
+| `n` `j` `→` `Space` `PgDn` | next image |
+| `p` `k` `←` `Backspace` `PgUp` | previous image |
+| `g` `Home` | first image |
+| `G` `End` | last image |
+| `y` | copy the image's path or URL |
+| `o` | open the image with the system's opener |
+| `i` | cycle the image mode |
+| `Esc` `q` `^C` | back to the text, where it was |
 
 **With hints**
 

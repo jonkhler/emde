@@ -12,12 +12,13 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
 use crate::config::{PagerOptions, SearchCase};
-use crate::ir::{Document, HeadingId, ImageId, LinkId, SrcPos};
+use crate::ir::{Document, HeadingId, LinkId, SrcPos};
 use crate::layout::Layout;
 use crate::options::{FrontMatterMode, RenderOptions, When};
 use crate::source::{Origin, Source};
 
 use super::PagerDoc;
+use super::gallery::Picture;
 use super::hints::Target;
 use super::keymap::{Command, Keymap};
 use super::search::{Corpus, Search};
@@ -275,6 +276,41 @@ pub(crate) enum Mode {
     /// The keys move in the outline sidebar: the selected entry (an index
     /// into [`Derived::headings`]).
     Sidebar(usize),
+    /// The image view.
+    Image(Viewer),
+}
+
+/// The image view: a gallery and the image shown.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct Viewer {
+    /// Every image of the document ([`super::gallery::build`]).
+    pub(crate) gallery: Rc<[Picture]>,
+    /// The one shown.
+    pub(crate) index: usize,
+}
+
+/// What the image view shows, from the shell: a document of one figure
+/// laid out to fill the screen.
+#[derive(Clone, Debug)]
+pub(crate) struct ImagePage {
+    pub(crate) doc: Document,
+    /// Without a figure placement when the image cannot be shown.
+    pub(crate) layout: Layout,
+    /// The image's size in pixels, when it was read.
+    pub(crate) pixels: Option<(u32, u32)>,
+    /// Why it cannot be shown.
+    pub(crate) problem: Option<String>,
+}
+
+/// What the document rows of the screen show: the document, or the image
+/// view's figure.
+pub(crate) struct Showing<'a> {
+    pub(crate) doc: &'a Document,
+    pub(crate) layout: &'a Layout,
+    /// The line on the first row.
+    pub(crate) top: usize,
+    /// The image view.
+    pub(crate) image: bool,
 }
 
 /// A message in the status bar, shown until the next key.
@@ -398,6 +434,9 @@ pub struct Settings {
     pub glyphs: (String, String),
     /// The outline sidebar.
     pub sidebar: SidebarSettings,
+    /// Remote images are fetched (`images.remote`): links to them open in
+    /// the image view.
+    pub remote_images: bool,
 }
 
 /// The outline sidebar's settings (see [`super::sidebar`]).
@@ -428,6 +467,7 @@ impl Settings {
                 width: pager.toc_width,
                 auto_cols: sidebar::auto_cols(pager.toc_width, render.max_width, render.margin),
             },
+            remote_images: render.images.remote,
         }
     }
 }
@@ -484,8 +524,8 @@ pub struct State {
     /// Marks `a`–`z` of each document, and `'`: where the reader was
     /// before the last jump.
     marks: Vec<(DocKey, char, Place)>,
-    /// The figure shown at full size (`f` on an image).
-    pub(crate) zoom: Option<ImageId>,
+    /// What the image view shows (with [`Mode::Image`]).
+    pub(crate) image: Option<ImagePage>,
     /// The outline sidebar.
     pub(crate) sidebar: Sidebar,
     next_unnamed: u32,
@@ -537,7 +577,7 @@ impl State {
             keys: Vec::new(),
             awaiting: None,
             marks: Vec::new(),
-            zoom: None,
+            image: None,
             sidebar: Sidebar::default(),
             next_unnamed: 1,
             next_link_base: links,
@@ -751,9 +791,40 @@ impl State {
         self.wide
     }
 
-    /// The figure shown at full size, if any.
-    pub fn zoom(&self) -> Option<ImageId> {
-        self.zoom
+    /// The image view's position in its gallery and the gallery's size:
+    /// `Some((0, 3))` on the first of three images.
+    pub fn image_view(&self) -> Option<(usize, usize)> {
+        match &self.mode {
+            Mode::Image(v) => Some((v.index, v.gallery.len())),
+            _ => None,
+        }
+    }
+
+    /// The image the image view shows.
+    pub(crate) fn viewed(&self) -> Option<&Picture> {
+        match &self.mode {
+            Mode::Image(v) => v.gallery.get(v.index),
+            _ => None,
+        }
+    }
+
+    /// What the document rows show: the image view's figure once it is laid
+    /// out, else the document.
+    pub(crate) fn showing(&self) -> Showing<'_> {
+        match (&self.mode, &self.image) {
+            (Mode::Image(_), Some(page)) => Showing {
+                doc: &page.doc,
+                layout: &page.layout,
+                top: 0,
+                image: true,
+            },
+            _ => Showing {
+                doc: &self.page.doc,
+                layout: &self.layout,
+                top: self.top,
+                image: false,
+            },
+        }
     }
 
     /// Whether keys of an unfinished sequence wait for the next key (the
@@ -802,6 +873,7 @@ impl State {
             Mode::Command(_) => "command",
             Mode::Visual(_) => "visual",
             Mode::Sidebar(_) => "sidebar",
+            Mode::Image(_) => "image",
         }
     }
 

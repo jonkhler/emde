@@ -548,7 +548,7 @@ one bound later, an action of your file winning over a default one; `emde
 | `?` | search backward | `search-backward` |
 | `n` | next match | `next-match` |
 | `N` | previous match | `prev-match` |
-| `Esc` | clear the zoomed image, the search, the link focus | `clear-search` |
+| `Esc` | clear the search, the link focus | `clear-search` |
 
 **Links**
 
@@ -565,7 +565,7 @@ one bound later, an action of your file winning over a default one; `emde
 
 | Keys | Action | Name |
 |---|---|---|
-| `f` | hints: follow a link, go to a heading or block, zoom an image | `hints-follow` |
+| `f` | hints: follow a link, go to a heading or block, view an image | `hints-follow` |
 | `y` | copy the focused link's URL, else hints: copy code, math, a table… | `yank-hints` |
 | `v` | hints: select a block (Visual mode) | `visual-hints` |
 | `V` | Visual mode: select lines | `visual-line` |
@@ -578,6 +578,7 @@ one bound later, an action of your file winning over a default one; `emde
 | `r` | reload the file | `reload` |
 | `R` | watch the file for changes, on or off | `toggle-watch` |
 | `i` | cycle the image mode | `cycle-images` |
+| `gi` | image view: the document's images, from the first | `gallery` |
 | `w` | full width, on or off | `toggle-width` |
 | `M` | mouse, on or off (off: select text) | `toggle-mouse` |
 | `:` | command: :n next file, :p previous file, :q quit | `command-line` |
@@ -655,6 +656,19 @@ one bound later, an action of your file winning over a default one; `emde
 | `Enter` | go to the heading | `sidebar-jump` |
 | `Esc` `q` `^C` | back to the document | `sidebar-leave` |
 | `T` | hide the sidebar | `sidebar-hide` |
+
+**In the image view**
+
+| Keys | Action | Name |
+|---|---|---|
+| `n` `j` `→` `Space` `PgDn` | next image | `image-next` |
+| `p` `k` `←` `Backspace` `PgUp` | previous image | `image-prev` |
+| `g` `Home` | first image | `image-first` |
+| `G` `End` | last image | `image-last` |
+| `y` | copy the image's path or URL | `image-yank` |
+| `o` | open the image with the system's opener | `image-open` |
+| `i` | cycle the image mode | `image-cycle` |
+| `Esc` `q` `^C` | back to the text, where it was | `image-close` |
 
 **With hints**
 

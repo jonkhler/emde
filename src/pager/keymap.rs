@@ -49,6 +49,8 @@ pub enum Context {
     Command,
     /// The keys in the outline sidebar.
     Sidebar,
+    /// The image view.
+    Image,
 }
 
 impl Context {
@@ -77,13 +79,14 @@ pub enum Section {
     Command,
     Outline,
     Sidebar,
+    Image,
     Hints,
     Help,
 }
 
 impl Section {
     /// Every section, in help order.
-    pub const ALL: [Section; 13] = [
+    pub const ALL: [Section; 14] = [
         Section::Scroll,
         Section::Jump,
         Section::Search,
@@ -95,6 +98,7 @@ impl Section {
         Section::Command,
         Section::Outline,
         Section::Sidebar,
+        Section::Image,
         Section::Hints,
         Section::Help,
     ];
@@ -106,6 +110,7 @@ impl Section {
             Section::Prompt => Context::Prompt,
             Section::Outline => Context::Outline,
             Section::Sidebar => Context::Sidebar,
+            Section::Image => Context::Image,
             Section::Hints => Context::Hints,
             Section::Help => Context::Help,
             Section::Command => Context::Command,
@@ -131,6 +136,7 @@ impl Section {
             Section::Prompt => "In the search prompt",
             Section::Outline => "In the outline",
             Section::Sidebar => "In the outline sidebar",
+            Section::Image => "In the image view",
             Section::Hints => "With hints",
             Section::Help => "In this help",
             Section::Command => "At the : prompt",
@@ -186,8 +192,10 @@ pub enum Command {
     /// Link hints: the label follows the link.
     LinkHints,
     /// Hints on everything worth acting on: the label follows a link, goes
-    /// to a heading or a block, zooms an image.
+    /// to a heading or a block, shows an image in the image view.
     FollowHints,
+    /// The image view at the document's first image.
+    Gallery,
     /// The focused link's URL, or hints: the label copies what it is on.
     YankHints,
     /// Hints: the label selects what it is on (Visual mode).
@@ -239,6 +247,16 @@ pub enum Command {
     SidebarLeave,
     /// Hide the sidebar.
     SidebarHide,
+    ImageNext,
+    ImagePrev,
+    ImageFirst,
+    ImageLast,
+    /// Back to the text, where it was.
+    ImageClose,
+    /// Copy the image's path or URL.
+    ImageYank,
+    /// Open the image with the system's opener.
+    ImageOpen,
     HintsCancel,
     HintsErase,
     HelpDown,
@@ -325,14 +343,14 @@ pub const BINDINGS: &[Binding] = &[
     bind!(Search, "search-backward", "?", SearchBackward, "search backward"),
     bind!(Search, "next-match", "n", NextMatch, "next match"),
     bind!(Search, "prev-match", "N", PrevMatch, "previous match"),
-    bind!(Search, "clear-search", "Esc", ClearSearch, "clear the zoomed image, the search, the link focus"),
+    bind!(Search, "clear-search", "Esc", ClearSearch, "clear the search, the link focus"),
     bind!(Links, "focus-next", "Tab", FocusNext, "focus the next link"),
     bind!(Links, "focus-prev", "S-Tab", FocusPrev, "focus the previous link"),
     bind!(Links, "follow", "Enter", Follow, "follow the focused link"),
     bind!(Links, "link-hints", "o", LinkHints, "link hints: type a label to follow"),
     bind!(Links, "back", "Backspace,H", Back, "back"),
     bind!(Links, "forward", "L", Forward, "forward"),
-    bind!(Pick, "hints-follow", "f", FollowHints, "hints: follow a link, go to a heading or block, zoom an image"),
+    bind!(Pick, "hints-follow", "f", FollowHints, "hints: follow a link, go to a heading or block, view an image"),
     bind!(Pick, "yank-hints", "y", YankHints, "copy the focused link's URL, else hints: copy code, math, a table…"),
     bind!(Pick, "visual-hints", "v", VisualHints, "hints: select a block (Visual mode)"),
     bind!(Pick, "visual-line", "V", VisualLine, "Visual mode: select lines"),
@@ -340,6 +358,7 @@ pub const BINDINGS: &[Binding] = &[
     bind!(Other, "reload", "r", Reload, "reload the file"),
     bind!(Other, "toggle-watch", "R", ToggleWatch, "watch the file for changes, on or off"),
     bind!(Other, "cycle-images", "i", CycleImages, "cycle the image mode"),
+    bind!(Other, "gallery", "gi", Gallery, "image view: the document's images, from the first"),
     bind!(Other, "toggle-width", "w", ToggleWidth, "full width, on or off"),
     bind!(Other, "toggle-mouse", "M", ToggleMouse, "mouse, on or off (off: select text)"),
     bind!(Other, "command-line", ":", CommandLine, "command: :n next file, :p previous file, :q quit"),
@@ -398,6 +417,14 @@ pub const BINDINGS: &[Binding] = &[
     bind!(Sidebar, "sidebar-jump", "Enter", SidebarJump, "go to the heading"),
     bind!(Sidebar, "sidebar-leave", "Esc,q,C-c", SidebarLeave, "back to the document"),
     bind!(Sidebar, "sidebar-hide", "T", SidebarHide, "hide the sidebar"),
+    bind!(Image, "image-next", "n,j,Right,Space,PgDn", ImageNext, "next image"),
+    bind!(Image, "image-prev", "p,k,Left,Backspace,PgUp", ImagePrev, "previous image"),
+    bind!(Image, "image-first", "g,Home", ImageFirst, "first image"),
+    bind!(Image, "image-last", "G,End", ImageLast, "last image"),
+    bind!(Image, "image-yank", "y", ImageYank, "copy the image's path or URL"),
+    bind!(Image, "image-open", "o", ImageOpen, "open the image with the system's opener"),
+    bind!(Image, "image-cycle", "i", CycleImages, "cycle the image mode"),
+    bind!(Image, "image-close", "Esc,q,C-c", ImageClose, "back to the text, where it was"),
     bind!(Hints, "hints-cancel", "Esc,C-c", HintsCancel, "cancel"),
     bind!(Hints, "hints-erase", "Backspace", HintsErase, "delete a label character"),
     bind!(Help, "help-down", "j,Down", HelpDown, "down a line"),
@@ -924,6 +951,7 @@ mod tests {
             Context::Help,
             Context::Command,
             Context::Sidebar,
+            Context::Image,
         ] {
             assert_eq!(lookup(context, ctrl('z')), Some(Command::Suspend));
             assert_eq!(lookup(context, ctrl('l')), Some(Command::Redraw));

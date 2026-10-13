@@ -314,9 +314,21 @@ fn draw_pieces(
 /// The screen for `state`; see the module docs.
 pub fn view(state: &State, ctx: &Ctx) -> Frame {
     let rows = usize::from(state.rows);
-    let left = state.left();
+    let showing = state.showing();
+    let viewer = match &state.mode {
+        Mode::Image(v) => Some(v),
+        _ => None,
+    };
+    let left = if viewer.is_some() { 0 } else { state.left() };
     let mut building: Vec<Building> = Vec::with_capacity(rows);
-    if rows > 0 && state.cols > 0 {
+    if rows > 0 && state.cols > 0 && viewer.is_some() {
+        image_view(state, ctx, &mut building);
+        building.push(Building {
+            side: Vec::new(),
+            body: Body::Text(status_bar(state, ctx)),
+            overlays: Vec::new(),
+        });
+    } else if rows > 0 && state.cols > 0 {
         for r in 0..state.view_rows() {
             let index = state.top + r;
             let body = if index < state.layout.len() {
@@ -341,7 +353,11 @@ pub fn view(state: &State, ctx: &Ctx) -> Frame {
             Mode::Help { scroll } => help(state, ctx, *scroll, &mut building),
             Mode::Hints(h) => hints(state, ctx, h, &mut building),
             Mode::Visual(_) => selection(state, ctx, &mut building),
-            Mode::Normal | Mode::Prompt(_) | Mode::Command(_) | Mode::Sidebar(_) => {}
+            Mode::Normal
+            | Mode::Prompt(_)
+            | Mode::Command(_)
+            | Mode::Sidebar(_)
+            | Mode::Image(_) => {}
         }
         building.push(Building {
             side: Vec::new(),
@@ -362,7 +378,7 @@ pub fn view(state: &State, ctx: &Ctx) -> Frame {
     Frame {
         cols: state.cols,
         rows: state.rows,
-        top: state.top,
+        top: showing.top,
         generation: state.generation,
         left,
         lines,
@@ -534,6 +550,9 @@ fn status_right(state: &State) -> String {
     if !typed.is_empty() {
         parts.push(typed);
     }
+    if matches!(state.mode, Mode::Image(_)) {
+        return parts.join("  ");
+    }
     if let Some(s) = &state.search {
         let plus = if s.capped { "+" } else { "" };
         let n = s.matches.len();
@@ -598,6 +617,18 @@ fn status_left<'a>(state: &'a State, ctx: &Ctx, room: usize) -> Vec<(Style, Cow<
     if let Some(m) = &state.message {
         let style = if m.error { st.error } else { st.message };
         return vec![(style, clean(&m.text))];
+    }
+    if let Mode::Image(v) = &state.mode {
+        // `image 3/7 · figures/loss.png · 1200×800`
+        let mut text = format!("image {}/{}", v.index + 1, v.gallery.len());
+        if let Some(p) = v.gallery.get(v.index) {
+            text.push_str(" · ");
+            text.push_str(&clean(&p.name));
+        }
+        if let Some((w, h)) = state.image.as_ref().and_then(|p| p.pixels) {
+            text.push_str(&format!(" · {w}×{h}"));
+        }
+        return vec![(st.status, Cow::Owned(text))];
     }
     let mode = match &state.mode {
         Mode::Visual(_) => Some((
@@ -881,6 +912,81 @@ fn help(state: &State, ctx: &Ctx, scroll: usize, rows: &mut [Building]) {
     };
     let bottom = y + usize::from(g.h) - 1;
     put_segment(rows, bottom, g.x, border(ctx, &g, false, more, ascii, amb));
+}
+
+/// The image view: the rows of its figure, or, when the image cannot be
+/// shown, a box in the middle of the screen with its alt text or caption,
+/// where it is, and why.
+fn image_view(state: &State, ctx: &Ctx, rows: &mut Vec<Building>) {
+    let page = state.image.as_ref();
+    let layout = page.map(|p| &p.layout);
+    let shown = layout.is_some_and(|l| !l.images.is_empty());
+    for r in 0..state.view_rows() {
+        let body = match layout {
+            Some(l) if shown && r < l.len() => Body::Line {
+                index: r,
+                marks: Vec::new(),
+            },
+            _ => Body::Blank,
+        };
+        rows.push(Building {
+            side: Vec::new(),
+            body,
+            overlays: Vec::new(),
+        });
+    }
+    let (Some(page), Some(picture)) = (page, state.viewed()) else {
+        return;
+    };
+    if shown {
+        return;
+    }
+    let st = &ctx.styles;
+    let amb = state.settings.ambiguous_wide;
+    let ascii = state.settings.ascii;
+    let mut lines: Vec<(Style, Cow<'_, str>)> = Vec::new();
+    if !picture.label.is_empty() {
+        lines.push((st.text, clean(&picture.label)));
+    }
+    lines.push((st.key, clean(&picture.name)));
+    if let Some(why) = &page.problem {
+        lines.push((st.muted, clean(why)));
+    }
+    let widest = lines
+        .iter()
+        .map(|(_, t)| str_width(t, amb))
+        .max()
+        .unwrap_or(0);
+    let cols = state.cols;
+    let w = u16::try_from(widest.saturating_add(4))
+        .unwrap_or(u16::MAX)
+        .clamp(cols.min(24), cols);
+    let area = u16::try_from(state.view_rows()).unwrap_or(u16::MAX);
+    let h = u16::try_from(lines.len() + 2).unwrap_or(u16::MAX).min(area);
+    let g = BoxGeom {
+        x: (cols - w) / 2,
+        y: (area - h) / 2,
+        w,
+        h,
+    };
+    if g.h < 3 || g.w < 4 {
+        return;
+    }
+    let y = usize::from(g.y);
+    put_segment(rows, y, g.x, border(ctx, &g, true, "", ascii, amb));
+    for (i, (style, text)) in lines.iter().take(g.inner_rows()).enumerate() {
+        let room = g.inner_cols().saturating_sub(2);
+        let text = ellipsize(text, room, amb);
+        let pieces = [(*style, Cow::Owned(format!(" {text}")))];
+        put_segment(
+            rows,
+            y + 1 + i,
+            g.x,
+            boxed(ctx, &g, &pieces, &st.text, ascii, amb),
+        );
+    }
+    let bottom = y + usize::from(g.h) - 1;
+    put_segment(rows, bottom, g.x, border(ctx, &g, false, "", ascii, amb));
 }
 
 /// The outline sidebar beside the document rows: one heading per row,

@@ -8,18 +8,21 @@
 //! ([`Action::Layout`], [`Action::Opened`], …).
 
 use std::mem;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
-use crate::layout::Layout;
+use crate::ir::Document;
+use crate::layout::{Layout, LineKind};
 
 use super::PagerDoc;
+use super::gallery::{self, Location};
 use super::hints::{self, Act};
 use super::keymap::{Command, Context};
 use super::links::{self, Follow};
 use super::search::Search;
 use super::state::{
-    Derived, DocKey, Focus, Goto, HintKind, Mode, Outline, Page, Place, Prompt, State, Visit,
+    Derived, DocKey, Focus, Goto, HintKind, ImagePage, Mode, Outline, Page, Place, Prompt, State,
+    Viewer, Visit,
 };
 use super::term::{Button, Key, KeyCode, Mouse, MouseKind};
 use super::{sidebar, toc, visual};
@@ -70,6 +73,19 @@ pub enum Action {
     /// figure sizes change (images on or off), so the document is laid out
     /// again at the same place.
     ImageMode { name: String, relayout: bool },
+    /// What the image view shows, after [`Effect::ShowImage`]: a document
+    /// of one figure, laid out to fill the screen (no figure placement when
+    /// the image cannot be shown); the image's size in pixels when it was
+    /// read, and why it cannot be shown.
+    ImageShown {
+        doc: Document,
+        layout: Layout,
+        pixels: Option<(u32, u32)>,
+        problem: Option<String>,
+    },
+    /// A link led to this local file (after [`Effect::ShowFile`]), and its
+    /// first bytes are an image's: show it in the image view.
+    ViewFile(PathBuf),
 }
 
 /// Something for the shell to do.
@@ -101,6 +117,12 @@ pub enum Effect {
     /// Switch to the next image mode (the shell answers with
     /// [`Action::ImageMode`]).
     CycleImages,
+    /// Lay out the image the image view shows (the shell answers with
+    /// [`Action::ImageShown`]).
+    ShowImage,
+    /// Open a local file (an image) with the system's opener (or copy its
+    /// path where opening is not possible).
+    OpenFile(PathBuf),
 }
 
 /// How a load moves through the history.
@@ -130,6 +152,11 @@ pub struct LoadRequest {
 /// Apply an action; see the module docs.
 pub fn update(state: &mut State, action: Action) -> Vec<Effect> {
     let effects = apply(state, action);
+    if state.image.is_some() && !matches!(state.mode, Mode::Image(_)) {
+        // The image view closed: the text is painted again.
+        state.image = None;
+        state.generation = state.generation.wrapping_add(1);
+    }
     sidebar::follow(state);
     effects
 }
@@ -203,11 +230,35 @@ fn apply(state: &mut State, action: Action) -> Vec<Effect> {
         }
         Action::ImageMode { name, relayout } => {
             state.say(format!("images: {name}"));
+            let mut out = Vec::new();
             if relayout {
                 state.pending = Some(Goto::Place(state.top_place()));
-                return vec![Effect::Relayout];
+                out.push(Effect::Relayout);
+            }
+            if matches!(state.mode, Mode::Image(_)) {
+                out.push(Effect::ShowImage);
+            }
+            out
+        }
+        Action::ImageShown {
+            doc,
+            layout,
+            pixels,
+            problem,
+        } => {
+            if matches!(state.mode, Mode::Image(_)) {
+                state.image = Some(ImagePage {
+                    doc,
+                    layout,
+                    pixels,
+                    problem,
+                });
+                state.generation = state.generation.wrapping_add(1);
             }
             Vec::new()
+        }
+        Action::ViewFile(path) => {
+            view_image(state, Some(Location::File(path.clone())), Some(&path))
         }
     }
 }
@@ -226,6 +277,7 @@ fn context(mode: &Mode) -> Context {
         Mode::Hints(_) => Context::Hints,
         Mode::Command(_) => Context::Command,
         Mode::Sidebar(_) => Context::Sidebar,
+        Mode::Image(_) => Context::Image,
     }
 }
 
@@ -363,7 +415,9 @@ fn type_text(state: &mut State, text: &str) -> Vec<Effect> {
             input.push_str(&clean);
             Vec::new()
         }
-        Mode::Normal | Mode::Help { .. } | Mode::Visual(_) | Mode::Sidebar(_) => Vec::new(),
+        Mode::Normal | Mode::Help { .. } | Mode::Visual(_) | Mode::Sidebar(_) | Mode::Image(_) => {
+            Vec::new()
+        }
     }
 }
 
@@ -440,10 +494,6 @@ fn command(state: &mut State, cmd: Command) -> Vec<Effect> {
         Command::NextMatch => next_match(state, n, false),
         Command::PrevMatch => next_match(state, n, true),
         Command::ClearSearch => {
-            if state.zoom.take().is_some() {
-                state.pending = Some(Goto::Place(state.top_place()));
-                return vec![Effect::Relayout];
-            }
             if state.search.take().is_none() {
                 state.focus = None;
             }
@@ -487,6 +537,18 @@ fn command(state: &mut State, cmd: Command) -> Vec<Effect> {
             }
         }
         Command::CycleImages => return vec![Effect::CycleImages],
+        Command::Gallery => return view_image(state, None, None),
+        Command::ImageNext => return image_step(state, lines(n, true)),
+        Command::ImagePrev => return image_step(state, lines(n, false)),
+        Command::ImageFirst => return image_step(state, isize::MIN),
+        Command::ImageLast => return image_step(state, isize::MAX),
+        Command::ImageClose => state.mode = Mode::Normal,
+        Command::ImageYank => {
+            if let Some(p) = state.viewed() {
+                return hints::Copied::shown(p.at.text()).effect();
+            }
+        }
+        Command::ImageOpen => return image_open(state),
         Command::ToggleWidth => {
             state.wide = !state.wide;
             state.pending = Some(Goto::Place(state.top_place()));
@@ -1086,6 +1148,9 @@ fn follow(state: &mut State, occ: usize) -> Vec<Effect> {
     let Some(o) = state.derived.links.get(occ).copied() else {
         return Vec::new();
     };
+    if let Some(at) = gallery::link_location(state, &o) {
+        return view_image(state, Some(at), None);
+    }
     let base = state.page.base_dir();
     match links::target(&state.page.doc, &base, &state.layout, &o) {
         Follow::Line(line) => {
@@ -1160,28 +1225,88 @@ fn act_on(state: &mut State, act: Act) -> Vec<Effect> {
             jump_recorded(state, line);
             Vec::new()
         }
-        Act::Zoom(image) => {
-            if state.zoom == Some(image) {
-                state.zoom = None;
-            } else {
-                state.zoom = Some(image);
-                state.say("full size: Esc goes back");
-            }
-            let line = state
-                .layout
-                .images
-                .iter()
-                .find(|p| p.image == image)
-                .map_or(state.top, |p| p.line as usize);
-            state.record_jump();
-            state.pending = Some(Goto::Place(Place::of(&state.layout, line)));
-            vec![Effect::Relayout]
-        }
+        Act::View(image) => view_figure(state, image),
         Act::Copy(c) => c.effect(),
         Act::Select(lines) => {
             visual::start(state, lines);
             Vec::new()
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// The image view
+// ---------------------------------------------------------------------------
+
+/// Open the image view on the document's gallery at the image at `at` (the
+/// first without), `extra` being a file to count as an image although its
+/// name does not say so.
+fn view_image(state: &mut State, at: Option<Location>, extra: Option<&Path>) -> Vec<Effect> {
+    let gallery = gallery::build(state, extra);
+    let index = match &at {
+        Some(at) => gallery.iter().position(|p| p.at == *at),
+        None => (!gallery.is_empty()).then_some(0),
+    };
+    let Some(index) = index else {
+        state.say(if gallery.is_empty() {
+            "no images in this document"
+        } else {
+            "that image is not in the gallery"
+        });
+        return Vec::new();
+    };
+    state.mode = Mode::Image(Viewer {
+        gallery: gallery.into(),
+        index,
+    });
+    vec![Effect::ShowImage]
+}
+
+/// The image view on figure `image` of the current document.
+fn view_figure(state: &mut State, image: crate::ir::ImageId) -> Vec<Effect> {
+    match gallery::figure_location(state, image) {
+        Some(at) => view_image(state, Some(at), None),
+        None => {
+            state.complain("that image has no source to show");
+            Vec::new()
+        }
+    }
+}
+
+/// `delta` images on in the gallery (as far as its ends).
+fn image_step(state: &mut State, delta: isize) -> Vec<Effect> {
+    let Mode::Image(v) = &mut state.mode else {
+        return Vec::new();
+    };
+    let last = v.gallery.len().saturating_sub(1);
+    let to = if delta >= 0 {
+        v.index.saturating_add(delta.unsigned_abs()).min(last)
+    } else {
+        v.index.saturating_sub(delta.unsigned_abs())
+    };
+    if to == v.index {
+        let only = last == 0;
+        state.say(match (only, delta >= 0) {
+            (true, _) => "the only image",
+            (false, true) => "the last image",
+            (false, false) => "the first image",
+        });
+        return Vec::new();
+    }
+    v.index = to;
+    vec![Effect::ShowImage]
+}
+
+/// `o` in the image view: the image with the system's opener.
+fn image_open(state: &mut State) -> Vec<Effect> {
+    match state.viewed().map(|p| p.at.clone()) {
+        Some(Location::File(path)) => vec![Effect::OpenFile(path)],
+        Some(Location::Url(url)) => vec![Effect::Open(url)],
+        Some(Location::Data(_)) => {
+            state.say("an image in a data: URI has no file to open (y copies it)");
+            Vec::new()
+        }
+        None => Vec::new(),
     }
 }
 
@@ -1362,7 +1487,6 @@ fn switch(state: &mut State, page: Rc<Page>, req: LoadRequest) -> Vec<Effect> {
     state.page = page;
     state.search = None;
     state.focus = None;
-    state.zoom = None;
     state.pending = Some(goto);
     vec![Effect::Relayout]
 }
@@ -1410,9 +1534,9 @@ fn reloaded(state: &mut State, doc: PagerDoc) -> Vec<Effect> {
     ) {
         state.mode = Mode::Normal;
     }
-    // Link and image ids are not stable across versions of a document.
+    // Link ids are not stable across versions of a document (the image
+    // view keeps its gallery: it holds the images themselves).
     state.focus = None;
-    state.zoom = None;
     state.say("reloaded");
     vec![Effect::Relayout]
 }
@@ -1464,11 +1588,17 @@ fn resize(state: &mut State, cols: u16, rows: u16) -> Vec<Effect> {
     }
     fix_outline_scroll(state);
     help_scroll(state, 0);
+    let mut out = Vec::new();
     if width_changed {
-        return vec![Effect::Relayout];
+        out.push(Effect::Relayout);
+    } else {
+        state.clamp_top();
     }
-    state.clamp_top();
-    Vec::new()
+    if matches!(state.mode, Mode::Image(_)) {
+        // The image fills the new screen.
+        out.push(Effect::ShowImage);
+    }
+    out
 }
 
 // ---------------------------------------------------------------------------
@@ -1509,6 +1639,7 @@ fn on_mouse(state: &mut State, m: Mouse) -> Vec<Effect> {
                 -step
             };
             match state.mode {
+                Mode::Image(_) => {}
                 Mode::Outline(_) => outline_move(state, delta.signum()),
                 Mode::Help { .. } => help_scroll(state, delta),
                 Mode::Sidebar(_) if m.col < state.left() => sidebar_move(state, delta.signum()),
@@ -1555,6 +1686,7 @@ fn click(state: &mut State, col: u16, row: u16) -> Vec<Effect> {
             state.mode = Mode::Normal;
             Vec::new()
         }
+        Mode::Image(_) => Vec::new(),
         Mode::Hints(_)
         | Mode::Prompt(_)
         | Mode::Command(_)
@@ -1586,11 +1718,19 @@ fn click(state: &mut State, col: u16, row: u16) -> Vec<Effect> {
             let Some(col) = col.checked_sub(left.saturating_add(state.layout.indent)) else {
                 return Vec::new();
             };
-            match links::occurrence_at(&state.layout, &state.derived, line, col) {
-                Some(occ) => {
-                    set_focus(state, occ);
-                    follow(state, occ)
+            if let Some(occ) = links::occurrence_at(&state.layout, &state.derived, line, col) {
+                set_focus(state, occ);
+                return follow(state, occ);
+            }
+            // A figure shown as an image: the image view.
+            let figure = match state.layout.lines.get(line).map(|l| l.kind) {
+                Some(LineKind::Image { placement, .. }) => {
+                    state.layout.images.get(placement as usize).map(|p| p.image)
                 }
+                _ => None,
+            };
+            match figure {
+                Some(image) => view_figure(state, image),
                 None => Vec::new(),
             }
         }

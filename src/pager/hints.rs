@@ -42,8 +42,8 @@ pub(crate) enum Act {
     Link(usize),
     /// Show this line at the top.
     Jump(usize),
-    /// Show the figure at full size.
-    Zoom(ImageId),
+    /// Show the figure in the image view.
+    View(ImageId),
     /// Put text on the clipboard.
     Copy(Copied),
     /// Select these lines (Visual mode).
@@ -456,8 +456,10 @@ pub(crate) fn targets(state: &State, kind: HintKind) -> Vec<Target> {
             HintKind::Yank => Act::Copy(copy_of(state, &el)),
             HintKind::Visual => Act::Select(lines.clone()),
             _ => match el.block {
-                Some(Block::Figure(f)) if layout.images.iter().any(|p| p.image == f.image) => {
-                    Act::Zoom(f.image)
+                Some(Block::Figure(f))
+                    if super::gallery::figure_location(state, f.image).is_some() =>
+                {
+                    Act::View(f.image)
                 }
                 _ => Act::Jump(lines.start),
             },

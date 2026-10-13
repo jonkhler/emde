@@ -64,6 +64,31 @@ pub fn figure_cells(
     (cols, max_rows)
 }
 
+/// The largest cell box with the aspect ratio of an image of `px` pixels
+/// (drawn with cells of `cell_px` pixels, [`DEFAULT_CELL_PX`] when
+/// unknown) that fits `max_cols × max_rows`, scaling small images up as
+/// well as large ones down: the pager's image view. `(0, 0)` for an empty
+/// image or box.
+pub fn fit_cells(
+    px: (u32, u32),
+    cell_px: Option<(u16, u16)>,
+    max_cols: u16,
+    max_rows: u16,
+) -> (u16, u16) {
+    let (cw, ch) = match cell_px {
+        Some((cw, ch)) if cw > 0 && ch > 0 => (f64::from(cw), f64::from(ch)),
+        _ => (f64::from(DEFAULT_CELL_PX.0), f64::from(DEFAULT_CELL_PX.1)),
+    };
+    if px.0 == 0 || px.1 == 0 || max_cols == 0 || max_rows == 0 {
+        return (0, 0);
+    }
+    // The image's size in cells at one image pixel per screen pixel.
+    let (w, h) = (f64::from(px.0) / cw, f64::from(px.1) / ch);
+    let scale = (f64::from(max_cols) / w).min(f64::from(max_rows) / h);
+    let side = |v: f64, max: u16| (v * scale).round().clamp(1.0, f64::from(max)) as u16;
+    (side(w, max_cols), side(h, max_rows))
+}
+
 /// The largest size with the aspect ratio of `size` that fits in `max`,
 /// never larger than `size` itself (each side at least 1 unless the input
 /// is empty).
@@ -136,6 +161,27 @@ mod tests {
         assert_eq!(
             figure_cells((800, 400), Some((0, 16)), 100, 60),
             figure_cells((800, 400), None, 100, 60)
+        );
+    }
+
+    #[test]
+    fn the_image_view_fills_the_screen() {
+        // 800×400 px at 8×16 cells is 100×25 cells: twice as wide as tall.
+        assert_eq!(fit_cells((800, 400), Some((8, 16)), 200, 50), (200, 50));
+        assert_eq!(fit_cells((800, 400), Some((8, 16)), 80, 50), (80, 20));
+        // Small images are scaled up.
+        assert_eq!(fit_cells((16, 16), Some((8, 16)), 80, 23), (46, 23));
+        // A tall screenshot keeps its aspect ratio.
+        assert_eq!(fit_cells((400, 2000), Some((8, 16)), 80, 23), (9, 23));
+        // Extremes stay within the box and at least one cell.
+        assert_eq!(fit_cells((100_000, 1), None, 80, 23), (80, 1));
+        assert_eq!(fit_cells((1, 100_000), None, 80, 23), (1, 23));
+        assert_eq!(fit_cells((u32::MAX, u32::MAX), None, 80, 23), (46, 23));
+        assert_eq!(fit_cells((0, 5), None, 80, 23), (0, 0));
+        assert_eq!(fit_cells((5, 5), None, 0, 23), (0, 0));
+        assert_eq!(
+            fit_cells((5, 5), Some((0, 0)), 80, 23),
+            fit_cells((5, 5), None, 80, 23)
         );
     }
 

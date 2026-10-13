@@ -4,6 +4,7 @@
 
 use std::path::{Path, PathBuf};
 
+use super::gallery;
 use super::keymap::{self, Command};
 use super::state::{DocKey, MAX_PAGES, Mode};
 use super::term::{Button, Key, KeyCode, Mouse, MouseKind};
@@ -65,8 +66,9 @@ fn state(md: &str, cols: u16, rows: u16) -> State {
     state_for(pdoc(md, Origin::Memory), cols, rows)
 }
 
-/// Update, doing what the shell does for [`Effect::Relayout`]; the other
-/// effects are returned.
+/// Update, doing what the shell does for [`Effect::Relayout`] and
+/// [`Effect::ShowImage`] (without images: the image cannot be shown); the
+/// other effects are returned, and `ShowImage` too.
 fn drive(s: &mut State, action: Action) -> Vec<Effect> {
     let mut out = Vec::new();
     let mut queue = update(s, action);
@@ -75,6 +77,22 @@ fn drive(s: &mut State, action: Action) -> Vec<Effect> {
         if effect == Effect::Relayout {
             let l = lay(s.document(), s.doc_cols(), s.wide());
             queue.extend(update(s, Action::Layout(l)));
+        } else if effect == Effect::ShowImage {
+            out.push(effect);
+            let Some(p) = s.viewed().cloned() else {
+                continue;
+            };
+            let doc = gallery::document(&p, s.document().base_dir.clone());
+            let layout = lay(&doc, s.size().0, true);
+            queue.extend(update(
+                s,
+                Action::ImageShown {
+                    doc,
+                    layout,
+                    pixels: None,
+                    problem: Some("images are off".into()),
+                },
+            ));
         } else {
             out.push(effect);
         }
@@ -545,10 +563,10 @@ fn following_other_kinds_of_links() {
         })]
     );
     code(&mut s, KeyCode::Tab);
-    assert_eq!(
-        code(&mut s, KeyCode::Enter),
-        [Effect::ShowFile(PathBuf::from("./pic.png"))]
-    );
+    // An image: the image view, and Esc back.
+    assert_eq!(code(&mut s, KeyCode::Enter), [Effect::ShowImage]);
+    assert_eq!(s.image_view(), Some((0, 1)));
+    code(&mut s, KeyCode::Esc);
     // The footnote reference leads to the note (at the end: on screen).
     code(&mut s, KeyCode::Tab);
     code(&mut s, KeyCode::Enter);
@@ -1286,5 +1304,6 @@ proptest::proptest! {
 }
 
 // Hints, Visual mode, marks and the editor.
+mod gallery_view;
 mod modes;
 mod sidebar;
