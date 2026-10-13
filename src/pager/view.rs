@@ -1093,14 +1093,45 @@ fn hints(state: &State, ctx: &Ctx, h: &Hints, rows: &mut [Building]) {
             .saturating_add(state.layout.indent)
             .saturating_add(state.left());
         let room = usize::from(state.cols.saturating_sub(col));
-        let (text, _) = fit(rest, room, amb);
+        let (text, used) = fit(rest, room, amb);
         if text.is_empty() {
             continue;
         }
+        // A label ending inside a wide character covers all of it: half a
+        // character left on screen is drawn differently by every terminal.
+        let cover = covered(state, target.line, target.col, used).min(room);
         let mut w = Styled::new(ctx);
         w.put(&ctx.styles.hint, text, amb);
+        if cover > used {
+            w.put(&ctx.styles.hint, &" ".repeat(cover - used), amb);
+        }
         put_segment(rows, row, col, w.finish());
     }
+}
+
+/// The columns from text column `col` of line `line` to the end of the
+/// character that column `col + cols - 1` is in (at least `cols`). Lines
+/// of wide blocks, which can be shifted, count as is.
+fn covered(state: &State, line: usize, col: u16, cols: usize) -> usize {
+    let layout = &state.layout;
+    if layout.wide_at(line).is_some() {
+        return cols;
+    }
+    let amb = state.settings.ambiguous_wide;
+    let (col, end) = (usize::from(col), usize::from(col) + cols);
+    let text = layout.line_text(line);
+    let mut x = 0;
+    let mut pos = 0;
+    while pos < text.len() && x < end {
+        let next = next_grapheme_end(&text, pos);
+        let w = grapheme_width(text.get(pos..next).unwrap_or(""), amb);
+        if x + w > end {
+            return x + w - col;
+        }
+        x += w;
+        pos = next.max(pos + 1);
+    }
+    cols
 }
 
 /// The selection's background after the text of its lines, to the end of
