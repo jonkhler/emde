@@ -320,10 +320,27 @@ where
         }
     };
     let mut unknown = Vec::new();
-    match serde_ignored::deserialize(de, |path| unknown.push(segments(&path))) {
+    match deserialize_noting_unknown(de, &mut unknown) {
         Ok(value) => (value, unknown),
         Err(first) => recover(src, origin, first, diags),
     }
+}
+
+/// Deserialise `de` into `T`, adding the key path of every unknown key to
+/// `unknown`.
+///
+/// Every caller goes through here with the same type-erased callback:
+/// `serde_ignored` wraps each deserializer in a type generic over its
+/// callback, so a closure per call site would compile the whole tree of
+/// configuration and theme deserializers once per call site (about 300 KiB
+/// of machine code for nothing).
+fn deserialize_noting_unknown<T: DeserializeOwned>(
+    de: toml::Deserializer<'_>,
+    unknown: &mut Vec<Vec<String>>,
+) -> Result<T, toml::de::Error> {
+    let mut note = |path: serde_ignored::Path<'_>| unknown.push(segments(&path));
+    let note: &mut dyn FnMut(serde_ignored::Path<'_>) = &mut note;
+    serde_ignored::deserialize(de, note)
 }
 
 /// Deserialise a document with a type error piece by piece, keeping every
@@ -508,7 +525,7 @@ impl<T: DeserializeOwned + Merge> Recovery<T> {
             table = outer;
         }
         let de = toml::Deserializer::from(Spanned::new(self.root_span.clone(), table));
-        serde_ignored::deserialize(de, |p| unknown.push(segments(&p)))
+        deserialize_noting_unknown(de, unknown)
     }
 }
 
