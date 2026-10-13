@@ -544,7 +544,8 @@ impl<'a> Emitter<'a> {
             self.write_image_row(index, &placement, content, out);
             return;
         }
-        if line.n == 0 && matches!(line.fill, Fill::None) {
+        let wide = layout.wide_at(index);
+        if line.n == 0 && matches!(line.fill, Fill::None) && wide.is_none() {
             out.push(b'\n');
             return;
         }
@@ -554,7 +555,7 @@ impl<'a> Emitter<'a> {
             link: None,
         };
         // A line of a wide block goes through a window on it.
-        let mut clip = layout.wide_at(index).map(|w| {
+        let mut clip = wide.map(|w| {
             let extent = match line.fill {
                 Fill::Panel { to_col, .. } => line.cols.max(to_col),
                 _ => line.cols,
@@ -1159,6 +1160,50 @@ mod tests {
                     );
                 }
             }
+        }
+    }
+
+    #[test]
+    fn empty_lines_of_wide_blocks_fill_the_text_column_too() {
+        // Borders off: a row of empty cells has no text at all.
+        let mut opts = RenderOptions::default();
+        opts.glyphs.table = crate::options::TableBorder::None;
+        let cols = 14;
+        let head: Vec<String> = (1..=cols).map(|i| format!("Head {i}")).collect();
+        let md = format!(
+            "| {} |\n|{}\n| {} |\n",
+            head.join(" | "),
+            "---|".repeat(cols),
+            vec![" "; cols].join(" | ")
+        );
+        let doc = parse(&md, &ParseOptions::default());
+        let caps = Caps::full();
+        let it = crate::layout::Interactive {
+            hscroll: true,
+            details: None,
+        };
+        let l = crate::layout::layout_with(
+            &doc,
+            40,
+            &Theme::test(),
+            &caps,
+            &opts,
+            &PlainHighlighter,
+            &NoImages,
+            it,
+        );
+        let w = l.wide[0];
+        let cfg = cfg(&caps);
+        let mut e = Emitter::new(&doc, &l, &cfg);
+        for i in w.start as usize..w.end as usize {
+            let mut out = Vec::new();
+            e.write_line_shifted(i, &[], 3, &mut out);
+            let (text, _, _) = scan(String::from_utf8(out).unwrap().trim_end_matches('\n'));
+            assert_eq!(
+                crate::text::str_width(&text, false),
+                usize::from(l.indent + l.measure),
+                "line {i}: {text:?}"
+            );
         }
     }
 }

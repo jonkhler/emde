@@ -1119,3 +1119,123 @@ fn wide_tables_scroll_or_become_records() {
     let (_, l) = lay(&md, 40);
     assert!(l.wide.is_empty() && l.narrowed);
 }
+
+#[test]
+fn collapsed_details_first_in_a_list_item_keep_the_marker() {
+    let md = "- <details><summary>First thing</summary>\n\n  hidden\n\n  </details>\n- second\n";
+    let it = Interactive {
+        hscroll: false,
+        details: Some(Folds::default()),
+    };
+    let l = lay_interactive(md, 40, &RenderOptions::default(), it);
+    check_interactive(&l);
+    assert_eq!(lines(&l), ["• ▸ First thing (1 line)", "", "• second"]);
+    assert_eq!(l.details[0].col, 2);
+    // Expanded: the body under it, the next item after.
+    let toggled = [0];
+    let it = Interactive {
+        hscroll: false,
+        details: Some(Folds {
+            open: false,
+            toggled: &toggled,
+        }),
+    };
+    let l = lay_interactive(md, 40, &RenderOptions::default(), it);
+    assert_eq!(lines(&l), ["• ▾ First thing", "    hidden", "", "• second"]);
+}
+
+#[test]
+fn nested_details_in_a_quote_in_a_list() {
+    let md = "- > <details><summary>Outer</summary>\n  >\n  > <details><summary>Inner</summary>\n  >\n  > \
+              ## Deep\n  >\n  > text\n  >\n  > </details>\n  >\n  > </details>\n\nAfter.\n";
+    let it = Interactive {
+        hscroll: false,
+        details: Some(Folds::default()),
+    };
+    let l = lay_interactive(md, 40, &RenderOptions::default(), it);
+    check_interactive(&l);
+    assert_eq!(lines(&l)[0], "• ▎ ▸ Outer (1 line)", "{:#?}", lines(&l));
+    assert_eq!(
+        l.heading_folds(HeadingId(0)),
+        [0, 1],
+        "both hide the heading"
+    );
+    // Both open: everything shows, positions unchanged.
+    let toggled = [0, 1];
+    let open = Interactive {
+        hscroll: false,
+        details: Some(Folds {
+            open: false,
+            toggled: &toggled,
+        }),
+    };
+    let o = lay_interactive(md, 40, &RenderOptions::default(), open);
+    check_interactive(&o);
+    assert!(
+        lines(&o).iter().any(|t| t.contains("text")),
+        "{:#?}",
+        lines(&o)
+    );
+    let last = |l: &Layout| l.lines.last().map(|x| x.pos);
+    assert_eq!(last(&l), last(&o));
+    assert!(o.heading_folds(HeadingId(0)).is_empty());
+}
+
+#[test]
+fn thirty_column_tables_scroll() {
+    let n = 30;
+    let row = |f: &dyn Fn(usize) -> String| {
+        format!("| {} |\n", (1..=n).map(f).collect::<Vec<_>>().join(" | "))
+    };
+    let md = format!(
+        "{}|{}\n{}{}",
+        row(&|i| format!("Column {i}")),
+        "---|".repeat(n),
+        row(&|i| format!("{i} 日本 😀")),
+        row(&|i| format!("[l{i}](https://example.com/{i})")),
+    );
+    let it = Interactive {
+        hscroll: true,
+        details: None,
+    };
+    let l = lay_interactive(&md, 80, &RenderOptions::default(), it);
+    check_interactive(&l);
+    assert_eq!(l.wide.len(), 1);
+    let w = l.wide[0];
+    assert!(w.cols > 300 && w.cols < MAX_WIDE, "{w:?}");
+    // Every row and border is as wide as the block: the borders line up
+    // whatever the shift.
+    for i in w.start..w.end {
+        assert_eq!(
+            l.lines[i as usize].cols,
+            w.cols,
+            "{}",
+            l.line_text(i as usize)
+        );
+    }
+    // The links, and their numbered references below (no OSC 8 here).
+    assert_eq!(l.link_hits.len(), 2 * n);
+}
+
+#[test]
+fn borderless_wide_tables_with_empty_rows() {
+    let mut opts = RenderOptions::default();
+    opts.glyphs.table = crate::options::TableBorder::None;
+    let cols = 14;
+    let md = format!(
+        "| {} |\n|{}\n| {} |\n",
+        (1..=cols)
+            .map(|i| format!("Head {i}"))
+            .collect::<Vec<_>>()
+            .join(" | "),
+        "---|".repeat(cols),
+        vec![" "; cols].join(" | "),
+    );
+    let it = Interactive {
+        hscroll: true,
+        details: None,
+    };
+    let l = lay_interactive(&md, 40, &opts, it);
+    check_interactive(&l);
+    assert_eq!(l.wide.len(), 1, "{}", l.dump());
+}
