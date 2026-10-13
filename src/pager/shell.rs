@@ -12,6 +12,7 @@
 use std::collections::{HashMap, VecDeque};
 use std::io;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -33,7 +34,7 @@ use super::images::{self, Images, WORK_POLL};
 use super::keymap::{Command, SEQUENCE_TIMEOUT};
 use super::os::{self, ClipboardPlan, OpenPlan};
 use super::sidebar;
-use super::state::{DocKey, Settings, State};
+use super::state::{DocKey, Page, Settings, State};
 use super::term::{
     MAX_POLL, MIN_POLL, MOUSE_OFF, MOUSE_ON, Signals, TermEvent, Terminal, clamp_poll,
 };
@@ -44,6 +45,30 @@ use super::{DocLoader, PagerExit, PagerSession};
 
 /// Quiet time after a resize before the layout follows.
 pub(crate) const RESIZE_DEBOUNCE: Duration = Duration::from_millis(30);
+/// Layouts kept to show again without laying out (a `<details>` closed
+/// again, a match's block opened again).
+const LAYOUT_CACHE: usize = 2;
+
+/// What a layout of the current document was made from (besides what
+/// never changes while the pager runs).
+#[derive(Clone, Debug)]
+struct LayoutKey {
+    /// The document (held, so its address is never reused meanwhile).
+    page: Rc<Page>,
+    size: (u16, u16),
+    cols: u16,
+    wide: bool,
+    images: crate::term::Graphics,
+    toggled: Vec<u32>,
+}
+
+impl PartialEq for LayoutKey {
+    fn eq(&self, o: &Self) -> bool {
+        Rc::ptr_eq(&self.page, &o.page)
+            && (self.size, self.cols, self.wide, self.images) == (o.size, o.cols, o.wide, o.images)
+            && self.toggled == o.toggled
+    }
+}
 /// Events taken in one go before a frame is painted.
 const MAX_BATCH: usize = 64;
 
@@ -127,6 +152,8 @@ pub(crate) struct Shell<'t, T: Terminal> {
     /// baseline when a document comes back from memory).
     stamps: HashMap<PathBuf, Option<Stamp>>,
     resize: Option<((u16, u16), Instant)>,
+    /// Layouts made lately, newest last (see [`LAYOUT_CACHE`]).
+    layouts: Vec<(LayoutKey, Layout)>,
     /// When an unfinished key sequence stops waiting for its next key.
     key_deadline: Option<Instant>,
     signals: Signals,
@@ -237,6 +264,7 @@ impl<'t, T: Terminal> Shell<'t, T> {
             watcher: None,
             stamps,
             resize: None,
+            layouts: Vec::new(),
             key_deadline: None,
             signals,
             dirty: true,
@@ -460,18 +488,44 @@ impl<'t, T: Terminal> Shell<'t, T> {
         let (cols, rows) = self.state.size();
         self.caps.size = Some((cols, rows));
         self.opts.max_width = if self.state.wide() { 0 } else { self.max_width };
+        let key = LayoutKey {
+            page: Rc::clone(&self.state.page),
+            size: (cols, rows),
+            cols: self.state.doc_cols(),
+            wide: self.state.wide(),
+            images: self.images.mode(),
+            toggled: self
+                .state
+                .doc_view()
+                .map(|v| v.toggled.clone())
+                .unwrap_or_default(),
+        };
         let doc = self.state.document();
+        // Also says which store the next frames show.
         let sizer = self.images.sizer(self.state.key(), doc);
-        layout::layout_with(
+        // Only the current document's layouts are kept.
+        self.layouts.retain(|(k, _)| Rc::ptr_eq(&k.page, &key.page));
+        if let Some(i) = self.layouts.iter().position(|(k, _)| *k == key) {
+            let entry = self.layouts.remove(i);
+            let layout = entry.1.clone();
+            self.layouts.push(entry);
+            return layout;
+        }
+        let layout = layout::layout_with(
             doc,
-            self.state.doc_cols(),
+            key.cols,
             &self.theme,
             &self.caps,
             &self.opts,
             &*self.highlighter,
             sizer,
             self.state.interactive(),
-        )
+        );
+        if self.layouts.len() >= LAYOUT_CACHE {
+            self.layouts.remove(0);
+        }
+        self.layouts.push((key, layout.clone()));
+        layout
     }
 
     /// The image view's image: read (or found among those read already, a
