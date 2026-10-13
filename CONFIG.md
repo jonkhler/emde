@@ -177,7 +177,9 @@ nu = "bash"
 | `watch` | `true` | Reload the document when the file changes. |
 | `scroll_lines` | `3` | Lines per mouse wheel step. |
 | `search_case` | `"smart"` | Search case: smart (case-sensitive only with an uppercase letter), sensitive or insensitive. |
-| `open` | `"auto"` | Opening links: auto (open or xdg-open locally, copy the URL over SSH), never, or a command that gets the URL as its last argument. |
+| `open` | `"auto"` | Opening links and images (o in the image view): auto (open or xdg-open locally, copy the URL over SSH), never, or a command that gets the URL (or the image file) as its last argument. |
+| `toc_sidebar` | `"auto"` | The outline sidebar on the left (T shows it, a second T moves the keys into it, a third hides it): auto shows it when the terminal is at least toc\_width + max\_width + 2 \* margin + 4 columns wide (140 with the defaults; a max\_width of 0 counts as 100), always whenever the text keeps 40 columns beside it, never only when T asks for it. Documents without headings get none. |
+| `toc_width` | `32` | Width of the outline sidebar in columns, its border included (16 to 60). |
 
 ### `[pager.keys]`
 

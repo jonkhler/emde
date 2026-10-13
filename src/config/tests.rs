@@ -392,6 +392,8 @@ watch = false
 scroll_lines = 5
 search_case = "insensitive"
 open = "firefox"
+toc_sidebar = "never"
+toc_width = 40
 [pager.keys]
 quit = ["Q", "ZZ"]
 top = ["T"]
@@ -439,6 +441,7 @@ probe_timeout_ms = 500
     assert_eq!(c.pager.scroll_lines, 5);
     assert_eq!(c.pager.search_case, SearchCase::Insensitive);
     assert_eq!(c.pager.open, OpenCommand::Command("firefox".into()));
+    assert_eq!((c.pager.toc_sidebar, c.pager.toc_width), (When::Never, 40));
     assert_eq!(
         c.pager.keys,
         [
@@ -565,10 +568,11 @@ fn syntax_errors_drop_the_file() {
 fn invalid_values_are_ignored_with_a_warning() {
     let (setup, loaded) = load_config(
         "invalid",
-        "[code]\ntab_width = 0\n[glyphs]\nbullets = []\nquote = \"x\"\n",
+        "[code]\ntab_width = 0\n[glyphs]\nbullets = []\nquote = \"x\"\n[pager]\ntoc_width = 100\n",
     );
     insta::assert_snapshot!("invalid_values", setup.report(&loaded));
     assert_eq!(loaded.config.render.code.tab_width, 4);
+    assert_eq!(loaded.config.pager.toc_width, 60, "clamped");
     assert_eq!(loaded.config.render.glyphs.quote, "x");
 }
 
