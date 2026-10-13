@@ -19,7 +19,9 @@ emde README.md
   never send escape sequences of its own to the terminal.
 - **A built-in pager.** On a terminal, a document opens in the pager:
   incremental search (smart case, and a phrase is found even where it
-  wraps), an outline, jumps between headings, marks, Vimium-style hints to
+  wraps), an outline and an outline sidebar that follows your reading, an
+  image view that steps through a document's pictures, jumps between
+  headings, marks, Vimium-style hints to
   follow links or copy code, math and tables as written, a Visual mode
   that copies lines as Markdown or text, `e` to edit the file at the line
   you are reading, back and forward through linked documents, reload when
@@ -164,8 +166,8 @@ Links can be followed into other Markdown files, and `Backspace` comes back.
 
 Hints put a short label on everything worth acting on, as Vimium does in a
 browser: type it. `f` follows a link, goes to a heading, a code block, a
-table or a footnote (and back), or shows an image at full size; `o` labels
-links only. `y` copies what the label is on as written in the file: the
+table or a footnote (and back), or shows an image in the image view; `o`
+labels links only. `y` copies what the label is on as written in the file: the
 code of a code block (no fences), the TeX of math, a table, a paragraph, a
 list item or a quote as Markdown, a link's URL, `file.md#slug` for a
 heading. `V` selects lines (`v` and a label: a block), and in Visual mode
@@ -173,6 +175,19 @@ heading. `V` selects lines (`v` and a label: a block), and in Visual mode
 `e` opens the file in `$VISUAL` or `$EDITOR` at the line you are reading,
 and shows it again when the editor exits. `ma` marks a place, `'a` goes
 back to it, and `''` to where you were before the last jump.
+
+The **image view** shows one image as large as the screen allows. Links to
+images open it (local files, `data:` images, and remote ones with
+`--remote-images`), as do `f` on a figure, a click on one, and `gi` (the
+first image of the document). `n` and `p` step through every image of the
+document, figures and links alike; `y` copies the image's path, `o` opens
+it in your image viewer, and `Esc` brings you back to where you were.
+
+The **outline sidebar** lists the headings on the left and marks the
+section you are reading. It shows on its own on terminals wide enough for it
+beside the text (`[pager] toc_sidebar`, `toc_width`); `T` shows it, a
+second `T` moves the keys into it (`j`, `k`, `Enter`, `Esc`), a third hides
+it, and a click on an entry goes there.
 
 <!-- BEGIN GENERATED keys (`cargo xtask docs`, from src/pager/keymap.rs) -->
 
