@@ -122,7 +122,7 @@ struct Cur {
 }
 
 /// Numbered link references (when OSC 8 links are not available).
-#[derive(Clone, Debug, Default)]
+#[derive(Debug, Default)]
 pub(super) struct Refs {
     pub(super) enabled: bool,
     next: u32,
@@ -153,6 +153,21 @@ impl Refs {
 
     pub(super) fn has_pending(&self) -> bool {
         !self.pending.is_empty()
+    }
+
+    /// Where the references are now, for [`Refs::rollback`].
+    fn mark(&self) -> (u32, usize) {
+        (self.next, self.pending.len())
+    }
+
+    /// Forget the references numbered since `mark` (`doc` has their URLs).
+    fn rollback(&mut self, (next, len): (u32, usize), doc: &Document) {
+        for (_, link) in self.pending.drain(len.min(self.pending.len())..) {
+            if let Some(l) = doc.link(link) {
+                self.by_url.remove(&l.url);
+            }
+        }
+        self.next = next;
     }
 }
 
@@ -248,7 +263,7 @@ pub(super) struct Snapshot {
     code: usize,
     wide: usize,
     headings: usize,
-    refs: Option<Refs>,
+    refs: (u32, usize),
     pending_gap: Option<usize>,
     block_first: Option<u32>,
     pending_heading: Option<HeadingId>,
@@ -1045,7 +1060,7 @@ impl<'a> Builder<'a> {
             code: o.code.len(),
             wide: o.wide.len(),
             headings: self.heading_log.len(),
-            refs: self.refs.enabled.then(|| self.refs.clone()),
+            refs: self.refs.mark(),
             pending_gap: self.pending_gap,
             block_first: self.block_first,
             pending_heading: self.pending_heading,
@@ -1073,9 +1088,7 @@ impl<'a> Builder<'a> {
                 *slot = u32::MAX;
             }
         }
-        if let Some(refs) = s.refs {
-            self.refs = refs;
-        }
+        self.refs.rollback(s.refs, self.doc);
         self.pending_gap = s.pending_gap;
         self.block_first = s.block_first;
         self.pending_heading = s.pending_heading;

@@ -1255,3 +1255,21 @@ fn empty_details_have_no_count() {
     assert_eq!(lines(&l), ["▸ Nothing"]);
     assert_eq!(l.details[0].body_lines, 0);
 }
+
+#[test]
+fn links_in_collapsed_details_get_no_reference() {
+    // Plain output numbers links; a collapsed body's links are not shown.
+    let md = "[seen](https://a.example) and [twice](https://b.example)\n\n<details><summary>S</summary>\n\n\
+              [hidden](https://c.example) and [again](https://b.example)\n\n</details>\n\n\
+              [after](https://d.example)\n";
+    let it = Interactive {
+        hscroll: false,
+        details: Some(Folds::default()),
+    };
+    let l = lay_interactive(md, 60, &RenderOptions::default(), it);
+    let text = lines(&l).join("\n");
+    assert!(text.contains("[1]: https://a.example"), "{text}");
+    assert!(text.contains("[2]: https://b.example"), "{text}");
+    assert!(text.contains("[3]: https://d.example"), "{text}");
+    assert!(!text.contains("c.example"), "{text}");
+}
