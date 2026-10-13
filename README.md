@@ -125,7 +125,7 @@ URIs and remote SVGs (recognised by their content, so URLs without `.svg`
 work too) are drawn with [resvg](https://github.com/linebender/resvg) at
 the exact pixel size of the figure's box, through every graphics path
 (blocks, kitty, iTerm2, sixel). The feature makes the stripped release
-binary about 2.6 MiB larger (x86-64 Linux: 6.84 MiB without it, 9.40 MiB
+binary about 2.6 MiB larger (x86-64 Linux: 6.41 MiB without it, 8.97 MiB
 with it). An SVG never makes emde read another file or fetch a URL;
 system fonts are loaded once, only for SVGs with text. Badges such as
 shields.io's are remote SVGs, so they also need `--remote-images` (or
@@ -551,6 +551,58 @@ cp "$CARGO_TARGET_DIR/completions/emde.fish" ~/.config/fish/completions/
 The same command regenerates [CONFIG.md](CONFIG.md) and the key table above
 from the sources (`assets/default.toml`, the theme elements, the key table
 of the pager).
+
+## Performance
+
+Measured on the development machine (x86-64 Linux, 24 cores, glibc 2.39)
+with the stripped release build and [hyperfine](https://github.com/sharkdp/hyperfine)
+(`-N`, 300 runs or more, medians), writing to a pipe with
+`-p --color=always -w 100`. glow 3.0.0 ran with `-s dark -w 100`.
+
+| README | emde | glow |
+|---|---|---|
+| [ripgrep](https://github.com/BurntSushi/ripgrep) (21 KB, plain code blocks) | 3.4 ms | 233 ms |
+| [bat](https://github.com/sharkdp/bat) (34 KB, Bash) | 12.0 ms | 141 ms |
+| [tokio](https://github.com/tokio-rs/tokio) (9.5 KB, Rust, TOML) | 11.1 ms | 63 ms |
+| [serde](https://github.com/serde-rs/serde) (4.4 KB, Rust, TOML) | 11.0 ms | 38 ms |
+
+| | |
+|---|---|
+| `emde --version` | 1.19 ms (a Rust hello world built the same way: 1.01 ms; `/bin/true`: 0.72 ms) |
+| A 20 KB README without code | 2.98 ms (95th percentile 3.18 ms) |
+| The same with 10 code blocks in Rust, TOML and Bash | 14.8 ms |
+| 10 MB of prose with links and emphasis, to a pipe | 0.43 s (24 MB/s) |
+| A 10 MB document of prose, lists, tables and code, to a pipe | 0.68 s (15 MB/s) |
+| The throughput test (10 MB of generated prose, in process, truecolor) | 51 MB/s |
+| Peak memory: the 20 KB README / the 10 MB prose | 7.0 MiB / 88 MiB |
+| Pager, first frame: the README / a 1 MB document / a 10 MB one | 5.4 ms / 29 ms / 252 ms |
+| Pager, resizing or opening a `<details>` near the top of the 10 MB document | 7 ms / 5 ms (plus the 30 ms resize debounce; a key waits for the layout slice under way) |
+| Stripped binary, default features | 6.41 MiB |
+
+Where the time goes:
+
+* **Code.** A document with code loads the syntax set (about 3 ms, on a
+  background thread from the moment the file is read), and the first block
+  in each language compiles its grammar's regular expressions: about 4 ms
+  for Rust and 3 ms for Bash. Oniguruma compiles one expression at a time
+  for the whole process, so languages cannot be compiled side by side;
+  that is most of the 15 ms of a README with code in three languages. The
+  blocks are highlighted on background threads while the rest is laid out.
+* **Long documents in the pager.** Documents of 256 KiB and more are laid
+  out a few blocks at a time: the first three screens before the first
+  frame, the rest in slices of at most 4 ms while the reader reads (the
+  status bar shows `L 1/…` until the total is known). `G`, `%`, a search,
+  the outline and following links finish the layout first. Reading and
+  parsing take most of the first frame of a 10 MB document.
+
+To see where a run spends its time, and to measure:
+
+```sh
+EMDE_TRACE=1 emde -p README.md > /dev/null     # milliseconds per stage
+hyperfine -N --warmup 30 --runs 300 'emde -p --color=always -w 100 README.md'
+cargo test --release --test throughput -- --ignored --nocapture
+cargo xtask size                               # the stripped release binary
+```
 
 ## Development
 
