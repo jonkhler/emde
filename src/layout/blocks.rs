@@ -653,10 +653,20 @@ impl Builder<'_> {
         let c = self.prefixed(&marker, marker_style, c);
         let width = self.avail();
         let look = Look { hang, ..Look::TEXT };
-        let first = self.out.lines.len();
+        let before = self.out.lines.len();
         self.emit(&c, width, &look, off);
         self.off = off.saturating_add(to_u32(summary.text.len()));
-        let rows = self.out.lines.len().saturating_sub(first);
+        // After the blank line before it, if one was drawn.
+        let after = self.out.lines.len();
+        let first = (before..after)
+            .find(|&i| {
+                self.out
+                    .lines
+                    .get(i)
+                    .is_some_and(|l| l.kind != LineKind::Blank)
+            })
+            .unwrap_or(before);
+        let rows = after.saturating_sub(first);
         // The marker's column: where the first span showing it starts.
         let mut col = 0u16;
         for span in self.out.line_spans(first) {

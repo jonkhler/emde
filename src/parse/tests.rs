@@ -826,13 +826,43 @@ fn details_across_html_blocks() {
         "<details>\n<summary>Click <b>me</b></summary>\n\nHidden *markdown*.\n\n- item\n\n\
          </details>\n\nAfter\n",
     );
-    let [Block::Details { summary, body, .. }, Block::Para(after)] = d.blocks.as_slice() else {
+    let [
+        Block::Details {
+            summary,
+            body,
+            open,
+        },
+        Block::Para(after),
+    ] = d.blocks.as_slice()
+    else {
         panic!("{:#?}", d.blocks)
     };
+    assert!(!open);
     assert_eq!(summary.text, "Click me");
     assert_eq!(summary.runs[1].flags, InlineFlags::STRONG);
     assert!(matches!(body.as_slice(), [Block::Para(_), Block::List(_)]));
     assert_eq!(after.text, "After");
+}
+
+#[test]
+fn details_open() {
+    for (html, want) in [
+        ("<details open>", true),
+        ("<DETAILS Open=\"\">", true),
+        ("<details class=\"x\">", false),
+    ] {
+        let d = doc(&format!(
+            "{html}\n<summary>S</summary>\n\nbody\n\n</details>\n"
+        ));
+        let [Block::Details { open, .. }] = d.blocks.as_slice() else {
+            panic!("{:#?}", d.blocks)
+        };
+        assert_eq!(*open, want, "{html}");
+        assert!(
+            d.dump()
+                .contains(if want { "details open:" } else { "details:" })
+        );
+    }
 }
 
 #[test]
