@@ -398,7 +398,7 @@ mod tests {
         );
         assert_eq!(
             t.patch.palette[Variant::Light.index()]["muted"],
-            ColorSpec::Rgb(Rgb(0x8c, 0x8f, 0xa1)),
+            ColorSpec::Rgb(Rgb(0x7a, 0x7c, 0x8e)),
             "light keeps emde's"
         );
         let h2 = &t.patch.styles[dark][&Element::H2];

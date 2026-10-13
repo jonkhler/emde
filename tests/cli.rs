@@ -348,9 +348,10 @@ fn themes_and_backgrounds() {
         assert!(o.status.success(), "{o:?}");
         stdout(&o)
     };
-    // The `emde` theme's h2 is mauve: Mocha on dark, Latte on light.
+    // The `emde` theme's h2 is mauve: Mocha on dark, (darkened) Latte on
+    // light.
     assert!(h2(&[]).contains("38;2;203;166;247"), "{}", h2(&[]));
-    assert!(h2(&["--background", "light"]).contains("38;2;136;57;239"));
+    assert!(h2(&["--background", "light"]).contains("38;2;130;48;231"));
     // `mono` has no colours, only attributes.
     let mono = h2(&["-t", "mono"]);
     assert!(

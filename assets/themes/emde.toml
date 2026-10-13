@@ -1,7 +1,10 @@
 # emde: the default theme.
 #
 # Palettes: Catppuccin Mocha (dark) and Latte (light), MIT licence,
-# https://github.com/catppuccin/palette, under emde's role names.
+# https://github.com/catppuccin/palette, under emde's role names. Latte's
+# colours that are too faint for text on a light page are darkened (OKLab
+# lightness only, hue kept) to WCAG contrast 4.5:1 against `base`, white and
+# the alert tints (3:1 for `muted`, which only draws decorations).
 #
 # Theme files use the [palette] and [style.<element>] tables of the config
 # file (`emde --print-default-config` documents the colour syntax), plus:
@@ -37,17 +40,17 @@ sky = "#89dceb"
 [palette.light]
 text = "#4c4f69"
 subtext = "#5c5f77"
-muted = "#8c8fa1"
+muted = "#7a7c8e"
 surface = "#ccd0da"
 base = "#eff1f5"
-blue = "#1e66f5"
-accent = "#1e66f5"
-mauve = "#8839ef"
-teal = "#179299"
-green = "#40a02b"
-yellow = "#df8e1d"
-peach = "#fe640b"
-red = "#d20f39"
+blue = "#0d57e5"
+accent = "#0d57e5"
+mauve = "#8230e7"
+teal = "#00787f"
+green = "#1c7300"
+yellow = "#8e5600"
+peach = "#ab3f00"
+red = "#c80034"
 pink = "#ea76cb"
 sky = "#04a5e5"
 
@@ -84,6 +87,10 @@ italic = true
 [style.h6]
 fg = "muted"
 italic = true
+
+# Latte's `muted` is for decorations; text needs `subtext`.
+[light.style.h6]
+fg = "subtext"
 
 [style.heading_rule]
 fg = "mauve"

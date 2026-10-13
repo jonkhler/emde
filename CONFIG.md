@@ -291,7 +291,7 @@ draws it (`—`: as its parent).
 | `h3` | `heading` | Level-3 headings. | `fg=teal bold` |
 | `h4` | `heading` | Level-4 headings. | `fg=default bold` |
 | `h5` | `heading` | Level-5 headings. | `fg=subtext bold italic` |
-| `h6` | `heading` | Level-6 headings. | `fg=muted italic` |
+| `h6` | `heading` | Level-6 headings. | `fg=muted italic`; light: `fg=subtext` |
 | `heading_rule` | `heading` | Heading decorations: the rule under h2, markers and numbers. | `fg=mauve` |
 
 #### Inline
@@ -428,21 +428,21 @@ styles that use them work with every theme.
 
 | Name | Dark | Light |
 |---|---|---|
-| `accent` | `#89b4fa` | `#1e66f5` |
+| `accent` | `#89b4fa` | `#0d57e5` |
 | `base` | `#1e1e2e` | `#eff1f5` |
-| `blue` | `#89b4fa` | `#1e66f5` |
-| `green` | `#a6e3a1` | `#40a02b` |
-| `mauve` | `#cba6f7` | `#8839ef` |
-| `muted` | `#6c7086` | `#8c8fa1` |
-| `peach` | `#fab387` | `#fe640b` |
+| `blue` | `#89b4fa` | `#0d57e5` |
+| `green` | `#a6e3a1` | `#1c7300` |
+| `mauve` | `#cba6f7` | `#8230e7` |
+| `muted` | `#6c7086` | `#7a7c8e` |
+| `peach` | `#fab387` | `#ab3f00` |
 | `pink` | `#f5c2e7` | `#ea76cb` |
-| `red` | `#f38ba8` | `#d20f39` |
+| `red` | `#f38ba8` | `#c80034` |
 | `sky` | `#89dceb` | `#04a5e5` |
 | `subtext` | `#a6adc8` | `#5c5f77` |
 | `surface` | `#313244` | `#ccd0da` |
-| `teal` | `#94e2d5` | `#179299` |
+| `teal` | `#94e2d5` | `#00787f` |
 | `text` | `#cdd6f4` | `#4c4f69` |
-| `yellow` | `#f9e2af` | `#df8e1d` |
+| `yellow` | `#f9e2af` | `#8e5600` |
 
 ### Theme files
 

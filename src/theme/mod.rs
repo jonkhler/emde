@@ -186,7 +186,17 @@ impl Theme {
                 E::H5,
                 attrs(Some(c("subtext")), Attrs::BOLD | Attrs::ITALIC),
             ),
-            (E::H6, attrs(Some(c("muted")), Attrs::ITALIC)),
+            // Latte's `muted` is for decorations; text needs `subtext`.
+            (
+                E::H6,
+                attrs(
+                    Some(c(match variant {
+                        Variant::Dark => "muted",
+                        Variant::Light => "subtext",
+                    })),
+                    Attrs::ITALIC,
+                ),
+            ),
             (E::HeadingRule, fg(c("mauve"))),
             (E::Emph, attrs(None, Attrs::ITALIC)),
             (E::Strong, attrs(None, Attrs::BOLD)),
@@ -310,21 +320,26 @@ const MOCHA: &[(&str, Rgb)] = &[
     ("sky", Rgb(0x89, 0xdc, 0xeb)),
 ];
 
-/// Catppuccin Latte (MIT) with emde's role names.
+/// Catppuccin Latte (MIT) with emde's role names. The colours too faint for
+/// text on a light page are darkened (OKLab lightness only, hue kept; in
+/// gamut by less chroma) to WCAG contrast 4.5:1 on `base`, on white and on
+/// the alert tints (3:1 for `muted`): upstream they are muted `#8c8fa1`,
+/// blue `#1e66f5`, mauve `#8839ef`, teal `#179299`, green `#40a02b`,
+/// yellow `#df8e1d`, peach `#fe640b` and red `#d20f39`.
 const LATTE: &[(&str, Rgb)] = &[
     ("text", Rgb(0x4c, 0x4f, 0x69)),
     ("subtext", Rgb(0x5c, 0x5f, 0x77)),
-    ("muted", Rgb(0x8c, 0x8f, 0xa1)),
+    ("muted", Rgb(0x7a, 0x7c, 0x8e)),
     ("surface", Rgb(0xcc, 0xd0, 0xda)),
     ("base", Rgb(0xef, 0xf1, 0xf5)),
-    ("blue", Rgb(0x1e, 0x66, 0xf5)),
-    ("accent", Rgb(0x1e, 0x66, 0xf5)),
-    ("mauve", Rgb(0x88, 0x39, 0xef)),
-    ("teal", Rgb(0x17, 0x92, 0x99)),
-    ("green", Rgb(0x40, 0xa0, 0x2b)),
-    ("yellow", Rgb(0xdf, 0x8e, 0x1d)),
-    ("peach", Rgb(0xfe, 0x64, 0x0b)),
-    ("red", Rgb(0xd2, 0x0f, 0x39)),
+    ("blue", Rgb(0x0d, 0x57, 0xe5)),
+    ("accent", Rgb(0x0d, 0x57, 0xe5)),
+    ("mauve", Rgb(0x82, 0x30, 0xe7)),
+    ("teal", Rgb(0x00, 0x78, 0x7f)),
+    ("green", Rgb(0x1c, 0x73, 0x00)),
+    ("yellow", Rgb(0x8e, 0x56, 0x00)),
+    ("peach", Rgb(0xab, 0x3f, 0x00)),
+    ("red", Rgb(0xc8, 0x00, 0x34)),
     ("pink", Rgb(0xea, 0x76, 0xcb)),
     ("sky", Rgb(0x04, 0xa5, 0xe5)),
 ];
@@ -658,11 +673,28 @@ mod tests {
         }
     }
 
+    /// Catppuccin Latte's own colours, before emde darkened them.
+    const UPSTREAM_LATTE: &[(&str, Rgb)] = &[
+        ("muted", Rgb(0x8c, 0x8f, 0xa1)),
+        ("blue", Rgb(0x1e, 0x66, 0xf5)),
+        ("accent", Rgb(0x1e, 0x66, 0xf5)),
+        ("mauve", Rgb(0x88, 0x39, 0xef)),
+        ("teal", Rgb(0x17, 0x92, 0x99)),
+        ("green", Rgb(0x40, 0xa0, 0x2b)),
+        ("yellow", Rgb(0xdf, 0x8e, 0x1d)),
+        ("peach", Rgb(0xfe, 0x64, 0x0b)),
+        ("red", Rgb(0xd2, 0x0f, 0x39)),
+    ];
+
     #[test]
     fn the_contrast_check_finds_faint_colours() {
         // Catppuccin Latte's yellow and peach are too light for text on its
         // own page colour, which is why the light palettes darken theirs.
-        let latte = Theme::fallback(Variant::Light, None);
+        let mut patch = builtin_theme("emde").patch;
+        for &(name, c) in UPSTREAM_LATTE {
+            patch.palette[Variant::Light.index()].insert(name.into(), color::ColorSpec::Rgb(c));
+        }
+        let (latte, _) = build::build("emde", &patch, Variant::Light, None);
         let failures = contrast_failures(&latte);
         assert!(failures.iter().any(|f| f.0 == "code"), "{failures:?}");
         assert!(failures.iter().any(|f| f.0 == "alert_warning"));
@@ -676,6 +708,17 @@ mod tests {
                 .all(|f| ["h6", "code_label", "code_gutter"].contains(&f.0)),
             "{failures:?}"
         );
+    }
+
+    /// emde's light palette (darkened Latte) is readable, on its own page
+    /// colour and on a white terminal.
+    #[test]
+    fn emde_light_has_readable_contrast() {
+        for bg in [None, Some(Rgb(255, 255, 255))] {
+            let t = Theme::fallback(Variant::Light, bg);
+            let failures = contrast_failures(&t);
+            assert!(failures.is_empty(), "on {bg:?}: {failures:?}");
+        }
     }
 
     #[test]
