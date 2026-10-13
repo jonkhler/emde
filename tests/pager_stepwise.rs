@@ -12,7 +12,7 @@ use common::FakeHighlighter;
 use emde::config::PagerOptions;
 use emde::layout::layout_with;
 use emde::options::RenderOptions;
-use emde::pager::term::{Chunk, FakeTerminal};
+use emde::pager::term::{Chunk, FakeTerminal, Step};
 use emde::pager::{PagerDoc, PagerExit, PagerSession, Settings, Signals, run_on};
 use emde::parse::ParseOptions;
 use emde::source::{Origin, Source};
@@ -52,6 +52,12 @@ fn session(md: &str) -> PagerSession {
     s.highlighter = Arc::new(FakeHighlighter);
     s.env = Env::default();
     s
+}
+
+/// A mark right after the first frame (`FakeTerminal::mark` waits first,
+/// and idle time lays out the rest meanwhile).
+fn first_frame(term: FakeTerminal) -> FakeTerminal {
+    term.step(Step::Mark("first".into()))
 }
 
 /// The rows of the screen at mark `name`.
@@ -98,8 +104,7 @@ fn ms(n: u64) -> Duration {
 fn the_first_screen_comes_before_the_rest() {
     let md = long_doc();
     assert!(md.len() > 256 * 1024, "laid out in steps");
-    let term = FakeTerminal::new(COLS, ROWS)
-        .mark("first")
+    let term = first_frame(FakeTerminal::new(COLS, ROWS))
         .keys("j")
         .mark("down")
         .keys("G")
@@ -137,8 +142,7 @@ fn the_first_screen_comes_before_the_rest() {
 #[test]
 fn idle_time_finishes_the_layout() {
     let md = long_doc();
-    let mut term = FakeTerminal::new(COLS, ROWS)
-        .mark("first")
+    let mut term = first_frame(FakeTerminal::new(COLS, ROWS))
         .wait(ms(3000))
         .mark("idle")
         .keys("q");
