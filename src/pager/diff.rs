@@ -200,7 +200,11 @@ impl Screen {
                 let _ = write!(out, "\x1b[{};{}H", i + 1, u32::from(frame.left) + 1);
             }
             match &row.body {
-                Body::Line { index, marks } => {
+                Body::Line {
+                    index,
+                    marks,
+                    shift,
+                } => {
                     let e = emitter.get_or_insert_with(|| {
                         let e = Emitter::new(doc, layout, cfg);
                         match extras.images {
@@ -209,7 +213,7 @@ impl Screen {
                         }
                     });
                     let start = out.len();
-                    e.write_line_marked(*index, marks, &mut out);
+                    e.write_line_shifted(*index, marks, *shift, &mut out);
                     if out.last() == Some(&b'\n') {
                         out.pop();
                     }
@@ -288,6 +292,10 @@ fn row_end(layout: &Layout, index: usize) -> usize {
     let Some(line) = layout.lines.get(index) else {
         return 0;
     };
+    if layout.wide_at(index).is_some() {
+        // Cut to the text column, which it fills.
+        return usize::from(layout.indent) + usize::from(layout.measure);
+    }
     if line.n == 0 && line.fill == Fill::None {
         return 0;
     }

@@ -191,6 +191,13 @@ fn convert_mouse(m: &MouseEvent) -> Option<Mouse> {
         MouseEventKind::Up(b) => MouseKind::Release(convert_button(b)),
         MouseEventKind::Drag(b) => MouseKind::Drag(convert_button(b)),
         MouseEventKind::Moved => MouseKind::Moved,
+        // Shift and the wheel scroll sideways.
+        MouseEventKind::ScrollUp if m.modifiers.contains(KeyModifiers::SHIFT) => {
+            MouseKind::WheelLeft
+        }
+        MouseEventKind::ScrollDown if m.modifiers.contains(KeyModifiers::SHIFT) => {
+            MouseKind::WheelRight
+        }
         MouseEventKind::ScrollUp => MouseKind::WheelUp,
         MouseEventKind::ScrollDown => MouseKind::WheelDown,
         MouseEventKind::ScrollLeft => MouseKind::WheelLeft,

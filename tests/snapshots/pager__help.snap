@@ -17,12 +17,12 @@ expression: "screen_text(&term, 80, 24, \"help\")"
 13│  th│  zz                  centre the current match, link or middle line   │    │
 14│    │  zt                  … to the top                                    │    │
 15│  He│  zb                  … to the bottom                                 │    │
-16│  ━━│                                                                      │──  │
-17│    │ Jumping                                                              │    │
-18│  ▎ │  ]                   next heading                                    │    │
-19│    │  [                   previous heading                                │    │
-20│  Fo│  }                   next heading of the same or a higher level      │    │
-21│    │  {                   previous heading of the same or a higher level  │    │
-22│  Fi│  t                   outline (type to filter)                        │    │
+16│  ━━│  zh ←                shift wide code and tables left                 │──  │
+17│    │  zl →                … right                                         │    │
+18│  ▎ │  zH                  … half a screen left                            │    │
+19│    │  zL                  … half a screen right                           │    │
+20│  Fo│  ^                   … back to their start                           │    │
+21│    │  $                   … to their end                                  │    │
+22│  Fi│                                                                      │    │
 23│    ╰─ more: j, Space ─────────────────────────────────────────────────────╯    │
-24│ text                                                               L 1/129 17% │
+24│ text                                                               L 1/128 17% │

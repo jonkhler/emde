@@ -11,7 +11,7 @@ use std::mem;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
-use crate::ir::Document;
+use crate::ir::{Anchor, Document, HeadingId, Target};
 use crate::layout::{Layout, LineKind};
 
 use super::PagerDoc;
@@ -19,7 +19,7 @@ use super::gallery::{self, Location};
 use super::hints::{self, Act};
 use super::keymap::{Command, Context};
 use super::links::{self, Follow};
-use super::search::Search;
+use super::search::{Search, current_cols};
 use super::state::{
     Derived, DocKey, Focus, Goto, HintKind, ImagePage, Mode, Outline, Page, Place, Prompt, State,
     Viewer, Visit,
@@ -29,6 +29,12 @@ use super::{sidebar, toc, visual};
 
 /// Largest count prefix.
 const MAX_COUNT: u32 = 1_000_000;
+
+/// Columns `zh`, `zl` and a sideways wheel step shift wide blocks by.
+const HSCROLL_STEP: u16 = 8;
+
+/// Columns kept beside a match (or link) shifted into view.
+const HSCROLL_MARGIN: u16 = 2;
 
 /// Something that happened, for [`update`].
 #[derive(Clone, Debug)]
@@ -476,6 +482,17 @@ fn command(state: &mut State, cmd: Command) -> Vec<Effect> {
             let line = current_line(state);
             place_line(state, line, cmd);
         }
+        Command::ScrollLeft | Command::ScrollRight => {
+            let cols = usize::from(HSCROLL_STEP).saturating_mul(n);
+            shift(state, Shift::By(lines(cols, cmd == Command::ScrollRight)));
+        }
+        Command::HalfLeft | Command::HalfRight => {
+            let cols = usize::from((state.layout.measure / 2).max(1)).saturating_mul(n);
+            shift(state, Shift::By(lines(cols, cmd == Command::HalfRight)));
+        }
+        Command::ScrollStart => shift(state, Shift::Start),
+        Command::ScrollEnd => shift(state, Shift::End),
+        Command::ToggleDetails => return toggle_near_top(state),
         Command::NextBlock | Command::PrevBlock => {}
         Command::SetMark | Command::JumpMark => state.awaiting = Some(cmd),
         Command::NextHeading => heading_jump(state, n, true, false),
@@ -491,7 +508,7 @@ fn command(state: &mut State, cmd: Command) -> Vec<Effect> {
         Command::SidebarJump => {
             if let Mode::Sidebar(i) = state.mode {
                 state.mode = Mode::Normal;
-                sidebar_jump(state, i);
+                return sidebar_jump(state, i);
             }
         }
         Command::SidebarLeave => state.mode = Mode::Normal,
@@ -501,11 +518,12 @@ fn command(state: &mut State, cmd: Command) -> Vec<Effect> {
         }
         Command::SearchForward => open_prompt(state, false),
         Command::SearchBackward => open_prompt(state, true),
-        Command::NextMatch => next_match(state, n, false),
-        Command::PrevMatch => next_match(state, n, true),
+        Command::NextMatch => return next_match(state, n, false),
+        Command::PrevMatch => return next_match(state, n, true),
         Command::ClearSearch => {
             if state.search.take().is_none() {
                 state.focus = None;
+                state.summary_focus = None;
             }
         }
         Command::FocusNext => focus_step(state, n, true),
@@ -595,7 +613,7 @@ fn command(state: &mut State, cmd: Command) -> Vec<Effect> {
         Command::Redraw => return vec![Effect::Redraw],
         Command::Suspend => return vec![Effect::Suspend],
         Command::Quit => return vec![Effect::Quit],
-        Command::PromptAccept => accept_prompt(state),
+        Command::PromptAccept => return accept_prompt(state),
         Command::PromptCancel => cancel_prompt(state),
         Command::PromptErase => {
             if let Mode::Prompt(p) = &mut state.mode {
@@ -616,7 +634,7 @@ fn command(state: &mut State, cmd: Command) -> Vec<Effect> {
         Command::OutlineUp => outline_move(state, -1),
         Command::OutlinePageDown => outline_move(state, lines(outline_page(state), true)),
         Command::OutlinePageUp => outline_move(state, lines(outline_page(state), false)),
-        Command::OutlineJump => outline_jump(state),
+        Command::OutlineJump => return outline_jump(state),
         Command::OutlineClose => state.mode = Mode::Normal,
         Command::OutlineErase => {
             if let Mode::Outline(o) = &mut state.mode
@@ -720,8 +738,11 @@ fn heading_jump(state: &mut State, n: usize, down: bool, same_level: bool) {
         .derived
         .headings
         .iter()
-        .filter(|&&(_, h)| doc.heading(h).is_some_and(|x| x.level <= level))
-        .map(|&(line, _)| line as usize)
+        .enumerate()
+        .filter(|&(i, &(_, h))| {
+            !state.derived.is_folded(i) && doc.heading(h).is_some_and(|x| x.level <= level)
+        })
+        .map(|(_, &(line, _))| line as usize)
         .collect();
     let mut target = None;
     let mut from = state.top;
@@ -825,18 +846,32 @@ fn refilter(state: &mut State) {
     fix_outline_scroll(state);
 }
 
-fn outline_jump(state: &mut State) {
+fn outline_jump(state: &mut State) -> Vec<Effect> {
     let Mode::Outline(o) = mem::replace(&mut state.mode, Mode::Normal) else {
-        return;
+        return Vec::new();
     };
-    let Some(&h) = o.items.get(o.selected) else {
-        return;
-    };
-    if let Some(&line) = state.layout.heading_line.get(h.index())
-        && line != u32::MAX
-    {
-        jump_recorded(state, line as usize);
+    match o.items.get(o.selected) {
+        Some(&h) => jump_heading(state, h),
+        None => Vec::new(),
     }
+}
+
+/// Go to heading `h`, opening the `<details>` that hide it.
+fn jump_heading(state: &mut State, h: HeadingId) -> Vec<Effect> {
+    let folds = state.layout.heading_folds(h);
+    if folds.is_empty() {
+        if let Some(&line) = state.layout.heading_line.get(h.index())
+            && line != u32::MAX
+        {
+            jump_recorded(state, line as usize);
+        }
+        return Vec::new();
+    }
+    let here = state.visit();
+    state.history.push_back(here);
+    state.history.forward.clear();
+    state.record_jump();
+    unfold(state, &folds, Goto::Heading(h))
 }
 
 // ---------------------------------------------------------------------------
@@ -891,9 +926,10 @@ fn sidebar_move(state: &mut State, delta: isize) {
 }
 
 /// Go to the heading of sidebar entry `i`.
-fn sidebar_jump(state: &mut State, i: usize) {
-    if let Some(&(line, _)) = state.derived.headings.get(i) {
-        jump_recorded(state, line as usize);
+fn sidebar_jump(state: &mut State, i: usize) -> Vec<Effect> {
+    match state.derived.headings.get(i) {
+        Some(&(_, h)) => jump_heading(state, h),
+        None => Vec::new(),
     }
 }
 
@@ -936,6 +972,7 @@ fn search_from(state: &mut State, pattern: &str, backward: bool, origin: Place) 
     if let Some(pos) = pos {
         let line = state.layout.line_at(pos);
         state.reveal(line);
+        reveal_match_cols(state);
     }
     found
 }
@@ -955,16 +992,16 @@ fn incremental(state: &mut State) {
     search_from(state, &input, backward, origin);
 }
 
-fn accept_prompt(state: &mut State) {
+fn accept_prompt(state: &mut State) -> Vec<Effect> {
     let Mode::Prompt(p) = mem::replace(&mut state.mode, Mode::Normal) else {
-        return;
+        return Vec::new();
     };
     let pattern = if p.input.is_empty() {
         match state.last_pattern.clone() {
             Some((last, _)) => last,
             None => {
                 state.search = p.saved;
-                return;
+                return Vec::new();
             }
         }
     } else {
@@ -975,7 +1012,30 @@ fn accept_prompt(state: &mut State) {
     if !search_from(state, &pattern, p.backward, p.origin) {
         state.search = None;
         state.complain(format!("not found: {pattern}"));
+        return Vec::new();
     }
+    show_match(state)
+}
+
+/// Show the current match: open the `<details>` hiding it (laying out
+/// again), else scroll to it, sideways too.
+fn show_match(state: &mut State) -> Vec<Effect> {
+    let Some(pos) = state
+        .search
+        .as_ref()
+        .and_then(|s| s.current.and_then(|i| s.matches.get(i)))
+        .map(|m| m.pos())
+    else {
+        return Vec::new();
+    };
+    let folds = state.layout.folded_at(pos);
+    if !folds.is_empty() {
+        return unfold(state, &folds, Goto::Reveal(pos));
+    }
+    let line = state.layout.line_at(pos);
+    state.reveal(line);
+    reveal_match_cols(state);
+    Vec::new()
 }
 
 fn cancel_prompt(state: &mut State) {
@@ -988,11 +1048,11 @@ fn cancel_prompt(state: &mut State) {
 }
 
 /// `n` (or `N` with `reverse`), `count` times.
-fn next_match(state: &mut State, count: usize, reverse: bool) {
+fn next_match(state: &mut State, count: usize, reverse: bool) -> Vec<Effect> {
     if state.search.is_none() {
         let Some((pattern, backward)) = state.last_pattern.clone() else {
             state.say("no search yet: / searches");
-            return;
+            return Vec::new();
         };
         state.search = Some(Search::run(
             state.page.corpus(),
@@ -1006,13 +1066,13 @@ fn next_match(state: &mut State, count: usize, reverse: bool) {
     let top_pos = state.top_pos();
     let layout = &state.layout;
     let Some(s) = state.search.as_mut() else {
-        return;
+        return Vec::new();
     };
     let n = s.matches.len();
     if n == 0 {
         let pattern = s.pattern.clone();
         state.complain(format!("not found: {pattern}"));
-        return;
+        return Vec::new();
     }
     let up = s.backward != reverse;
     // Start from the current match when it is on screen, else from the
@@ -1057,12 +1117,6 @@ fn next_match(state: &mut State, count: usize, reverse: bool) {
         cur = Some(next);
     }
     s.current = cur;
-    let pos = cur.and_then(|i| s.matches.get(i)).map(|m| m.pos());
-    if let Some(pos) = pos {
-        let line = state.layout.line_at(pos);
-        state.record_jump();
-        state.reveal(line);
-    }
     if wrapped {
         state.say(if up {
             "search wrapped to the bottom"
@@ -1070,6 +1124,11 @@ fn next_match(state: &mut State, count: usize, reverse: bool) {
             "search wrapped to the top"
         });
     }
+    if cur.is_none() {
+        return Vec::new();
+    }
+    state.record_jump();
+    show_match(state)
 }
 
 // ---------------------------------------------------------------------------
@@ -1094,39 +1153,100 @@ fn set_focus(state: &mut State, occ: usize) {
     });
 }
 
-/// Tab / S-Tab, `n` times.
+/// What Tab stops at: a link occurrence or a `<details>` summary.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Stop {
+    Link(usize),
+    Summary(u32),
+}
+
+/// Every Tab stop with its first and last line and its column, top to
+/// bottom and left to right.
+fn stops(state: &State) -> Vec<(usize, usize, u16, Stop)> {
+    let layout = &state.layout;
+    let mut out: Vec<(usize, usize, u16, Stop)> = state
+        .derived
+        .links
+        .iter()
+        .enumerate()
+        .map(|(i, o)| {
+            let col = layout
+                .link_hits
+                .get(o.first as usize)
+                .map_or(0, |h| h.cols.start);
+            let line = o.line as usize;
+            (
+                line,
+                line + o.hits.saturating_sub(1) as usize,
+                col,
+                Stop::Link(i),
+            )
+        })
+        .collect();
+    for (id, d) in layout.details.iter().enumerate() {
+        if d.line != u32::MAX {
+            let line = d.line as usize;
+            let last = line + d.rows.saturating_sub(1) as usize;
+            let id = u32::try_from(id).unwrap_or(u32::MAX);
+            out.push((line, last, d.col, Stop::Summary(id)));
+        }
+    }
+    out.sort_by_key(|&(line, _, col, _)| (line, col));
+    out
+}
+
+/// Tab / S-Tab, `n` times: links and `<details>` summaries.
 fn focus_step(state: &mut State, n: usize, forward: bool) {
-    let total = state.derived.links.len();
+    let stops = stops(state);
+    let total = stops.len();
     if total == 0 {
         state.say("no links in this document");
         return;
     }
     let (top, rows) = (state.top, state.view_rows());
-    let mut cur = visible_focus(state);
+    let focused = match (visible_summary(state), visible_focus(state)) {
+        (Some(id), _) => Some(Stop::Summary(id)),
+        (None, Some(i)) => Some(Stop::Link(i)),
+        (None, None) => None,
+    };
+    let mut cur = focused.and_then(|f| stops.iter().position(|s| s.3 == f));
     for _ in 0..n {
         cur = Some(match cur {
             Some(i) if forward => (i + 1) % total,
             Some(i) => (i + total - 1) % total,
-            None if forward => state
-                .derived
-                .links
+            None if forward => stops.iter().position(|s| s.1 >= top).unwrap_or(0),
+            None => stops
                 .iter()
-                .position(|o| o.line as usize + o.hits as usize > top)
-                .unwrap_or(0),
-            None => state
-                .derived
-                .links
-                .iter()
-                .rposition(|o| (o.line as usize) < top + rows)
+                .rposition(|s| s.0 < top + rows)
                 .unwrap_or(total - 1),
         });
     }
-    if let Some(i) = cur {
-        set_focus(state, i);
-        if let Some(o) = state.derived.links.get(i).copied() {
-            state.reveal(o.line as usize);
+    let Some(&(line, _, col, stop)) = cur.and_then(|i| stops.get(i)) else {
+        return;
+    };
+    match stop {
+        Stop::Link(i) => {
+            state.summary_focus = None;
+            set_focus(state, i);
+        }
+        Stop::Summary(id) => {
+            state.focus = None;
+            state.summary_focus = Some(id);
         }
     }
+    state.reveal(line);
+    reveal_cols(state, line, col..col.saturating_add(1));
+}
+
+/// The focused `<details>` summary, if it is on screen.
+fn visible_summary(state: &State) -> Option<u32> {
+    let (top, rows) = (state.top, state.view_rows());
+    state.summary_focus.filter(|&id| {
+        state.layout.details.get(id as usize).is_some_and(|d| {
+            let line = d.line as usize;
+            d.line != u32::MAX && line < top + rows && line + d.rows as usize > top
+        })
+    })
 }
 
 /// The focused link occurrence, if it is on screen.
@@ -1142,6 +1262,9 @@ fn visible_focus(state: &State) -> Option<usize> {
 }
 
 fn follow_focus(state: &mut State) -> Vec<Effect> {
+    if let Some(id) = visible_summary(state) {
+        return toggle(state, id);
+    }
     match visible_focus(state) {
         Some(occ) => follow(state, occ),
         None => {
@@ -1158,6 +1281,14 @@ fn follow(state: &mut State, occ: usize) -> Vec<Effect> {
     };
     if let Some(at) = gallery::link_location(state, &o) {
         return view_image(state, Some(at), None);
+    }
+    // A heading inside a collapsed `<details>`: open it on the way.
+    let doc = &state.page.doc;
+    if let Some(Target::Anchor(name)) = doc.link(o.link).map(|l| &l.target)
+        && let Some(Anchor::Heading(h)) = doc.resolve_anchor(name)
+        && !state.layout.heading_folds(h).is_empty()
+    {
+        return jump_heading(state, h);
     }
     let base = state.page.base_dir();
     match links::target(&state.page.doc, &base, &state.layout, &o) {
@@ -1237,6 +1368,168 @@ fn act_on(state: &mut State, act: Act) -> Vec<Effect> {
         Act::Copy(c) => c.effect(),
         Act::Select(lines) => {
             visual::start(state, lines);
+            Vec::new()
+        }
+        Act::Toggle(id) => toggle(state, id),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Wide blocks
+// ---------------------------------------------------------------------------
+
+/// How to shift wide blocks.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Shift {
+    /// By so many columns (negative: back towards their start).
+    By(isize),
+    Start,
+    End,
+}
+
+/// The most the wide blocks on screen can be shifted (`None`: none is on
+/// screen).
+fn wide_on_screen(state: &State) -> Option<u16> {
+    let layout = &state.layout;
+    let top = u32::try_from(state.top).unwrap_or(u32::MAX);
+    let rows = u32::try_from(state.view_rows()).unwrap_or(u32::MAX);
+    let bottom = top.saturating_add(rows);
+    layout
+        .wide
+        .iter()
+        .filter(|w| w.start < bottom && w.end > top)
+        .map(|w| w.max_shift(layout.measure))
+        .max()
+}
+
+/// `zh`, `zl`, …: shift the wide blocks of the document, as far as those
+/// on screen go (normal text never moves).
+fn shift(state: &mut State, how: Shift) {
+    let Some(max) = wide_on_screen(state) else {
+        state.say("no wide code or table on screen");
+        return;
+    };
+    let cur = state.hscroll().min(max);
+    let to = match how {
+        Shift::By(d) if d < 0 => {
+            cur.saturating_sub(u16::try_from(d.unsigned_abs()).unwrap_or(u16::MAX))
+        }
+        Shift::By(d) => cur.saturating_add(u16::try_from(d.unsigned_abs()).unwrap_or(u16::MAX)),
+        Shift::Start => 0,
+        Shift::End => max,
+    };
+    state.doc_view_mut().hscroll = to.min(max);
+}
+
+/// Shift the wide block of line `line` (if it is in one) so its columns
+/// `cols` (relative to the text column) are in view.
+fn reveal_cols(state: &mut State, line: usize, cols: std::ops::Range<u16>) {
+    let layout = &state.layout;
+    let Some(w) = layout.wide_at(line) else {
+        return;
+    };
+    let max = w.max_shift(layout.measure);
+    let view = layout.measure.saturating_sub(w.x0);
+    let cur = layout.shift_at(line, state.hscroll());
+    // In columns of the block; the edges hold the `‹` and `›`.
+    let lo = cols.start.saturating_sub(w.x0);
+    let hi = cols
+        .end
+        .max(cols.start.saturating_add(1))
+        .saturating_sub(w.x0);
+    let to = if cur > 0 && lo <= cur {
+        lo.saturating_sub(HSCROLL_MARGIN)
+    } else if hi.saturating_add(1) > cur.saturating_add(view) {
+        hi.saturating_add(HSCROLL_MARGIN).saturating_sub(view)
+    } else {
+        return;
+    };
+    state.doc_view_mut().hscroll = to.min(max);
+}
+
+/// Shift the current search match into view sideways.
+fn reveal_match_cols(state: &mut State) {
+    let Some(s) = state.search.as_ref() else {
+        return;
+    };
+    let Some(pos) = s.current.and_then(|i| s.matches.get(i)).map(|m| m.pos()) else {
+        return;
+    };
+    let line = state.layout.line_at(pos);
+    if state.layout.wide_at(line).is_none() {
+        return;
+    }
+    if let Some(cols) = current_cols(state.page.corpus(), &state.layout, line, s) {
+        reveal_cols(state, line, cols);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Collapsible details
+// ---------------------------------------------------------------------------
+
+/// Open or close `<details>` `id` (by its toggle).
+fn flip(state: &mut State, id: u32) {
+    let toggled = &mut state.doc_view_mut().toggled;
+    match toggled.binary_search(&id) {
+        Ok(i) => {
+            toggled.remove(i);
+        }
+        Err(i) => toggled.insert(i, id),
+    }
+}
+
+/// Open or close `<details>` `id`, keeping what is at the top of the
+/// screen where it is.
+fn toggle(state: &mut State, id: u32) -> Vec<Effect> {
+    if state.layout.details.get(id as usize).is_none() {
+        return Vec::new();
+    }
+    flip(state, id);
+    state.pending = Some(Goto::Place(state.top_place()));
+    vec![Effect::Relayout]
+}
+
+/// Open the collapsed `<details>` `ids`, then go where `goto` says.
+fn unfold(state: &mut State, ids: &[u32], goto: Goto) -> Vec<Effect> {
+    for &id in ids {
+        if state
+            .layout
+            .details
+            .get(id as usize)
+            .is_some_and(|d| !d.open)
+        {
+            flip(state, id);
+        }
+    }
+    state.pending = Some(goto);
+    vec![Effect::Relayout]
+}
+
+/// `za`: open or close the focused `<details>`, else the first one whose
+/// summary is in the top third of the screen, else close the one the top
+/// line is in.
+fn toggle_near_top(state: &mut State) -> Vec<Effect> {
+    if let Some(id) = visible_summary(state) {
+        return toggle(state, id);
+    }
+    let top = state.top;
+    let near = top..top + (state.view_rows() / 3).max(1);
+    let layout = &state.layout;
+    let found = layout
+        .details
+        .iter()
+        .position(|d| d.line != u32::MAX && near.contains(&(d.line as usize)))
+        .or_else(|| {
+            let pos = state.top_pos();
+            layout.details.iter().rposition(|d| {
+                d.open && d.line != u32::MAX && (d.line as usize) < top && d.holds(pos)
+            })
+        });
+    match found.and_then(|i| u32::try_from(i).ok()) {
+        Some(id) => toggle(state, id),
+        None => {
+            state.say("no <details> at the top");
             Vec::new()
         }
     }
@@ -1495,6 +1788,7 @@ fn switch(state: &mut State, page: Rc<Page>, req: LoadRequest) -> Vec<Effect> {
     state.page = page;
     state.search = None;
     state.focus = None;
+    state.summary_focus = None;
     state.pending = Some(goto);
     vec![Effect::Relayout]
 }
@@ -1512,6 +1806,19 @@ fn go(state: &mut State, goto: Goto) {
             }
         },
         Goto::Top => state.top = 0,
+        Goto::Heading(h) => {
+            if let Some(&line) = state.layout.heading_line.get(h.index())
+                && line != u32::MAX
+            {
+                state.top = line as usize;
+            }
+        }
+        Goto::Reveal(pos) => {
+            state.clamp_top();
+            let line = state.layout.line_at(pos);
+            state.reveal(line);
+            reveal_match_cols(state);
+        }
     }
     state.clamp_top();
 }
@@ -1545,6 +1852,7 @@ fn reloaded(state: &mut State, doc: PagerDoc) -> Vec<Effect> {
     // Link ids are not stable across versions of a document (the image
     // view keeps its gallery: it holds the images themselves).
     state.focus = None;
+    state.summary_focus = None;
     state.say("reloaded");
     vec![Effect::Relayout]
 }
@@ -1573,6 +1881,16 @@ fn install(state: &mut State, layout: Layout) {
         if let Some(i) = best {
             set_focus(state, i);
         }
+    }
+    // A focused summary stays focused while it is shown.
+    if let Some(id) = state.summary_focus
+        && state
+            .layout
+            .details
+            .get(id as usize)
+            .is_none_or(|d| d.line == u32::MAX)
+    {
+        state.summary_focus = None;
     }
     match &state.mode {
         Mode::Hints(_) => state.mode = Mode::Normal,
@@ -1656,6 +1974,18 @@ fn on_mouse(state: &mut State, m: Mouse) -> Vec<Effect> {
             }
             Vec::new()
         }
+        MouseKind::WheelLeft | MouseKind::WheelRight => {
+            if !matches!(
+                state.mode,
+                Mode::Image(_) | Mode::Outline(_) | Mode::Help { .. }
+            ) && m.col >= state.left()
+                && wide_on_screen(state).is_some()
+            {
+                let right = m.kind == MouseKind::WheelRight;
+                shift(state, Shift::By(lines(usize::from(HSCROLL_STEP), right)));
+            }
+            Vec::new()
+        }
         MouseKind::Press(Button::Left) => {
             state.message = None;
             // A click ends a key sequence or a mark being typed.
@@ -1685,7 +2015,7 @@ fn click(state: &mut State, col: u16, row: u16) -> Vec<Effect> {
                     if let Mode::Outline(o) = &mut state.mode {
                         o.selected = i;
                     }
-                    outline_jump(state);
+                    return outline_jump(state);
                 }
             }
             Vec::new()
@@ -1717,18 +2047,28 @@ fn click(state: &mut State, col: u16, row: u16) -> Vec<Effect> {
             let left = state.left();
             if col < left {
                 // The sidebar: its entries go to their headings.
-                if let Some(i) = sidebar::entry_at(state, row) {
-                    sidebar_jump(state, i);
-                }
-                return Vec::new();
+                return match sidebar::entry_at(state, row) {
+                    Some(i) => sidebar_jump(state, i),
+                    None => Vec::new(),
+                };
             }
             let line = state.top + row;
             let Some(col) = col.checked_sub(left.saturating_add(state.layout.indent)) else {
                 return Vec::new();
             };
+            // The column of the line under the pointer (a wide block may be
+            // shifted).
+            let col =
+                state
+                    .layout
+                    .layout_col(line, col, state.layout.shift_at(line, state.hscroll()));
             if let Some(occ) = links::occurrence_at(&state.layout, &state.derived, line, col) {
+                state.summary_focus = None;
                 set_focus(state, occ);
                 return follow(state, occ);
+            }
+            if let Some(id) = state.layout.summary_at(line) {
+                return toggle(state, id);
             }
             // A figure shown as an image: the image view.
             let figure = match state.layout.lines.get(line).map(|l| l.kind) {

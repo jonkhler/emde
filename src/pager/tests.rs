@@ -10,7 +10,7 @@ use super::state::{DocKey, MAX_PAGES, Mode};
 use super::term::{Button, Key, KeyCode, Mouse, MouseKind};
 use super::*;
 use crate::highlight::PlainHighlighter;
-use crate::layout::{NoImages, layout};
+use crate::layout::NoImages;
 use crate::options::RenderOptions;
 use crate::parse::ParseOptions;
 use crate::source::{Origin, Source};
@@ -35,12 +35,18 @@ fn pdoc(md: &str, origin: Origin) -> PagerDoc {
     PagerDoc::parse(source, &ParseOptions::default())
 }
 
+/// A document's first layout in the pager (nothing toggled, not shifted).
 fn lay(doc: &Document, cols: u16, wide: bool) -> Layout {
+    let settings = Settings::new(&PagerOptions::default(), &RenderOptions::default());
+    lay_with(doc, cols, wide, settings.interactive())
+}
+
+fn lay_with(doc: &Document, cols: u16, wide: bool, it: crate::layout::Interactive<'_>) -> Layout {
     let mut opts = RenderOptions::default();
     if wide {
         opts.max_width = 0;
     }
-    layout(
+    crate::layout::layout_with(
         doc,
         cols,
         &Theme::test(),
@@ -48,6 +54,7 @@ fn lay(doc: &Document, cols: u16, wide: bool) -> Layout {
         &opts,
         &PlainHighlighter,
         &NoImages,
+        it,
     )
 }
 
@@ -75,7 +82,7 @@ fn drive(s: &mut State, action: Action) -> Vec<Effect> {
     while !queue.is_empty() {
         let effect = queue.remove(0);
         if effect == Effect::Relayout {
-            let l = lay(s.document(), s.doc_cols(), s.wide());
+            let l = lay_with(s.document(), s.doc_cols(), s.wide(), s.interactive());
             queue.extend(update(s, Action::Layout(l)));
         } else if effect == Effect::ShowImage {
             out.push(effect);

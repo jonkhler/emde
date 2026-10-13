@@ -151,7 +151,9 @@ pub(crate) fn motion(state: &mut State, cmd: Command, n: usize, count: Option<us
                 .derived
                 .headings
                 .iter()
-                .map(|&(l, _)| l as usize)
+                .enumerate()
+                .filter(|&(i, _)| !state.derived.is_folded(i))
+                .map(|(_, &(l, _))| l as usize)
                 .collect();
             let mut at = c;
             for _ in 0..n {

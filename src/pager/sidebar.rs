@@ -15,7 +15,8 @@
 //! # Scroll-spy
 //!
 //! The current section ([`current`]) is the last heading at or above the
-//! top third of the screen. The sidebar scrolls itself to keep it in view
+//! top third of the screen. Headings inside collapsed `<details>` are
+//! listed dimmed (going to one opens them), but never current. The sidebar scrolls itself to keep it in view
 //! ([`follow`], after every update) unless the reader scrolled the sidebar
 //! with the wheel since the current section last changed; with the keys in
 //! the sidebar (`T` a second time) the selected entry is kept in view
@@ -90,13 +91,7 @@ pub(crate) struct Sidebar {
 /// The current section's entry: the last heading at or above the top third
 /// of the screen (`None` above the first heading).
 pub(crate) fn current(state: &State) -> Option<usize> {
-    let line = state.top + state.view_rows() / 3;
-    let line = u32::try_from(line).unwrap_or(u32::MAX);
-    state
-        .derived
-        .headings
-        .partition_point(|&(l, _)| l <= line)
-        .checked_sub(1)
+    state.derived.entry_at(state.top + state.view_rows() / 3)
 }
 
 /// Keep the right entry in view after an update: the selected one with the

@@ -167,6 +167,21 @@ pub enum Command {
     ScrollTop,
     /// `zb`: the current line to the bottom.
     ScrollBottom,
+    /// `zh`: wide blocks a few columns to the left (their start comes
+    /// into view).
+    ScrollLeft,
+    /// `zl`: wide blocks a few columns to the right.
+    ScrollRight,
+    /// `zH`: wide blocks half a screen to the left.
+    HalfLeft,
+    /// `zL`: wide blocks half a screen to the right.
+    HalfRight,
+    /// Wide blocks back to their start.
+    ScrollStart,
+    /// Wide blocks to their end.
+    ScrollEnd,
+    /// Open or close the `<details>` at the top.
+    ToggleDetails,
     NextHeading,
     PrevHeading,
     NextSection,
@@ -328,6 +343,12 @@ pub const BINDINGS: &[Binding] = &[
     bind!(Scroll, "scroll-center", "zz", ScrollCenter, "centre the current match, link or middle line"),
     bind!(Scroll, "scroll-top", "zt", ScrollTop, "… to the top"),
     bind!(Scroll, "scroll-bottom", "zb", ScrollBottom, "… to the bottom"),
+    bind!(Scroll, "scroll-left", "zh,Left", ScrollLeft, "shift wide code and tables left"),
+    bind!(Scroll, "scroll-right", "zl,Right", ScrollRight, "… right"),
+    bind!(Scroll, "scroll-half-left", "zH", HalfLeft, "… half a screen left"),
+    bind!(Scroll, "scroll-half-right", "zL", HalfRight, "… half a screen right"),
+    bind!(Scroll, "scroll-start", "^", ScrollStart, "… back to their start"),
+    bind!(Scroll, "scroll-end", "$", ScrollEnd, "… to their end"),
     bind!(Jump, "next-heading", "]", NextHeading, "next heading"),
     bind!(Jump, "prev-heading", "[", PrevHeading, "previous heading"),
     bind!(Jump, "next-section", "}", NextSection, "next heading of the same or a higher level"),
@@ -341,9 +362,10 @@ pub const BINDINGS: &[Binding] = &[
     bind!(Search, "next-match", "n", NextMatch, "next match"),
     bind!(Search, "prev-match", "N", PrevMatch, "previous match"),
     bind!(Search, "clear-search", "Esc", ClearSearch, "clear the search, the link focus"),
-    bind!(Links, "focus-next", "Tab", FocusNext, "focus the next link"),
-    bind!(Links, "focus-prev", "S-Tab", FocusPrev, "focus the previous link"),
-    bind!(Links, "follow", "Enter", Follow, "follow the focused link"),
+    bind!(Links, "focus-next", "Tab", FocusNext, "focus the next link or <details> summary"),
+    bind!(Links, "focus-prev", "S-Tab", FocusPrev, "focus the previous one"),
+    bind!(Links, "follow", "Enter", Follow, "follow the focused link, open or close the focused <details>"),
+    bind!(Links, "toggle-details", "za", ToggleDetails, "open or close the <details> at the top (a click on its summary too)"),
     bind!(Links, "link-hints", "o", LinkHints, "link hints: type a label to follow"),
     bind!(Links, "back", "Backspace,H", Back, "back"),
     bind!(Links, "forward", "L", Forward, "forward"),
@@ -1036,6 +1058,30 @@ mod tests {
         }
         assert_eq!(lookup(Context::Normal, c('x')), None);
         assert_eq!(lookup(Context::Normal, c('z')), None, "only a prefix");
+        assert_eq!(
+            lookup(Context::Normal, k(KeyCode::Left)),
+            Some(C::ScrollLeft)
+        );
+        assert_eq!(
+            lookup(Context::Normal, k(KeyCode::Right)),
+            Some(C::ScrollRight)
+        );
+        assert_eq!(lookup(Context::Normal, c('$')), Some(C::ScrollEnd));
+        assert_eq!(lookup(Context::Normal, c('^')), Some(C::ScrollStart));
+        assert_eq!(
+            Keymap::default()
+                .lookup(Context::Normal, &[c('z'), c('a')])
+                .exact,
+            Some(C::ToggleDetails)
+        );
+        assert_eq!(
+            Keymap::default()
+                .lookup(Context::Normal, &[c('z'), c('L')])
+                .exact,
+            Some(C::HalfRight)
+        );
+        // `0` stays a count digit.
+        assert_eq!(lookup(Context::Normal, c('0')), Some(C::Count));
         let map = Keymap::default();
         assert_eq!(
             map.lookup(Context::Normal, &[c('g')]),

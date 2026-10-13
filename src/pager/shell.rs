@@ -176,9 +176,23 @@ impl<'t, T: Terminal> Shell<'t, T> {
         let width = size
             .0
             .saturating_sub(sidebar::cols(&settings.sidebar, None, size.0, &doc.doc));
-        let first = first.filter(|l| l.width == width).unwrap_or_else(|| {
-            layout::layout(&doc.doc, width, &theme, &caps, &opts, &*highlighter, sizer)
-        });
+        // A layout made for stream mode will do if it has neither
+        // `<details>` (collapsed here) nor wide blocks (cut there).
+        let first = first
+            .filter(|l| l.width == width && l.details.is_empty() && !l.narrowed)
+            .unwrap_or_else(|| {
+                let it = settings.interactive();
+                layout::layout_with(
+                    &doc.doc,
+                    width,
+                    &theme,
+                    &caps,
+                    &opts,
+                    &*highlighter,
+                    sizer,
+                    it,
+                )
+            });
         let mut stamps = HashMap::new();
         if let Origin::File(p) = &doc.source.origin {
             stamps.insert(p.clone(), watch::stamp(p));
@@ -448,7 +462,7 @@ impl<'t, T: Terminal> Shell<'t, T> {
         self.opts.max_width = if self.state.wide() { 0 } else { self.max_width };
         let doc = self.state.document();
         let sizer = self.images.sizer(self.state.key(), doc);
-        layout::layout(
+        layout::layout_with(
             doc,
             self.state.doc_cols(),
             &self.theme,
@@ -456,6 +470,7 @@ impl<'t, T: Terminal> Shell<'t, T> {
             &self.opts,
             &*self.highlighter,
             sizer,
+            self.state.interactive(),
         )
     }
 
