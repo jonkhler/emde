@@ -4,9 +4,10 @@
 //!
 //! 1. the 2D box, if it is at most `avail` columns wide and
 //!    [`MathOptions::max_height`] rows tall;
-//! 2. the 2D rows split before top-level relations, the relations aligned
-//!    under the first one (else indented by two columns, else none), within
-//!    the same limits;
+//! 2. the 2D rows split: first at top-level `\quad`-or-wider spaces (one
+//!    centred row per part), else before top-level relations, the relations
+//!    aligned under the first one (else indented by two columns, else
+//!    none), within the same limits;
 //! 3. the linear form, wrapped at top-level operators
 //!    ([`MathDisplay::Lines`]); a multi-row block (`aligned`, `gathered`, a
 //!    bare `\\`) keeps one line per row, each wrapped on its own.
@@ -207,10 +208,14 @@ fn slice_line(line: &MathLine, start: usize, end: usize, cjk: bool) -> MathLine 
 
 /// A laid-out row item: its box, the blank columns before it and its
 /// spacing classes.
+#[derive(Clone)]
 struct Part {
     b: MBox,
     gap: usize,
     class: Option<(Class, Class)>,
+    /// A `\quad` or wider space comes before it (one space alone, not
+    /// thin spaces in a row).
+    wide: bool,
 }
 
 /// Join parts (and `after` trailing columns) into one box.
@@ -282,7 +287,38 @@ impl Layout<'_> {
         {
             return Some(b);
         }
-        self.split(&parts, tag)
+        self.split_at_spaces(&parts)
+            .and_then(|b| self.with_tag(b, tag))
+            .or_else(|| self.split(&parts, tag))
+    }
+
+    /// Step 2, first: a formula of parts that a top-level `\quad` or wider
+    /// space separates (`x = 1, \qquad y = 2`) as one centred row per
+    /// part, each split before its relations when it is too wide itself.
+    /// Thin spaces in a row (`f(x)\;\;dx`) separate nothing.
+    fn split_at_spaces(&self, parts: &[Part]) -> Option<MBox> {
+        let mut cuts: Vec<usize> = (1..parts.len())
+            .filter(|&i| parts.get(i).is_some_and(|p| p.wide))
+            .collect();
+        if cuts.is_empty() {
+            return None;
+        }
+        cuts.insert(0, 0);
+        cuts.push(parts.len());
+        let mut rows = Vec::with_capacity(cuts.len());
+        for w in cuts.windows(2) {
+            let &[a, b] = w else { return None };
+            let mut seg: Vec<Part> = parts.get(a..b)?.to_vec();
+            if let Some(first) = seg.first_mut() {
+                first.gap = 0;
+            }
+            let row = match join(&seg, 0).and_then(|r| self.fit(r)) {
+                Some(r) => r,
+                None => self.split(&seg, None)?,
+            };
+            rows.push(row);
+        }
+        stack(&rows, true).and_then(|b| self.fit(b))
     }
 
     /// Step 2: rows split before top-level relations.
@@ -307,6 +343,7 @@ impl Layout<'_> {
                     b: p.b.clone(),
                     gap: if j == 0 { 0 } else { p.gap },
                     class: p.class,
+                    wide: p.wide,
                 });
             }
             chunks.push((gap, join(&body, 0)?));
@@ -344,7 +381,7 @@ impl Layout<'_> {
             .iter()
             .map(|r| MBox::hcat(r).and_then(|b| self.fit(b)))
             .collect::<Option<_>>()?;
-        stack_left(&rows).and_then(|b| self.fit(b))
+        stack(&rows, false).and_then(|b| self.fit(b))
     }
 
     /// Put the tag flush right: on the baseline row when it fits beside the
@@ -451,12 +488,14 @@ impl Layout<'_> {
         let mut parts = Vec::with_capacity(items.len());
         let mut stretchy = Vec::new();
         let mut pending: i32 = 0;
+        let mut wide = false;
         for (i, item) in items.iter().enumerate() {
             if let Node::Space(n) = item {
                 pending += i32::from(*n);
+                wide |= *n >= 2;
                 continue;
             }
-            pending += i32::try_from(spacing.before.get(i).copied().unwrap_or(0)).ok()?;
+            pending = spacing::combine(pending, spacing.before.get(i).copied().unwrap_or(0));
             let gap = usize::try_from(pending.max(0)).ok()?;
             pending = 0;
             if let Node::Atom(Atom::Delim {
@@ -470,9 +509,10 @@ impl Layout<'_> {
                 b: self.node(item, ctx.followed_by(followed))?,
                 gap,
                 class: spacing.classes.get(i).copied().flatten(),
+                wide: std::mem::take(&mut wide),
             });
         }
-        let after = usize::try_from((pending + i32::try_from(spacing.after).ok()?).max(0)).ok()?;
+        let after = usize::try_from(spacing::combine(pending, spacing.after).max(0)).ok()?;
         if !stretchy.is_empty() {
             let others = || {
                 parts
@@ -954,8 +994,9 @@ fn attach(base: MBox, sub: Option<Script>, sup: Option<Script>) -> Option<MBox> 
     Some(out)
 }
 
-/// Stack rows flush left, with a blank row between rows taller than one.
-fn stack_left(rows: &[MBox]) -> Option<MBox> {
+/// Stack rows flush left (else centred, rounding left), with a blank row
+/// between rows taller than one.
+fn stack(rows: &[MBox], centre: bool) -> Option<MBox> {
     let w = rows.iter().map(|r| r.w).max().unwrap_or(0);
     let mut ys = Vec::with_capacity(rows.len());
     let mut y = 0;
@@ -972,7 +1013,7 @@ fn stack_left(rows: &[MBox]) -> Option<MBox> {
     let base = rows.first().map_or(0, |r| r.base);
     let mut out = MBox::blank(w, y, base)?;
     for (r, &y) in rows.iter().zip(&ys) {
-        out.place(0, y, r);
+        out.place(if centre { (w - r.w) / 2 } else { 0 }, y, r);
     }
     Some(out)
 }
@@ -1251,6 +1292,56 @@ mod tests {
             ),
             ["       ⎧ 1  x > 0", "f(x) = ⎨", "       ⎩ 0  otherwise"]
         );
+    }
+
+    /// Found in a real report: a formula too wide for the line split at
+    /// its relation, leaving `Z` behind (`… log Z,     Z` / `= ∫ …`).
+    /// Parts separated by `\qquad` go on rows of their own instead.
+    #[test]
+    fn wide_spaces_separate_rows() {
+        let tex = r"x + y = \frac{a}{b}, \qquad z = \frac{c}{d}";
+        assert_eq!(
+            rows(tex, 80),
+            [
+                "        a          c",
+                "x + y = ─,     z = ─",
+                "        b          d"
+            ]
+            .map(String::from)
+        );
+        assert_eq!(
+            rows(tex, 12),
+            [
+                "        a",
+                "x + y = ─,",
+                "        b",
+                "",
+                "      c",
+                "  z = ─",
+                "      d"
+            ]
+        );
+        // Thin spaces in a row are no separator (found in review).
+        let r = rows(r"\int_0^1 f(x)\;\;dx = \frac{a}{b} + c", 18);
+        assert!(r.iter().any(|row| row.contains("f(x)  dx")), "{r:#?}");
+        // A part still too wide splits before its relations.
+        assert_eq!(
+            rows(r"x + y + z = a + b, \qquad c = d", 12),
+            ["x + y + z", "  = a + b,", "", "  c = d"]
+        );
+    }
+
+    /// Found in a real report: `\textstyle\sum_i` kept its limit below.
+    #[test]
+    fn textstyle_puts_limits_to_the_right() {
+        assert_eq!(rows(r"\left[\textstyle\sum_i s_i\right]", 80), ["[∑ᵢ sᵢ]"]);
+        // Until the end of its group.
+        assert_eq!(
+            rows(r"{\textstyle\sum_i x} + \sum_j y", 80),
+            ["∑ᵢ x + ∑ y", "       j"]
+        );
+        // `\displaystyle` puts them back below.
+        assert_eq!(rows(r"\textstyle\displaystyle\sum_i x", 80), ["∑ x", "i"]);
     }
 
     #[test]

@@ -14,6 +14,11 @@
 //!   does not (`lim_(x→0) (…)`, `∑ᵢ (…)`), which reads better in a terminal
 //!   than TeX's tight setting.
 //! * Punctuation is followed by a column outside tight contexts (`f(x, y)`).
+//! * Vertical bars (`|`, `\|`, `\vert`) have no side in TeX source. Bars
+//!   that pair up in a row are delimiters (`log|det A|`, `|x| + |y|`); a lone
+//!   bar stays ordinary (`p(x|y)`).
+//! * A thin space (`\,`) where spacing already puts a column is absorbed by
+//!   it (`(b; a)` from `b;\,a`).
 
 use crate::ast::{Atom, Limits, Node, Side};
 
@@ -48,6 +53,10 @@ pub(crate) struct Spacing {
     pub(crate) before: Vec<usize>,
     /// Columns after the last item, towards a virtual trailing neighbour.
     pub(crate) after: usize,
+    /// Per item: `1` for an opening delimiter, `-1` for a closing one
+    /// (including bars that pair up), else `0`. Delimiters that come in a
+    /// construction of their own (`\left(…\right)`) count `0`.
+    pub(crate) nesting: Vec<i8>,
 }
 
 impl Spacing {
@@ -73,6 +82,7 @@ pub(crate) fn space(
     trail: Option<Class>,
 ) -> Spacing {
     let mut classes: Vec<Option<(Class, Class)>> = items.iter().map(edges).collect();
+    let nesting = pair_bars(items, &mut classes, lead);
     let unary = resolve_binary(&mut classes, lead, trail);
     let mut before = vec![0; items.len()];
     // The previous item's right edge, and whether it was a unary sign.
@@ -93,7 +103,146 @@ pub(crate) fn space(
         classes,
         before,
         after,
+        nesting,
     }
+}
+
+/// The columns between two items: the automatic `gap` and the `explicit`
+/// spaces written between them (`\,`, `\quad`, `\!`). The thin, medium and
+/// thick spaces (`\,` `\:` `\;`) are narrower than a column; one where
+/// spacing puts a column already is absorbed by it: `b;\,a` is `b; a`, not
+/// `b;  a`. Wider spaces (`\quad`) add to the gap, and negative space
+/// removes columns.
+pub(crate) fn combine(explicit: i32, gap: usize) -> i32 {
+    let gap = i32::try_from(gap).unwrap_or(i32::MAX);
+    if explicit == 1 {
+        gap.max(1)
+    } else {
+        explicit.saturating_add(gap)
+    }
+}
+
+/// The bar character of a node that may be a vertical-bar delimiter (behind
+/// scripts for a closing one, as in `|x|^2`), and whether scripts hide it.
+fn bar(node: &Node) -> Option<(char, bool)> {
+    match node {
+        Node::Atom(
+            Atom::Ord(c @ ('|' | '∥' | '‖'))
+            | Atom::Delim {
+                ch: c @ ('|' | '‖' | '∥'),
+                side: Side::Middle,
+                ..
+            },
+        ) => Some((if *c == '∥' { '‖' } else { *c }, false)),
+        Node::Scripts {
+            base,
+            limits: Limits::Right,
+            ..
+        } => bar(base).map(|(c, _)| (c, true)),
+        _ => None,
+    }
+}
+
+/// Give vertical bars that pair up in a row the sides of delimiters, and
+/// return the nesting of every item (see [`Spacing::nesting`]).
+///
+/// A bar closes the innermost open bar of its kind when it follows an
+/// operand (anything but nothing, a binary operator, a relation, an opening
+/// delimiter or punctuation): `\log|\det|` closes after `\det`, while in
+/// `|x - |y||` the second bar opens. Otherwise it opens when another bar of
+/// its kind follows in the row, and stays ordinary when none does, or when
+/// a bracket closes around it first (pairs never straddle brackets).
+fn pair_bars(
+    items: &[Node],
+    classes: &mut [Option<(Class, Class)>],
+    lead: Option<Class>,
+) -> Vec<i8> {
+    let mut nesting: Vec<i8> = items
+        .iter()
+        .map(|item| match item {
+            Node::Atom(Atom::Delim { side, .. }) => match side {
+                Side::Open => 1,
+                Side::Close => -1,
+                Side::Middle => 0,
+            },
+            Node::Scripts { base, .. } => match base.as_ref() {
+                Node::Atom(Atom::Delim {
+                    side: Side::Close, ..
+                }) => -1,
+                _ => 0,
+            },
+            _ => 0,
+        })
+        .collect();
+    let bars: Vec<Option<(char, bool)>> = items.iter().map(bar).collect();
+    // Bars of each kind still to come.
+    let count = |c: char| bars.iter().flatten().filter(|(b, _)| *b == c).count();
+    let mut left = [count('|'), count('‖')];
+    if left == [0, 0] {
+        return nesting;
+    }
+    /// A bar still open: its kind, index, classes before opening and the
+    /// bracket depth it is at.
+    type OpenBar = (char, usize, Option<(Class, Class)>, i32);
+    let mut open: Vec<OpenBar> = Vec::new();
+    // Bars whose bracket closed before they did: ordinary after all.
+    let mut unmatched: Vec<OpenBar> = Vec::new();
+    let mut depth: i32 = 0;
+    let mut prev = lead;
+    for (i, found) in bars.iter().enumerate() {
+        if let Some((c, scripted)) = *found {
+            let kind = usize::from(c == '‖');
+            if let Some(n) = left.get_mut(kind) {
+                *n = n.saturating_sub(1);
+            }
+            let after_operand = !matches!(
+                prev,
+                None | Some(Class::Bin | Class::Rel | Class::Open | Class::Punct)
+            );
+            let side = if after_operand && open.last().is_some_and(|o| o.0 == c && o.3 == depth) {
+                open.pop();
+                Some((Class::Close, -1))
+            } else if !scripted && left.get(kind).is_some_and(|&n| n > 0) {
+                open.push((c, i, classes.get(i).copied().flatten(), depth));
+                Some((Class::Open, 1))
+            } else {
+                None
+            };
+            if let Some((class, delta)) = side {
+                if let Some(slot) = classes.get_mut(i) {
+                    *slot = Some((class, class));
+                }
+                if let Some(slot) = nesting.get_mut(i) {
+                    *slot = delta;
+                }
+            }
+        } else {
+            // A pair never straddles a bracket: `P(A|B) = P(B|A)` has none.
+            match nesting.get(i).copied().unwrap_or(0) {
+                n if n > 0 => depth += 1,
+                n if n < 0 => {
+                    depth -= 1;
+                    while let Some(o) = open.pop_if(|o| o.3 > depth) {
+                        unmatched.push(o);
+                    }
+                }
+                _ => {}
+            }
+        }
+        if let Some(Some((_, right))) = classes.get(i) {
+            prev = Some(*right);
+        }
+    }
+    // Bars that never found their partner are ordinary after all.
+    for (_, i, class, _) in open.into_iter().chain(unmatched) {
+        if let Some(slot) = classes.get_mut(i) {
+            *slot = class;
+        }
+        if let Some(slot) = nesting.get_mut(i) {
+            *slot = 0;
+        }
+    }
+    nesting
 }
 
 /// The classes a node presents to its left and right neighbours.

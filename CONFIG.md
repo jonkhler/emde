@@ -74,12 +74,12 @@ Every key, with its default and the option that also sets it, if any.
 
 | Key | Default | Description |
 |---|---|---|
-| `width` | `0` | Total width in columns; 0 uses the terminal's width (80 when the output is not a terminal). Flag: `--width`, `-w`. |
+| `width` | `0` | Total width in columns; 0 uses the terminal's width (when the output is not a terminal: \$COLUMNS, else 80). Flag: `--width`, `-w`. |
 | `max_width` | `100` | Maximum width of the text column; 0 for no limit. Flag: `--max-width`, `-m`. |
-| `margin` | `2` | Columns kept free on both sides on a terminal. |
+| `margin` | `2` | Columns kept free on both sides. |
 | `align` | `"center"` | Text column on wide terminals: center or left. Flag: `--align`. |
 | `images` | `"auto"` | Images: auto (the best the terminal supports), kitty, iterm, sixel, blocks (drawn with text characters) or none (a box with the alt text). Flag: `--images`. |
-| `math` | `"unicode"` | Inline math: unicode, ascii or raw (the TeX source). Flag: `--math`. |
+| `math` | `"unicode"` | Inline math: unicode, ascii (for now the TeX source, as raw) or raw (the TeX source). Flag: `--math`. |
 | `color` | `"auto"` | Colours: auto, always, never, truecolor, 256 or 16. Flag: `--color`. |
 | `hyperlinks` | `"auto"` | OSC 8 hyperlinks: auto, always or never. Flag: `--hyperlinks`. |
 | `link_refs` | `"auto"` | Numbered link references ([1\]) where hyperlinks are off: auto, always or never. Flag: `--link-refs`. |
@@ -93,7 +93,7 @@ Every key, with its default and the option that also sets it, if any.
 
 | Key | Default | Description |
 |---|---|---|
-| `h1` | `"bar"` | h1: bar (a full-width bar in h1's background colour), underline (styled text with its underline) or plain. When your [style.h1\] sets no background, and this key is not set, h1 is drawn as underline. |
+| `h1` | `"bar"` | h1: bar (a full-width bar in h1's background colour), underline (styled text with its underline) or plain (styled text without an underline). When your [style.h1\] sets no background, and this key is not set, h1 is drawn as underline. |
 | `h2` | `"rule"` | h2: rule (text over a heavy rule) or plain. |
 | `markers` | `["", "", "▎ ", "", "", ""]` | Prefix for each level, h1 to h6. |
 | `numbers` | `false` | Number the headings (1., 1.1., ...). |
@@ -152,7 +152,7 @@ nu = "bash"
 
 | Key | Default | Description |
 |---|---|---|
-| `math` | `true` | \$...\$ and \$\$...\$\$ math. |
+| `math` | `true` | Math: \$...\$ and \$\$...\$\$ (false also leaves \\(...\\), \\[...\\\] and ```math fences alone). |
 | `linkify` | `true` | Turn bare URLs into links. |
 | `definition_lists` | `true` | Definition lists (a term line followed by ": definition"). |
 | `smart_punctuation` | `false` | Curly quotes and dashes. |
@@ -180,7 +180,7 @@ nu = "bash"
 | `search_case` | `"smart"` | Search case: smart (case-sensitive only with an uppercase letter), sensitive or insensitive. |
 | `open` | `"auto"` | Opening links and images (o in the image view): auto (open or xdg-open locally, copy the URL over SSH), never, or a command that gets the URL (or the image file) as its last argument. |
 | `toc_sidebar` | `"auto"` | The outline sidebar on the left (T shows it, a second T moves the keys into it, a third hides it): auto shows it when the terminal is at least toc\_width + max\_width + 2 \* margin + 4 columns wide (140 with the defaults; a max\_width of 0 counts as 100), always whenever the text keeps 40 columns beside it, never only when T asks for it. Documents without headings get none. |
-| `toc_width` | `32` | Width of the outline sidebar in columns, its border included (16 to 60). |
+| `toc_width` | `32` | Width of the outline sidebar in columns, its border included (16 to 60; other values are clamped). |
 | `details` | `"collapsed"` | \<details\> blocks: collapsed to their summary line (unless written \<details open\>; Enter, a click or za opens them) or expanded. Output that is not paged always shows them expanded. |
 
 ### `[pager.keys]`
@@ -291,7 +291,7 @@ draws it (`—`: as its parent).
 | `h3` | `heading` | Level-3 headings. | `fg=teal bold` |
 | `h4` | `heading` | Level-4 headings. | `fg=default bold` |
 | `h5` | `heading` | Level-5 headings. | `fg=subtext bold italic` |
-| `h6` | `heading` | Level-6 headings. | `fg=muted italic` |
+| `h6` | `heading` | Level-6 headings. | `fg=muted italic`; light: `fg=subtext` |
 | `heading_rule` | `heading` | Heading decorations: the rule under h2, markers and numbers. | `fg=mauve` |
 
 #### Inline
@@ -428,21 +428,21 @@ styles that use them work with every theme.
 
 | Name | Dark | Light |
 |---|---|---|
-| `accent` | `#89b4fa` | `#1e66f5` |
+| `accent` | `#89b4fa` | `#0d57e5` |
 | `base` | `#1e1e2e` | `#eff1f5` |
-| `blue` | `#89b4fa` | `#1e66f5` |
-| `green` | `#a6e3a1` | `#40a02b` |
-| `mauve` | `#cba6f7` | `#8839ef` |
-| `muted` | `#6c7086` | `#8c8fa1` |
-| `peach` | `#fab387` | `#fe640b` |
+| `blue` | `#89b4fa` | `#0d57e5` |
+| `green` | `#a6e3a1` | `#1c7300` |
+| `mauve` | `#cba6f7` | `#8230e7` |
+| `muted` | `#6c7086` | `#7a7c8e` |
+| `peach` | `#fab387` | `#ab3f00` |
 | `pink` | `#f5c2e7` | `#ea76cb` |
-| `red` | `#f38ba8` | `#d20f39` |
+| `red` | `#f38ba8` | `#c80034` |
 | `sky` | `#89dceb` | `#04a5e5` |
 | `subtext` | `#a6adc8` | `#5c5f77` |
 | `surface` | `#313244` | `#ccd0da` |
-| `teal` | `#94e2d5` | `#179299` |
+| `teal` | `#94e2d5` | `#00787f` |
 | `text` | `#cdd6f4` | `#4c4f69` |
-| `yellow` | `#f9e2af` | `#df8e1d` |
+| `yellow` | `#f9e2af` | `#8e5600` |
 
 ### Theme files
 

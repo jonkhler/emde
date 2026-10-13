@@ -38,18 +38,75 @@ fn to_u32(n: usize) -> u32 {
     u32::try_from(n).unwrap_or(u32::MAX)
 }
 
-/// Push break opportunities for the URL in `text[range]`: after `/ ? & = #`,
-/// except between the two slashes of `//` and at the end of the URL.
-pub(crate) fn url_break_points(text: &str, range: Range<usize>, out: &mut Vec<u32>) {
+/// Push the line-breaking constraints of the URL in `text[range]`.
+///
+/// Break opportunities go after `/ ? & = #`, except between the two
+/// slashes of `//`, inside the `scheme://` the URL starts with and at its
+/// end. The pieces between them become atoms, so a URL breaks only there:
+/// never right after `https://` (which would end a line alone) and never at
+/// a hyphen inside a short path segment (`fd-` / `find`). Layout releases a
+/// piece wider than its line, which then breaks like a long word.
+pub(crate) fn url_constraints(
+    text: &str,
+    range: Range<usize>,
+    breaks: &mut Vec<u32>,
+    atoms: &mut Vec<Range<u32>>,
+) {
     let bytes = text.as_bytes();
     let end = range.end.min(bytes.len());
-    for i in range.start..end {
+    let start = range.start.min(end);
+    let first = start + scheme_len(bytes.get(start..end).unwrap_or_default());
+    let mut piece = start;
+    for i in first..end {
         let Some(&b) = bytes.get(i) else { break };
         let next = bytes.get(i + 1).copied();
         if matches!(b, b'/' | b'?' | b'&' | b'=' | b'#') && i + 1 < end && next != Some(b'/') {
-            out.push(to_u32(i + 1));
+            breaks.push(to_u32(i + 1));
+            push_piece(atoms, piece, i + 1);
+            piece = i + 1;
         }
     }
+    push_piece(atoms, piece, end);
+}
+
+/// A piece of a URL as an atom (one byte holds no break anyway).
+fn push_piece(atoms: &mut Vec<Range<u32>>, start: usize, end: usize) {
+    if end >= start + 2 {
+        atoms.push(to_u32(start)..to_u32(end));
+    }
+}
+
+/// The length of the `scheme://` (with any further slashes, as in
+/// `file:///`) that `url` starts with, else 0.
+fn scheme_len(url: &[u8]) -> usize {
+    if !url.first().is_some_and(u8::is_ascii_alphabetic) {
+        return 0;
+    }
+    let name = url
+        .iter()
+        .take_while(|&&b| b.is_ascii_alphanumeric() || matches!(b, b'+' | b'-' | b'.'))
+        .count();
+    match url.get(name..) {
+        Some([b':', b'/', b'/', rest @ ..]) => {
+            name + 3 + rest.iter().take_while(|&&b| b == b'/').count()
+        }
+        _ => 0,
+    }
+}
+
+/// Sort atoms by start and merge the ones that overlap (atoms that only
+/// touch stay apart).
+pub(crate) fn normalize_atoms(atoms: &mut Vec<Range<u32>>) {
+    atoms.retain(|a| a.start < a.end);
+    atoms.sort_by_key(|a| a.start);
+    let mut merged: Vec<Range<u32>> = Vec::with_capacity(atoms.len());
+    for a in atoms.drain(..) {
+        match merged.last_mut() {
+            Some(last) if a.start < last.end => last.end = last.end.max(a.end),
+            _ => merged.push(a),
+        }
+    }
+    *atoms = merged;
 }
 
 /// Lead bytes of the characters [`needs_attention`] may flag.
@@ -278,10 +335,63 @@ impl InlineBuf {
         }
     }
 
-    /// Break opportunities inside `range`, which holds a URL (see
-    /// [`url_break_points`]).
+    /// Break opportunities and atoms inside `range`, which holds a URL
+    /// (see [`url_constraints`]).
     pub(crate) fn url_breaks(&mut self, range: Range<usize>) {
-        url_break_points(&self.text, range, &mut self.extra_breaks);
+        url_constraints(&self.text, range, &mut self.extra_breaks, &mut self.atoms);
+    }
+
+    /// The text of `link` has ended: whitespace at its end (a space, or a
+    /// soft break still waiting for the next character) leaves the link, so
+    /// the link, its underline and its reference number end at its last
+    /// visible character. HTML puts such whitespace into links all the
+    /// time (`<a href=…>⏎<img …>⏎</a>`), Markdown sometimes (`[Two ](…)`).
+    pub(crate) fn unlink_trailing_space(&mut self, link: LinkId) {
+        if let Some(style) = self.pending_soft.as_mut()
+            && style.link == Some(link)
+        {
+            style.link = None;
+        }
+        let len = to_u32(self.text.len());
+        let n = self.runs.len();
+        let start = n
+            .checked_sub(2)
+            .and_then(|i| self.runs.get(i))
+            .map_or(0, |r| r.end);
+        let Some(last) = self.runs.last_mut() else {
+            return;
+        };
+        if last.link != Some(link)
+            || last.kind != RunKind::Text
+            || last.end != len
+            || !self.text.ends_with(' ')
+        {
+            return;
+        }
+        // Prose never ends with more than one space (they collapse).
+        let space = len - 1;
+        let flags = last.flags;
+        if space > start {
+            last.end = space;
+            self.runs.push(Run {
+                end: len,
+                kind: RunKind::Text,
+                flags,
+                link: None,
+            });
+            return;
+        }
+        // The run is only the space: unlink it, and merge it into the run
+        // before when the two now look alike.
+        last.link = None;
+        if let Some(prev) = n.checked_sub(2).and_then(|i| self.runs.get_mut(i))
+            && prev.kind == RunKind::Text
+            && prev.flags == flags
+            && prev.link.is_none()
+        {
+            prev.end = len;
+            self.runs.pop();
+        }
     }
 
     /// Finish: trim trailing whitespace, add key-cap atoms and normalise the
@@ -298,15 +408,11 @@ impl InlineBuf {
         }
         let len = to_u32(self.text.len());
         self.kbd_atoms();
-        self.atoms.retain(|a| a.start < a.end && a.end <= len);
-        self.atoms.sort_by_key(|a| a.start);
-        let mut atoms: Vec<Range<u32>> = Vec::with_capacity(self.atoms.len());
-        for a in self.atoms {
-            match atoms.last_mut() {
-                Some(last) if a.start < last.end => last.end = last.end.max(a.end),
-                _ => atoms.push(a),
-            }
+        let mut atoms = std::mem::take(&mut self.atoms);
+        for a in &mut atoms {
+            a.end = a.end.min(len);
         }
+        normalize_atoms(&mut atoms);
         let text = &self.text;
         self.extra_breaks
             .retain(|&b| b > 0 && b < len && text.is_char_boundary(b as usize));
@@ -599,9 +705,42 @@ mod tests {
         let n = b.len();
         b.url_breaks(0..n);
         let inl = b.finish();
-        // After "//", "/", "?", "=", "&", "#" but not inside "//" or at the end.
-        assert_eq!(inl.extra_breaks, [8, 14, 16, 18, 20, 22]);
+        // After "/", "?", "=", "&", "#", but not after the scheme's "//" or
+        // at the end; the pieces between are atoms.
+        assert_eq!(inl.extra_breaks, [14, 16, 18, 20, 22]);
+        assert_eq!(inl.atoms, [0..14, 14..16, 16..18, 18..20, 20..22, 22..24]);
         inl.validate().unwrap();
+    }
+
+    #[test]
+    fn url_constraints_skip_the_scheme() {
+        fn pieces(url: &str) -> (Vec<u32>, Vec<&str>) {
+            let (mut breaks, mut atoms) = (Vec::new(), Vec::new());
+            url_constraints(url, 0..url.len(), &mut breaks, &mut atoms);
+            let shown = atoms
+                .iter()
+                .map(|a| &url[a.start as usize..a.end as usize])
+                .collect();
+            (breaks, shown)
+        }
+        assert_eq!(
+            pieces("https://crates.io/crates/fd-find"),
+            (
+                vec![18, 25],
+                vec!["https://crates.io/", "crates/", "fd-find"]
+            )
+        );
+        // Every slash of `file:///` belongs to the scheme.
+        assert_eq!(
+            pieces("file:///home/x.md"),
+            (vec![13], vec!["file:///home/", "x.md"])
+        );
+        // No scheme: breaks from the first slash; one-byte pieces are no atoms.
+        assert_eq!(pieces("a/b/cd"), (vec![2, 4], vec!["a/", "b/", "cd"]));
+        assert_eq!(pieces("x//y"), (vec![3], vec!["x//"]));
+        assert_eq!(scheme_len(b"mailto:a@b"), 0);
+        assert_eq!(scheme_len(b"git+ssh://h/p"), 10);
+        assert_eq!(scheme_len(b"9p://x"), 0);
     }
 
     #[test]

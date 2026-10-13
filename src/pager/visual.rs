@@ -11,7 +11,7 @@
 use std::ops::Range;
 
 use crate::ir::Block;
-use crate::layout::{Layout, LineKind, SpanFlags};
+use crate::layout::{Fill, Layout, LineKind, SpanFlags};
 
 use super::hints::{self, Copied, Kind, block_at, count, element_lines, line_count};
 use super::keymap::Command;
@@ -332,6 +332,27 @@ fn is_border(c: char, ascii: bool) -> bool {
     ('\u{2500}'..='\u{257f}').contains(&c) || ascii && matches!(c, '-' | '=' | '+' | '|' | ':')
 }
 
+/// Whether line `i` is the header of a code block (its language label or
+/// title, on the panel or in the frame's top border): decoration, not text.
+/// `quote` is the quote bar glyph, which may come before the frame.
+fn is_code_header(layout: &Layout, i: usize, quote: &str) -> bool {
+    let (Some(line), Some(next)) = (layout.lines.get(i), layout.lines.get(i + 1)) else {
+        return false;
+    };
+    if line.kind != LineKind::Text || !matches!(next.kind, LineKind::Code { .. }) {
+        return false;
+    }
+    let panel = matches!(line.fill, Fill::Panel { .. }) && line.fill == next.fill;
+    // A frame's top border: a corner (`+-` in ASCII).
+    let text = layout.line_text(i);
+    let mut text = text.trim_start();
+    while let Some(rest) = text.strip_prefix(quote).filter(|_| !quote.is_empty()) {
+        text = rest.trim_start();
+    }
+    let frame = text.starts_with(['┌', '╭', '┏', '╔']) || text.starts_with("+-");
+    panel || frame
+}
+
 /// The text of line `i` without its decorations: quote bars, table
 /// borders (cells are separated by tabs); `None` for a line that is all
 /// decoration (a border, a rule).
@@ -400,6 +421,9 @@ pub(crate) fn selected_text(state: &State, lo: usize, hi: usize) -> String {
             }
             LineKind::Image { .. } => continue,
             _ => code_prev = false,
+        }
+        if is_code_header(layout, i, state.settings.glyphs.0.as_str()) {
+            continue;
         }
         match line_text(state, i) {
             // Padding of panels and frames: nothing to copy.

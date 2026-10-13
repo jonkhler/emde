@@ -12,8 +12,8 @@ expression: "styled(\"kitchen-sink\", &caps, &[80])"
   ⟦bold reverse⟧ Kitchen Sink                                                               ⟦/⟧
 
   A paragraph with ⟦italic⟧emphasis⟦/⟧, ⟦bold⟧strong⟦/⟧, ⟦bold italic⟧both⟦/⟧, ⟦fg=ansi8 strike⟧strikethrough⟦/⟧, ⟦fg=ansi7 bg=ansi8⟧inline code⟦/⟧, a ⟦fg=ansi6 ul link 0⟧link⟦/⟧,
-  an autolink ⟦fg=ansi6 ul link 1⟧https://example.org/path⟦/⟧, and a bare URL ⟦fg=ansi6 ul link 4⟧https://www.rust-⟦/⟧
-  ⟦fg=ansi6 ul link 4⟧lang.org/learn⟦/⟧. Hard break at the end of this line
+  an autolink ⟦fg=ansi6 ul link 1⟧https://example.org/path⟦/⟧, and a bare URL
+  ⟦fg=ansi6 ul link 4⟧https://www.rust-lang.org/learn⟦/⟧. Hard break at the end of this line
   and a backslash hard break
   then more text. Footnote reference⟦fg=ansi6 link 2⟧¹⟦/⟧ and another⟦fg=ansi6 link 3⟧²⟦/⟧.
 

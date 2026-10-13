@@ -19,7 +19,7 @@ use super::gallery::{self, Location};
 use super::hints::{self, Act};
 use super::keymap::{Command, Context};
 use super::links::{self, Follow};
-use super::search::{Search, current_cols};
+use super::search::{Corpus, Search, current_cols};
 use super::state::{
     Derived, DocKey, Focus, Goto, HintKind, ImagePage, Mode, Outline, Page, Place, Prompt, State,
     Viewer, Visit,
@@ -867,11 +867,17 @@ fn jump_heading(state: &mut State, h: HeadingId) -> Vec<Effect> {
         }
         return Vec::new();
     }
+    unfold_recorded(state, &folds, Goto::Heading(h))
+}
+
+/// A jump into collapsed `<details>` `folds`: recorded in the history
+/// (as [`jump_recorded`] does), they open and the view goes to `goto`.
+fn unfold_recorded(state: &mut State, folds: &[u32], goto: Goto) -> Vec<Effect> {
     let here = state.visit();
     state.history.push_back(here);
     state.history.forward.clear();
     state.record_jump();
-    unfold(state, &folds, Goto::Heading(h))
+    unfold(state, folds, goto)
 }
 
 // ---------------------------------------------------------------------------
@@ -1248,7 +1254,18 @@ fn focus_step(state: &mut State, n: usize, forward: bool) {
         }
     }
     state.reveal(line);
-    reveal_cols(state, line, col..col.saturating_add(1));
+    // A link shows whole where it can (its first hit, on `line`).
+    let cols = match stop {
+        Stop::Link(i) => state
+            .derived
+            .links
+            .get(i)
+            .and_then(|o| state.layout.link_hits.get(o.first as usize))
+            .filter(|h| h.line as usize == line)
+            .map(|h| h.cols.clone()),
+        Stop::Summary(_) => None,
+    };
+    reveal_cols(state, line, cols.unwrap_or(col..col.saturating_add(1)));
 }
 
 /// The focused `<details>` summary, if it is on screen.
@@ -1302,6 +1319,21 @@ fn follow(state: &mut State, occ: usize) -> Vec<Effect> {
         && !state.layout.heading_folds(h).is_empty()
     {
         return jump_heading(state, h);
+    }
+    // A footnote back-link to a reference inside a collapsed `<details>`
+    // (shown, the reference has a hit to go to).
+    if o.back
+        && !state
+            .layout
+            .link_hits
+            .iter()
+            .any(|h| h.link == o.link && !h.back)
+        && let Some(pos) = Corpus::link_pos(doc, o.link)
+    {
+        let folds = state.layout.folded_at(pos);
+        if !folds.is_empty() {
+            return unfold_recorded(state, &folds, Goto::Place(Place { pos, extra: 0 }));
+        }
     }
     let base = state.page.base_dir();
     match links::target(&state.page.doc, &base, &state.layout, &o) {
@@ -1450,6 +1482,8 @@ fn reveal_cols(state: &mut State, line: usize, cols: std::ops::Range<u16>) {
         .end
         .max(cols.start.saturating_add(1))
         .saturating_sub(w.x0);
+    // Columns wider than the view show from their start.
+    let hi = hi.min(lo.saturating_add(view.saturating_sub(2 * HSCROLL_MARGIN + 1).max(1)));
     let to = if cur > 0 && lo <= cur {
         lo.saturating_sub(HSCROLL_MARGIN)
     } else if hi.saturating_add(1) > cur.saturating_add(view) {
@@ -1468,11 +1502,19 @@ fn reveal_match_cols(state: &mut State) {
     let Some(pos) = s.current.and_then(|i| s.matches.get(i)).map(|m| m.pos()) else {
         return;
     };
-    let line = state.layout.line_at(pos);
-    if state.layout.wide_at(line).is_none() {
+    // The match is on one of the lines starting at its position: the first
+    // can be a code block's padding or a table's top border.
+    let layout = &state.layout;
+    let first = layout.line_at(pos);
+    let Some(at) = layout.lines.get(first).map(|l| l.pos) else {
         return;
-    }
-    if let Some(cols) = current_cols(state.page.corpus(), &state.layout, line, s) {
+    };
+    let shown = (first..layout.len())
+        .take_while(|&i| layout.lines.get(i).is_some_and(|l| l.pos == at))
+        .take(64)
+        .filter(|&i| layout.wide_at(i).is_some())
+        .find_map(|i| Some((i, current_cols(state.page.corpus(), layout, i, s)?)));
+    if let Some((line, cols)) = shown {
         reveal_cols(state, line, cols);
     }
 }
@@ -1684,10 +1726,22 @@ fn go_file(state: &mut State, i: usize) -> Vec<Effect> {
     let Some(key) = state.files.get(i).cloned() else {
         return Vec::new();
     };
+    // Back where the reader last was in another file, as less does.
+    let restore = if key == state.page.key {
+        None
+    } else {
+        state
+            .history
+            .back
+            .iter()
+            .rev()
+            .find(|v| v.key == key)
+            .map(|v| v.place)
+    };
     let request = LoadRequest {
         path: key.path().map(PathBuf::from).unwrap_or_default(),
         anchor: None,
-        restore: None,
+        restore,
         nav: Nav::Push,
     };
     state.pending_file = Some(i);

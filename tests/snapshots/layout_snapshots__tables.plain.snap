@@ -85,9 +85,9 @@ Note: ref¹
 │ Inline code with │
 │ spaces           │
 ├──────────────────┤
-│ `cargo build --  │
-│ release --       │
-│ locked`          │
+│ `cargo build     │
+│ --release        │
+│ --locked`        │
 ╰──────────────────╯
 
 [1]: https://

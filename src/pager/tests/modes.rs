@@ -505,6 +505,17 @@ fn visual_shift_y_copies_the_text_of_the_lines() {
     assert!(text.lines().all(|l| l == l.trim_end()));
 }
 
+/// Found in a pty run: `Y` copied a code block's language label as a
+/// line of padding and the label (`<49 spaces>python`).
+#[test]
+fn shift_y_leaves_out_code_labels() {
+    let md = "Para.\n\n```python\nprint(1)\n```\n";
+    let mut s = state(md, 60, 20);
+    keys(&mut s, "VG");
+    let (text, _) = copied(&keys(&mut s, "Y")).unwrap();
+    assert_eq!(text, "Para.\n\nprint(1)");
+}
+
 #[test]
 fn shift_y_joins_wrapped_code_lines() {
     let long = "x".repeat(70);
@@ -808,4 +819,36 @@ fn remapped_keys_work_and_show_in_the_help() {
     assert_eq!(keys(&mut s, "Z"), []);
     assert!(s.keys_pending());
     assert_eq!(keys(&mut s, "Z"), [Effect::Quit]);
+}
+
+/// Found in a pty run: a one-column label over a two-column character
+/// left half of it on screen (`a▒本語`).
+#[test]
+fn hint_labels_cover_whole_wide_characters() {
+    let mut s = state("# W\n\n[日本語](#w) and [ab](#w)\n", 60, 10);
+    keys(&mut s, "o");
+    let frame = view(&s, &Ctx::new(&Theme::test(), &Caps::full()));
+    let shown: Vec<String> = frame
+        .lines
+        .iter()
+        .flat_map(|r| r.overlays.iter())
+        .map(|seg| {
+            // The text without its SGR sequences.
+            let text = String::from_utf8_lossy(&seg.bytes).into_owned();
+            let mut out = String::new();
+            let mut chars = text.chars();
+            while let Some(c) = chars.next() {
+                if c == '\u{1b}' {
+                    chars.by_ref().find(|c| c.is_ascii_alphabetic());
+                } else {
+                    out.push(c);
+                }
+            }
+            out
+        })
+        .collect();
+    assert_eq!(shown.len(), 2, "{shown:?}");
+    // Over `日`: the label and a space; over `a`: the label alone.
+    assert_eq!(shown[0].chars().count(), 2, "{shown:?}");
+    assert_eq!(shown[1].chars().count(), 1, "{shown:?}");
 }

@@ -78,6 +78,7 @@ impl Builder {
             match tok {
                 Token::Text(t) => pre.push_str(&html::decode_entities(t)),
                 Token::Start(tag) if tag.is("br") => pre.push('\n'),
+                Token::End(n) if n.eq_ignore_ascii_case("br") => pre.push('\n'),
                 Token::End(n)
                     if n.eq_ignore_ascii_case("pre") || n.eq_ignore_ascii_case("textarea") =>
                 {
@@ -91,6 +92,8 @@ impl Builder {
         }
         match tok {
             Token::Text(t) => self.html_text(t, block),
+            Token::Start(tag) if self.opts.html == HtmlMode::Strip => self.strip_start(&tag, block),
+            Token::End(name) if self.opts.html == HtmlMode::Strip => self.strip_end(name, block),
             Token::Start(tag) => self.html_start(&tag, scope, block),
             Token::End(name) => self.html_end(name, block),
             Token::Comment | Token::Other => {}
@@ -109,6 +112,36 @@ impl Builder {
             return;
         }
         self.text(&decoded);
+    }
+
+    /// An opening tag with `render.html = "strip"`: tags only end lines
+    /// (`<br>`) and paragraphs (block tags); what scripts and styles hold
+    /// is still no text.
+    fn strip_start(&mut self, tag: &html::Tag<'_>, block: bool) {
+        let name = tag.name.to_ascii_lowercase();
+        match name.as_str() {
+            "br" => self.html_br(),
+            "script" | "style" | "template" | "noscript" | "iframe" | "object" => {
+                if !tag.self_closing {
+                    self.skip = Some(skipped_tag(&name));
+                }
+            }
+            n if block && strip_breaks(n) => self.flush_leaf(true),
+            // Cells of a row keep a space between them.
+            "td" | "th" => self.text(" "),
+            _ => {}
+        }
+    }
+
+    /// A closing tag with `render.html = "strip"` (see
+    /// [`Builder::strip_start`]).
+    fn strip_end(&mut self, name: &str, block: bool) {
+        let name = name.to_ascii_lowercase();
+        match name.as_str() {
+            "br" => self.html_br(),
+            n if block && strip_breaks(n) => self.flush_leaf(true),
+            _ => {}
+        }
     }
 
     /// An opening tag.
@@ -159,12 +192,7 @@ impl Builder {
                 }
             }
             "img" => self.html_img(tag),
-            "br" => {
-                let style = self.style();
-                if let Some(leaf) = self.leaf.as_mut() {
-                    leaf.buf.hard_break(style);
-                }
-            }
+            "br" => self.html_br(),
             "wbr" => {
                 if let Some(leaf) = self.leaf.as_mut() {
                     leaf.buf.break_here();
@@ -256,6 +284,14 @@ impl Builder {
         }
     }
 
+    /// A line break (`<br>`, or `</br>`) in the current leaf.
+    fn html_br(&mut self) {
+        let style = self.style();
+        if let Some(leaf) = self.leaf.as_mut() {
+            leaf.buf.hard_break(style);
+        }
+    }
+
     /// A closing tag.
     pub(super) fn html_end(&mut self, name: &str, block: bool) {
         let name = name.to_ascii_lowercase();
@@ -268,6 +304,9 @@ impl Builder {
         match name.as_str() {
             "a" => self.end_link(true),
             "picture" => self.picture = None,
+            // Browsers read `</br>` as `<br>` (the HTML standard says so),
+            // and READMEs written against them use it.
+            "br" => self.html_br(),
             _ if !block => {}
             "details" => {
                 self.flush_leaf(true);
@@ -435,6 +474,31 @@ fn skipped_tag(name: &str) -> &'static str {
         "iframe" => "iframe",
         _ => "object",
     }
+}
+
+/// Tags that end a paragraph when tags are stripped.
+fn strip_breaks(name: &str) -> bool {
+    is_block_tag(name)
+        || matches!(
+            name,
+            "p" | "div"
+                | "center"
+                | "details"
+                | "summary"
+                | "pre"
+                | "hr"
+                | "h1"
+                | "h2"
+                | "h3"
+                | "h4"
+                | "h5"
+                | "h6"
+                | "table"
+                | "tr"
+                | "ul"
+                | "ol"
+                | "li"
+        )
 }
 
 /// Block-level HTML elements without special meaning: they separate

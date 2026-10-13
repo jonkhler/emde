@@ -251,6 +251,45 @@ fn tab_shifts_a_focused_link_into_view() {
     let line = hit.line as usize;
     let shift = s.layout().shift_at(line, s.hscroll());
     assert!(s.layout().shown_col(line, hit.cols.start, shift).is_some());
+    // The whole link (found in a pty run: only its first two columns were).
+    assert!(
+        s.layout()
+            .shown_col(line, hit.cols.end - 1, shift)
+            .is_some(),
+        "{hit:?} at {shift}"
+    );
+}
+
+/// Found in a pty run: a match in a table's header row (or on a cut code
+/// block's first line) stayed off screen: the search looked for it on
+/// the border (or padding) line sharing its position.
+#[test]
+fn a_search_shifts_to_matches_on_first_lines() {
+    let mut s = state(&table_doc(14, 0), 60, 12);
+    keys(&mut s, "/Head 14\n");
+    assert!(s.hscroll() > 0);
+    let code = format!(
+        "# C\n\n```\nx = \"{}TAILMARK\";\nsecond\n```\n",
+        "0123456789-".repeat(12)
+    );
+    let mut opts = RenderOptions::default();
+    opts.code.wrap = false;
+    let doc = pdoc(&code, Origin::Memory);
+    let pager = PagerOptions::default();
+    let settings = Settings::new(&pager, &opts);
+    let l = crate::layout::layout_with(
+        &doc.doc,
+        60,
+        &Theme::test(),
+        &Caps::full(),
+        &opts,
+        &PlainHighlighter,
+        &NoImages,
+        settings.interactive(),
+    );
+    let mut s = State::new(doc, None, l, (60, 12), &pager, settings);
+    keys(&mut s, "/TAILMARK\n");
+    assert!(s.hscroll() > 0);
 }
 
 #[test]
@@ -657,4 +696,70 @@ fn the_selection_fills_what_shifted_lines_leave() {
     assert_eq!(fill[0].col, indent + x0 + 1);
     // The long line fills the text column itself.
     assert!(f.lines[0].overlays.is_empty());
+}
+
+/// Found in a pty run: in a cut code panel, a short line's selection
+/// stopped after its text (the panel after it was not selected), and
+/// after a shift there was none.
+#[test]
+fn the_selection_covers_code_panels_after_short_lines() {
+    let long = "x".repeat(150);
+    let md = format!("```\n{long}\nshort();\n```\n");
+    let mut opts = RenderOptions::default();
+    opts.code.wrap = false;
+    let doc = pdoc(&md, Origin::Memory);
+    let pager = PagerOptions::default();
+    let settings = Settings::new(&pager, &opts);
+    let l = crate::layout::layout_with(
+        &doc.doc,
+        60,
+        &Theme::test(),
+        &Caps::full(),
+        &opts,
+        &PlainHighlighter,
+        &NoImages,
+        settings.interactive(),
+    );
+    let mut s = State::new(doc, None, l, (60, 12), &pager, settings);
+    let short = (0..s.layout().len())
+        .find(|&i| s.layout().line_text(i).contains("short();"))
+        .unwrap();
+    let ctx = Ctx::new(&Theme::test(), &Caps::full());
+    let indent = s.layout().indent;
+    let measure = s.layout().measure;
+    keys(&mut s, "VG");
+    for shift in ["", "zl"] {
+        keys(&mut s, shift);
+        let f = view(&s, &ctx);
+        let fill = &f.lines[short - s.top()].overlays;
+        assert_eq!(fill.len(), 1, "{shift:?}: {fill:?}");
+        // From after the text (or the `‹`) to before the `›`.
+        let cols = String::from_utf8_lossy(&fill[0].bytes).matches(' ').count();
+        assert_eq!(
+            usize::from(fill[0].col) + cols,
+            usize::from(indent + measure - 1)
+        );
+    }
+}
+
+/// A footnote back-link whose reference is inside a collapsed block opens
+/// it and goes to the reference (it said there was no reference).
+#[test]
+fn footnote_back_links_open_the_block_of_their_reference() {
+    let filler = "Filler paragraph.\n\n".repeat(20);
+    let md = format!(
+        "# Top\n\n<details>\n<summary>More</summary>\n\nA hidden note[^n].\n\n</details>\n\n\
+         {filler}[^n]: The note.\n"
+    );
+    let mut s = state(&md, 60, 12);
+    assert!(!s.layout().details[0].open);
+    keys(&mut s, "G");
+    code(&mut s, KeyCode::Tab);
+    code(&mut s, KeyCode::Enter);
+    assert_eq!(s.message(), None);
+    assert!(s.layout().details[0].open);
+    assert!(top_text(&s).contains("A hidden note"), "{:?}", top_text(&s));
+    // Back where the note is.
+    code(&mut s, KeyCode::Backspace);
+    assert_eq!(s.top(), s.max_top());
 }

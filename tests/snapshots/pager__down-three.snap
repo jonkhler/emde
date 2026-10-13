@@ -8,8 +8,8 @@ expression: "screen_text(&term, 80, 24, \"down three\")"
  4│   Kitchen Sink                                                                 │
  5│                                                                                │
  6│  A paragraph with emphasis, strong, both, strikethrough,  inline code , a      │
- 7│  link, an autolink https://example.org/path, and a bare URL https://www.rust-  │
- 8│  lang.org/learn. Hard break at the end of this line                            │
+ 7│  link, an autolink https://example.org/path, and a bare URL                    │
+ 8│  https://www.rust-lang.org/learn. Hard break at the end of this line           │
  9│  and a backslash hard break                                                    │
 10│  then more text. Footnote reference¹ and another².                             │
 11│                                                                                │

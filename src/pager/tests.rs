@@ -833,6 +833,22 @@ fn colon_n_and_colon_p_walk_the_files() {
     assert_eq!(colon(&mut s, "q"), [Effect::Quit]);
 }
 
+/// Found in a pty run: `:n` then `:p` opened the first file at its top.
+#[test]
+fn colon_p_returns_to_the_place_in_the_file() {
+    let mut s = state_for(pdoc(&long_doc(4, 8), Origin::File(file("a.md"))), 60, 10);
+    let doc = pdoc("# B", Origin::File(file("b.md")));
+    s.add_files(vec![(doc, Some(DocKey::Path(file("b.md"))))]);
+    keys(&mut s, "20j");
+    let top = s.top();
+    assert!(top > 0);
+    colon(&mut s, "n");
+    assert_eq!(s.key(), &DocKey::Path(file("b.md")));
+    colon(&mut s, "p");
+    assert_eq!(s.key(), &DocKey::Path(file("a.md")));
+    assert_eq!(s.top(), top);
+}
+
 #[test]
 fn the_colon_prompt_edits_and_cancels() {
     let mut s = three_files();

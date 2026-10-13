@@ -1,6 +1,5 @@
 ---
 source: tests/ir_snapshots.rs
-assertion_line: 30
 expression: "dump(\"kitchen-sink\")"
 ---
 front matter Yaml: "title: Kitchen Sink\nauthor: emde\ntags: [markdown, test]\n"
@@ -9,8 +8,8 @@ front matter Yaml: "title: Kitchen Sink\nauthor: emde\ntags: [markdown, test]\n"
   tags = "[markdown, test]"
 h1 H0: "Kitchen Sink"
 para: "A paragraph with " "emphasis"[emph] ", " "strong"[strong] ", " "both"[emph,strong] ", " "strikethrough"[strike] ", " "inline code"[code] ", a " "link"[L0] ", an autolink " "https://example.org/path"[L1] ", and a bare URL " "https://www.rust-lang.org/learn"[L4] ". Hard break at the end of this line\nand a backslash hard break\nthen more text. Footnote reference" "1"[fn F0,L2] " and another" "2"[fn F1,L3] "."
-  atoms 259..260 272..273
-  breaks [97, 109, 138, 156]
+  atoms 88..97 97..109 109..113 130..156 156..161 259..260 272..273
+  breaks [97, 109, 156]
 h2 H1: "Headings"
 h3 H2: "Third level"
 h4 H3: "Fourth level"

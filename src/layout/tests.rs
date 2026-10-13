@@ -440,6 +440,43 @@ fn h1_bars_by_depth() {
     assert!(matches!(l.lines[0].fill, Fill::Panel { .. }));
 }
 
+/// Found in the plan audit: `heading.h1 = "plain"` was `"underline"`.
+#[test]
+fn plain_h1s_drop_the_underline() {
+    use crate::style::{StylePatch, Underline};
+    let patch = StylePatch {
+        underline: Some(Underline::Curly),
+        ..StylePatch::default()
+    };
+    let theme = Theme::from_patches(
+        "t",
+        crate::theme::Variant::Dark,
+        std::collections::BTreeMap::new(),
+        Rgb(0, 0, 0),
+        Rgb(30, 30, 30),
+        "",
+        &[(crate::theme::Element::H1, patch)],
+        &[],
+    );
+    let underline = |h1: H1Style| {
+        let mut opts = RenderOptions::default();
+        opts.heading.h1 = h1;
+        let d = doc("# Title");
+        let l = layout(
+            &d,
+            30,
+            &theme,
+            &Caps::full(),
+            &opts,
+            &PlainHighlighter,
+            &NoImages,
+        );
+        l.styles.get(l.line_spans(0)[0].style).underline
+    };
+    assert_eq!(underline(H1Style::Underline), Underline::Curly);
+    assert_eq!(underline(H1Style::Plain), Underline::None);
+}
+
 #[test]
 fn reverse_bar_at_16_colours() {
     let caps = Caps {
@@ -856,10 +893,120 @@ fn many_runs_with_url_breaks_compose_in_linear_time() {
     let (d, l) = lay(&md, 80);
     assert!(t.elapsed().as_secs() < 20, "{:?}", t.elapsed());
     assert!(l.len() > 1000);
-    // The URL break points still apply.
+    // The URL break points still apply, and "https://" stays with its host.
     let (_, small) = lay("`c` https://x.org/a/b?c=d", 14);
-    assert_eq!(lines(&small), ["`c` https://", "x.org/a/b?c=d"]);
+    assert_eq!(lines(&small), ["`c`", "https://x.org/", "a/b?c=d"]);
     drop(d);
+}
+
+/// Found in real READMEs: `https://` alone at the end of a line, a URL
+/// broken at a hyphen (`fd-` / `find`) or mid-way while it would fit the
+/// next line whole.
+#[test]
+fn urls_move_whole_else_break_at_their_slashes() {
+    let md = "The full comparison table is at https://example.org/compare/ for you.";
+    let (d, l) = lay(md, 44);
+    check(&l, &d);
+    assert_eq!(
+        lines(&l),
+        [
+            "The full comparison table is at",
+            "https://example.org/compare/ for you."
+        ]
+    );
+    // References list their URL whole too.
+    let md = "See the [package](https://crates.io/crates/fd-find) or the comparison at \
+              https://beyondgrep.com/feature-comparison/ today.";
+    let (d, l) = lay(md, 40);
+    check(&l, &d);
+    let text = lines(&l);
+    assert!(text.iter().all(|t| !t.ends_with("https://")), "{text:?}");
+    assert!(text.iter().any(|t| t.ends_with("fd-find")), "{text:?}");
+    assert!(text.iter().all(|t| !t.ends_with("fd-")), "{text:?}");
+    // A URL wider than the line breaks after its slashes, within the line.
+    let (d, l) = lay("https://example.org/a-very-long-path-segment-indeed/x", 24);
+    check(&l, &d);
+    assert_eq!(
+        lines(&l),
+        [
+            "https://example.org/",
+            "a-very-long-path-",
+            "segment-indeed/x"
+        ]
+    );
+}
+
+/// Found in review: link text with a URL among other words wraps as words
+/// (it became URL pieces that could not break, and one block).
+#[test]
+fn link_text_with_a_url_among_words_wraps_as_words() {
+    let md =
+        "See [the manual at https://example.com/manual for details](https://example.com/manual).";
+    let (d, l) = lay(md, 30);
+    check(&l, &d);
+    assert_eq!(
+        lines(&l)[..3],
+        [
+            "See the manual at",
+            "https://example.com/manual",
+            "for details[1]."
+        ]
+    );
+    let (_, l) = lay(md, 80);
+    assert!(
+        lines(&l)[0].starts_with("See the manual at https://"),
+        "{:?}",
+        lines(&l)
+    );
+}
+
+/// Found in real READMEs: a reference number alone on a line after link
+/// text ending in `)` or `.`, and image chips split inside their label.
+#[test]
+fn reference_numbers_and_chips_stay_whole() {
+    let md = "Debian since 2021 [Debian 11 (Bullseye)](https://a.org/x).";
+    for width in 40..=46 {
+        let (d, l) = lay(md, width);
+        check(&l, &d);
+        let text = lines(&l);
+        assert!(
+            text.iter()
+                .take_while(|t| !t.is_empty())
+                .all(|t| !t.starts_with("[1]")),
+            "{width}: {text:?}"
+        );
+    }
+    // A row of badges breaks between them, not inside "Packaging status"
+    // (or between CJK characters).
+    let md = "[![Build status](b.svg)](https://b.org) [![Packaging status](p.svg)](https://p.org) \
+              [![繁體中文](t.png)](https://t.org)";
+    // From 25 columns on, the measure (21) holds the widest chip.
+    for width in 25..=44 {
+        let (d, l) = lay(md, width);
+        check(&l, &d);
+        let text = lines(&l);
+        for chip in [
+            "▣ Build status[1]",
+            "▣ Packaging status[2]",
+            "▣ 繁體中文[3]",
+        ] {
+            assert!(
+                text.iter().any(|t| t.contains(chip)),
+                "{chip:?} split at {width}: {text:?}"
+            );
+        }
+    }
+    // A chip wider than the line still wraps like words, within the line.
+    let (d, l) = lay(
+        "[![A very long description of a picture](x.png)](https://x.org) b",
+        16,
+    );
+    check(&l, &d);
+    assert!(
+        lines(&l)
+            .iter()
+            .all(|t| crate::text::str_width(t, false) <= 16)
+    );
 }
 
 #[test]
@@ -879,6 +1026,28 @@ fn links_showing_their_url_get_no_number() {
     assert!(inline::shows_url(" https://a.b ", "https://a.b/"));
     assert!(!inline::shows_url("", "https://a.b"));
     assert!(!inline::shows_url("a.b", "https://a.b"));
+}
+
+/// Found in real READMEs (badge rows in HTML): whitespace at the end of a
+/// link stayed in it, so the number came after the space and glued to
+/// the next word (`▣ Test [1]▣ Coverage[2]`, `Two [3]and more.`).
+#[test]
+fn whitespace_at_the_end_of_a_link_leaves_it() {
+    let md = "<p>\n<a href=\"https://a.example/ci\">\n  <img src=\"ci.svg\" alt=\"Test\">\n</a>\n\
+              <a href=\"https://a.example/cov\">\n  <img src=\"cov.svg\" alt=\"Coverage\">\n</a>\n</p>\n\n\
+              [Two ](https://a.example/y) and more.\n";
+    let (d, l) = lay(md, 60);
+    check(&l, &d);
+    let text = lines(&l);
+    assert_eq!(text[0], "▣ Test[1] ▣ Coverage[2]", "{text:?}");
+    assert_eq!(text[2], "Two[3] and more.", "{text:?}");
+    // The space is not part of the link (nor underlined).
+    let crate::ir::Block::Para(p) = &d.blocks[1] else {
+        panic!("{:#?}", d.blocks)
+    };
+    let space = p.text.find(' ').unwrap();
+    let run = p.runs.iter().find(|r| r.end as usize > space).unwrap();
+    assert_eq!(run.link, None, "{:?}", p.runs);
 }
 
 // ---------------------------------------------------------------------------

@@ -358,10 +358,12 @@ fn bare_urls_are_linkified_outside_code_and_links() {
             "https://in.link"
         ]
     );
-    // Break points inside the bare URL.
+    // Break points inside the bare URL, none right after the scheme, and
+    // the pieces between them atoms.
     let start = t.text.find("https://example").unwrap() as u32;
-    assert!(t.extra_breaks.contains(&(start + 8)));
+    assert!(!t.extra_breaks.contains(&(start + 8)));
     assert!(t.extra_breaks.contains(&(start + 20)));
+    assert!(t.atoms.contains(&(start..start + 20)));
 }
 
 #[test]
@@ -979,6 +981,27 @@ fn br_everywhere() {
 }
 
 #[test]
+fn closing_br_breaks_the_line_as_in_browsers() {
+    // The HTML standard reads `</br>` as `<br>`; READMEs rely on it in
+    // centred headings.
+    let d = doc(
+        "<div align=\"center\">\n  <h2>\n    First line. </br>\n    Second line. </br>\n  </h2>\n</div>\n\na</br>b</BR>c\n\n<pre>x</br>y</pre>\n",
+    );
+    let Block::Align { body, .. } = &d.blocks[0] else {
+        panic!("{:#?}", d.blocks)
+    };
+    let [Block::Heading { text, .. }] = body.as_slice() else {
+        panic!("{body:#?}")
+    };
+    assert_eq!(text.text, "First line.\nSecond line.");
+    assert_eq!(paras(&d), ["a\nb\nc"]);
+    let Some(Block::Code(c)) = d.blocks.last() else {
+        panic!("{:#?}", d.blocks)
+    };
+    assert_eq!(c.code, "x\ny");
+}
+
+#[test]
 fn script_style_and_comments_are_dropped() {
     let d = doc(
         "<script>\nalert('x')\n</script>\n\n<style>p{}</style>\n\ntext <script>bad()</script> more\n\n\
@@ -1021,6 +1044,37 @@ fn html_modes() {
         },
     );
     assert_eq!(paras(&strip), ["x", "a b c"]);
+    // Found in the plan audit: "strip" rendered the subset. Now tags only
+    // end lines and paragraphs; links, images, headings, alignment and
+    // collapsible blocks are gone, their text kept.
+    let src = "<p align=\"center\"><a href=\"https://x.org\"><img src=\"l.png\" alt=\"Logo\"></a></p>\n\
+               <h2>Title</h2>\n<details><summary>More</summary>Hidden<br>text</details>\n\n\
+               a <b>b</b> <a href=\"https://y.org\">c</a><script>bad()</script>\n";
+    let strip = doc_with(
+        src,
+        &ParseOptions {
+            html: HtmlMode::Strip,
+            ..ParseOptions::default()
+        },
+    );
+    assert_eq!(paras(&strip), ["Title", "More", "Hidden\ntext", "a b c"]);
+    let strip = doc_with(
+        "<table><tr><td>A</td><td>B</td></tr></table>\n",
+        &ParseOptions {
+            html: HtmlMode::Strip,
+            ..ParseOptions::default()
+        },
+    );
+    assert_eq!(paras(&strip), ["A B"]);
+    assert!(
+        strip.links.is_empty() && strip.images.is_empty(),
+        "{strip:#?}"
+    );
+    assert!(
+        strip.blocks.iter().all(|b| matches!(b, Block::Para(_))),
+        "{:#?}",
+        strip.blocks
+    );
 }
 
 // ----- robustness -----------------------------------------------------------------------------

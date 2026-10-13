@@ -61,12 +61,12 @@ expression: "styled(\"regressions\", & Caps :: full(), & WIDTHS)"
   ⟦fg=#cba6f7 bold⟧hyperlinks⟦/⟧
   ⟦fg=#cba6f7 bold⟧━━━━━━━━━━━━━━━━━━━━⟦/⟧
 
-  See ⟦fg=#89b4fa ul link 0⟧https://⟦/⟧
-  ⟦fg=#89b4fa ul link 0⟧github.com/⟦/⟧
-  ⟦fg=#89b4fa ul link 0⟧ValveSoftware/steam-⟦/⟧
-  ⟦fg=#89b4fa ul link 0⟧for-linux/issues/⟦/⟧
-  ⟦fg=#89b4fa ul link 0⟧1234567890⟦/⟧ for the
-  details.
+  See
+  ⟦fg=#89b4fa ul link 0⟧https://github.com/⟦/⟧
+  ⟦fg=#89b4fa ul link 0⟧ValveSoftware/⟦/⟧
+  ⟦fg=#89b4fa ul link 0⟧steam-for-linux/⟦/⟧
+  ⟦fg=#89b4fa ul link 0⟧issues/1234567890⟦/⟧
+  for the details.
 
   ⟦fg=#cba6f7 bold⟧glamour 84: two⟦/⟧
   ⟦fg=#cba6f7 bold⟧trailing spaces⟦/⟧
@@ -96,8 +96,8 @@ expression: "styled(\"regressions\", & Caps :: full(), & WIDTHS)"
   ⟦fg=#6c7086⟧├─────────┼────────┤⟦/⟧
   ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#fab387 bg=#2c2d3d⟧ git⟦/⟧    ⟦fg=#6c7086⟧│⟦/⟧ rewrit ⟦fg=#6c7086⟧│⟦/⟧
   ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#fab387 bg=#2c2d3d⟧commit⟦/⟧  ⟦fg=#6c7086⟧│⟦/⟧ e the  ⟦fg=#6c7086⟧│⟦/⟧
-  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#fab387 bg=#2c2d3d⟧--⟦/⟧      ⟦fg=#6c7086⟧│⟦/⟧ last   ⟦fg=#6c7086⟧│⟦/⟧
-  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#fab387 bg=#2c2d3d⟧amend ⟦/⟧  ⟦fg=#6c7086⟧│⟦/⟧ commit ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#fab387 bg=#2c2d3d⟧--amend⟦/⟧ ⟦fg=#6c7086⟧│⟦/⟧ last   ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#fab387 bg=#2c2d3d⟧ ⟦/⟧       ⟦fg=#6c7086⟧│⟦/⟧ commit ⟦fg=#6c7086⟧│⟦/⟧
   ⟦fg=#6c7086⟧╰─────────┴────────╯⟦/⟧
 
   ⟦fg=#cba6f7 bold⟧mdcat 43: footnote⟦/⟧
@@ -206,8 +206,8 @@ expression: "styled(\"regressions\", & Caps :: full(), & WIDTHS)"
   ⟦fg=#6c7086⟧╭─────────────────┬────────────────╮⟦/⟧
   ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Command         ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Meaning        ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
   ⟦fg=#6c7086⟧├─────────────────┼────────────────┤⟦/⟧
-  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#fab387 bg=#2c2d3d⟧ git commit --⟦/⟧  ⟦fg=#6c7086⟧│⟦/⟧ rewrite the    ⟦fg=#6c7086⟧│⟦/⟧
-  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#fab387 bg=#2c2d3d⟧amend ⟦/⟧          ⟦fg=#6c7086⟧│⟦/⟧ last commit    ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#fab387 bg=#2c2d3d⟧ git commit⟦/⟧     ⟦fg=#6c7086⟧│⟦/⟧ rewrite the    ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#fab387 bg=#2c2d3d⟧--amend ⟦/⟧        ⟦fg=#6c7086⟧│⟦/⟧ last commit    ⟦fg=#6c7086⟧│⟦/⟧
   ⟦fg=#6c7086⟧╰─────────────────┴────────────────╯⟦/⟧
 
   ⟦fg=#cba6f7 bold⟧mdcat 43: footnote in a table, and⟦/⟧

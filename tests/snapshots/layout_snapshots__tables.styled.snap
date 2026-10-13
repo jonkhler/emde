@@ -83,9 +83,9 @@ expression: "styled(\"tables\", & Caps :: full(), & WIDTHS)"
   ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ Inline code with ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
   ⟦fg=#6c7086⟧│⟦/⟧⟦bg=#2c2d3d bold⟧ spaces           ⟦/⟧⟦fg=#6c7086⟧│⟦/⟧
   ⟦fg=#6c7086⟧├──────────────────┤⟦/⟧
-  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#fab387 bg=#2c2d3d⟧ cargo build --⟦/⟧  ⟦fg=#6c7086⟧│⟦/⟧
-  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#fab387 bg=#2c2d3d⟧release --⟦/⟧       ⟦fg=#6c7086⟧│⟦/⟧
-  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#fab387 bg=#2c2d3d⟧locked ⟦/⟧          ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#fab387 bg=#2c2d3d⟧ cargo build⟦/⟧     ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#fab387 bg=#2c2d3d⟧--release⟦/⟧        ⟦fg=#6c7086⟧│⟦/⟧
+  ⟦fg=#6c7086⟧│⟦/⟧ ⟦fg=#fab387 bg=#2c2d3d⟧--locked ⟦/⟧        ⟦fg=#6c7086⟧│⟦/⟧
   ⟦fg=#6c7086⟧╰──────────────────╯⟦/⟧
 
   ⟦fg=#6c7086⟧── ⟦/⟧⟦fg=#a6adc8⟧Footnotes⟦/⟧⟦fg=#6c7086⟧ ───────⟦/⟧

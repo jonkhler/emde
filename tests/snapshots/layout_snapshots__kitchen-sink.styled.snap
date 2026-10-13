@@ -183,9 +183,9 @@ expression: "styled(\"kitchen-sink\", & Caps :: full(), & WIDTHS)"
 
   A paragraph with ⟦italic⟧emphasis⟦/⟧, ⟦bold⟧strong⟦/⟧,
   ⟦bold italic⟧both⟦/⟧, ⟦fg=#6c7086 strike⟧strikethrough⟦/⟧, ⟦fg=#fab387 bg=#2c2d3d⟧ inline code ⟦/⟧,
-  a ⟦fg=#89b4fa ul link 0⟧link⟦/⟧, an autolink ⟦fg=#89b4fa ul link 1⟧https://⟦/⟧
-  ⟦fg=#89b4fa ul link 1⟧example.org/path⟦/⟧, and a bare URL
-  ⟦fg=#89b4fa ul link 4⟧https://www.rust-lang.org/learn⟦/⟧.
+  a ⟦fg=#89b4fa ul link 0⟧link⟦/⟧, an autolink
+  ⟦fg=#89b4fa ul link 1⟧https://example.org/path⟦/⟧, and a bare
+  URL ⟦fg=#89b4fa ul link 4⟧https://www.rust-lang.org/learn⟦/⟧.
   Hard break at the end of this line
   and a backslash hard break
   then more text. Footnote reference⟦fg=#89b4fa link 2⟧¹⟦/⟧
@@ -324,8 +324,8 @@ expression: "styled(\"kitchen-sink\", & Caps :: full(), & WIDTHS)"
   ⟦grad #89b4fa→#cba6f7 0..76⟧⟦fg=#1e1e2e bold⟧ Kitchen Sink⟦/⟧⟦/grad⟧
 
   A paragraph with ⟦italic⟧emphasis⟦/⟧, ⟦bold⟧strong⟦/⟧, ⟦bold italic⟧both⟦/⟧, ⟦fg=#6c7086 strike⟧strikethrough⟦/⟧, ⟦fg=#fab387 bg=#2c2d3d⟧ inline code ⟦/⟧, a
-  ⟦fg=#89b4fa ul link 0⟧link⟦/⟧, an autolink ⟦fg=#89b4fa ul link 1⟧https://example.org/path⟦/⟧, and a bare URL ⟦fg=#89b4fa ul link 4⟧https://www.rust-⟦/⟧
-  ⟦fg=#89b4fa ul link 4⟧lang.org/learn⟦/⟧. Hard break at the end of this line
+  ⟦fg=#89b4fa ul link 0⟧link⟦/⟧, an autolink ⟦fg=#89b4fa ul link 1⟧https://example.org/path⟦/⟧, and a bare URL
+  ⟦fg=#89b4fa ul link 4⟧https://www.rust-lang.org/learn⟦/⟧. Hard break at the end of this line
   and a backslash hard break
   then more text. Footnote reference⟦fg=#89b4fa link 2⟧¹⟦/⟧ and another⟦fg=#89b4fa link 3⟧²⟦/⟧.
 
@@ -453,8 +453,9 @@ expression: "styled(\"kitchen-sink\", & Caps :: full(), & WIDTHS)"
 
           ⟦grad #89b4fa→#cba6f7 0..100⟧⟦fg=#1e1e2e bold⟧ Kitchen Sink⟦/⟧⟦/grad⟧
 
-          A paragraph with ⟦italic⟧emphasis⟦/⟧, ⟦bold⟧strong⟦/⟧, ⟦bold italic⟧both⟦/⟧, ⟦fg=#6c7086 strike⟧strikethrough⟦/⟧, ⟦fg=#fab387 bg=#2c2d3d⟧ inline code ⟦/⟧, a ⟦fg=#89b4fa ul link 0⟧link⟦/⟧, an autolink ⟦fg=#89b4fa ul link 1⟧https://⟦/⟧
-          ⟦fg=#89b4fa ul link 1⟧example.org/path⟦/⟧, and a bare URL ⟦fg=#89b4fa ul link 4⟧https://www.rust-lang.org/learn⟦/⟧. Hard break at the end of this line
+          A paragraph with ⟦italic⟧emphasis⟦/⟧, ⟦bold⟧strong⟦/⟧, ⟦bold italic⟧both⟦/⟧, ⟦fg=#6c7086 strike⟧strikethrough⟦/⟧, ⟦fg=#fab387 bg=#2c2d3d⟧ inline code ⟦/⟧, a ⟦fg=#89b4fa ul link 0⟧link⟦/⟧, an autolink
+          ⟦fg=#89b4fa ul link 1⟧https://example.org/path⟦/⟧, and a bare URL ⟦fg=#89b4fa ul link 4⟧https://www.rust-lang.org/learn⟦/⟧. Hard break at the end of
+          this line
           and a backslash hard break
           then more text. Footnote reference⟦fg=#89b4fa link 2⟧¹⟦/⟧ and another⟦fg=#89b4fa link 3⟧²⟦/⟧.
 

@@ -11,7 +11,7 @@ use crate::ir::{
     Block, FootnoteId, ImageId, ImageRef, InlineFlags, Inlines, Link, LinkId, LinkKind, MathBlock,
     Run, RunKind, Target,
 };
-use crate::parse::inline::{Style, url_break_points};
+use crate::parse::inline::{Style, normalize_atoms, url_constraints};
 use crate::parse::{linkify, target};
 use crate::text::sanitize::sanitize;
 
@@ -69,12 +69,18 @@ impl Builder {
                 });
                 links.push((f.range.clone(), id));
                 if !f.email {
-                    url_break_points(&inl.text, f.range.clone(), &mut inl.extra_breaks);
+                    url_constraints(
+                        &inl.text,
+                        f.range.clone(),
+                        &mut inl.extra_breaks,
+                        &mut inl.atoms,
+                    );
                 }
             }
             inl.runs = split_at_links(&inl.runs, &links);
             inl.extra_breaks.sort_unstable();
             inl.extra_breaks.dedup();
+            normalize_atoms(&mut inl.atoms);
         }
         self.found = found;
     }
@@ -265,7 +271,8 @@ impl Builder {
     }
 
     /// Close the innermost Markdown (`html == false`) or HTML link; link
-    /// text that is a URL gets URL break points.
+    /// text that is a URL gets URL break points, and whitespace at its end
+    /// leaves the link.
     pub(super) fn end_link(&mut self, html: bool) {
         let Some(i) = self.links.iter().rposition(|l| l.html == html) else {
             return;
@@ -274,10 +281,30 @@ impl Builder {
         if let Some(leaf) = self.leaf.as_mut()
             && leaf.seq == frame.leaf
         {
+            leaf.buf.unlink_trailing_space(frame.id);
             let end = leaf.buf.len();
             let text = leaf.buf.text().get(frame.start..end).unwrap_or("");
-            if frame.url_like || linkify::looks_like_url(text) {
-                leaf.buf.url_breaks(frame.start..end);
+            let text = text.trim_end_matches(' ');
+            let url_end = frame.start + text.len();
+            // A URL breaks only at its break points; in link text with a
+            // URL among other words, so does each URL, and the words wrap.
+            if frame.url_like || linkify::is_url(text) {
+                leaf.buf.url_breaks(frame.start..url_end);
+            } else if linkify::looks_like_url(text) {
+                let mut at = frame.start;
+                let urls: Vec<_> = text
+                    .split(' ')
+                    .map(|word| {
+                        let range = at..at + word.len();
+                        at += word.len() + 1;
+                        (range, linkify::is_url(word))
+                    })
+                    .filter(|(_, url)| *url)
+                    .map(|(range, _)| range)
+                    .collect();
+                for range in urls {
+                    leaf.buf.url_breaks(range);
+                }
             }
         }
     }

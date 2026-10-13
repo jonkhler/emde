@@ -39,7 +39,8 @@ pub(crate) enum Follow {
     File(PathBuf),
     /// A web or mail link (already made safe for OSC 8 and arguments).
     Open(String),
-    /// Nothing: what could not be found or is refused.
+    /// Nothing: what could not be found or is refused, to follow "no "
+    /// in a message.
     Nowhere(String),
 }
 
@@ -151,7 +152,7 @@ pub(crate) fn footnote_line(doc: &Document, layout: &Layout, f: FootnoteId) -> O
 /// Where following occurrence `o` of a document laid out as `layout` leads.
 pub(crate) fn target(doc: &Document, base: &Path, layout: &Layout, o: &Occurrence) -> Follow {
     let Some(link) = doc.link(o.link) else {
-        return Follow::Nowhere("that link".to_owned());
+        return Follow::Nowhere("such link".to_owned());
     };
     if o.back {
         // A footnote back-link: to where the reference is shown.
@@ -160,7 +161,7 @@ pub(crate) fn target(doc: &Document, base: &Path, layout: &Layout, o: &Occurrenc
             .iter()
             .find(|h| h.link == o.link && !h.back)
             .map_or_else(
-                || Follow::Nowhere("the footnote reference".to_owned()),
+                || Follow::Nowhere("footnote reference shown".to_owned()),
                 |h| Follow::Line(h.line as usize),
             );
     }
@@ -168,7 +169,7 @@ pub(crate) fn target(doc: &Document, base: &Path, layout: &Layout, o: &Occurrenc
         Target::Anchor(name) => anchor_line(doc, layout, name)
             .map_or_else(|| Follow::Nowhere(format!("#{name}")), Follow::Line),
         Target::Footnote(f) => footnote_line(doc, layout, *f)
-            .map_or_else(|| Follow::Nowhere("the footnote".to_owned()), Follow::Line),
+            .map_or_else(|| Follow::Nowhere("such footnote".to_owned()), Follow::Line),
         Target::LocalDoc { path, anchor } => Follow::Load {
             path: resolve(base, path),
             anchor: anchor.as_deref().map(str::to_owned),
@@ -176,7 +177,7 @@ pub(crate) fn target(doc: &Document, base: &Path, layout: &Layout, o: &Occurrenc
         Target::LocalFile(path) => Follow::File(resolve(base, path)),
         Target::External | Target::Email => match osc8::link_url(link) {
             Some(url) => Follow::Open(url),
-            None => Follow::Nowhere("a safe URL for that link".to_owned()),
+            None => Follow::Nowhere("safe URL for that link".to_owned()),
         },
     }
 }

@@ -7,6 +7,7 @@
 //! emde-0.1.0-x86_64-unknown-linux-gnu/
 //!   emde                    the binary
 //!   LICENSE README.md CONFIG.md
+//!   CREDITS                 the bundled syntaxes' and themes' notices
 //!   man/emde.1
 //!   completions/emde.bash completions/_emde completions/emde.fish
 //! ```
@@ -66,6 +67,15 @@ pub(crate) fn run_dist(args: &[String]) -> Result {
     let root = repo_root()?;
     for doc in DOCS {
         copy(&root.join(doc), &stage.join(doc))?;
+    }
+    // The notices of what the binary bundles (`emde --credits`): from the
+    // binary itself, which a cross build may not be able to run.
+    match Command::new(stage.join("emde")).arg("--credits").output() {
+        Ok(o) if o.status.success() => {
+            let path = stage.join("CREDITS");
+            fs::write(&path, &o.stdout).map_err(|e| format!("{}: {e}", path.display()))?;
+        }
+        _ => eprintln!("xtask: warning: no CREDITS (cannot run the {triple} binary here)"),
     }
     man::write_man_page(&stage.join("man"))?;
     man::write_completions(&stage.join("completions"))?;

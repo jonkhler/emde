@@ -1,4 +1,5 @@
-//! Snapshot of the environment variables relevant to terminal detection.
+//! Snapshot of the environment variables relevant to terminal detection
+//! (and the editor the pager's `e` opens).
 //!
 //! Detection code never reads the process environment directly: it takes an
 //! [`Env`], so every decision is a pure function that tests can drive with
@@ -33,6 +34,9 @@ pub const VARS: &[&str] = &[
     "XDG_RUNTIME_DIR",
     "DISPLAY",
     "WAYLAND_DISPLAY",
+    // The editor for the pager's `e`.
+    "VISUAL",
+    "EDITOR",
 ];
 
 /// An immutable snapshot of environment variables.
@@ -85,6 +89,13 @@ impl Env {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Found in a pty run: `e` always ran `vi`, as the process snapshot
+    /// left out the editor variables `editor_command` reads.
+    #[test]
+    fn the_editor_variables_are_captured() {
+        assert!(VARS.contains(&"VISUAL") && VARS.contains(&"EDITOR"));
+    }
 
     #[test]
     fn pairs_and_lookup() {

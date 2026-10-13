@@ -464,7 +464,7 @@ mod tests {
         );
         let palette = themes.palette_markdown().unwrap();
         assert!(
-            palette.contains("| `accent` | `#89b4fa` | `#1e66f5` |"),
+            palette.contains("| `accent` | `#89b4fa` | `#0d57e5` |"),
             "{palette}"
         );
         let elements = themes.elements_markdown().unwrap();

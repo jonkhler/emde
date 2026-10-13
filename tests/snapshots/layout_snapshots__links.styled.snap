@@ -6,9 +6,10 @@ expression: "styled(\"links\", & Caps :: full(), & WIDTHS)"
   Inline ⟦fg=#89b4fa ul link 0⟧link⟦/⟧, with a
   ⟦fg=#89b4fa ul link 1⟧title⟦/⟧.
 
-  Autolink ⟦fg=#89b4fa ul link 2⟧https://⟦/⟧
-  ⟦fg=#89b4fa ul link 2⟧example.org/a/b?c=d&⟦/⟧
-  ⟦fg=#89b4fa ul link 2⟧e=f#g⟦/⟧ and email
+  Autolink
+  ⟦fg=#89b4fa ul link 2⟧https://example.org/⟦/⟧
+  ⟦fg=#89b4fa ul link 2⟧a/b?c=d&e=f#g⟦/⟧ and
+  email
   ⟦fg=#89b4fa ul link 3⟧someone@example.org⟦/⟧.
 
   Bare URL ⟦fg=#89b4fa ul link 4⟧https://⟦/⟧
@@ -46,19 +47,19 @@ expression: "styled(\"links\", & Caps :: full(), & WIDTHS)"
 ━━ width 40 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   Inline ⟦fg=#89b4fa ul link 0⟧link⟦/⟧, with a ⟦fg=#89b4fa ul link 1⟧title⟦/⟧.
 
-  Autolink ⟦fg=#89b4fa ul link 2⟧https://example.org/a/b?c=⟦/⟧
-  ⟦fg=#89b4fa ul link 2⟧d&e=f#g⟦/⟧ and email
-  ⟦fg=#89b4fa ul link 3⟧someone@example.org⟦/⟧.
+  Autolink
+  ⟦fg=#89b4fa ul link 2⟧https://example.org/a/b?c=d&e=f#g⟦/⟧
+  and email ⟦fg=#89b4fa ul link 3⟧someone@example.org⟦/⟧.
 
   Bare URL ⟦fg=#89b4fa ul link 4⟧https://www.rust-lang.org/⟦/⟧
   ⟦fg=#89b4fa ul link 4⟧learn/get-started⟦/⟧ and
   ⟦fg=#89b4fa ul link 5⟧www.example.com/path⟦/⟧.
 
-  A very long URL: ⟦fg=#89b4fa ul link 6⟧https://⟦/⟧
-  ⟦fg=#89b4fa ul link 6⟧example.com/a/very/long/path/that/⟦/⟧
-  ⟦fg=#89b4fa ul link 6⟧keeps/going/and/going/and/going?⟦/⟧
-  ⟦fg=#89b4fa ul link 6⟧with=query&and=more&parameters=too#⟦/⟧
-  ⟦fg=#89b4fa ul link 6⟧fragment⟦/⟧
+  A very long URL:
+  ⟦fg=#89b4fa ul link 6⟧https://example.com/a/very/long/⟦/⟧
+  ⟦fg=#89b4fa ul link 6⟧path/that/keeps/going/and/going/and/⟦/⟧
+  ⟦fg=#89b4fa ul link 6⟧going?with=query&and=more&⟦/⟧
+  ⟦fg=#89b4fa ul link 6⟧parameters=too#fragment⟦/⟧
 
   ⟦fg=#89b4fa ul link 7⟧Reference link⟦/⟧, ⟦fg=#89b4fa ul link 8⟧collapsed⟦/⟧, and
   ⟦fg=#89b4fa ul link 9⟧shortcut⟦/⟧.
@@ -79,8 +80,8 @@ expression: "styled(\"links\", & Caps :: full(), & WIDTHS)"
 
   Autolink ⟦fg=#89b4fa ul link 2⟧https://example.org/a/b?c=d&e=f#g⟦/⟧ and email ⟦fg=#89b4fa ul link 3⟧someone@example.org⟦/⟧.
 
-  Bare URL ⟦fg=#89b4fa ul link 4⟧https://www.rust-lang.org/learn/get-started⟦/⟧ and ⟦fg=#89b4fa ul link 5⟧www.example.com/⟦/⟧
-  ⟦fg=#89b4fa ul link 5⟧path⟦/⟧.
+  Bare URL ⟦fg=#89b4fa ul link 4⟧https://www.rust-lang.org/learn/get-started⟦/⟧ and
+  ⟦fg=#89b4fa ul link 5⟧www.example.com/path⟦/⟧.
 
   A very long URL: ⟦fg=#89b4fa ul link 6⟧https://example.com/a/very/long/path/that/keeps/going/and/⟦/⟧
   ⟦fg=#89b4fa ul link 6⟧going/and/going?with=query&and=more&parameters=too#fragment⟦/⟧

@@ -58,6 +58,28 @@ fn has_www(bytes: &[u8]) -> bool {
     })
 }
 
+/// Whether a link text is one URL: a single token starting with
+/// `scheme://` or `www.` (`the manual at https://x.org` is prose).
+pub(crate) fn is_url(text: &str) -> bool {
+    let t = text.trim();
+    if t.is_empty() || t.contains(char::is_whitespace) {
+        return false;
+    }
+    let bytes = t.as_bytes();
+    let scheme = bytes
+        .iter()
+        .take_while(|&&b| b.is_ascii_alphanumeric() || matches!(b, b'+' | b'-' | b'.'))
+        .count();
+    let has_scheme = bytes.first().is_some_and(u8::is_ascii_alphabetic)
+        && bytes
+            .get(scheme..)
+            .is_some_and(|rest| rest.starts_with(b"://"));
+    has_scheme
+        || bytes
+            .get(..4)
+            .is_some_and(|p| p.eq_ignore_ascii_case(b"www."))
+}
+
 /// Whether a link text looks like a URL (`scheme://…` or `www.…`).
 pub(crate) fn looks_like_url(text: &str) -> bool {
     let bytes = text.as_bytes();
@@ -70,6 +92,16 @@ pub(crate) fn looks_like_url(text: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn single_urls() {
+        assert!(is_url("https://x.org/a"));
+        assert!(is_url(" www.x.org "));
+        assert!(is_url("git+ssh://h/p"));
+        assert!(!is_url("the manual at https://x.org/m for details"));
+        assert!(!is_url("9p://x"));
+        assert!(!is_url(""));
+    }
 
     fn links(text: &str) -> Vec<(&str, String)> {
         let mut out = Vec::new();
