@@ -26,6 +26,9 @@ use super::state::{Occurrence, State};
 /// Image file extensions (lowercase).
 const EXTENSIONS: &[&str] = &["png", "jpg", "jpeg", "gif", "webp"];
 
+/// Whether SVG images are shown (the `svg` feature).
+const SVG: bool = cfg!(feature = "svg");
+
 /// Where an image is: what tells the entries of the gallery apart, and
 /// what `y` copies and `o` opens.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -73,7 +76,7 @@ fn image_name(path: &str) -> bool {
     name.rsplit_once('.').is_some_and(|(stem, ext)| {
         !stem.is_empty()
             && (EXTENSIONS.iter().any(|e| ext.eq_ignore_ascii_case(e))
-                || cfg!(feature = "svg") && ext.eq_ignore_ascii_case("svg"))
+                || SVG && ext.eq_ignore_ascii_case("svg"))
     })
 }
 
@@ -82,9 +85,9 @@ fn image_data(uri: &str) -> bool {
     let mime = uri.get(5..).unwrap_or("").split([';', ',']).next();
     let mime = mime.unwrap_or("").trim().to_ascii_lowercase();
     match mime.strip_prefix("image/") {
-        Some("png" | "jpeg" | "jpg" | "gif" | "webp") => true,
-        Some("svg+xml") => cfg!(feature = "svg"),
-        _ => false,
+        Some("svg+xml") => SVG,
+        Some(kind) => ["png", "jpeg", "jpg", "gif", "webp"].contains(&kind),
+        None => false,
     }
 }
 
@@ -95,7 +98,7 @@ pub(crate) fn sniff(head: &[u8]) -> bool {
         || head.starts_with(b"\xff\xd8\xff")
         || head.starts_with(b"GIF8")
         || head.get(..4) == Some(b"RIFF") && head.get(8..12) == Some(b"WEBP")
-        || cfg!(feature = "svg") && crate::gfx::svg::sniff(head)
+        || SVG && crate::gfx::svg::sniff(head)
 }
 
 /// `path` without `.` components (lexically; nothing is read).

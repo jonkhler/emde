@@ -235,6 +235,37 @@ fn the_outline_sidebar_follows_the_reading() {
 }
 
 #[test]
+fn scrolling_beside_the_sidebar_repaints_instead_of_scrolling_it() {
+    let term = FakeTerminal::new(150, 20)
+        .keys("]]]]]]")
+        .mark("before")
+        .keys("j")
+        .mark("one")
+        .keys("jjj")
+        .mark("four")
+        .keys("q");
+    let (term, _) = run(term, session(&long_doc(20)));
+    let out = String::from_utf8_lossy(&term.output()).into_owned();
+    assert!(!out.contains("\x1b[1;19r"), "no scroll region");
+    // The sidebar is where it was, the text moved by a line.
+    let side = |name: &str| -> Vec<String> {
+        (0..19)
+            .map(|r| row_text(&term, 150, 20, name, r).chars().take(32).collect())
+            .collect()
+    };
+    assert_eq!(side("before"), side("one"));
+    let text = |name: &str, r: u16| -> String {
+        row_text(&term, 150, 20, name, r).chars().skip(32).collect()
+    };
+    assert_eq!(text("before", 1), text("one", 0));
+    assert_eq!(text("before", 4), text("four", 0));
+    // Where the current section changes, only that is repainted on the
+    // sidebar's side.
+    let marked = |name: &str| side(name).iter().position(|l| l.contains('▸'));
+    assert!(marked("before").is_some() && marked("four").is_some());
+}
+
+#[test]
 fn hints_and_visual_mode_beside_the_sidebar() {
     let md = "# Guide\n\nRead [the docs](https://example.com) first.\n\n\
               ## Install\n\n```sh\nmake install\n```\n\n## Use\n\nJust run it.\n";

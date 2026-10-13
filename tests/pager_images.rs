@@ -1030,6 +1030,43 @@ fn image_files_by_their_first_bytes_and_huge_images() {
     insta::assert_snapshot!("image-view-huge", huge);
 }
 
+#[cfg(unix)]
+#[test]
+fn a_link_to_a_fifo_is_never_read() {
+    let dir = temp_dir("view-fifo");
+    let pipe = dir.join("pipe");
+    let made = std::process::Command::new("mkfifo").arg(&pipe).status();
+    if !made.is_ok_and(|s| s.success()) {
+        return; // no mkfifo here
+    }
+    let doc = dir.join("doc.md");
+    std::fs::write(
+        &doc,
+        "# Pipe\n\nA [named pipe](pipe) and [a fake](pipe.png).\n",
+    )
+    .unwrap();
+    std::fs::rename(&pipe, dir.join("pipe.png")).unwrap();
+    std::process::Command::new("mkfifo")
+        .arg(&pipe)
+        .status()
+        .unwrap();
+    let term = FakeTerminal::new(60, 10)
+        .code(KeyCode::Tab)
+        .code(KeyCode::Enter)
+        .mark("pipe")
+        .code(KeyCode::Tab)
+        .code(KeyCode::Enter)
+        .wait(ms(50))
+        .mark("fake")
+        .keys("q")
+        .keys("q");
+    let (term, exit) = run(term, session(&doc, options(Graphics::Blocks)));
+    assert_eq!(exit, PagerExit::Quit);
+    assert!(status(&term, 60, 10, "pipe").contains("not Markdown"));
+    let fake = screen_at(&term, 60, 10, Some("fake")).screen().contents();
+    assert!(fake.contains("not a regular file"), "{fake}");
+}
+
 #[test]
 fn i_cycles_detected_blocks_and_off() {
     let doc = tall_figure("cycle");

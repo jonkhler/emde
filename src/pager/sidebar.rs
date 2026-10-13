@@ -112,6 +112,10 @@ pub(crate) fn follow(state: &mut State) {
     }
     let n = state.derived.headings.len();
     let rows = state.view_rows().max(1);
+    if let Mode::Sidebar(i) = &mut state.mode {
+        // A new version of the document may have fewer headings.
+        *i = (*i).min(n.saturating_sub(1));
+    }
     let cur = current(state);
     let sb = &mut state.sidebar;
     if cur != sb.spied {

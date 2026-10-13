@@ -68,12 +68,16 @@ pub(crate) fn key_of(origin: &Origin) -> Option<DocKey> {
     }
 }
 
-/// Whether the file at `path` starts like an image (reading its first
-/// bytes only).
+/// Whether the regular file at `path` starts like an image (reading its
+/// first bytes only; never a FIFO or a device, which could block or never
+/// end).
 #[inline(never)]
 fn sniff_file(path: &Path) -> bool {
     use std::io::Read as _;
     let mut head = [0u8; 512];
+    if !std::fs::metadata(path).is_ok_and(|m| m.is_file()) {
+        return false;
+    }
     let Ok(file) = std::fs::File::open(path) else {
         return false;
     };

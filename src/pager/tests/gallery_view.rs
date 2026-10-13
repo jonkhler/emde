@@ -74,6 +74,23 @@ fn the_gallery_is_in_document_order_once_each() {
 }
 
 #[test]
+fn an_image_is_where_it_first_appears() {
+    // A link before the figure of the same image: one entry, the link's.
+    let s = state_for(
+        pdoc(
+            "[See the chart](a.png).\n\n![B](b.png)\n\n![A](./a.png)\n",
+            Origin::File(file("x.md")),
+        ),
+        80,
+        20,
+    );
+    let g = gallery::build(&s, None);
+    let names: Vec<&str> = g.iter().map(|p| p.name.as_str()).collect();
+    assert_eq!(names, ["a.png", "b.png"]);
+    assert_eq!(g[0].label, "See the chart");
+}
+
+#[test]
 fn following_an_image_link_opens_the_view() {
     let mut s = pics();
     focus(&mut s, "figures/acc.jpg");

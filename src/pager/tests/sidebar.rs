@@ -266,3 +266,25 @@ fn hiding_it_is_remembered_across_documents_and_resizes() {
     );
     assert_eq!(s.sidebar_cols(), 0, "T overrides auto");
 }
+
+#[test]
+fn a_reload_with_fewer_headings_keeps_the_selection_in_range() {
+    let mut s = state_for(pdoc(&long_doc(8, 1), Origin::File(file("r.md"))), 150, 20);
+    let l = lay(s.document(), s.doc_cols(), false);
+    drive(&mut s, Action::Layout(l));
+    keys(&mut s, "T");
+    keys(&mut s, "G");
+    assert!(matches!(s.mode, Mode::Sidebar(i) if i > 10));
+    drive(
+        &mut s,
+        Action::Reloaded(pdoc(
+            "# One\n\n## Two\n\ntext\n",
+            Origin::File(file("r.md")),
+        )),
+    );
+    assert_eq!(s.mode, Mode::Sidebar(1));
+    assert_eq!(s.sidebar.scroll, 0);
+    keys(&mut s, "\n");
+    assert_eq!(s.mode, Mode::Normal);
+    assert_eq!(s.back_len(), 1, "it went to Two (all on screen)");
+}
