@@ -101,3 +101,26 @@ opt-level = 2
 
 [profile.test.package."*"]
 opt-level = 2
+
+# Cold crates (the command line, configuration and theme files, .tmTheme
+# plists) are optimised for size: each runs once per start on a few KiB of
+# input. Hot code (pulldown-cmark, emde's layout and rendering, syntect and
+# Oniguruma, the image decoders) stays at opt-level 3.
+[profile.release.package.clap_builder]
+opt-level = "s"
+[profile.release.package.clap_lex]
+opt-level = "s"
+[profile.release.package.toml]
+opt-level = "s"
+[profile.release.package.toml_parser]
+opt-level = "s"
+[profile.release.package.toml_datetime]
+opt-level = "s"
+[profile.release.package.serde_spanned]
+opt-level = "s"
+[profile.release.package.serde_ignored]
+opt-level = "s"
+[profile.release.package.plist]
+opt-level = "s"
+[profile.release.package.quick-xml]
+opt-level = "s"
