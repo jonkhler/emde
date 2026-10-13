@@ -30,7 +30,7 @@ pub enum H1Style {
     Bar,
     /// Styled text with its underline attribute.
     Underline,
-    /// Styled text only.
+    /// Styled text without an underline.
     Plain,
 }
 

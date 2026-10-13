@@ -440,6 +440,43 @@ fn h1_bars_by_depth() {
     assert!(matches!(l.lines[0].fill, Fill::Panel { .. }));
 }
 
+/// Found in the plan audit: `heading.h1 = "plain"` was `"underline"`.
+#[test]
+fn plain_h1s_drop_the_underline() {
+    use crate::style::{StylePatch, Underline};
+    let patch = StylePatch {
+        underline: Some(Underline::Curly),
+        ..StylePatch::default()
+    };
+    let theme = Theme::from_patches(
+        "t",
+        crate::theme::Variant::Dark,
+        std::collections::BTreeMap::new(),
+        crate::style::Rgb(0, 0, 0),
+        crate::style::Rgb(30, 30, 30),
+        "",
+        &[(crate::theme::Element::H1, patch)],
+        &[],
+    );
+    let underline = |h1: H1Style| {
+        let mut opts = RenderOptions::default();
+        opts.heading.h1 = h1;
+        let d = doc("# Title");
+        let l = layout(
+            &d,
+            30,
+            &theme,
+            &Caps::full(),
+            &opts,
+            &PlainHighlighter,
+            &NoImages,
+        );
+        l.styles.get(l.line_spans(0)[0].style).underline
+    };
+    assert_eq!(underline(H1Style::Underline), Underline::Curly);
+    assert_eq!(underline(H1Style::Plain), Underline::None);
+}
+
 #[test]
 fn reverse_bar_at_16_colours() {
     let caps = Caps {

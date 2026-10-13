@@ -11,7 +11,7 @@ use crate::ir::{
     List, SrcPos,
 };
 use crate::options::{FrontMatterMode, H1Style, H2Style, When};
-use crate::style::{Attrs, Color, Rgb, Style, StyleId};
+use crate::style::{Attrs, Color, Rgb, Style, StyleId, Underline};
 use crate::term::ColorDepth;
 use crate::text::str_width;
 use crate::theme::Element;
@@ -175,6 +175,14 @@ impl Builder<'_> {
         let bar = match self.opts.heading.h1 {
             H1Style::Bar => self.h1_bar(),
             H1Style::Underline | H1Style::Plain => {
+                let base = if self.opts.heading.h1 == H1Style::Plain {
+                    let mut s = self.sty.of(Element::H1);
+                    s.underline = Underline::None;
+                    s.underline_color = Color::Default;
+                    self.sty.intern(s)
+                } else {
+                    base
+                };
                 let c = self.compose(text, base);
                 let c = self.prefixed(prefix, base, c);
                 let look = Look { hang, ..Look::TEXT };

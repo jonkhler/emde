@@ -114,8 +114,9 @@ html = "subset"
 
 [heading]
 # h1: bar (a full-width bar in h1's background colour), underline (styled
-# text with its underline) or plain. When your [style.h1] sets no
-# background, and this key is not set, h1 is drawn as underline.
+# text with its underline) or plain (styled text without an underline).
+# When your [style.h1] sets no background, and this key is not set, h1 is
+# drawn as underline.
 h1 = "bar"
 # h2: rule (text over a heavy rule) or plain.
 h2 = "rule"

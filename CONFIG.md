@@ -93,7 +93,7 @@ Every key, with its default and the option that also sets it, if any.
 
 | Key | Default | Description |
 |---|---|---|
-| `h1` | `"bar"` | h1: bar (a full-width bar in h1's background colour), underline (styled text with its underline) or plain. When your [style.h1\] sets no background, and this key is not set, h1 is drawn as underline. |
+| `h1` | `"bar"` | h1: bar (a full-width bar in h1's background colour), underline (styled text with its underline) or plain (styled text without an underline). When your [style.h1\] sets no background, and this key is not set, h1 is drawn as underline. |
 | `h2` | `"rule"` | h2: rule (text over a heavy rule) or plain. |
 | `markers` | `["", "", "▎ ", "", "", ""]` | Prefix for each level, h1 to h6. |
 | `numbers` | `false` | Number the headings (1., 1.1., ...). |
