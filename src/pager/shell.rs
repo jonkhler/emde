@@ -17,8 +17,7 @@ use std::time::{Duration, Instant};
 
 use crate::config::OpenCommand;
 use crate::highlight::Highlighter;
-use crate::ir::ImageId;
-use crate::layout::{self, ImageSizer, Layout};
+use crate::layout::{self, Layout};
 use crate::options::Height;
 use crate::options::RenderOptions;
 use crate::render::RenderConfig;
@@ -29,9 +28,11 @@ use crate::term::tmux::TmuxInfo;
 use crate::theme::Theme;
 
 use super::diff::{Extras, Screen};
+use super::gallery;
 use super::images::{self, Images, WORK_POLL};
 use super::keymap::{Command, SEQUENCE_TIMEOUT};
 use super::os::{self, ClipboardPlan, OpenPlan};
+use super::sidebar;
 use super::state::{DocKey, Settings, State};
 use super::term::{
     MAX_POLL, MIN_POLL, MOUSE_OFF, MOUSE_ON, Signals, TermEvent, Terminal, clamp_poll,
@@ -67,23 +68,28 @@ pub(crate) fn key_of(origin: &Origin) -> Option<DocKey> {
     }
 }
 
-/// The image sizer for a layout with figure `image` zoomed: other figures
-/// keep their usual height cap (`rows`).
-struct Zoomed<'a> {
-    inner: &'a dyn ImageSizer,
-    image: Option<ImageId>,
-    rows: u16,
-}
-
-impl ImageSizer for Zoomed<'_> {
-    fn cells(&self, image: ImageId, max_cols: u16, max_rows: u16) -> Option<(u16, u16)> {
-        let rows = if Some(image) == self.image {
-            max_rows
-        } else {
-            max_rows.min(self.rows)
-        };
-        self.inner.cells(image, max_cols, rows)
+/// Whether the regular file at `path` starts like an image (reading its
+/// first bytes only; never a FIFO or a device, which could block or never
+/// end).
+#[inline(never)]
+fn sniff_file(path: &Path) -> bool {
+    use std::io::Read as _;
+    let mut head = [0u8; 512];
+    if !std::fs::metadata(path).is_ok_and(|m| m.is_file()) {
+        return false;
     }
+    let Ok(file) = std::fs::File::open(path) else {
+        return false;
+    };
+    let mut n = 0;
+    let mut take = file.take(head.len() as u64);
+    while let Ok(k) = take.read(&mut head[n..]) {
+        if k == 0 {
+            break;
+        }
+        n += k;
+    }
+    gallery::sniff(&head[..n])
 }
 
 /// A directory's README, or the path itself.
@@ -166,8 +172,12 @@ impl<'t, T: Terminal> Shell<'t, T> {
         let mut images = Images::new(images);
         let key = key_of(&doc.source.origin);
         let sizer = images.sizer(&key.clone().unwrap_or(DocKey::Unnamed(0)), &doc.doc);
-        let first = first.filter(|l| l.width == size.0).unwrap_or_else(|| {
-            layout::layout(&doc.doc, size.0, &theme, &caps, &opts, &*highlighter, sizer)
+        // The columns the outline sidebar leaves.
+        let width = size
+            .0
+            .saturating_sub(sidebar::cols(&settings.sidebar, None, size.0, &doc.doc));
+        let first = first.filter(|l| l.width == width).unwrap_or_else(|| {
+            layout::layout(&doc.doc, width, &theme, &caps, &opts, &*highlighter, sizer)
         });
         let mut stamps = HashMap::new();
         if let Origin::File(p) = &doc.source.origin {
@@ -416,50 +426,92 @@ impl<'t, T: Terminal> Shell<'t, T> {
                     Vec::new()
                 }
                 Effect::CycleImages => self.cycle_images(),
+                Effect::ShowImage => self.show_image(),
+                Effect::OpenFile(path) => self.open_file(&path)?,
             };
             queue.extend(more);
         }
-        // Images of documents the history dropped go with them.
+        // Images of documents the history dropped go with them (and those
+        // of the image view once it closes).
         let state = &self.state;
-        self.images.retain(|key| state.has_page(key));
+        self.images
+            .retain(|key| state.has_page(key), state.image_view().is_some());
         self.sync_watcher();
         Ok(None)
     }
 
-    /// Lay the current document out for the current size and settings
-    /// (a zoomed figure as large as the screen allows).
+    /// Lay the current document out for the current size and settings, in
+    /// the columns the outline sidebar leaves.
     fn layout(&mut self) -> Layout {
         let (cols, rows) = self.state.size();
         self.caps.size = Some((cols, rows));
-        let zoom = self.state.zoom();
-        self.opts.max_width = if self.state.wide() || zoom.is_some() {
-            0
-        } else {
-            self.max_width
-        };
-        let normal_height = self.opts.images.max_height;
-        let normal_rows = layout::max_image_rows(&self.opts, &self.caps);
-        if zoom.is_some() {
-            self.opts.images.max_height = Height::Rows(rows.saturating_sub(2).max(1));
-        }
+        self.opts.max_width = if self.state.wide() { 0 } else { self.max_width };
         let doc = self.state.document();
-        let inner = self.images.sizer(self.state.key(), doc);
-        let zoomed = Zoomed {
-            inner,
-            image: zoom,
-            rows: normal_rows,
-        };
-        let out = layout::layout(
+        let sizer = self.images.sizer(self.state.key(), doc);
+        layout::layout(
             doc,
+            self.state.doc_cols(),
+            &self.theme,
+            &self.caps,
+            &self.opts,
+            &*self.highlighter,
+            sizer,
+        )
+    }
+
+    /// The image view's image: read (or found among those read already, a
+    /// figure's in its document's store), laid out alone to fill the screen
+    /// above the status bar, keeping its aspect ratio, centred.
+    #[inline(never)]
+    fn show_image(&mut self) -> Vec<Effect> {
+        let Some(picture) = self.state.viewed() else {
+            return Vec::new();
+        };
+        let doc = gallery::document(picture, self.state.page.doc.base_dir.clone());
+        let read = picture
+            .figure
+            .and_then(|id| self.images.source_of(self.state.key(), id));
+        let (cols, rows) = self.state.size();
+        let view_rows = rows.saturating_sub(1).max(1);
+        let found = self.images.view(&doc, read);
+        // The whole screen: no text column, no margins, no height cap
+        // below the screen's.
+        let kept = (
+            self.opts.max_width,
+            self.opts.margin,
+            self.opts.images.max_height,
+        );
+        self.opts.max_width = 0;
+        self.opts.margin = 0;
+        self.opts.images.max_height = Height::Rows(view_rows);
+        let mut layout = layout::layout(
+            &doc,
             cols,
             &self.theme,
             &self.caps,
             &self.opts,
             &*self.highlighter,
-            &zoomed,
+            &self.images.view_sizer(),
         );
-        self.opts.images.max_height = normal_height;
-        out
+        (
+            self.opts.max_width,
+            self.opts.margin,
+            self.opts.images.max_height,
+        ) = kept;
+        gallery::centre(&mut layout, usize::from(view_rows));
+        let (pixels, problem) = match found {
+            Ok(px) => (Some(px), None),
+            Err(why) => (None, Some(why)),
+        };
+        update(
+            &mut self.state,
+            Action::ImageShown {
+                doc,
+                layout,
+                pixels,
+                problem,
+            },
+        )
     }
 
     /// Paint a frame if anything changed since the last one: the rows that
@@ -483,14 +535,10 @@ impl<'t, T: Terminal> Shell<'t, T> {
             before: &before,
             after: &after,
         };
-        let bytes = self.screen.write(
-            &frame,
-            &diff,
-            &self.state.page.doc,
-            &self.state.layout,
-            &self.cfg,
-            extras,
-        );
+        let shown = self.state.showing();
+        let bytes = self
+            .screen
+            .write(&frame, &diff, shown.doc, shown.layout, &self.cfg, extras);
         if !bytes.is_empty() {
             self.term.term.write(&bytes)?;
             self.term.term.flush()?;
@@ -535,7 +583,8 @@ impl<'t, T: Terminal> Shell<'t, T> {
     }
 
     /// A link to a file that is not Markdown: a directory is shown through
-    /// its README, anything else only by path.
+    /// its README, an image (by its first bytes) in the image view,
+    /// anything else only by path.
     fn show_file(&mut self, path: PathBuf) -> Vec<Effect> {
         if path.is_dir() {
             return self.load(LoadRequest {
@@ -545,6 +594,9 @@ impl<'t, T: Terminal> Shell<'t, T> {
                 nav: Nav::Push,
             });
         }
+        if sniff_file(&path) {
+            return update(&mut self.state, Action::ViewFile(path));
+        }
         let shown = crate::text::sanitize(&path.display().to_string()).into_owned();
         update(
             &mut self.state,
@@ -553,18 +605,33 @@ impl<'t, T: Terminal> Shell<'t, T> {
     }
 
     fn open_url(&mut self, url: &str) -> io::Result<Vec<Effect>> {
-        let remote = self.caps.over_ssh;
-        let message = match os::open_plan(&self.open, &self.env, remote, url) {
+        let plan = os::open_plan(&self.open, &self.env, self.caps.over_ssh, url);
+        self.open_with(plan, url)
+    }
+
+    /// `o` in the image view: open a local image with the system's opener
+    /// (or copy its path where that is not possible).
+    #[inline(never)]
+    fn open_file(&mut self, path: &Path) -> io::Result<Vec<Effect>> {
+        let plan = os::open_file_plan(&self.open, &self.env, self.caps.over_ssh, path);
+        self.open_with(plan, &path.display().to_string())
+    }
+
+    /// Carry out `plan` for `what` (a URL or a path, copied when it cannot
+    /// be opened).
+    fn open_with(&mut self, plan: OpenPlan, what: &str) -> io::Result<Vec<Effect>> {
+        let shown = crate::text::sanitize(what).into_owned();
+        let message = match plan {
             OpenPlan::Spawn(argv) => match os::spawn_detached(&argv) {
-                Ok(()) => Action::Message(format!("opened {url}")),
+                Ok(()) => Action::Message(format!("opened {shown}")),
                 Err(e) => {
-                    self.copy(url)?;
-                    Action::Error(format!("could not open the link ({e}); URL copied"))
+                    self.copy(what)?;
+                    Action::Error(format!("could not open it ({e}); copied it instead"))
                 }
             },
             OpenPlan::Copy(reason) => {
-                self.copy(url)?;
-                Action::Message(format!("copied {url} · {reason}"))
+                self.copy(what)?;
+                Action::Message(format!("copied {shown} · {reason}"))
             }
         };
         Ok(update(&mut self.state, message))

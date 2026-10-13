@@ -177,7 +177,9 @@ nu = "bash"
 | `watch` | `true` | Reload the document when the file changes. |
 | `scroll_lines` | `3` | Lines per mouse wheel step. |
 | `search_case` | `"smart"` | Search case: smart (case-sensitive only with an uppercase letter), sensitive or insensitive. |
-| `open` | `"auto"` | Opening links: auto (open or xdg-open locally, copy the URL over SSH), never, or a command that gets the URL as its last argument. |
+| `open` | `"auto"` | Opening links and images (o in the image view): auto (open or xdg-open locally, copy the URL over SSH), never, or a command that gets the URL (or the image file) as its last argument. |
+| `toc_sidebar` | `"auto"` | The outline sidebar on the left (T shows it, a second T moves the keys into it, a third hides it): auto shows it when the terminal is at least toc\_width + max\_width + 2 \* margin + 4 columns wide (140 with the defaults; a max\_width of 0 counts as 100), always whenever the text keeps 40 columns beside it, never only when T asks for it. Documents without headings get none. |
+| `toc_width` | `32` | Width of the outline sidebar in columns, its border included (16 to 60). |
 
 ### `[pager.keys]`
 
@@ -374,8 +376,9 @@ draws it (`—`: as its parent).
 | `selection` | `text` | The lines selected in Visual mode (`V`). | `reverse` |
 | `prompt` | `status` | The search prompt. | `fg=accent` |
 | `hint` | `text` | Hint labels (`f`, `o`, `y`, `v`). | `fg=base bg=accent bold` |
-| `toc` | `text` | The outline (`t`). | — |
-| `toc_current` | `toc` | The current section in the outline. | `fg=accent bold` |
+| `toc` | `text` | The outline (`t`) and the outline sidebar (`T`). | — |
+| `toc_current` | `toc` | The current section in the outline and the sidebar. | `fg=accent bold` |
+| `toc_border` | `muted` | The outline sidebar's border. | — |
 
 ## Themes
 
@@ -533,6 +536,7 @@ one bound later, an action of your file winning over a default one; `emde
 | `}` | next heading of the same or a higher level | `next-section` |
 | `{` | previous heading of the same or a higher level | `prev-section` |
 | `t` | outline (type to filter) | `outline` |
+| `T` | outline sidebar: show it; again: keys in it; again: hide it | `toc-sidebar` |
 | `m` | mark the place: m and a letter (ma) | `set-mark` |
 | `'` | go to a mark ('a); '' back to before the last jump | `jump-mark` |
 
@@ -544,7 +548,7 @@ one bound later, an action of your file winning over a default one; `emde
 | `?` | search backward | `search-backward` |
 | `n` | next match | `next-match` |
 | `N` | previous match | `prev-match` |
-| `Esc` | clear the zoomed image, the search, the link focus | `clear-search` |
+| `Esc` | clear the search, the link focus | `clear-search` |
 
 **Links**
 
@@ -561,7 +565,7 @@ one bound later, an action of your file winning over a default one; `emde
 
 | Keys | Action | Name |
 |---|---|---|
-| `f` | hints: follow a link, go to a heading or block, zoom an image | `hints-follow` |
+| `f` | hints: follow a link, go to a heading or block, view an image | `hints-follow` |
 | `y` | copy the focused link's URL, else hints: copy code, math, a table… | `yank-hints` |
 | `v` | hints: select a block (Visual mode) | `visual-hints` |
 | `V` | Visual mode: select lines | `visual-line` |
@@ -574,6 +578,7 @@ one bound later, an action of your file winning over a default one; `emde
 | `r` | reload the file | `reload` |
 | `R` | watch the file for changes, on or off | `toggle-watch` |
 | `i` | cycle the image mode | `cycle-images` |
+| `gi` | image view: the document's images, from the first | `gallery` |
 | `w` | full width, on or off | `toggle-width` |
 | `M` | mouse, on or off (off: select text) | `toggle-mouse` |
 | `:` | command: :n next file, :p previous file, :q quit | `command-line` |
@@ -637,6 +642,33 @@ one bound later, an action of your file winning over a default one; `emde
 | `Enter` | go to the heading | `outline-jump` |
 | `Esc` `^C` | close | `outline-close` |
 | `Backspace` | delete a filter character | `outline-erase` |
+
+**In the outline sidebar**
+
+| Keys | Action | Name |
+|---|---|---|
+| `j` `↓` `^N` | next entry | `sidebar-down` |
+| `k` `↑` `^P` | previous entry | `sidebar-up` |
+| `Space` `PgDn` `^F` | down a page | `sidebar-page-down` |
+| `b` `PgUp` `^B` | up a page | `sidebar-page-up` |
+| `g` `Home` | first entry | `sidebar-top` |
+| `G` `End` | last entry | `sidebar-bottom` |
+| `Enter` | go to the heading | `sidebar-jump` |
+| `Esc` `q` `^C` | back to the document | `sidebar-leave` |
+| `T` | hide the sidebar | `sidebar-hide` |
+
+**In the image view**
+
+| Keys | Action | Name |
+|---|---|---|
+| `n` `j` `→` `Space` `PgDn` | next image | `image-next` |
+| `p` `k` `←` `Backspace` `PgUp` | previous image | `image-prev` |
+| `g` `Home` | first image | `image-first` |
+| `G` `End` | last image | `image-last` |
+| `y` | copy the image's path or URL | `image-yank` |
+| `o` | open the image with the system's opener | `image-open` |
+| `i` | cycle the image mode | `image-cycle` |
+| `Esc` `q` `^C` | back to the text, where it was | `image-close` |
 
 **With hints**
 

@@ -38,8 +38,10 @@
 //!   never reach the status row, and inside tmux at most
 //!   [`TMUX_MAX_SIXELS`] sixel images are on screen at once.
 //!
-//! No image is placed or drawn on rows an overlay (outline, help, link
-//! hints) draws on: it would hide the overlay. While a classic or pixel
+//! Figures are placed in the columns the outline sidebar leaves
+//! ([`super::Frame::left`]), never over it. No image is placed or drawn on
+//! rows an overlay (outline, help, link hints) draws on: it would hide the
+//! overlay. While a classic or pixel
 //! image is on screen the painter's scroll fast path is off
 //! ([`super::Frame::images`]): the terminal would scroll pixels it does not
 //! track. Images are drawn (and kitty images placed) again after an
@@ -48,6 +50,16 @@
 //!
 //! `i` cycles the mode ([`Images::cycle`]): the detected graphics path,
 //! blocks, and off (alt text boxes).
+//!
+//! # The image view
+//!
+//! The image view shows one image as a document of one figure laid out to
+//! fill the screen ([`super::gallery`]); its stores ([`Images::view`]) are
+//! kept apart from the documents' (a few, for stepping back and forth, and
+//! only while the view is open), and a figure's file read for its document
+//! is not read again. Everything else (renditions, the worker, the
+//! protocols) is the same as for the document's figures; frames show the
+//! view's store while it is open ([`super::State::showing`]).
 
 mod cache;
 mod worker;
@@ -59,7 +71,7 @@ use std::ops::Range;
 use std::time::{Duration, Instant};
 
 use crate::gfx::kitty::{self, Deletion};
-use crate::gfx::store::{ImageStore, Made, Make, StoreOptions};
+use crate::gfx::store::{ImageStore, Made, Make, Source, StoreOptions};
 use crate::gfx::{Passthrough, SCROLL_DEBOUNCE, size};
 use crate::ir::{Document, ImageId};
 use crate::layout::{ImageSizer, Layout, NoImages, Placement};
@@ -255,7 +267,8 @@ struct Shown {
 struct At {
     /// The first document line on screen.
     top: usize,
-    /// The layout's indent (figure columns are relative to it).
+    /// The screen column of the text column: the outline sidebar's width
+    /// and the layout's indent (figure columns are relative to it).
     indent: u16,
     /// The screen rows an overlay (outline, help, link hints) draws on;
     /// empty without one.
@@ -270,9 +283,10 @@ impl At {
         } else {
             Vec::new()
         };
+        let shown = state.showing();
         At {
-            top: state.top,
-            indent: state.layout.indent,
+            top: shown.top,
+            indent: shown.layout.indent.saturating_add(frame.left),
             covered,
         }
     }
@@ -285,10 +299,15 @@ impl At {
     }
 }
 
-/// A document's store.
+/// Image view stores kept while the view is open (the image shown and
+/// the ones before it, for stepping back and forth).
+const VIEW_STORES: usize = 3;
+
+/// A store.
 #[derive(Debug)]
 struct Kept {
-    key: DocKey,
+    /// The document it is for; `None` for the image view's.
+    key: Option<DocKey>,
     id: StoreId,
     store: ImageStore,
 }
@@ -307,6 +326,10 @@ pub(crate) struct Images {
     next_store: u32,
     /// The store of the document the current layout shows.
     current: Option<StoreId>,
+    /// The store of the image the image view shows.
+    viewing: Option<StoreId>,
+    /// The store the frame being painted shows ([`Images::plan`]).
+    frame_store: Option<StoreId>,
     cache: Renditions,
     worker: Worker,
     wait_when_idle: bool,
@@ -338,6 +361,8 @@ impl Images {
             spare: setup.stores,
             next_store: 1,
             current: None,
+            viewing: None,
+            frame_store: None,
             cache: Renditions::new(cache::BUDGET),
             worker: Worker::new(),
             wait_when_idle: setup.wait_when_idle,
@@ -392,7 +417,7 @@ impl Images {
         if self.mode() == Graphics::None {
             return &NoImages;
         }
-        let id = match self.stores.iter().position(|k| k.key == *key) {
+        let id = match self.stores.iter().position(|k| k.key.as_ref() == Some(key)) {
             Some(i) => {
                 let kept = self.stores.remove(i);
                 if kept.store.belongs_to(doc) {
@@ -402,10 +427,10 @@ impl Images {
                 } else {
                     // Reloaded with other images.
                     self.purge(kept.id);
-                    self.load(key, doc, opts)
+                    self.load(Some(key), doc, opts, None)
                 }
             }
-            None => self.load(key, doc, opts),
+            None => self.load(Some(key), doc, opts, None),
         };
         self.current = Some(id);
         match self.stores.last() {
@@ -414,34 +439,127 @@ impl Images {
         }
     }
 
-    /// Load (or claim) the store of `doc` as the most recently used.
-    fn load(&mut self, key: &DocKey, doc: &Document, mut opts: StoreOptions) -> StoreId {
+    /// Load (or claim) the store of `doc` as the most recently used, for the
+    /// document `key` (`None`: the image view's, whose figure may be `read`
+    /// already).
+    fn load(
+        &mut self,
+        key: Option<&DocKey>,
+        doc: &Document,
+        mut opts: StoreOptions,
+        read: Option<Source>,
+    ) -> StoreId {
         let store = match self.spare.iter().position(|s| s.belongs_to(doc)) {
-            Some(i) => self.spare.swap_remove(i),
-            None => {
+            Some(i) if key.is_some() => self.spare.swap_remove(i),
+            _ => {
                 // With images off at first, `i` can still turn blocks on.
                 if opts.graphics == Graphics::None {
                     opts.graphics = Graphics::Blocks;
                 }
-                ImageStore::load_figures(doc, opts)
+                match read {
+                    Some(source) => ImageStore::with_source(doc, ImageId(0), source, opts),
+                    None => ImageStore::load_figures(doc, opts),
+                }
             }
         };
         let id = StoreId(self.next_store);
         self.next_store += 1;
         self.stores.push(Kept {
-            key: key.clone(),
+            key: key.cloned(),
             id,
             store,
         });
         id
     }
 
-    /// Keep the stores of the documents `keep` says the pager keeps; the
-    /// others go with their renditions, and their kitty images are deleted.
-    pub(crate) fn retain(&mut self, keep: impl Fn(&DocKey) -> bool) {
+    /// The image of figure `image` of the document `key`, if its store read
+    /// it.
+    pub(crate) fn source_of(&self, key: &DocKey, image: ImageId) -> Option<Source> {
+        self.stores
+            .iter()
+            .find(|k| k.key.as_ref() == Some(key))
+            .and_then(|k| k.store.source(image))
+    }
+
+    /// Get the image view's store for `doc` (a document of one figure,
+    /// [`super::gallery::document`]) ready: found among the ones kept,
+    /// made from `read` (the figure's image, read for its document already)
+    /// or read now. The next frames show it. Returns the image's size in
+    /// pixels, or why it cannot be shown.
+    #[inline(never)]
+    pub(crate) fn view(
+        &mut self,
+        doc: &Document,
+        read: Option<Source>,
+    ) -> Result<(u32, u32), String> {
+        self.viewing = None;
+        let Some(opts) = self.options.clone() else {
+            return Err("images are off on this terminal".into());
+        };
+        if self.mode() == Graphics::None {
+            return Err("images are off (i turns them on)".into());
+        }
+        let found = self
+            .stores
+            .iter()
+            .position(|k| k.key.is_none() && k.store.belongs_to(doc));
+        let id = match found {
+            Some(i) => {
+                let kept = self.stores.remove(i);
+                let id = kept.id;
+                self.stores.push(kept);
+                id
+            }
+            None => {
+                // The oldest goes.
+                if self.stores.iter().filter(|k| k.key.is_none()).count() >= VIEW_STORES
+                    && let Some(i) = self.stores.iter().position(|k| k.key.is_none())
+                {
+                    let old = self.stores.remove(i);
+                    self.purge(old.id);
+                }
+                self.load(None, doc, opts, read)
+            }
+        };
+        self.viewing = Some(id);
+        let store = self.stores.last().map(|k| &k.store);
+        match store.and_then(|s| s.source(ImageId(0))) {
+            Some(source) => Ok(source.size()),
+            None => Err(store
+                .and_then(|s| s.problems().first().cloned())
+                .unwrap_or_else(|| "the image could not be read".into())),
+        }
+    }
+
+    /// Figure sizes for the image view's layout ([`ViewSizer`]).
+    pub(crate) fn view_sizer(&self) -> ViewSizer<'_> {
+        let store = self
+            .viewing
+            .and_then(|id| self.stores.iter().find(|k| k.id == id))
+            .map(|k| &k.store);
+        ViewSizer { store }
+    }
+
+    /// The store the frames show: the image view's while it is open, else
+    /// the document's.
+    fn shown_store(&self, state: &State) -> Option<StoreId> {
+        if state.showing().image {
+            self.viewing
+        } else {
+            self.current
+        }
+    }
+
+    /// Keep the stores of the documents `keep` says the pager keeps (and
+    /// the image view's while it is open, `viewing`); the others go with
+    /// their renditions, and their kitty images are deleted.
+    pub(crate) fn retain(&mut self, keep: impl Fn(&DocKey) -> bool, viewing: bool) {
+        if !viewing {
+            self.viewing = None;
+        }
         let mut gone = Vec::new();
         self.stores.retain(|k| {
-            let kept = keep(&k.key);
+            let kept = k.key.as_ref().map_or(viewing, &keep);
             if !kept {
                 gone.push(k.id);
             }
@@ -469,6 +587,9 @@ impl Images {
         }
         if self.current == Some(store) {
             self.current = None;
+        }
+        if self.viewing == Some(store) {
+            self.viewing = None;
         }
     }
 
@@ -605,6 +726,7 @@ impl Images {
         now: Instant,
     ) {
         self.cache.next_frame();
+        self.frame_store = self.shown_store(state);
         let new_layout = state.generation != self.shown.generation;
         if new_layout {
             self.new_layout(state);
@@ -616,18 +738,19 @@ impl Images {
         if resized && !new_layout {
             self.forget_shown();
         }
-        if new_layout || resized || state.top != self.shown.top {
+        if new_layout || resized || state.showing().top != self.shown.top {
             self.moved_at = Some(now);
         }
         let mode = self.mode();
-        let Some(store) = self.current else {
+        let Some(store) = self.shown_store(state) else {
             self.shown.rows.clear();
             return;
         };
-        let (top, view) = (state.top, state.view_rows());
-        let visible = placements_on(&state.layout, top..top + view);
+        let shown = state.showing();
+        let (top, view) = (shown.top, state.view_rows());
+        let visible = placements_on(shown.layout, top..top + view);
         let near = placements_on(
-            &state.layout,
+            shown.layout,
             top.saturating_sub(view)..top.saturating_add(view.saturating_mul(2)),
         );
         // What the screen needs first, then what is a screen away.
@@ -668,9 +791,9 @@ impl Images {
         }
         let mut after = Vec::new();
         self.awaiting = false;
-        if let Some(store) = self.current {
+        if let Some(store) = self.shown_store(state) {
             let at = At::new(state, frame);
-            let visible = placements_on(&state.layout, at.top..at.top + state.view_rows());
+            let visible = placements_on(state.showing().layout, at.top..at.top + state.view_rows());
             self.upload(store, &visible, &mut before);
             match self.mode() {
                 Graphics::KittyClassic => {
@@ -683,7 +806,7 @@ impl Images {
             }
         }
         self.shown.generation = state.generation;
-        self.shown.top = state.top;
+        self.shown.top = state.showing().top;
         self.shown.size = state.size();
         (before, after)
     }
@@ -701,10 +824,11 @@ impl Images {
         self.worker.bump();
         self.cache.forget_pending();
         self.forget_shown();
-        let Some(store) = self.current else {
+        let Some(store) = self.shown_store(state) else {
             return;
         };
         let sizes: HashSet<(ImageId, u16, u16)> = state
+            .showing()
             .layout
             .images
             .iter()
@@ -924,6 +1048,22 @@ impl Images {
     }
 }
 
+/// Figure sizes for the image view: as large as the screen allows,
+/// keeping the image's aspect ratio (small images are scaled up).
+pub(crate) struct ViewSizer<'a> {
+    store: Option<&'a ImageStore>,
+}
+
+impl ImageSizer for ViewSizer<'_> {
+    fn cells(&self, image: ImageId, max_cols: u16, max_rows: u16) -> Option<(u16, u16)> {
+        let store = self.store?;
+        let source = store.source(image)?;
+        let cell = store.options().cell_px;
+        let (cols, rows) = size::fit_cells(source.size(), cell, max_cols, max_rows);
+        (cols > 0 && rows > 0).then_some((cols, rows))
+    }
+}
+
 /// What the figure rows of a frame show ([`Images::rows`]).
 pub(crate) struct FrameRows<'a> {
     images: &'a Images,
@@ -932,7 +1072,7 @@ pub(crate) struct FrameRows<'a> {
 impl ImageRows for FrameRows<'_> {
     fn row(&self, p: &Placement, row: u16) -> Option<RowContent<'_>> {
         let images = self.images;
-        let store = images.current?;
+        let store = images.frame_store?;
         match images.shown.rows.get(&p.line)? {
             RowsShow::Box => None,
             RowsShow::Cells => match images.cache.made(&key(store, p, Make::Blocks))? {

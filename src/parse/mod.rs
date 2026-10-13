@@ -28,6 +28,7 @@ use pulldown_cmark::{Options, Parser};
 
 pub(crate) use inline::url_break_points;
 pub use slug::{Slugger, slug};
+pub(crate) use target::classify;
 
 use std::ops::Range;
 

@@ -69,6 +69,7 @@
 //! ```
 
 mod diff;
+mod gallery;
 mod hints;
 mod images;
 pub mod keymap;
@@ -76,6 +77,7 @@ mod links;
 mod os;
 mod search;
 mod shell;
+mod sidebar;
 mod state;
 pub mod term;
 mod toc;
@@ -90,7 +92,7 @@ use std::sync::Arc;
 
 pub use diff::{SYNC_OFF, SYNC_ON, Screen};
 pub use images::PagerImages;
-pub use state::{DocKey, Place, Settings, State};
+pub use state::{DocKey, Place, Settings, SidebarSettings, State};
 pub use term::{Signals, Terminal};
 pub use update::{Action, Effect, LoadRequest, Nav, update};
 pub use view::{Body, Ctx, Frame, Row, Segment, view};

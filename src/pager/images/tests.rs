@@ -220,7 +220,7 @@ fn kitty_images_are_uploaded_once_and_deleted_once() {
     assert!(images.settle());
     frame(&mut images, &state, &mut screen);
     assert_eq!(images.live.len(), 1);
-    images.retain(|_| false);
+    images.retain(|_| false, false);
     assert!(images.live.is_empty());
     assert_eq!(images.doomed.len(), 1);
 }

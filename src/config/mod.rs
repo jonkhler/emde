@@ -120,6 +120,13 @@ pub struct PagerOptions {
     pub search_case: SearchCase,
     /// How external links are opened.
     pub open: OpenCommand,
+    /// The outline sidebar (`T`): `auto` shows it when the terminal has
+    /// room for it beside the text column at its full width, `always`
+    /// whenever it fits at all, `never` only when `T` asks for it.
+    pub toc_sidebar: When,
+    /// Width of the outline sidebar in columns, its border included
+    /// (16 to 60).
+    pub toc_width: u16,
     /// `[pager.keys]`: action names and their keys, in order (see
     /// [`crate::pager::keymap::Keymap::new`]).
     pub keys: Vec<(String, Vec<String>)>,
@@ -134,6 +141,8 @@ impl Default for PagerOptions {
             scroll_lines: 3,
             search_case: SearchCase::Smart,
             open: OpenCommand::Auto,
+            toc_sidebar: When::Auto,
+            toc_width: 32,
             keys: Vec::new(),
         }
     }

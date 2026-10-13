@@ -296,6 +296,9 @@ layered! {
         pub(crate) search_case: Option<SearchCase>,
         #[serde(deserialize_with = "open_command")]
         pub(crate) open: Option<OpenCommand>,
+        #[serde(deserialize_with = "named")]
+        pub(crate) toc_sidebar: Option<When>,
+        pub(crate) toc_width: Option<u16>,
         #[serde(skip)]
         pub(crate) keys: KeysTable,
     }

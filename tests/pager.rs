@@ -176,6 +176,123 @@ fn long_doc(sections: usize) -> String {
 // ---------------------------------------------------------------------------
 
 #[test]
+fn the_outline_sidebar_follows_the_reading() {
+    let mut md = long_doc(20);
+    md.push_str(
+        "## A very long heading that does not fit in the sidebar, not even close\n\nThe end.\n",
+    );
+    let term = FakeTerminal::new(150, 20)
+        .keys("]]]]]]")
+        .mark("section")
+        .keys("T")
+        .wait(ms(5))
+        .keys("jj")
+        .mark("moved")
+        .code(KeyCode::Enter)
+        .mark("jumped")
+        .keys("G")
+        .wait(ms(5))
+        .keys("T")
+        .wait(ms(5))
+        .keys("G")
+        .mark("bottom")
+        .code(KeyCode::Esc)
+        .keys("gg/few words")
+        .code(KeyCode::Enter)
+        .mark("search")
+        .resize(120, 20)
+        .mark("narrow")
+        .keys("q");
+    let (term, exit) = run(term, session(&md));
+    assert_eq!(exit, PagerExit::Quit);
+    let section = screen_text(&term, 150, 20, "section");
+    // The current section is marked, the text starts after the border.
+    let marked: Vec<&str> = section.lines().filter(|l| l.contains("▸")).collect();
+    assert_eq!(marked.len(), 1, "{section}");
+    // The last heading at or above the top third of the screen.
+    assert!(marked[0].contains("▸   Section 7"), "{section}");
+    assert!(
+        row_text(&term, 150, 20, "section", 0).starts_with("   Long document"),
+        "{section}"
+    );
+    insta::assert_snapshot!("sidebar-section", section);
+    insta::assert_snapshot!("sidebar-keys", screen_text(&term, 150, 20, "moved"));
+    let jumped = row_text(&term, 150, 20, "jumped", 0);
+    assert!(jumped.ends_with("Section 9"), "{jumped:?}");
+    // Long headings are cut; the selection is kept in view.
+    let bottom = screen_text(&term, 150, 20, "bottom");
+    assert!(bottom.contains("  A very long heading that… │"), "{bottom}");
+    insta::assert_snapshot!("sidebar-bottom", bottom);
+    insta::assert_snapshot!("sidebar-search", screen_text(&term, 150, 20, "search"));
+    // Narrower than 140 columns: auto hides it, and the text takes the
+    // whole width again.
+    let narrow = screen_text(&term, 120, 20, "narrow");
+    assert!(
+        !row_text(&term, 120, 20, "narrow", 2).contains('│'),
+        "{narrow}"
+    );
+    insta::assert_snapshot!("sidebar-narrow", narrow);
+}
+
+#[test]
+fn scrolling_beside_the_sidebar_repaints_instead_of_scrolling_it() {
+    let term = FakeTerminal::new(150, 20)
+        .keys("]]]]]]")
+        .mark("before")
+        .keys("j")
+        .mark("one")
+        .keys("jjj")
+        .mark("four")
+        .keys("q");
+    let (term, _) = run(term, session(&long_doc(20)));
+    let out = String::from_utf8_lossy(&term.output()).into_owned();
+    assert!(!out.contains("\x1b[1;19r"), "no scroll region");
+    // The sidebar is where it was, the text moved by a line.
+    let side = |name: &str| -> Vec<String> {
+        (0..19)
+            .map(|r| row_text(&term, 150, 20, name, r).chars().take(32).collect())
+            .collect()
+    };
+    assert_eq!(side("before"), side("one"));
+    let text = |name: &str, r: u16| -> String {
+        row_text(&term, 150, 20, name, r).chars().skip(32).collect()
+    };
+    assert_eq!(text("before", 1), text("one", 0));
+    assert_eq!(text("before", 4), text("four", 0));
+    // Where the current section changes, only that is repainted on the
+    // sidebar's side.
+    let marked = |name: &str| side(name).iter().position(|l| l.contains('▸'));
+    assert!(marked("before").is_some() && marked("four").is_some());
+}
+
+#[test]
+fn hints_and_visual_mode_beside_the_sidebar() {
+    let md = "# Guide\n\nRead [the docs](https://example.com) first.\n\n\
+              ## Install\n\n```sh\nmake install\n```\n\n## Use\n\nJust run it.\n";
+    let term = FakeTerminal::new(150, 14)
+        .keys("f")
+        .mark("hints")
+        .code(KeyCode::Esc)
+        .keys("V")
+        .wait(ms(5))
+        .keys("j")
+        .mark("visual")
+        .code(KeyCode::Esc)
+        .keys("t")
+        .mark("outline")
+        .code(KeyCode::Esc)
+        .keys("q");
+    let (term, exit) = run(term, session(md));
+    assert_eq!(exit, PagerExit::Quit);
+    let hints = render_with(&screen_at(&term, 150, 14, Some("hints")), true);
+    insta::assert_snapshot!("sidebar-hints", hints);
+    insta::assert_snapshot!("sidebar-visual", screen_text(&term, 150, 14, "visual"));
+    // The outline box is drawn over the sidebar and the text alike.
+    let outline = screen_text(&term, 150, 14, "outline");
+    assert!(outline.contains("╭─ Outline"), "{outline}");
+}
+
+#[test]
 fn first_frame_and_scrolling() {
     let term = FakeTerminal::new(80, 24)
         .mark("first")
@@ -787,7 +904,7 @@ fn every_frame_is_one_synchronized_write() {
 /// A random script: keys (never `q`), mouse events, resizes (down to
 /// nothing at all), quiet periods, SIGCONT and redraws.
 fn random_script(mut term: FakeTerminal, next: &mut impl FnMut() -> u64) -> FakeTerminal {
-    let chars: Vec<char> = "jkdufbgG%][}{tnN/?oashHLywxe15 rRim".chars().collect();
+    let chars: Vec<char> = "jkdufbgG%][}{tTnN/?oashHLywxe15 rRimp".chars().collect();
     let codes = [
         KeyCode::Enter,
         KeyCode::Esc,
@@ -1010,7 +1127,10 @@ fn a_one_line_scroll_writes_little() {
         .keys("j")
         .mark("scrolled")
         .keys("q");
-    let (term, _) = run(term, session(&fixture("kitchen-sink").repeat(5)));
+    // The outline sidebar (shown at this width) turns the fast path off.
+    let mut s = session(&fixture("kitchen-sink").repeat(5));
+    s.pager.toc_sidebar = emde::options::When::Never;
+    let (term, _) = run(term, s);
     let frame = frame_after(&term, "start");
     assert!(frame.len() <= 2048, "{} bytes", frame.len());
 }

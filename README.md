@@ -19,7 +19,9 @@ emde README.md
   never send escape sequences of its own to the terminal.
 - **A built-in pager.** On a terminal, a document opens in the pager:
   incremental search (smart case, and a phrase is found even where it
-  wraps), an outline, jumps between headings, marks, Vimium-style hints to
+  wraps), an outline and an outline sidebar that follows your reading, an
+  image view that steps through a document's pictures, jumps between
+  headings, marks, Vimium-style hints to
   follow links or copy code, math and tables as written, a Visual mode
   that copies lines as Markdown or text, `e` to edit the file at the line
   you are reading, back and forward through linked documents, reload when
@@ -164,8 +166,8 @@ Links can be followed into other Markdown files, and `Backspace` comes back.
 
 Hints put a short label on everything worth acting on, as Vimium does in a
 browser: type it. `f` follows a link, goes to a heading, a code block, a
-table or a footnote (and back), or shows an image at full size; `o` labels
-links only. `y` copies what the label is on as written in the file: the
+table or a footnote (and back), or shows an image in the image view; `o`
+labels links only. `y` copies what the label is on as written in the file: the
 code of a code block (no fences), the TeX of math, a table, a paragraph, a
 list item or a quote as Markdown, a link's URL, `file.md#slug` for a
 heading. `V` selects lines (`v` and a label: a block), and in Visual mode
@@ -173,6 +175,19 @@ heading. `V` selects lines (`v` and a label: a block), and in Visual mode
 `e` opens the file in `$VISUAL` or `$EDITOR` at the line you are reading,
 and shows it again when the editor exits. `ma` marks a place, `'a` goes
 back to it, and `''` to where you were before the last jump.
+
+The **image view** shows one image as large as the screen allows. Links to
+images open it (local files, `data:` images, and remote ones with
+`--remote-images`), as do `f` on a figure, a click on one, and `gi` (the
+first image of the document). `n` and `p` step through every image of the
+document, figures and links alike; `y` copies the image's path, `o` opens
+it in your image viewer, and `Esc` brings you back to where you were.
+
+The **outline sidebar** lists the headings on the left and marks the
+section you are reading. It shows on its own on terminals wide enough for it
+beside the text (`[pager] toc_sidebar`, `toc_width`); `T` shows it, a
+second `T` moves the keys into it (`j`, `k`, `Enter`, `Esc`), a third hides
+it, and a click on an entry goes there.
 
 <!-- BEGIN GENERATED keys (`cargo xtask docs`, from src/pager/keymap.rs) -->
 
@@ -203,6 +218,7 @@ back to it, and `''` to where you were before the last jump.
 | `}` | next heading of the same or a higher level |
 | `{` | previous heading of the same or a higher level |
 | `t` | outline (type to filter) |
+| `T` | outline sidebar: show it; again: keys in it; again: hide it |
 | `m` | mark the place: m and a letter (ma) |
 | `'` | go to a mark ('a); '' back to before the last jump |
 
@@ -214,7 +230,7 @@ back to it, and `''` to where you were before the last jump.
 | `?` | search backward |
 | `n` | next match |
 | `N` | previous match |
-| `Esc` | clear the zoomed image, the search, the link focus |
+| `Esc` | clear the search, the link focus |
 
 **Links**
 
@@ -231,7 +247,7 @@ back to it, and `''` to where you were before the last jump.
 
 | Keys | Action |
 |---|---|
-| `f` | hints: follow a link, go to a heading or block, zoom an image |
+| `f` | hints: follow a link, go to a heading or block, view an image |
 | `y` | copy the focused link's URL, else hints: copy code, math, a table… |
 | `v` | hints: select a block (Visual mode) |
 | `V` | Visual mode: select lines |
@@ -244,6 +260,7 @@ back to it, and `''` to where you were before the last jump.
 | `r` | reload the file |
 | `R` | watch the file for changes, on or off |
 | `i` | cycle the image mode |
+| `gi` | image view: the document's images, from the first |
 | `w` | full width, on or off |
 | `M` | mouse, on or off (off: select text) |
 | `:` | command: :n next file, :p previous file, :q quit |
@@ -307,6 +324,33 @@ back to it, and `''` to where you were before the last jump.
 | `Enter` | go to the heading |
 | `Esc` `^C` | close |
 | `Backspace` | delete a filter character |
+
+**In the outline sidebar**
+
+| Keys | Action |
+|---|---|
+| `j` `↓` `^N` | next entry |
+| `k` `↑` `^P` | previous entry |
+| `Space` `PgDn` `^F` | down a page |
+| `b` `PgUp` `^B` | up a page |
+| `g` `Home` | first entry |
+| `G` `End` | last entry |
+| `Enter` | go to the heading |
+| `Esc` `q` `^C` | back to the document |
+| `T` | hide the sidebar |
+
+**In the image view**
+
+| Keys | Action |
+|---|---|
+| `n` `j` `→` `Space` `PgDn` | next image |
+| `p` `k` `←` `Backspace` `PgUp` | previous image |
+| `g` `Home` | first image |
+| `G` `End` | last image |
+| `y` | copy the image's path or URL |
+| `o` | open the image with the system's opener |
+| `i` | cycle the image mode |
+| `Esc` `q` `^C` | back to the text, where it was |
 
 **With hints**
 

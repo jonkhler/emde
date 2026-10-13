@@ -15,7 +15,7 @@ use std::time::Duration;
 use emde::gfx::Passthrough;
 use emde::gfx::store::StoreOptions;
 use emde::options::RenderOptions;
-use emde::pager::term::{Chunk, ENTER, EXIT, FakeTerminal, Key, MOUSE_ON, Step};
+use emde::pager::term::{Chunk, ENTER, EXIT, FakeTerminal, Key, KeyCode, MOUSE_ON, Step};
 use emde::pager::{PagerDoc, PagerExit, PagerImages, PagerSession, SYNC_ON, Signals, run_on};
 use emde::parse::ParseOptions;
 use emde::style::Rgb;
@@ -642,7 +642,7 @@ fn overlays_hide_only_the_kitty_images_they_draw_on() {
         .mark("placed")
         .keys("t")
         .mark("outline")
-        .code(emde::pager::term::KeyCode::Esc)
+        .code(KeyCode::Esc)
         .mark("closed")
         .keys("h")
         .mark("help")
@@ -700,6 +700,64 @@ fn pixels_are_drawn_again_after_a_resize() {
     );
 }
 
+/// Where kitty classic placements go: `(row, column)`, 1-based.
+fn kitty_places(bytes: &[u8]) -> Vec<(usize, usize)> {
+    let text = String::from_utf8_lossy(bytes);
+    let mut out = Vec::new();
+    for (i, _) in text.match_indices("\x1b_Ga=p,") {
+        let before = &text[..i];
+        let cup = before.rfind("\x1b[").unwrap();
+        let pos = before[cup + 2..].trim_end_matches('H');
+        let (row, col) = pos.split_once(';').unwrap();
+        out.push((row.parse().unwrap(), col.parse().unwrap()));
+    }
+    out
+}
+
+#[test]
+fn pixel_images_are_offset_by_the_sidebar() {
+    let doc = tall_figure("sidebar-offset");
+    // Without the sidebar on a terminal as wide as the text area beside a
+    // 16-column one, and with it.
+    let script = |cols| {
+        FakeTerminal::new(cols, 12)
+            .keys("jjj")
+            .wait(ms(300))
+            .mark("drawn")
+            .keys("q")
+    };
+    let with_sidebar = |opts| {
+        let mut s = session(&doc, opts);
+        s.pager.toc_sidebar = emde::options::When::Always;
+        s.pager.toc_width = 16;
+        s
+    };
+    let (alone, _) = run(script(44), session(&doc, options(Graphics::Iterm)));
+    let (beside, _) = run(script(60), with_sidebar(options(Graphics::Iterm)));
+    let alone = iterm_draws(&written(&alone, None, Some("drawn")));
+    let beside = iterm_draws(&written(&beside, None, Some("drawn")));
+    assert_eq!(alone.len(), 1);
+    let (row, col, height) = alone[0];
+    assert_eq!(beside, [(row, col + 16, height)]);
+    assert!(col + 16 > 16, "never over the sidebar");
+    // kitty classic placements too.
+    let (alone, _) = run(script(44), session(&doc, options(Graphics::KittyClassic)));
+    let (beside, _) = run(script(60), with_sidebar(options(Graphics::KittyClassic)));
+    let alone = kitty_places(&written(&alone, None, Some("drawn")));
+    let beside_places = kitty_places(&written(&beside, None, Some("drawn")));
+    assert!(!alone.is_empty());
+    let shifted: Vec<(usize, usize)> = alone.iter().map(|&(r, c)| (r, c + 16)).collect();
+    assert_eq!(beside_places, shifted);
+    // The sidebar is on screen beside the image, its border in column 16.
+    let p = screen_at(&beside, 60, 12, Some("drawn"));
+    assert!(
+        row_text(&p, 0).starts_with(" ▸ Figures"),
+        "{}",
+        row_text(&p, 0)
+    );
+    assert_eq!(row_text(&p, 3).chars().nth(15), Some('│'));
+}
+
 // ---------------------------------------------------------------------------
 // Modes, documents, stopping
 // ---------------------------------------------------------------------------
@@ -717,6 +775,296 @@ fn cells_on(term: &FakeTerminal, cols: u16, rows: u16, name: &str, rgb: [u8; 3])
         .flat_map(|r| (0..cols).map(move |c| (r, c)))
         .filter(|&(r, c)| bg(&p, r, c) == want)
         .count()
+}
+
+// ---------------------------------------------------------------------------
+// The image view
+// ---------------------------------------------------------------------------
+
+/// A document with a 128×64 red figure, a link to a 32×64 blue image, a
+/// link to a PNG without an extension, a broken image link, and text to
+/// scroll through, in `dir`.
+fn gallery_doc(dir: &Path) -> PathBuf {
+    std::fs::write(dir.join("red.png"), png(128, 64, RED)).unwrap();
+    std::fs::write(dir.join("blue.png"), png(32, 64, BLUE)).unwrap();
+    std::fs::write(dir.join("shot"), png(16, 16, BLUE)).unwrap();
+    std::fs::write(dir.join("fake.png"), "not an image at all").unwrap();
+    let mut md = String::from("# Gallery\n\n");
+    for i in 1..=6 {
+        md.push_str(&format!("Paragraph {i} before the pictures.\n\n"));
+    }
+    md.push_str("![a red square](red.png \"Red\")\n\n");
+    md.push_str("See [the blue one](blue.png), [a shot](shot) and [a fake](fake.png).\n\n");
+    for i in 1..=10 {
+        md.push_str(&format!("Paragraph {i} after the pictures.\n\n"));
+    }
+    let doc = dir.join("gallery.md");
+    std::fs::write(&doc, md).unwrap();
+    doc
+}
+
+/// The rows and columns of the cells of the screen at mark `name` that
+/// have background `rgb`: `(first row, rows, first column, columns)`.
+fn painted(
+    term: &FakeTerminal,
+    cols: u16,
+    rows: u16,
+    name: &str,
+    rgb: [u8; 3],
+) -> (u16, u16, u16, u16) {
+    let p = screen_at(term, cols, rows, Some(name));
+    let want = vt100::Color::Rgb(rgb[0], rgb[1], rgb[2]);
+    let cells: Vec<(u16, u16)> = (0..rows)
+        .flat_map(|r| (0..cols).map(move |c| (r, c)))
+        .filter(|&(r, c)| bg(&p, r, c) == want)
+        .collect();
+    let (r0, r1) = (
+        cells.iter().map(|c| c.0).min().unwrap_or(0),
+        cells.iter().map(|c| c.0).max().unwrap_or(0),
+    );
+    let (c0, c1) = (
+        cells.iter().map(|c| c.1).min().unwrap_or(0),
+        cells.iter().map(|c| c.1).max().unwrap_or(0),
+    );
+    assert_eq!(
+        cells.len(),
+        usize::from((r1 - r0 + 1) * (c1 - c0 + 1)),
+        "a rectangle"
+    );
+    (r0, r1 - r0 + 1, c0, c1 - c0 + 1)
+}
+
+/// The screen at mark `name` with red cells as `R`, blue ones as `B`,
+/// and the status bar as text.
+fn colours(term: &FakeTerminal, cols: u16, rows: u16, name: &str) -> String {
+    let p = screen_at(term, cols, rows, Some(name));
+    let mut out = String::new();
+    for r in 0..rows - 1 {
+        let line: String = (0..cols)
+            .map(|c| match bg(&p, r, c) {
+                vt100::Color::Rgb(255, 0, 0) => 'R',
+                vt100::Color::Rgb(0, 0, 255) => 'B',
+                _ => '.',
+            })
+            .collect();
+        out.push_str(&line);
+        out.push('\n');
+    }
+    out.push_str(&row_text(&p, rows - 1));
+    out
+}
+
+#[test]
+fn the_image_view_fills_the_screen_and_steps_through_the_gallery() {
+    let dir = temp_dir("view-blocks");
+    let doc = gallery_doc(&dir);
+    let term = FakeTerminal::new(40, 16)
+        .keys("jjjj")
+        .wait(ms(50))
+        .mark("before")
+        .keys("gi")
+        .wait(ms(50))
+        .mark("red")
+        .keys("n")
+        .wait(ms(50))
+        .mark("blue")
+        .keys("n")
+        .wait(ms(50))
+        .mark("fake")
+        .keys("n")
+        .mark("last")
+        .code(KeyCode::Esc)
+        .wait(ms(50))
+        .mark("back")
+        .keys("q");
+    let (term, exit) = run(term, session(&doc, options(Graphics::Blocks)));
+    assert_eq!(exit, PagerExit::Quit);
+    // 128×64 px is 16×4 cells: four times as wide as tall, scaled up to the
+    // whole width, centred in the 15 rows above the status bar.
+    assert_eq!(painted(&term, 40, 16, "red", RED), (2, 10, 0, 40));
+    assert_eq!(
+        status(&term, 40, 16, "red").trim(),
+        "image 1/3 · red.png · 128×64"
+    );
+    // 32×64 px is 4×4 cells: square, as tall as the screen allows.
+    assert_eq!(painted(&term, 40, 16, "blue", BLUE), (0, 15, 12, 15));
+    assert_eq!(
+        status(&term, 40, 16, "blue").trim(),
+        "image 2/3 · blue.png · 32×64"
+    );
+    insta::assert_snapshot!("image-view-red", colours(&term, 40, 16, "red"));
+    insta::assert_snapshot!("image-view-blue", colours(&term, 40, 16, "blue"));
+    // The PNG without an extension is not in the gallery (it would have
+    // to be read to know); the fake one is, and its box says why it
+    // cannot be shown.
+    assert_eq!(status(&term, 40, 16, "fake").trim(), "image 3/3 · fake.png");
+    let fake = screen_at(&term, 40, 16, Some("fake")).screen().contents();
+    assert!(fake.contains("a fake"), "{fake}");
+    assert!(fake.contains("fake.png"), "{fake}");
+    assert!(fake.contains("not a PNG, JPEG"), "{fake}");
+    insta::assert_snapshot!("image-view-broken", fake);
+    assert_eq!(status(&term, 40, 16, "last").trim(), "the last image");
+    // Esc: the text as it was.
+    let before = screen_at(&term, 40, 16, Some("before")).screen().contents();
+    let back = screen_at(&term, 40, 16, Some("back")).screen().contents();
+    assert_eq!(back, before);
+}
+
+#[test]
+fn the_image_view_with_pixel_protocols() {
+    let dir = temp_dir("view-pixels");
+    let doc = gallery_doc(&dir);
+    let script = || {
+        FakeTerminal::new(40, 16)
+            .wait(ms(300))
+            .mark("start")
+            .keys("gi")
+            .wait(ms(300))
+            .mark("red")
+            .keys("n")
+            .wait(ms(300))
+            .mark("blue")
+            .code(KeyCode::Esc)
+            .wait(ms(300))
+            .mark("back")
+            .keys("q")
+    };
+    // iTerm2: the whole image over the centred box, once it stood still.
+    let (term, _) = run(script(), session(&doc, options(Graphics::Iterm)));
+    assert_eq!(
+        iterm_draws(&written(&term, Some("start"), Some("red"))),
+        [(3, 1, 10)]
+    );
+    assert_eq!(
+        iterm_draws(&written(&term, Some("red"), Some("blue"))),
+        [(1, 13, 15)]
+    );
+    // Back in the text: its figure (partly on screen) as it was drawn.
+    let start = iterm_draws(&written(&term, None, Some("start")));
+    assert_eq!(start.len(), 1);
+    assert_eq!(
+        iterm_draws(&written(&term, Some("blue"), Some("back"))),
+        start
+    );
+    // kitty placeholders: the view's uploads are deleted when it closes.
+    let (term, _) = run(
+        script(),
+        session(&doc, options(Graphics::KittyPlaceholders)),
+    );
+    let ids = uploads(&written(&term, Some("start"), Some("blue")));
+    assert_eq!(ids.len(), 2, "red, then blue");
+    let back = written(&term, Some("blue"), Some("back"));
+    for id in ids {
+        assert!(find(&back, &deletion(id)).is_some(), "{id} deleted");
+    }
+}
+
+#[test]
+fn a_resize_in_the_image_view_fits_the_image_again() {
+    let dir = temp_dir("view-resize");
+    let doc = gallery_doc(&dir);
+    let term = FakeTerminal::new(40, 16)
+        .keys("jjjj")
+        .wait(ms(50))
+        .mark("before")
+        .keys("gi")
+        .wait(ms(50))
+        .resize(60, 20)
+        .wait(ms(50))
+        .mark("resized")
+        .resize(40, 16)
+        .wait(ms(50))
+        .code(KeyCode::Esc)
+        .wait(ms(50))
+        .mark("back")
+        .keys("q");
+    let (term, _) = run(term, session(&doc, options(Graphics::Blocks)));
+    // 60×19 rows: four times as wide as tall, the whole width.
+    assert_eq!(painted(&term, 60, 20, "resized", RED), (2, 15, 0, 60));
+    assert_eq!(
+        status(&term, 60, 20, "resized").trim(),
+        "image 1/3 · red.png · 128×64"
+    );
+    let before = screen_at(&term, 40, 16, Some("before")).screen().contents();
+    let back = screen_at(&term, 40, 16, Some("back")).screen().contents();
+    assert_eq!(back, before, "the same place");
+}
+
+#[test]
+fn image_files_by_their_first_bytes_and_huge_images() {
+    let dir = temp_dir("view-sniff");
+    let doc = gallery_doc(&dir);
+    // Tab to the third link (`a shot`, a PNG named `shot`), Enter.
+    let term = FakeTerminal::new(40, 16)
+        .keys("G")
+        .code(KeyCode::Tab)
+        .code(KeyCode::Tab)
+        .wait(ms(50))
+        .code(KeyCode::Enter)
+        .wait(ms(50))
+        .mark("shot")
+        .keys("q")
+        .keys("q");
+    let mut s = session(&doc, options(Graphics::Blocks));
+    s.pager.mouse = false;
+    let (term, _) = run(term, s);
+    assert_eq!(
+        status(&term, 40, 16, "shot").trim(),
+        "image 3/4 · shot · 16×16"
+    );
+    assert_eq!(cells_on(&term, 40, 16, "shot", BLUE), 30 * 15);
+    // An image with more pixels than images.max_pixels is not read.
+    let small = StoreOptions {
+        max_pixels: 1000,
+        ..options(Graphics::Blocks)
+    };
+    let term = FakeTerminal::new(60, 16)
+        .keys("gi")
+        .wait(ms(50))
+        .mark("huge")
+        .keys("q")
+        .keys("q");
+    let (term, _) = run(term, session(&doc, small));
+    let huge = screen_at(&term, 60, 16, Some("huge")).screen().contents();
+    assert!(huge.contains("more than images.max_pixels"), "{huge}");
+    insta::assert_snapshot!("image-view-huge", huge);
+}
+
+#[cfg(unix)]
+#[test]
+fn a_link_to_a_fifo_is_never_read() {
+    let dir = temp_dir("view-fifo");
+    let pipe = dir.join("pipe");
+    let made = std::process::Command::new("mkfifo").arg(&pipe).status();
+    if !made.is_ok_and(|s| s.success()) {
+        return; // no mkfifo here
+    }
+    let doc = dir.join("doc.md");
+    std::fs::write(
+        &doc,
+        "# Pipe\n\nA [named pipe](pipe) and [a fake](pipe.png).\n",
+    )
+    .unwrap();
+    std::fs::rename(&pipe, dir.join("pipe.png")).unwrap();
+    std::process::Command::new("mkfifo")
+        .arg(&pipe)
+        .status()
+        .unwrap();
+    let term = FakeTerminal::new(60, 10)
+        .code(KeyCode::Tab)
+        .code(KeyCode::Enter)
+        .mark("pipe")
+        .code(KeyCode::Tab)
+        .code(KeyCode::Enter)
+        .wait(ms(50))
+        .mark("fake")
+        .keys("q")
+        .keys("q");
+    let (term, exit) = run(term, session(&doc, options(Graphics::Blocks)));
+    assert_eq!(exit, PagerExit::Quit);
+    assert!(status(&term, 60, 10, "pipe").contains("not Markdown"));
+    let fake = screen_at(&term, 60, 10, Some("fake")).screen().contents();
+    assert!(fake.contains("not a regular file"), "{fake}");
 }
 
 #[test]
@@ -773,10 +1121,10 @@ fn linked_documents_get_their_own_images() {
     let (a, _) = two_documents("linked");
     let term = FakeTerminal::new(40, 14)
         .mark("a")
-        .code(emde::pager::term::KeyCode::Tab)
-        .code(emde::pager::term::KeyCode::Enter)
+        .code(KeyCode::Tab)
+        .code(KeyCode::Enter)
         .mark("b")
-        .code(emde::pager::term::KeyCode::Backspace)
+        .code(KeyCode::Backspace)
         .mark("back")
         .keys("q");
     let (term, _) = run(term, session(&a, options(Graphics::Blocks)));

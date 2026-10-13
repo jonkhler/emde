@@ -367,6 +367,29 @@ impl ImageStore {
         store
     }
 
+    /// A store for `doc` whose image `id` is `source`, read already (by
+    /// another document's store): nothing is read again. The pager's image
+    /// view shows a figure of the document this way.
+    pub fn with_source(
+        doc: &Document,
+        id: ImageId,
+        source: Source,
+        opts: StoreOptions,
+    ) -> ImageStore {
+        let mut entries = vec![None; doc.images.len()];
+        if let Some(slot) = entries.get_mut(id.index()) {
+            *slot = Some(source.0);
+        }
+        ImageStore {
+            fingerprint: fingerprint(doc),
+            opts,
+            entries,
+            renditions: HashMap::new(),
+            rows: HashMap::new(),
+            problems: Vec::new(),
+        }
+    }
+
     /// Read the images of every figure of `doc` ([`figure_images`]).
     pub fn load_figures(doc: &Document, opts: StoreOptions) -> ImageStore {
         ImageStore::load(doc, &figure_images(doc), opts)

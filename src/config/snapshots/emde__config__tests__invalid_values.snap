@@ -4,3 +4,4 @@ expression: setup.report(&loaded)
 ---
 warning: ~/.config/emde/config.toml:2: `code.tab_width` must be from 1 to 16; ignoring it
 warning: ~/.config/emde/config.toml:4: `glyphs.bullets` must be 1 to 16 non-empty glyphs; ignoring it
+warning: ~/.config/emde/config.toml:7: `pager.toc_width` must be from 16 to 60; using 60

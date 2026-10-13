@@ -47,6 +47,10 @@ pub enum Context {
     Help,
     /// The `:` prompt.
     Command,
+    /// The keys in the outline sidebar.
+    Sidebar,
+    /// The image view.
+    Image,
 }
 
 impl Context {
@@ -74,13 +78,15 @@ pub enum Section {
     Prompt,
     Command,
     Outline,
+    Sidebar,
+    Image,
     Hints,
     Help,
 }
 
 impl Section {
     /// Every section, in help order.
-    pub const ALL: [Section; 12] = [
+    pub const ALL: [Section; 14] = [
         Section::Scroll,
         Section::Jump,
         Section::Search,
@@ -91,6 +97,8 @@ impl Section {
         Section::Prompt,
         Section::Command,
         Section::Outline,
+        Section::Sidebar,
+        Section::Image,
         Section::Hints,
         Section::Help,
     ];
@@ -101,6 +109,8 @@ impl Section {
             Section::Visual => Context::Visual,
             Section::Prompt => Context::Prompt,
             Section::Outline => Context::Outline,
+            Section::Sidebar => Context::Sidebar,
+            Section::Image => Context::Image,
             Section::Hints => Context::Hints,
             Section::Help => Context::Help,
             Section::Command => Context::Command,
@@ -125,6 +135,8 @@ impl Section {
             Section::Visual => "In Visual mode",
             Section::Prompt => "In the search prompt",
             Section::Outline => "In the outline",
+            Section::Sidebar => "In the outline sidebar",
+            Section::Image => "In the image view",
             Section::Hints => "With hints",
             Section::Help => "In this help",
             Section::Command => "At the : prompt",
@@ -134,7 +146,8 @@ impl Section {
 
 /// What a key does. In Visual mode the motions (`LineDown`, `HalfDown`,
 /// `Top`, `NextHeading`, `NextMatch`, `ScrollCenter`, …) move the end of
-/// the selection, and the view follows it.
+/// the selection, and the view follows it; in the outline sidebar and the
+/// image view `Top` and `Bottom` go to the first and last entry or image.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Command {
     /// A digit of the count for the next command.
@@ -163,6 +176,8 @@ pub enum Command {
     /// The start of the block, or of the previous one (Visual mode).
     PrevBlock,
     Outline,
+    /// The outline sidebar: show it, then move the keys into it.
+    Sidebar,
     /// `m` and a letter.
     SetMark,
     /// `'` and a letter (or `'`).
@@ -178,8 +193,10 @@ pub enum Command {
     /// Link hints: the label follows the link.
     LinkHints,
     /// Hints on everything worth acting on: the label follows a link, goes
-    /// to a heading or a block, zooms an image.
+    /// to a heading or a block, shows an image in the image view.
     FollowHints,
+    /// The image view at the document's first image.
+    Gallery,
     /// The focused link's URL, or hints: the label copies what it is on.
     YankHints,
     /// Hints: the label selects what it is on (Visual mode).
@@ -219,6 +236,24 @@ pub enum Command {
     OutlineJump,
     OutlineClose,
     OutlineErase,
+    SidebarDown,
+    SidebarUp,
+    SidebarPageDown,
+    SidebarPageUp,
+    /// Go to the selected heading (the keys go back to the document).
+    SidebarJump,
+    /// The keys go back to the document.
+    SidebarLeave,
+    /// Hide the sidebar.
+    SidebarHide,
+    ImageNext,
+    ImagePrev,
+    /// Back to the text, where it was.
+    ImageClose,
+    /// Copy the image's path or URL.
+    ImageYank,
+    /// Open the image with the system's opener.
+    ImageOpen,
     HintsCancel,
     HintsErase,
     HelpDown,
@@ -298,20 +333,21 @@ pub const BINDINGS: &[Binding] = &[
     bind!(Jump, "next-section", "}", NextSection, "next heading of the same or a higher level"),
     bind!(Jump, "prev-section", "{", PrevSection, "previous heading of the same or a higher level"),
     bind!(Jump, "outline", "t", Outline, "outline (type to filter)"),
+    bind!(Jump, "toc-sidebar", "T", Sidebar, "outline sidebar: show it; again: keys in it; again: hide it"),
     bind!(Jump, "set-mark", "m", SetMark, "mark the place: m and a letter (ma)"),
     bind!(Jump, "jump-mark", "'", JumpMark, "go to a mark ('a); '' back to before the last jump"),
     bind!(Search, "search-forward", "/", SearchForward, "search forward"),
     bind!(Search, "search-backward", "?", SearchBackward, "search backward"),
     bind!(Search, "next-match", "n", NextMatch, "next match"),
     bind!(Search, "prev-match", "N", PrevMatch, "previous match"),
-    bind!(Search, "clear-search", "Esc", ClearSearch, "clear the zoomed image, the search, the link focus"),
+    bind!(Search, "clear-search", "Esc", ClearSearch, "clear the search, the link focus"),
     bind!(Links, "focus-next", "Tab", FocusNext, "focus the next link"),
     bind!(Links, "focus-prev", "S-Tab", FocusPrev, "focus the previous link"),
     bind!(Links, "follow", "Enter", Follow, "follow the focused link"),
     bind!(Links, "link-hints", "o", LinkHints, "link hints: type a label to follow"),
     bind!(Links, "back", "Backspace,H", Back, "back"),
     bind!(Links, "forward", "L", Forward, "forward"),
-    bind!(Pick, "hints-follow", "f", FollowHints, "hints: follow a link, go to a heading or block, zoom an image"),
+    bind!(Pick, "hints-follow", "f", FollowHints, "hints: follow a link, go to a heading or block, view an image"),
     bind!(Pick, "yank-hints", "y", YankHints, "copy the focused link's URL, else hints: copy code, math, a table…"),
     bind!(Pick, "visual-hints", "v", VisualHints, "hints: select a block (Visual mode)"),
     bind!(Pick, "visual-line", "V", VisualLine, "Visual mode: select lines"),
@@ -319,6 +355,7 @@ pub const BINDINGS: &[Binding] = &[
     bind!(Other, "reload", "r", Reload, "reload the file"),
     bind!(Other, "toggle-watch", "R", ToggleWatch, "watch the file for changes, on or off"),
     bind!(Other, "cycle-images", "i", CycleImages, "cycle the image mode"),
+    bind!(Other, "gallery", "gi", Gallery, "image view: the document's images, from the first"),
     bind!(Other, "toggle-width", "w", ToggleWidth, "full width, on or off"),
     bind!(Other, "toggle-mouse", "M", ToggleMouse, "mouse, on or off (off: select text)"),
     bind!(Other, "command-line", ":", CommandLine, "command: :n next file, :p previous file, :q quit"),
@@ -368,6 +405,23 @@ pub const BINDINGS: &[Binding] = &[
     bind!(Outline, "outline-jump", "Enter", OutlineJump, "go to the heading"),
     bind!(Outline, "outline-close", "Esc,C-c", OutlineClose, "close"),
     bind!(Outline, "outline-erase", "Backspace", OutlineErase, "delete a filter character"),
+    bind!(Sidebar, "sidebar-down", "j,Down,C-n", SidebarDown, "next entry"),
+    bind!(Sidebar, "sidebar-up", "k,Up,C-p", SidebarUp, "previous entry"),
+    bind!(Sidebar, "sidebar-page-down", "Space,PgDn,C-f", SidebarPageDown, "down a page"),
+    bind!(Sidebar, "sidebar-page-up", "b,PgUp,C-b", SidebarPageUp, "up a page"),
+    bind!(Sidebar, "sidebar-top", "g,Home", Top, "first entry"),
+    bind!(Sidebar, "sidebar-bottom", "G,End", Bottom, "last entry"),
+    bind!(Sidebar, "sidebar-jump", "Enter", SidebarJump, "go to the heading"),
+    bind!(Sidebar, "sidebar-leave", "Esc,q,C-c", SidebarLeave, "back to the document"),
+    bind!(Sidebar, "sidebar-hide", "T", SidebarHide, "hide the sidebar"),
+    bind!(Image, "image-next", "n,j,Right,Space,PgDn", ImageNext, "next image"),
+    bind!(Image, "image-prev", "p,k,Left,Backspace,PgUp", ImagePrev, "previous image"),
+    bind!(Image, "image-first", "g,Home", Top, "first image"),
+    bind!(Image, "image-last", "G,End", Bottom, "last image"),
+    bind!(Image, "image-yank", "y", ImageYank, "copy the image's path or URL"),
+    bind!(Image, "image-open", "o", ImageOpen, "open the image with the system's opener"),
+    bind!(Image, "image-cycle", "i", CycleImages, "cycle the image mode"),
+    bind!(Image, "image-close", "Esc,q,C-c", ImageClose, "back to the text, where it was"),
     bind!(Hints, "hints-cancel", "Esc,C-c", HintsCancel, "cancel"),
     bind!(Hints, "hints-erase", "Backspace", HintsErase, "delete a label character"),
     bind!(Help, "help-down", "j,Down", HelpDown, "down a line"),
@@ -893,6 +947,8 @@ mod tests {
             Context::Hints,
             Context::Help,
             Context::Command,
+            Context::Sidebar,
+            Context::Image,
         ] {
             assert_eq!(lookup(context, ctrl('z')), Some(Command::Suspend));
             assert_eq!(lookup(context, ctrl('l')), Some(Command::Redraw));
@@ -1205,7 +1261,7 @@ mod tests {
         let (map, issues) = Keymap::new(&overrides(&[
             ("pgae-down", &["x"]),
             ("count", &["x"]),
-            ("top", &["PgDwn", "T"]),
+            ("top", &["PgDwn", "X"]),
         ]));
         let messages: Vec<&str> = issues.iter().map(|i| i.message.as_str()).collect();
         assert_eq!(
@@ -1216,7 +1272,7 @@ mod tests {
                 "unknown key `PgDwn` (did you mean `PgDn`?)",
             ]
         );
-        assert_eq!(map.command(Context::Normal, c('T')), Some(Command::Top));
+        assert_eq!(map.command(Context::Normal, c('X')), Some(Command::Top));
         assert_eq!(map.command(Context::Normal, c('x')), None);
     }
 }

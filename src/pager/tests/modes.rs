@@ -1,5 +1,5 @@
 //! `update()` in the modes: hints (`f`, `o`, `y`, `v`), Visual mode, marks,
-//! `zz`/`zt`/`zb`, zoomed figures and the editor.
+//! `zz`/`zt`/`zb`, figures in the image view and the editor.
 
 use super::*;
 use crate::pager::hints::Act;
@@ -276,48 +276,21 @@ fn half_visible_elements_copy_whole() {
 }
 
 #[test]
-fn figures_zoom_only_when_shown_as_images() {
-    // Without images the figure is an alt text box: `f` goes there.
+fn f_on_a_figure_opens_the_image_view() {
+    // Shown as an image or as its alt text, `f` on a figure views it.
     let mut s = mixed();
     keys(&mut s, "f");
-    assert!(
-        !labels(&s).iter().any(|(_, a)| matches!(a, Act::Zoom(_))),
-        "no image shown"
-    );
-    // With a placement, `f` zooms and Esc comes back.
-    let mut s = mixed();
-    let mut l = s.layout.clone();
-    l.images.push(crate::layout::Placement {
-        image: crate::ir::ImageId(0),
-        line: u32::try_from(heading_line(&s, "Next")).unwrap() - 2,
-        col: 0,
-        cols: 10,
-        rows: 1,
-    });
-    drive(&mut s, Action::Layout(l));
-    keys(&mut s, "f");
-    let zoom = labels(&s)
+    let view = labels(&s)
         .into_iter()
-        .find(|(_, a)| matches!(a, Act::Zoom(_)))
-        .expect("a zoom label");
-    let effects = update(
-        &mut s,
-        Action::Key(Key::char(zoom.0.chars().next().unwrap())),
-    );
-    let effects = if zoom.0.len() > 1 {
-        update(
-            &mut s,
-            Action::Key(Key::char(zoom.0.chars().nth(1).unwrap())),
-        )
-    } else {
-        effects
-    };
-    assert_eq!(effects, [Effect::Relayout]);
-    assert_eq!(s.zoom(), Some(crate::ir::ImageId(0)));
-    let wide = lay(s.document(), 70, true);
-    drive(&mut s, Action::Layout(wide));
+        .find(|(_, a)| matches!(a, Act::View(_)))
+        .expect("a label on the figure");
+    let top = s.top();
+    let effects = keys(&mut s, &view.0);
+    assert_eq!(effects, [Effect::ShowImage]);
+    assert_eq!(s.image_view(), Some((0, 1)));
     assert_eq!(code(&mut s, KeyCode::Esc), []);
-    assert_eq!(s.zoom(), None);
+    assert_eq!(s.image_view(), None);
+    assert_eq!(s.top(), top, "where it was");
 }
 
 // ---------------------------------------------------------------------------

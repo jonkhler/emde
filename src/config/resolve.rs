@@ -21,6 +21,9 @@ use crate::theme::{Element, Variant};
 /// Longest accepted probe timeout.
 pub(crate) const MAX_PROBE_TIMEOUT_MS: u32 = 10_000;
 
+/// The widths `pager.toc_width` may have.
+pub(crate) const TOC_WIDTH: std::ops::RangeInclusive<u16> = 16..=60;
+
 /// A value removed by [`validate`]: its key path and why.
 pub(crate) type Invalid = (Vec<&'static str>, String);
 
@@ -132,6 +135,17 @@ pub(crate) fn validate(layer: &mut ConfigLayer) -> Vec<Invalid> {
             "must not contain control characters",
         )
     });
+    // The sidebar width is clamped rather than ignored.
+    if let Some(w) = layer.pager.toc_width
+        && !TOC_WIDTH.contains(&w)
+    {
+        let clamped = w.clamp(*TOC_WIDTH.start(), *TOC_WIDTH.end());
+        out.push((
+            vec!["pager", "toc_width"],
+            format!("`pager.toc_width` must be from 16 to 60; using {clamped}"),
+        ));
+        layer.pager.toc_width = Some(clamped);
+    }
     out
 }
 
@@ -304,6 +318,8 @@ pub(crate) fn pager_options(l: &ConfigLayer) -> PagerOptions {
         scroll_lines: p.scroll_lines.unwrap_or(d.scroll_lines),
         search_case: p.search_case.unwrap_or(d.search_case),
         open: p.open.clone().unwrap_or(d.open),
+        toc_sidebar: p.toc_sidebar.unwrap_or(d.toc_sidebar),
+        toc_width: p.toc_width.unwrap_or(d.toc_width),
         keys: p.keys.0.clone(),
     }
 }

@@ -392,9 +392,11 @@ watch = false
 scroll_lines = 5
 search_case = "insensitive"
 open = "firefox"
+toc_sidebar = "never"
+toc_width = 40
 [pager.keys]
 quit = ["Q", "ZZ"]
-top = ["T"]
+top = ["X"]
 [terminal]
 probe = false
 probe_timeout_ms = 500
@@ -439,11 +441,12 @@ probe_timeout_ms = 500
     assert_eq!(c.pager.scroll_lines, 5);
     assert_eq!(c.pager.search_case, SearchCase::Insensitive);
     assert_eq!(c.pager.open, OpenCommand::Command("firefox".into()));
+    assert_eq!((c.pager.toc_sidebar, c.pager.toc_width), (When::Never, 40));
     assert_eq!(
         c.pager.keys,
         [
             ("quit".to_owned(), vec!["Q".to_owned(), "ZZ".to_owned()]),
-            ("top".to_owned(), vec!["T".to_owned()]),
+            ("top".to_owned(), vec!["X".to_owned()]),
         ],
         "in the order written"
     );
@@ -565,10 +568,11 @@ fn syntax_errors_drop_the_file() {
 fn invalid_values_are_ignored_with_a_warning() {
     let (setup, loaded) = load_config(
         "invalid",
-        "[code]\ntab_width = 0\n[glyphs]\nbullets = []\nquote = \"x\"\n",
+        "[code]\ntab_width = 0\n[glyphs]\nbullets = []\nquote = \"x\"\n[pager]\ntoc_width = 100\n",
     );
     insta::assert_snapshot!("invalid_values", setup.report(&loaded));
     assert_eq!(loaded.config.render.code.tab_width, 4);
+    assert_eq!(loaded.config.pager.toc_width, 60, "clamped");
     assert_eq!(loaded.config.render.glyphs.quote, "x");
 }
 
@@ -1013,8 +1017,8 @@ fn pager_keys_are_checked() {
         r#"[pager.keys]
 page-down = ["Space", "f"]
 pgae-up = ["b"]
-top = ["PgDwn", "T"]
-bottom = ["T"]
+top = ["PgDwn", "X"]
+bottom = ["X"]
 count = ["x"]
 "#,
     );
@@ -1027,7 +1031,7 @@ count = ["x"]
          (did you mean `page-up`?)\n\
          warning: ~/.config/emde/config.toml:4: pager.keys.top: unknown key `PgDwn` (did you \
          mean `PgDn`?)\n\
-         warning: ~/.config/emde/config.toml:5: pager.keys.bottom: `T` is bound twice, to \
+         warning: ~/.config/emde/config.toml:5: pager.keys.bottom: `X` is bound twice, to \
          `top` and `bottom`: the later one, `bottom`, gets it\n\
          warning: ~/.config/emde/config.toml:6: pager.keys.count: the count digits cannot be \
          changed"
@@ -1043,7 +1047,7 @@ count = ["x"]
         Some(Command::PageDown)
     );
     assert_eq!(
-        map.command(Context::Normal, Key::char('T')),
+        map.command(Context::Normal, Key::char('X')),
         Some(Command::Bottom)
     );
     // --check-config reports the same.
@@ -1079,7 +1083,7 @@ count = ["x"]
     );
     // --set works too, one action at a time.
     let setup = Setup::new("pager-keys-set");
-    let loaded = setup.load(&["pager.keys.quit=[\"Q\"]", "pager.keys.top=[\"T\"]"]);
+    let loaded = setup.load(&["pager.keys.quit=[\"Q\"]", "pager.keys.top=[\"X\"]"]);
     no_diagnostics(&loaded);
     assert_eq!(loaded.config.pager.keys.len(), 2);
 }

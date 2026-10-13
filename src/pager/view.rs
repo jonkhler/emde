@@ -10,6 +10,7 @@
 //! merely scroll.
 
 use std::borrow::Cow;
+use std::fmt::Write as _;
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 use crate::render::Mark;
@@ -22,6 +23,7 @@ use crate::theme::{Element, Theme};
 
 use super::keymap::{self, HelpLine};
 use super::search::{LineText, line_marks};
+use super::sidebar;
 use super::state::{HintKind, Hints, Mode, Outline, State};
 use super::toc::{self, BoxGeom};
 
@@ -72,6 +74,7 @@ struct UiStyles {
     toc: Style,
     toc_current: Style,
     toc_selected: Style,
+    toc_border: Style,
     border: Style,
     title: Style,
     key: Style,
@@ -107,6 +110,7 @@ impl UiStyles {
             hint: theme.style(Element::Hint),
             toc_current: theme.style(Element::TocCurrent),
             toc_selected: toc.with(Attrs::REVERSE),
+            toc_border: theme.style(Element::TocBorder),
             toc,
             border: theme.style(Element::Muted),
             title: theme.style(Element::H3),
@@ -160,6 +164,10 @@ pub struct Segment {
 pub struct Row {
     /// Hash of everything the row shows.
     pub hash: u64,
+    /// The outline sidebar's part of the row, drawn from column 0
+    /// ([`Frame::left`] columns wide; empty without a sidebar).
+    pub side: Vec<u8>,
+    /// Drawn from column [`Frame::left`].
     pub body: Body,
     /// Drawn after the body, in order.
     pub overlays: Vec<Segment>,
@@ -174,6 +182,9 @@ pub struct Frame {
     pub top: usize,
     /// The layout generation the document rows refer to.
     pub generation: u64,
+    /// The column document rows start at: the outline sidebar's width (0
+    /// without one). The status bar always starts at column 0.
+    pub left: u16,
     /// One entry per screen row; the last one is the status bar.
     pub lines: Vec<Row>,
     /// Whether an overlay is drawn (no scroll fast path then).
@@ -187,6 +198,7 @@ pub struct Frame {
 
 /// A row being built.
 struct Building {
+    side: Vec<u8>,
     body: Body,
     overlays: Vec<Segment>,
 }
@@ -303,31 +315,51 @@ fn draw_pieces(
 /// The screen for `state`; see the module docs.
 pub fn view(state: &State, ctx: &Ctx) -> Frame {
     let rows = usize::from(state.rows);
+    let showing = state.showing();
+    let image = matches!(state.mode, Mode::Image(_));
+    let left = if image { 0 } else { state.left() };
+    // The image view's rows are blank until its image is laid out, and
+    // when it cannot be shown.
+    let lines = !image || showing.image && !showing.layout.images.is_empty();
     let mut building: Vec<Building> = Vec::with_capacity(rows);
     if rows > 0 && state.cols > 0 {
         for r in 0..state.view_rows() {
-            let index = state.top + r;
-            let body = if index < state.layout.len() {
+            let index = showing.top + r;
+            let body = if lines && index < showing.layout.len() {
                 Body::Line {
                     index,
-                    marks: marks(state, ctx, index),
+                    marks: if image {
+                        Vec::new()
+                    } else {
+                        marks(state, ctx, index)
+                    },
                 }
             } else {
                 Body::Blank
             };
             building.push(Building {
+                side: Vec::new(),
                 body,
                 overlays: Vec::new(),
             });
+        }
+        if left > 0 {
+            sidebar(state, ctx, &mut building);
         }
         match &state.mode {
             Mode::Outline(o) => outline(state, ctx, o, &mut building),
             Mode::Help { scroll } => help(state, ctx, *scroll, &mut building),
             Mode::Hints(h) => hints(state, ctx, h, &mut building),
             Mode::Visual(_) => selection(state, ctx, &mut building),
-            Mode::Normal | Mode::Prompt(_) | Mode::Command(_) => {}
+            Mode::Image(_) if showing.image && !lines => image_box(state, ctx, &mut building),
+            Mode::Normal
+            | Mode::Prompt(_)
+            | Mode::Command(_)
+            | Mode::Sidebar(_)
+            | Mode::Image(_) => {}
         }
         building.push(Building {
+            side: Vec::new(),
             body: Body::Text(status_bar(state, ctx)),
             overlays: Vec::new(),
         });
@@ -336,7 +368,8 @@ pub fn view(state: &State, ctx: &Ctx) -> Frame {
     let lines = building
         .into_iter()
         .map(|b| Row {
-            hash: hash_row(state.generation, &b.body, &b.overlays),
+            hash: hash_row(state.generation, left, &b),
+            side: b.side,
             body: b.body,
             overlays: b.overlays,
         })
@@ -344,16 +377,24 @@ pub fn view(state: &State, ctx: &Ctx) -> Frame {
     Frame {
         cols: state.cols,
         rows: state.rows,
-        top: state.top,
+        top: showing.top,
         generation: state.generation,
+        left,
         lines,
         overlay,
         images: false,
     }
 }
 
-fn hash_row(generation: u64, body: &Body, overlays: &[Segment]) -> u64 {
+fn hash_row(generation: u64, left: u16, row: &Building) -> u64 {
+    let Building {
+        side,
+        body,
+        overlays,
+    } = row;
     let mut h = DefaultHasher::new();
+    left.hash(&mut h);
+    side.hash(&mut h);
     match body {
         Body::Line { index, marks } => {
             0u8.hash(&mut h);
@@ -508,6 +549,9 @@ fn status_right(state: &State) -> String {
     if !typed.is_empty() {
         parts.push(typed);
     }
+    if matches!(state.mode, Mode::Image(_)) {
+        return parts.join("  ");
+    }
     if let Some(s) = &state.search {
         let plus = if s.capped { "+" } else { "" };
         let n = s.matches.len();
@@ -573,6 +617,20 @@ fn status_left<'a>(state: &'a State, ctx: &Ctx, room: usize) -> Vec<(Style, Cow<
         let style = if m.error { st.error } else { st.message };
         return vec![(style, clean(&m.text))];
     }
+    if let Mode::Image(v) = &state.mode {
+        // `image 3/7 · figures/loss.png · 1200×800`
+        let name = v.gallery.get(v.index).map_or("", |p| p.name.as_str());
+        let mut text = format!(
+            "image {}/{} · {}",
+            v.index + 1,
+            v.gallery.len(),
+            clean(name)
+        );
+        if let Some((w, h)) = state.image.as_ref().and_then(|p| p.pixels) {
+            let _ = write!(text, " · {w}×{h}");
+        }
+        return vec![(st.status, Cow::Owned(text))];
+    }
     let mode = match &state.mode {
         Mode::Visual(_) => Some((
             "-- VISUAL --",
@@ -592,6 +650,10 @@ fn status_left<'a>(state: &'a State, ctx: &Ctx, room: usize) -> Vec<(Style, Cow<
             };
             Some((name, rest))
         }
+        Mode::Sidebar(_) => Some((
+            "-- OUTLINE --",
+            "Enter goes to the heading, Esc back to the text".to_owned(),
+        )),
         _ => None,
     };
     if let Some((name, rest)) = mode {
@@ -853,6 +915,119 @@ fn help(state: &State, ctx: &Ctx, scroll: usize, rows: &mut [Building]) {
     put_segment(rows, bottom, g.x, border(ctx, &g, false, more, ascii, amb));
 }
 
+/// The image view's box when the image cannot be shown, in the middle of
+/// the screen: its alt text or caption, where it is, and why (one line
+/// each, as wide as the screen allows).
+#[inline(never)]
+fn image_box(state: &State, ctx: &Ctx, rows: &mut [Building]) {
+    let (Some(page), Some(picture)) = (&state.image, state.viewed()) else {
+        return;
+    };
+    let st = &ctx.styles;
+    let amb = state.settings.ambiguous_wide;
+    let ascii = state.settings.ascii;
+    let texts = [
+        (st.text, picture.label.as_str()),
+        (st.key, picture.name.as_str()),
+        (st.muted, page.problem.as_deref().unwrap_or("")),
+    ];
+    let widest = texts.iter().map(|(_, t)| str_width(t, amb)).max();
+    let cols = state.cols;
+    let w = u16::try_from(widest.unwrap_or(0).saturating_add(4))
+        .unwrap_or(u16::MAX)
+        .clamp(cols.min(24), cols);
+    let area = u16::try_from(state.view_rows()).unwrap_or(u16::MAX);
+    let h = 5.min(area);
+    let g = BoxGeom {
+        x: (cols - w) / 2,
+        y: (area - h) / 2,
+        w,
+        h,
+    };
+    if g.h < 3 || g.w < 4 {
+        return;
+    }
+    let y = usize::from(g.y);
+    put_segment(rows, y, g.x, border(ctx, &g, true, "", ascii, amb));
+    for (i, (style, text)) in texts.into_iter().take(g.inner_rows()).enumerate() {
+        let text = ellipsize(&clean(text), g.inner_cols().saturating_sub(2), amb).into_owned();
+        let pieces = [(st.text, Cow::Borrowed(" ")), (style, Cow::Owned(text))];
+        put_segment(
+            rows,
+            y + 1 + i,
+            g.x,
+            boxed(ctx, &g, &pieces, &st.text, ascii, amb),
+        );
+    }
+    let bottom = y + usize::from(g.h) - 1;
+    put_segment(rows, bottom, g.x, border(ctx, &g, false, "", ascii, amb));
+}
+
+/// The outline sidebar beside the document rows: one heading per row,
+/// indented by level and cut with `…`, the current section marked, the
+/// selected entry (with the keys in the sidebar) in reverse video, and a
+/// border on its right.
+#[inline(never)]
+fn sidebar(state: &State, ctx: &Ctx, rows: &mut [Building]) {
+    let width = usize::from(state.left());
+    let st = &ctx.styles;
+    let amb = state.settings.ambiguous_wide;
+    let ascii = state.settings.ascii;
+    let doc = &state.page.doc;
+    let entries = &state.derived.headings;
+    let base = entries
+        .iter()
+        .filter_map(|&(_, h)| doc.heading(h).map(|x| x.level))
+        .min()
+        .unwrap_or(1);
+    let current = sidebar::current(state);
+    let selected = match state.mode {
+        Mode::Sidebar(i) => Some(i),
+        _ => None,
+    };
+    // Box glyphs are East Asian Ambiguous: two columns wide where those
+    // are, which the sidebar's border cannot be.
+    let plain = ascii || amb;
+    let [.., bar] = box_glyphs(plain);
+    let marker = if plain { "> " } else { "▸ " };
+    // A space, the entry, a space, the border.
+    let inner = width.saturating_sub(3);
+    for (r, row) in rows.iter_mut().enumerate() {
+        let i = state.sidebar.scroll + r;
+        let entry = entries
+            .get(i)
+            .and_then(|&(_, h)| doc.heading(h))
+            .map(|heading| {
+                let style = if selected == Some(i) {
+                    st.toc_selected
+                } else if current == Some(i) {
+                    st.toc_current
+                } else {
+                    st.toc
+                };
+                let pad = sidebar::indent(heading.level, base);
+                let mut text = String::from(if current == Some(i) { marker } else { "  " });
+                text.extend(std::iter::repeat_n(' ', pad));
+                text.push_str(&ellipsize(
+                    &clean(&heading.title),
+                    inner.saturating_sub(2 + pad),
+                    amb,
+                ));
+                (style, text)
+            });
+        let mut w = Styled::new(ctx);
+        w.spaces(&Style::PLAIN, 1);
+        match entry {
+            Some((style, text)) => {
+                draw_pieces(&mut w, &[(style, Cow::Owned(text))], inner + 1, &style, amb);
+            }
+            None => w.spaces(&Style::PLAIN, inner + 1),
+        }
+        w.put(&st.toc_border, bar, amb);
+        row.side = w.finish();
+    }
+}
+
 /// Hint chips: the labels that start with what was typed, without it.
 fn hints(state: &State, ctx: &Ctx, h: &Hints, rows: &mut [Building]) {
     let amb = state.settings.ambiguous_wide;
@@ -864,7 +1039,10 @@ fn hints(state: &State, ctx: &Ctx, h: &Hints, rows: &mut [Building]) {
         let Some(row) = target.line.checked_sub(top) else {
             continue;
         };
-        let col = target.col.saturating_add(state.layout.indent);
+        let col = target
+            .col
+            .saturating_add(state.layout.indent)
+            .saturating_add(state.left());
         let room = usize::from(state.cols.saturating_sub(col));
         let (text, _) = fit(rest, room, amb);
         if text.is_empty() {
@@ -889,7 +1067,10 @@ fn selection(state: &State, ctx: &Ctx, rows: &mut [Building]) {
             break;
         };
         let pad = layout.measure.saturating_sub(line.cols);
-        let col = layout.indent.saturating_add(line.cols);
+        let col = layout
+            .indent
+            .saturating_add(line.cols)
+            .saturating_add(state.left());
         if pad == 0 || col >= state.cols {
             continue;
         }

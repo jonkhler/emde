@@ -72,7 +72,36 @@ pub(crate) fn open_plan(open: &OpenCommand, env: &Env, remote: bool, url: &str) 
     let Some(url) = openable(url) else {
         return OpenPlan::Copy("only web and mail links are opened");
     };
-    let url = url.as_str();
+    opener(open, env, remote, &url)
+}
+
+/// How to open the local file at `path` (an image, `o` in the image view):
+/// as a URL is opened, with the path as the argument (a path that starts
+/// with `-` gets `./` before it, so it is never an option). Over SSH the
+/// file is on the other machine: its path is copied.
+pub(crate) fn open_file_plan(open: &OpenCommand, env: &Env, remote: bool, path: &Path) -> OpenPlan {
+    let Some(text) = path.to_str().filter(|t| !t.chars().any(char::is_control)) else {
+        return OpenPlan::Copy("the path cannot be passed on safely");
+    };
+    let arg = if text.starts_with('-') {
+        format!("./{text}")
+    } else {
+        text.to_owned()
+    };
+    match opener(open, env, remote, &arg) {
+        OpenPlan::Copy(OVER_SSH) => OpenPlan::Copy("over SSH: the file is on this machine"),
+        OpenPlan::Copy(NO_DISPLAY) => OpenPlan::Copy("no display to open it on"),
+        plan => plan,
+    }
+}
+
+/// Why a link is copied rather than opened over SSH.
+const OVER_SSH: &str = "over SSH: ⌘-click the link to open it";
+/// Why a link is copied rather than opened without a display.
+const NO_DISPLAY: &str = "no display to open it on: ⌘-click the link";
+
+/// How to hand `url` (a URL, or a file's path) to the opener `open` says.
+fn opener(open: &OpenCommand, env: &Env, remote: bool, url: &str) -> OpenPlan {
     match open {
         OpenCommand::Never => OpenPlan::Copy("opening links is off (pager.open)"),
         OpenCommand::Command(cmd) => {
@@ -83,16 +112,14 @@ pub(crate) fn open_plan(open: &OpenCommand, env: &Env, remote: bool, url: &str) 
             argv.push(url.to_owned());
             OpenPlan::Spawn(argv)
         }
-        OpenCommand::Auto if remote || over_ssh(env) => {
-            OpenPlan::Copy("over SSH: ⌘-click the link to open it")
-        }
+        OpenCommand::Auto if remote || over_ssh(env) => OpenPlan::Copy(OVER_SSH),
         OpenCommand::Auto if cfg!(target_os = "macos") => {
             OpenPlan::Spawn(vec!["open".to_owned(), url.to_owned()])
         }
         OpenCommand::Auto if env.is_set("DISPLAY") || env.is_set("WAYLAND_DISPLAY") => {
             OpenPlan::Spawn(vec!["xdg-open".to_owned(), url.to_owned()])
         }
-        OpenCommand::Auto => OpenPlan::Copy("no display to open it on: ⌘-click the link"),
+        OpenCommand::Auto => OpenPlan::Copy(NO_DISPLAY),
     }
 }
 
@@ -281,6 +308,39 @@ mod tests {
                 OpenPlan::Copy("no display to open it on: ⌘-click the link")
             );
         }
+    }
+
+    #[test]
+    fn opening_image_files() {
+        let local = Env::from_pairs(&[("DISPLAY", ":0")]);
+        let cmd = OpenCommand::Command("viewer --new".into());
+        let plan = |path: &str| open_file_plan(&cmd, &local, false, Path::new(path));
+        assert_eq!(
+            plan("/docs/a b.png"),
+            OpenPlan::Spawn(vec![
+                "viewer".into(),
+                "--new".into(),
+                "/docs/a b.png".into()
+            ])
+        );
+        assert_eq!(
+            plan("-rf.png"),
+            OpenPlan::Spawn(vec!["viewer".into(), "--new".into(), "./-rf.png".into()]),
+            "never an option"
+        );
+        assert_eq!(
+            plan("a\u{1b}b.png"),
+            OpenPlan::Copy("the path cannot be passed on safely")
+        );
+        let ssh = Env::from_pairs(&[("SSH_TTY", "/dev/pts/1")]);
+        assert_eq!(
+            open_file_plan(&OpenCommand::Auto, &ssh, false, Path::new("a.png")),
+            OpenPlan::Copy("over SSH: the file is on this machine")
+        );
+        assert_eq!(
+            open_file_plan(&OpenCommand::Never, &local, false, Path::new("a.png")),
+            OpenPlan::Copy("opening links is off (pager.open)")
+        );
     }
 
     #[test]

@@ -113,6 +113,8 @@ elements! {
     Hint = "hint" => Text,
     Toc = "toc" => Text,
     TocCurrent = "toc_current" => Toc,
+    /// The outline sidebar's border.
+    TocBorder = "toc_border" => Muted,
 }
 
 impl Element {
