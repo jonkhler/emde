@@ -332,6 +332,23 @@ fn is_border(c: char, ascii: bool) -> bool {
     ('\u{2500}'..='\u{257f}').contains(&c) || ascii && matches!(c, '-' | '=' | '+' | '|' | ':')
 }
 
+/// Whether line `i` is the header of a code block (its language label or
+/// title, on the panel or in the frame's top border): decoration, not text.
+fn is_code_header(layout: &crate::layout::Layout, i: usize) -> bool {
+    let (Some(line), Some(next)) = (layout.lines.get(i), layout.lines.get(i + 1)) else {
+        return false;
+    };
+    if line.kind != LineKind::Text || !matches!(next.kind, LineKind::Code { .. }) {
+        return false;
+    }
+    let panel = matches!(line.fill, crate::layout::Fill::Panel { .. }) && line.fill == next.fill;
+    let frame = layout
+        .line_text(i)
+        .trim_start()
+        .starts_with(|c: char| is_border(c, true));
+    panel || frame
+}
+
 /// The text of line `i` without its decorations: quote bars, table
 /// borders (cells are separated by tabs); `None` for a line that is all
 /// decoration (a border, a rule).
@@ -400,6 +417,9 @@ pub(crate) fn selected_text(state: &State, lo: usize, hi: usize) -> String {
             }
             LineKind::Image { .. } => continue,
             _ => code_prev = false,
+        }
+        if is_code_header(layout, i) {
+            continue;
         }
         match line_text(state, i) {
             // Padding of panels and frames: nothing to copy.

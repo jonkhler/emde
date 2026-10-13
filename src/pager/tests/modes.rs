@@ -505,6 +505,17 @@ fn visual_shift_y_copies_the_text_of_the_lines() {
     assert!(text.lines().all(|l| l == l.trim_end()));
 }
 
+/// Found in a pty run: `Y` copied a code block's language label as a
+/// line of padding and the label (`<49 spaces>python`).
+#[test]
+fn shift_y_leaves_out_code_labels() {
+    let md = "Para.\n\n```python\nprint(1)\n```\n";
+    let mut s = state(md, 60, 20);
+    keys(&mut s, "VG");
+    let (text, _) = copied(&keys(&mut s, "Y")).unwrap();
+    assert_eq!(text, "Para.\n\nprint(1)");
+}
+
 #[test]
 fn shift_y_joins_wrapped_code_lines() {
     let long = "x".repeat(70);
