@@ -32,7 +32,7 @@ mod gen_math;
 const SIZE_TARGET: u64 = 6 * 1024 * 1024 + 512 * 1024;
 /// Hard cap enforced by CI.
 const SIZE_CAP: u64 = 7 * 1024 * 1024;
-/// Minimum supported Rust version (icy_sixel -> quantette sets this floor).
+/// Minimum supported Rust version.
 const MSRV: &str = "1.90";
 /// Crates that must never appear in the dependency graph, for any feature set.
 const BANNED: &[&str] = &[

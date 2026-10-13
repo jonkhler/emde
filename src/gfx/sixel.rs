@@ -1,22 +1,25 @@
-//! DEC sixel output via `icy_sixel` (Wu quantiser), for terminals without
-//! kitty or iTerm2 graphics, and for tmux's own sixel support.
+//! DEC sixel output, for terminals without kitty or iTerm2 graphics, and
+//! for tmux's own sixel support.
 //!
 //! Sixel draws pixels 1:1 at the cursor, so the image must already be
 //! scaled to its cell box and composited onto the background (tmux 3.4
 //! drops transparency): [`super::resize_onto`] does both, blending each
 //! pixel before it averages. Crop that image with [`crop_rows`] and
-//! [`Rgba::crop_rows`] for partly visible figures. The palette has 128
-//! colours with light dithering; output that exceeds the byte cap (tmux
-//! 3.4 discards strings over 1 MiB) is retried with 64 colours, and if it
-//! still does not fit the image is shown as blocks.
+//! [`Rgba::crop_rows`] for partly visible figures.
+//!
+//! The palette has 128 colours, from Wu's quantiser ([`wu`]), with light
+//! Floyd–Steinberg dithering. Output that exceeds the byte cap (tmux 3.4
+//! discards strings over 1 MiB) is retried with 64 colours, and if it still
+//! does not fit the image is shown as blocks.
+
+mod wu;
 
 use std::ops::Range;
-
-use icy_sixel::{BackgroundMode, EncodeOptions, PixelAspectRatio, QuantizeMethod, SixelImage};
 
 use super::Rgba;
 use crate::panic::guarded;
 use crate::style::Rgb;
+use wu::{Histogram, Palette};
 
 /// The largest sixel sequence tmux 3.4 accepts.
 pub const TMUX_MAX_BYTES: usize = 1 << 20;
@@ -28,7 +31,7 @@ pub const TMUX_MAX_BYTES: usize = 1 << 20;
 pub const TMUX_MAX_VISIBLE: usize = 6;
 
 /// Palette sizes tried in turn until the output fits.
-const PALETTES: [u16; 2] = [128, 64];
+const PALETTES: [usize; 2] = [128, 64];
 
 /// Floyd–Steinberg strength: enough to hide banding in photos without
 /// bloating the output with noise.
@@ -47,28 +50,140 @@ pub fn encode(img: &Rgba, background: Rgb, max_bytes: usize) -> Option<Vec<u8>> 
         return None;
     }
     let flat = img.flatten(background);
-    PALETTES
-        .iter()
-        .filter_map(|&colors| encode_with(&flat, colors))
-        .find(|out| out.len() <= max_bytes)
-}
-
-fn encode_with(img: &Rgba, max_colors: u16) -> Option<Vec<u8>> {
-    let opts = EncodeOptions {
-        max_colors,
-        diffusion: DIFFUSION,
-        quantize_method: QuantizeMethod::Wu,
-    };
     guarded(|| {
-        SixelImage::try_from_rgba(img.pixels.clone(), img.width as usize, img.height as usize)
-            .ok()?
-            .with_aspect_ratio(PixelAspectRatio::Square)
-            .with_background_mode(BackgroundMode::Opaque)
-            .encode_with(&opts)
-            .ok()
+        let pixels = flat.pixels.as_chunks::<4>().0;
+        let histogram = Histogram::of(pixels);
+        PALETTES
+            .iter()
+            .map(|&colors| {
+                let palette = histogram.palette(colors);
+                let indices = dither(pixels, flat.width as usize, &palette);
+                write_sixel(&palette.colors, &indices, flat.width as usize)
+            })
+            .find(|out| out.len() <= max_bytes)
     })
     .flatten()
-    .map(String::into_bytes)
+}
+
+/// The palette index of every pixel, with serpentine Floyd–Steinberg error
+/// diffusion at [`DIFFUSION`] strength.
+fn dither(pixels: &[[u8; 4]], width: usize, palette: &Palette) -> Vec<u8> {
+    let mut indices = vec![0; pixels.len()];
+    // The error carried to this row and the next, with a column of padding
+    // on either side.
+    let mut current = vec![[0.0f32; 3]; width + 2];
+    let mut next = vec![[0.0f32; 3]; width + 2];
+    for (y, row) in pixels.chunks_exact(width).enumerate() {
+        let forwards = y % 2 == 0;
+        for step in 0..width {
+            let x = if forwards { step } else { width - 1 - step };
+            let [r, g, b, _] = row[x];
+            let carried = current[x + 1];
+            let wanted = [
+                f32::from(r) + carried[0],
+                f32::from(g) + carried[1],
+                f32::from(b) + carried[2],
+            ];
+            // Rounded to the nearest level; `as` saturates to 0..=255.
+            let index = palette.index(wanted.map(|c| c.round() as u8));
+            indices[y * width + x] = index;
+            let shown = palette.colors[usize::from(index)];
+            let (ahead, behind) = if forwards { (x + 2, x) } else { (x, x + 2) };
+            for c in 0..3 {
+                let error = (wanted[c] - f32::from(shown[c])) * DIFFUSION / 16.0;
+                current[ahead][c] += error * 7.0;
+                next[behind][c] += error * 3.0;
+                next[x + 1][c] += error * 5.0;
+                next[ahead][c] += error;
+            }
+        }
+        std::mem::swap(&mut current, &mut next);
+        next.fill([0.0; 3]);
+    }
+    indices
+}
+
+/// The sixel sequence of an image `width` pixels wide whose pixels are the
+/// palette entries `indices`: square pixels and an opaque background, the
+/// raster size (which tmux passes on when it rewrites the parameters), the
+/// palette in percent, then each band of six rows colour by colour, runs
+/// of four or more equal columns compressed.
+fn write_sixel(palette: &[[u8; 3]], indices: &[u8], width: usize) -> Vec<u8> {
+    let height = indices.len() / width.max(1);
+    let mut out = Vec::with_capacity(indices.len() / 2 + palette.len() * 16 + 64);
+    out.extend_from_slice(b"\x1bP9;0;0q\"1;1;");
+    push_number(&mut out, width);
+    out.push(b';');
+    push_number(&mut out, height);
+    for (i, rgb) in palette.iter().enumerate() {
+        out.push(b'#');
+        push_number(&mut out, i);
+        out.extend_from_slice(b";2");
+        for c in rgb {
+            out.push(b';');
+            // Rounded to the nearest percent.
+            push_number(&mut out, (usize::from(*c) * 100 + 127) / 255);
+        }
+    }
+    // The six-bit column patterns of every colour in the current band, and
+    // which colours it uses.
+    let mut sixels = vec![0u8; palette.len() * width];
+    let mut used = vec![false; palette.len()];
+    for band in indices.chunks(width * BAND as usize) {
+        for (color, used) in used.iter_mut().enumerate() {
+            if std::mem::take(used) {
+                sixels[color * width..(color + 1) * width].fill(0);
+            }
+        }
+        for (dy, row) in band.chunks_exact(width).enumerate() {
+            for (x, &color) in row.iter().enumerate() {
+                let color = usize::from(color);
+                sixels[color * width + x] |= 1 << dy;
+                used[color] = true;
+            }
+        }
+        for (n, (color, _)) in used.iter().enumerate().filter(|(_, u)| **u).enumerate() {
+            if n > 0 {
+                // Back to the start of the band for the next colour.
+                out.push(b'$');
+            }
+            out.push(b'#');
+            push_number(&mut out, color);
+            let columns = &sixels[color * width..(color + 1) * width];
+            // Columns after the colour's last pixel need not be sent.
+            let end = columns.iter().rposition(|&c| c != 0).map_or(0, |i| i + 1);
+            for run in columns[..end].chunk_by(|a, b| a == b) {
+                let ch = b'?' + run[0];
+                if run.len() > 3 {
+                    out.push(b'!');
+                    push_number(&mut out, run.len());
+                    out.push(ch);
+                } else {
+                    out.extend(std::iter::repeat_n(ch, run.len()));
+                }
+            }
+        }
+        // On to the next band.
+        out.push(b'-');
+    }
+    out.extend_from_slice(b"\x1b\\");
+    out
+}
+
+/// Append `n` in decimal.
+fn push_number(out: &mut Vec<u8>, n: usize) {
+    let mut digits = [0u8; 20];
+    let mut i = digits.len();
+    let mut n = n;
+    loop {
+        i -= 1;
+        digits[i] = b'0' + (n % 10) as u8;
+        n /= 10;
+        if n == 0 {
+            break;
+        }
+    }
+    out.extend_from_slice(&digits[i..]);
 }
 
 /// The pixel rows to send when only cell rows `visible` of an image
@@ -131,6 +246,38 @@ mod tests {
         assert!(out.ends_with(b"\x1b\\"));
         assert_eq!(raster_size(&out), (40, 30));
         assert!(out.len() <= TMUX_MAX_BYTES);
+    }
+
+    /// `rows` rows of `width` pixels, `left` of them first, then `right`.
+    fn halves(width: u32, rows: u32, left: [u8; 4], right: [u8; 4]) -> Rgba {
+        let px = (0..rows)
+            .flat_map(|_| (0..width).flat_map(|x| if x < width / 2 { left } else { right }))
+            .collect();
+        Rgba::new(width, rows, px).unwrap()
+    }
+
+    #[test]
+    fn the_whole_sequence() {
+        let img = halves(8, 6, [255, 0, 0, 255], [0, 0, 255, 255]);
+        let out = encode(&img, Rgb(0, 0, 0), TMUX_MAX_BYTES).unwrap();
+        assert_eq!(
+            String::from_utf8(out).unwrap(),
+            // Header and size; the palette (blue, red); colour 0 (four
+            // empty columns, four full ones), back to the band's start,
+            // colour 1 (its trailing empty columns left out); the next
+            // band; the end.
+            "\x1bP9;0;0q\"1;1;8;6#0;2;0;0;100#1;2;100;0;0#0!4?!4~$#1!4~-\x1b\\"
+        );
+    }
+
+    #[test]
+    fn short_runs_are_written_out_and_rows_split_into_bands() {
+        // Seven rows: a full band, then one of a single row.
+        let img = halves(4, 7, [0, 0, 0, 255], [255, 255, 255, 255]);
+        let out = encode(&img, Rgb(0, 0, 0), TMUX_MAX_BYTES).unwrap();
+        let text = String::from_utf8(out).unwrap();
+        let body = text.split_once("#1;2;100;100;100").unwrap().1;
+        assert_eq!(body, "#0~~$#1??~~-#0@@$#1??@@-\x1b\\");
     }
 
     #[test]
