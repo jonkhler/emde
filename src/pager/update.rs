@@ -192,14 +192,14 @@ fn apply(state: &mut State, action: Action) -> Vec<Effect> {
             command(state, cmd)
         }
         Action::Resize { cols, rows } => resize(state, cols, rows),
-        Action::Layout(layout) => {
-            install(state, layout);
-            Vec::new()
-        }
-        Action::Anchor(name) => {
-            go(state, Goto::Anchor(name));
-            Vec::new()
-        }
+        Action::Layout(layout) => install(state, layout),
+        Action::Anchor(name) => match hidden_heading(state, &name) {
+            Some((h, folds)) => unfold(state, &folds, Goto::Heading(h)),
+            None => {
+                go(state, Goto::Anchor(name));
+                Vec::new()
+            }
+        },
         Action::Opened { doc, key, request } => {
             let page = state.new_page(doc, key);
             switch(state, page, request)
@@ -1877,10 +1877,30 @@ fn reloaded(state: &mut State, doc: PagerDoc) -> Vec<Effect> {
 }
 
 /// A new layout from the shell.
-fn install(state: &mut State, layout: Layout) {
+/// The heading anchor `name` names, when collapsed `<details>` hide it:
+/// with those blocks.
+fn hidden_heading(state: &State, name: &str) -> Option<(HeadingId, Vec<u32>)> {
+    let bare = name.strip_prefix('#').unwrap_or(name);
+    let Some(Anchor::Heading(h)) = state.page.doc.resolve_anchor(bare) else {
+        return None;
+    };
+    let folds = state.layout.heading_folds(h);
+    (!folds.is_empty()).then_some((h, folds))
+}
+
+fn install(state: &mut State, layout: Layout) -> Vec<Effect> {
     state.spare = Some(mem::replace(&mut state.layout, layout));
     state.derived = Derived::new(&state.layout);
     state.generation = state.generation.wrapping_add(1);
+    // An anchor inside collapsed `<details>`: they open, and the layout
+    // after that goes there.
+    let hidden = match &state.pending {
+        Some(Goto::Anchor(name)) => hidden_heading(state, name),
+        _ => None,
+    };
+    if hidden.is_some() {
+        state.pending = None;
+    }
     if let Some(goto) = state.pending.take() {
         go(state, goto);
     }
@@ -1915,6 +1935,10 @@ fn install(state: &mut State, layout: Layout) {
         Mode::Hints(_) => state.mode = Mode::Normal,
         Mode::Outline(_) => refilter(state),
         _ => {}
+    }
+    match hidden {
+        Some((h, folds)) => unfold(state, &folds, Goto::Heading(h)),
+        None => Vec::new(),
     }
 }
 

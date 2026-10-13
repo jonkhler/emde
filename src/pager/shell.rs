@@ -157,6 +157,8 @@ pub(crate) struct Shell<'t, T: Terminal> {
     layouts: Vec<(LayoutKey, Layout)>,
     /// What the layout shown was made from.
     made: Option<LayoutKey>,
+    /// Effects of the first actions, carried out when the loop starts.
+    startup: Vec<Effect>,
     /// When an unfinished key sequence stops waiting for its next key.
     key_deadline: Option<Instant>,
     signals: Signals,
@@ -247,9 +249,12 @@ impl<'t, T: Terminal> Shell<'t, T> {
             })
             .collect();
         state.add_files(more);
-        if let Some(anchor) = anchor {
-            update(&mut state, Action::Anchor(anchor));
-        }
+        // Carried out once the terminal is set up (an anchor inside
+        // collapsed `<details>` lays the document out again).
+        let startup = match anchor {
+            Some(anchor) => update(&mut state, Action::Anchor(anchor)),
+            None => Vec::new(),
+        };
         if open_toc {
             update(&mut state, Action::Command(Command::Outline));
         }
@@ -277,6 +282,7 @@ impl<'t, T: Terminal> Shell<'t, T> {
             resize: None,
             layouts: Vec::new(),
             made,
+            startup,
             key_deadline: None,
             signals,
             dirty: true,
@@ -288,6 +294,10 @@ impl<'t, T: Terminal> Shell<'t, T> {
     pub(crate) fn run(mut self) -> io::Result<PagerExit> {
         self.term.term.set_cleanup(Vec::new());
         self.term.term.enter(self.state.mouse())?;
+        let startup = std::mem::take(&mut self.startup);
+        if let Some(exit) = self.run_effects(startup)? {
+            return Ok(exit);
+        }
         self.sync_watcher();
         self.paint()?;
         if self.panic_test {

@@ -1622,3 +1622,12 @@ fn the_outline_dims_headings_inside_collapsed_details() {
     // Going to it opens its block.
     assert_eq!(row_text(&term, 60, 20, "jumped", 0).trim(), "Install steps");
 }
+
+#[test]
+fn a_start_anchor_inside_collapsed_details_opens_them() {
+    let mut s = session(&format!("{DETAILS_DOC}\n{}", "More text.\n\n".repeat(20)));
+    s.anchor = Some("install-steps".into());
+    let term = FakeTerminal::new(60, 20).mark("first").keys("q");
+    let (term, _) = run(term, s);
+    assert_eq!(row_text(&term, 60, 20, "first", 0).trim(), "Install steps");
+}

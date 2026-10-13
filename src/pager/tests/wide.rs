@@ -497,3 +497,106 @@ fn details_expanded_by_the_settings() {
     toggle_and_lay(&mut s, 0);
     assert!(!s.layout().details[0].open);
 }
+
+// ---------------------------------------------------------------------------
+// Second pass: corners
+// ---------------------------------------------------------------------------
+
+/// Filler, then a collapsed block holding a collapsed block with a heading
+/// and a match, then a link to the heading, then filler.
+fn nested_doc() -> String {
+    let filler = "Filler paragraph.\n\n".repeat(10);
+    format!(
+        "# Top\n\n[to the deep heading](#deep-heading)\n\n{filler}<details>\n<summary>Outer</summary>\n\n\
+         Outer text.\n\n<details>\n<summary>Inner</summary>\n\n## Deep heading\n\nThe hidden needle.\n\n\
+         </details>\n\n</details>\n\n{filler}"
+    )
+}
+
+#[test]
+fn search_opens_nested_blocks() {
+    let mut s = state(&nested_doc(), 60, 12);
+    assert!(s.layout().details.iter().all(|d| !d.open));
+    keys(&mut s, "/hidden needle\n");
+    assert!(s.layout().details.iter().all(|d| d.open), "both opened");
+    let shown = (s.top()..s.top() + 11).any(|i| s.layout().line_text(i).contains("hidden needle"));
+    assert!(shown);
+}
+
+#[test]
+fn links_and_the_outline_open_nested_blocks() {
+    let mut s = state(&nested_doc(), 60, 12);
+    // A link to the hidden heading.
+    code(&mut s, KeyCode::Tab);
+    code(&mut s, KeyCode::Enter);
+    assert!(s.layout().details.iter().all(|d| d.open));
+    assert_eq!(top_text(&s).trim(), "Deep heading");
+    // Closed again, the outline goes there too.
+    let mut s = state(&nested_doc(), 60, 12);
+    keys(&mut s, "t");
+    code(&mut s, KeyCode::Down);
+    code(&mut s, KeyCode::Enter);
+    assert!(s.layout().details.iter().all(|d| d.open));
+    assert_eq!(top_text(&s).trim(), "Deep heading");
+}
+
+#[test]
+fn anchors_of_other_documents_open_their_blocks() {
+    let mut s = state(&long_doc(2, 2), 60, 12);
+    opened(&mut s, "nested.md", &nested_doc(), Some("deep-heading"));
+    assert!(
+        s.layout().details.iter().all(|d| d.open),
+        "{:?}",
+        s.message()
+    );
+    assert_eq!(top_text(&s).trim(), "Deep heading");
+    assert_eq!(s.message(), None);
+}
+
+#[test]
+fn clicks_on_a_link_cut_by_the_left_edge() {
+    let mut s = state(&table_doc(20, 0), 60, 12);
+    let hit = s.layout().link_hits[0].clone();
+    let line = hit.line as usize;
+    let x0 = s.layout().wide_at(line).unwrap().x0;
+    // Shift so the link starts two columns left of the edge: its first
+    // columns are hidden (one under the `‹`), the rest shown.
+    let shift = hit.cols.start - x0 + 2;
+    assert!(shift <= max_shift(&s));
+    s.doc_view_mut().hscroll = shift;
+    assert_eq!(s.layout().shown_col(line, hit.cols.start, shift), None);
+    let shown = s
+        .layout()
+        .shown_col(line, hit.cols.start + 3, shift)
+        .unwrap();
+    let indent = s.layout().indent;
+    let effects = click(&mut s, indent + shown, u16::try_from(line).unwrap());
+    assert_eq!(effects, [Effect::Open("https://example.com/6".into())]);
+}
+
+#[test]
+fn a_narrower_terminal_clamps_the_shift_it_shows() {
+    let mut s = state(&table_doc(12, 0), 100, 12);
+    keys(&mut s, "$");
+    let wide_max = s.hscroll();
+    drive(&mut s, Action::Resize { cols: 60, rows: 12 });
+    let max = max_shift(&s);
+    assert!(max > wide_max, "more to shift in fewer columns");
+    let f = view(&s, &Ctx::new(&Theme::test(), &Caps::full()));
+    let Body::Line { shift, .. } = f.lines[2].body else {
+        panic!();
+    };
+    assert_eq!(shift, wide_max, "the same columns on the left");
+    drive(
+        &mut s,
+        Action::Resize {
+            cols: 200,
+            rows: 12,
+        },
+    );
+    assert!(s.layout().wide.is_empty(), "it fits now");
+    let f = view(&s, &Ctx::new(&Theme::test(), &Caps::full()));
+    assert!(matches!(f.lines[2].body, Body::Line { shift: 0, .. }));
+    drive(&mut s, Action::Resize { cols: 60, rows: 12 });
+    assert_eq!(s.hscroll(), wide_max, "kept for when it is wide again");
+}
