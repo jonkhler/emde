@@ -32,7 +32,7 @@ pub fn grapheme_width(g: &str, ambiguous_wide: bool) -> usize {
 /// Width of a string: the sum of its grapheme widths.
 ///
 /// ASCII strings take a fast path (one column per byte), and so do strings
-/// of characters that are clusters on their own ([`stands_alone`]): rules,
+/// of characters that are clusters on their own (`stands_alone`): rules,
 /// bars and accented Latin text need no segmentation.
 pub fn str_width(s: &str, ambiguous_wide: bool) -> usize {
     if s.is_ascii() {

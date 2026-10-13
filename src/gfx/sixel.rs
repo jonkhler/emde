@@ -7,7 +7,7 @@
 //! pixel before it averages. Crop that image with [`crop_rows`] and
 //! [`Rgba::crop_rows`] for partly visible figures.
 //!
-//! The palette has 128 colours, from Wu's quantiser ([`wu`]), with light
+//! The palette has 128 colours, from Wu's quantiser (`sixel/wu.rs`), with light
 //! Floyd–Steinberg dithering. Output that exceeds the byte cap (tmux 3.4
 //! discards strings over 1 MiB) is retried with 64 colours, and if it still
 //! does not fit the image is shown as blocks.
