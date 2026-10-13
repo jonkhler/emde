@@ -1,0 +1,25 @@
+---
+source: tests/pager.rs
+expression: "screen_text(&term, 60, 20, \"expanded\")"
+---
+ 1│   Guide                                                    │
+ 2│                                                            │
+ 3│  Intro text.                                               │
+ 4│                                                            │
+ 5│  ▾ Installation                                            │
+  │  ==============│
+ 6│    Install steps                                           │
+ 7│    ━━━━━━━━━━━━━─────────────────────────────────────────  │
+ 8│                                                            │
+ 9│    Run the needle installer.                               │
+10│                                                            │
+11│    Then restart.                                           │
+12│                                                            │
+13│  Middle text.                                              │
+14│                                                            │
+15│  ▾ Notes                                                   │
+16│    Open by default.                                        │
+17│                                                            │
+18│  The end.                                                  │
+19│                                                            │
+20│ text › Guide                                   L 1/18 100% │

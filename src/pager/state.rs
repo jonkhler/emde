@@ -13,8 +13,8 @@ use std::rc::Rc;
 
 use crate::config::{PagerOptions, SearchCase};
 use crate::ir::{Document, HeadingId, LinkId, SrcPos};
-use crate::layout::Layout;
-use crate::options::{FrontMatterMode, RenderOptions, When};
+use crate::layout::{Folds, Interactive, Layout};
+use crate::options::{DetailsMode, FrontMatterMode, RenderOptions, When};
 use crate::source::{Origin, Source};
 
 use super::PagerDoc;
@@ -139,8 +139,12 @@ pub(crate) struct Occurrence {
 pub(crate) struct Derived {
     /// Link occurrences, top to bottom.
     pub(crate) links: Vec<Occurrence>,
-    /// Shown headings with their first line, top to bottom.
+    /// The outline's headings with their first line, top to bottom: the
+    /// shown ones, and those inside collapsed `<details>` (at the line of
+    /// the summary that hides them).
     pub(crate) headings: Vec<(u32, HeadingId)>,
+    /// Which of `headings` are hidden in collapsed `<details>`.
+    pub(crate) folded: Vec<bool>,
 }
 
 impl Derived {
@@ -163,24 +167,63 @@ impl Derived {
                 back: hit.back,
             });
         }
-        let headings = layout
-            .heading_line
-            .iter()
-            .enumerate()
-            .filter(|&(_, &line)| line != u32::MAX)
-            .map(|(i, &line)| (line, HeadingId(u32::try_from(i).unwrap_or(u32::MAX))))
-            .collect();
-        Derived { links, headings }
+        let mut headings = Vec::new();
+        let mut folded = Vec::new();
+        for (i, &line) in layout.heading_line.iter().enumerate() {
+            let h = HeadingId(u32::try_from(i).unwrap_or(u32::MAX));
+            // Hidden: at the summary line of the outermost block hiding it.
+            let at = if line != u32::MAX {
+                Some(line)
+            } else {
+                layout
+                    .heading_folds(h)
+                    .first()
+                    .and_then(|&d| layout.details.get(d as usize))
+                    .map(|d| d.line)
+                    .filter(|&l| l != u32::MAX)
+            };
+            if let Some(at) = at {
+                headings.push((at, h));
+                folded.push(line == u32::MAX);
+            }
+        }
+        Derived {
+            links,
+            headings,
+            folded,
+        }
+    }
+
+    /// The last shown heading at or above `line`: its index in
+    /// [`Derived::headings`].
+    pub(crate) fn entry_at(&self, line: usize) -> Option<usize> {
+        let line = u32::try_from(line).unwrap_or(u32::MAX);
+        let i = self.headings.partition_point(|&(l, _)| l <= line);
+        (0..i).rev().find(|&i| !self.is_folded(i))
     }
 
     /// The heading whose section contains `line`.
     pub(crate) fn section_at(&self, line: usize) -> Option<HeadingId> {
-        let line = u32::try_from(line).unwrap_or(u32::MAX);
-        let i = self.headings.partition_point(|&(l, _)| l <= line);
-        i.checked_sub(1)
+        self.entry_at(line)
             .and_then(|i| self.headings.get(i))
             .map(|&(_, h)| h)
     }
+
+    /// Whether entry `i` of [`Derived::headings`] is hidden.
+    pub(crate) fn is_folded(&self, i: usize) -> bool {
+        self.folded.get(i).copied().unwrap_or(false)
+    }
+}
+
+/// What the reader changed about how a document is shown: kept per
+/// document, through resizes and reloads.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) struct DocView {
+    /// How far wide blocks are shifted sideways.
+    pub(crate) hscroll: u16,
+    /// The `<details>` (by id) toggled from how they are shown at first,
+    /// sorted.
+    pub(crate) toggled: Vec<u32>,
 }
 
 /// The focused link.
@@ -202,6 +245,8 @@ pub(crate) struct Prompt {
     /// Where the screen was when the prompt opened (incremental search
     /// starts there, cancelling returns there).
     pub(crate) origin: Place,
+    /// How far wide blocks were shifted then.
+    pub(crate) hscroll: u16,
     /// The search before the prompt opened.
     pub(crate) saved: Option<Search>,
 }
@@ -437,6 +482,8 @@ pub struct Settings {
     /// Remote images are fetched (`images.remote`): links to them open in
     /// the image view.
     pub remote_images: bool,
+    /// `<details>` start expanded (`pager.details = "expanded"`).
+    pub details_open: bool,
 }
 
 /// The outline sidebar's settings (`[pager] toc_sidebar` and `toc_width`).
@@ -451,6 +498,18 @@ pub struct SidebarSettings {
 }
 
 impl Settings {
+    /// What a document's first layout needs from the pager (no `<details>`
+    /// toggled yet).
+    pub fn interactive(&self) -> Interactive<'static> {
+        Interactive {
+            hscroll: true,
+            details: Some(Folds {
+                open: self.details_open,
+                toggled: &[],
+            }),
+        }
+    }
+
     /// The settings for `pager` and `render` options (problems with
     /// `[pager.keys]` are the config check's to report).
     pub fn new(pager: &PagerOptions, render: &RenderOptions) -> Settings {
@@ -468,6 +527,7 @@ impl Settings {
                 auto_cols: sidebar::auto_cols(pager.toc_width, render.max_width, render.margin),
             },
             remote_images: render.images.remote,
+            details_open: pager.details == DetailsMode::Expanded,
         }
     }
 }
@@ -481,6 +541,11 @@ pub(crate) enum Goto {
     Anchor(String),
     /// The top of the document.
     Top,
+    /// A heading (after a `<details>` around it opened).
+    Heading(HeadingId),
+    /// Show this position (after a `<details>` around it opened), and the
+    /// current search match sideways.
+    Reveal(SrcPos),
 }
 
 /// The pager's state; see the module docs.
@@ -488,6 +553,9 @@ pub(crate) enum Goto {
 pub struct State {
     pub(crate) page: Rc<Page>,
     pub(crate) layout: Layout,
+    /// The layout the last new one replaced, until the shell takes it (to
+    /// show again later).
+    pub(crate) spare: Option<Layout>,
     pub(crate) derived: Derived,
     /// Bumped with every new layout (row hashes include it).
     pub(crate) generation: u64,
@@ -503,6 +571,8 @@ pub struct State {
     /// empty `/` and for `n` after the search was cleared.
     pub(crate) last_pattern: Option<(String, bool)>,
     pub(crate) focus: Option<Focus>,
+    /// The focused `<details>` summary (by id), instead of a link.
+    pub(crate) summary_focus: Option<u32>,
     pub(crate) message: Option<Message>,
     pub(crate) history: History,
     pub(crate) pending: Option<Goto>,
@@ -528,6 +598,8 @@ pub struct State {
     pub(crate) image: Option<ImagePage>,
     /// The outline sidebar.
     pub(crate) sidebar: Sidebar,
+    /// What the reader changed about each document's look.
+    views: Vec<(DocKey, DocView)>,
     next_unnamed: u32,
     next_link_base: u32,
 }
@@ -555,6 +627,7 @@ impl State {
             derived: Derived::new(&layout),
             page,
             layout,
+            spare: None,
             generation: 1,
             cols,
             rows,
@@ -564,6 +637,7 @@ impl State {
             search: None,
             last_pattern: None,
             focus: None,
+            summary_focus: None,
             message: None,
             history,
             pending: None,
@@ -579,6 +653,7 @@ impl State {
             marks: Vec::new(),
             image: None,
             sidebar: Sidebar::default(),
+            views: Vec::new(),
             next_unnamed: 1,
             next_link_base: links,
         };
@@ -726,6 +801,42 @@ impl State {
     /// Remember the top line as mark `'` (before a jump).
     pub(crate) fn record_jump(&mut self) {
         self.set_mark('\'', self.top_place());
+    }
+
+    /// What the reader changed about the current document's look.
+    pub(crate) fn doc_view(&self) -> Option<&DocView> {
+        let key = &self.page.key;
+        self.views.iter().find(|(k, _)| k == key).map(|(_, v)| v)
+    }
+
+    /// [`State::doc_view`], to change.
+    pub(crate) fn doc_view_mut(&mut self) -> &mut DocView {
+        let key = &self.page.key;
+        let i = match self.views.iter().position(|(k, _)| k == key) {
+            Some(i) => i,
+            None => {
+                self.views.push((key.clone(), DocView::default()));
+                self.views.len() - 1
+            }
+        };
+        &mut self.views[i].1
+    }
+
+    /// How far wide blocks of the current document are shifted.
+    pub fn hscroll(&self) -> u16 {
+        self.doc_view().map_or(0, |v| v.hscroll)
+    }
+
+    /// What the current document's layout needs from the pager: its
+    /// collapsed `<details>` and wide blocks (the shell lays out with it).
+    pub fn interactive(&self) -> Interactive<'_> {
+        Interactive {
+            details: Some(Folds {
+                open: self.settings.details_open,
+                toggled: self.doc_view().map_or(&[], |v| v.toggled.as_slice()),
+            }),
+            ..self.settings.interactive()
+        }
     }
 
     /// Show a message until the next key.

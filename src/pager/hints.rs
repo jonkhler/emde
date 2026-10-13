@@ -48,6 +48,8 @@ pub(crate) enum Act {
     Copy(Copied),
     /// Select these lines (Visual mode).
     Select(Range<usize>),
+    /// Open or close `<details>` `id`.
+    Toggle(u32),
 }
 
 /// Text to copy, and what the status bar says about it.
@@ -248,7 +250,7 @@ impl<'d> Walker<'d, '_> {
                 }
                 Kind::Other
             }
-            Block::Details { summary, body } => {
+            Block::Details { summary, body, .. } => {
                 self.leaf(summary.text.len());
                 self.blocks(body);
                 Kind::Other
@@ -394,8 +396,17 @@ pub(crate) fn targets(state: &State, kind: HintKind) -> Vec<Target> {
         return out;
     }
     let base = state.page.base_dir();
+    let hscroll = state.hscroll();
+    // Where a column of a line is on screen (lines of wide blocks may be
+    // shifted): `None` when it is shifted out of view.
+    let screen =
+        |line: usize, col: u16| layout.shown_col(line, col, layout.shift_at(line, hscroll));
     for (i, o) in state.derived.links.iter().enumerate() {
-        let Some((line, col)) = links::first_visible_hit(layout, o, top, rows) else {
+        let Some((line, cols)) = links::first_visible_hit(layout, o, top, rows) else {
+            continue;
+        };
+        // Its first column shown (a link may be cut by an edge).
+        let Some(col) = cols.clone().find_map(|c| screen(line, c)) else {
             continue;
         };
         let act = match kind {
@@ -419,6 +430,9 @@ pub(crate) fn targets(state: &State, kind: HintKind) -> Vec<Target> {
                 continue;
             }
             seen = Some(hit.pos);
+            let Some(col) = screen(line, hit.col) else {
+                continue;
+            };
             let act = if kind == HintKind::Yank {
                 let off = hit.pos.off;
                 let tex = state
@@ -429,10 +443,27 @@ pub(crate) fn targets(state: &State, kind: HintKind) -> Vec<Target> {
             } else {
                 Act::Jump(layout.line_at(hit.pos).min(line))
             };
+            out.push(Target { line, col, act });
+        }
+    }
+    if kind == HintKind::Follow {
+        // `<details>` summaries: the label opens or closes them.
+        for (id, d) in layout.details.iter().enumerate() {
+            let first = d.line as usize;
+            let lines = first..first.saturating_add(d.rows as usize);
+            if d.line == u32::MAX || lines.end <= shown.start || lines.start >= shown.end {
+                continue;
+            }
+            let line = first.max(shown.start);
+            let col = if line == first {
+                d.col
+            } else {
+                first_col(layout, line)
+            };
             out.push(Target {
                 line,
-                col: hit.col,
-                act,
+                col,
+                act: Act::Toggle(u32::try_from(id).unwrap_or(u32::MAX)),
             });
         }
     }
@@ -470,6 +501,11 @@ pub(crate) fn targets(state: &State, kind: HintKind) -> Vec<Target> {
             .map(|l| first_col(layout, l))
             .min()
             .unwrap_or(0);
+        // In a shifted wide block: at its left edge if its start is out of
+        // view.
+        let col = screen(line, col)
+            .or_else(|| layout.wide_at(line).map(|w| w.x0))
+            .unwrap_or(col);
         out.push(Target { line, col, act });
     });
     out

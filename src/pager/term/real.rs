@@ -191,6 +191,13 @@ fn convert_mouse(m: &MouseEvent) -> Option<Mouse> {
         MouseEventKind::Up(b) => MouseKind::Release(convert_button(b)),
         MouseEventKind::Drag(b) => MouseKind::Drag(convert_button(b)),
         MouseEventKind::Moved => MouseKind::Moved,
+        // Shift and the wheel scroll sideways.
+        MouseEventKind::ScrollUp if m.modifiers.contains(KeyModifiers::SHIFT) => {
+            MouseKind::WheelLeft
+        }
+        MouseEventKind::ScrollDown if m.modifiers.contains(KeyModifiers::SHIFT) => {
+            MouseKind::WheelRight
+        }
         MouseEventKind::ScrollUp => MouseKind::WheelUp,
         MouseEventKind::ScrollDown => MouseKind::WheelDown,
         MouseEventKind::ScrollLeft => MouseKind::WheelLeft,
@@ -265,6 +272,40 @@ mod tests {
             })
         );
         assert_eq!(convert(&Event::FocusLost), Some(TermEvent::Focus(false)));
+        // Shift and the wheel, or the wheel sideways: horizontal.
+        for (kind, modifiers, want) in [
+            (
+                MouseEventKind::ScrollUp,
+                KeyModifiers::SHIFT,
+                MouseKind::WheelLeft,
+            ),
+            (
+                MouseEventKind::ScrollDown,
+                KeyModifiers::SHIFT,
+                MouseKind::WheelRight,
+            ),
+            (
+                MouseEventKind::ScrollLeft,
+                KeyModifiers::NONE,
+                MouseKind::WheelLeft,
+            ),
+            (
+                MouseEventKind::ScrollRight,
+                KeyModifiers::NONE,
+                MouseKind::WheelRight,
+            ),
+        ] {
+            let wheel = Event::Mouse(MouseEvent {
+                kind,
+                column: 1,
+                row: 2,
+                modifiers,
+            });
+            assert!(
+                matches!(convert(&wheel), Some(TermEvent::Mouse(Mouse { kind: k, .. })) if k == want),
+                "{kind:?} {modifiers:?}"
+            );
+        }
         let click = Event::Mouse(MouseEvent {
             kind: MouseEventKind::Down(MouseButton::Left),
             column: 0,

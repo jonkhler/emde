@@ -37,7 +37,9 @@ use std::path::{Path, PathBuf};
 pub use paths::ConfigEnv;
 pub use value::{BackgroundMode, ColorChoice, OpenCommand, SearchCase};
 
-use crate::options::{Align, BlockGlyphs, DisplayMath, ImageMode, InlineMath, RenderOptions, When};
+use crate::options::{
+    Align, BlockGlyphs, DetailsMode, DisplayMath, ImageMode, InlineMath, RenderOptions, When,
+};
 use crate::style::Rgb;
 use crate::term::ColorDepth;
 use crate::theme::spec::ThemePatch;
@@ -127,6 +129,8 @@ pub struct PagerOptions {
     /// Width of the outline sidebar in columns, its border included
     /// (16 to 60).
     pub toc_width: u16,
+    /// How `<details>` are shown at first.
+    pub details: DetailsMode,
     /// `[pager.keys]`: action names and their keys, in order (see
     /// [`crate::pager::keymap::Keymap::new`]).
     pub keys: Vec<(String, Vec<String>)>,
@@ -143,6 +147,7 @@ impl Default for PagerOptions {
             open: OpenCommand::Auto,
             toc_sidebar: When::Auto,
             toc_width: 32,
+            details: DetailsMode::Collapsed,
             keys: Vec::new(),
         }
     }

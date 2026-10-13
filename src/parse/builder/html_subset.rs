@@ -203,7 +203,14 @@ impl Builder {
             "details" => {
                 self.close_open_p();
                 self.flush_leaf(true);
-                self.push_html("details", HtmlBox::Details { summary: None });
+                let open = tag.attr("open").is_some();
+                self.push_html(
+                    "details",
+                    HtmlBox::Details {
+                        summary: None,
+                        open,
+                    },
+                );
             }
             "summary" => self.open_leaf(LeafKind::Summary),
             "p" | "div" | "center" => {

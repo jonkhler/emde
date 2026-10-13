@@ -152,10 +152,20 @@ impl Builder<'_> {
 
     /// A code block. Its rows keep their place in aligned containers
     /// (`<div align="center">`): a panel or frame spans the whole content
-    /// width, so centring rows one by one would only tear it apart.
+    /// width, so centring rows one by one would only tear it apart. Code
+    /// that is not wrapped is a wide block in the pager: as wide as its
+    /// longest line.
     pub(super) fn code_block(&mut self, cb: &CodeBlock) {
+        if self.interactive.hscroll && !self.opts.code.wrap {
+            self.wide_block(|b| b.code_body(cb, true));
+        } else {
+            self.code_body(cb, false);
+        }
+    }
+
+    fn code_body(&mut self, cb: &CodeBlock, wide: bool) {
         let off = self.off;
-        let width = self.avail();
+        let mut width = self.avail();
         let source: Vec<&str> = cb.code.split('\n').collect();
         let tab = self.opts.code.tab_width;
         let amb = self.amb;
@@ -182,6 +192,17 @@ impl Builder<'_> {
         } else {
             (mode, left, right, gutter, numbers)
         };
+        if wide {
+            let natural = expanded
+                .iter()
+                .map(|e| str_width(&visible_code(&e.text), amb))
+                .max()
+                .unwrap_or(0);
+            let room = super::MAX_WIDE.saturating_sub(self.out.measure.saturating_sub(width));
+            width = width
+                .max(to_u16(natural).saturating_add(left + right + gutter))
+                .min(room);
+        }
         let look = self.code_look(mode);
         let content = width.saturating_sub(left + right + gutter).max(1);
         let diff = cb
@@ -225,6 +246,7 @@ impl Builder<'_> {
                 if self.opts.code.wrap || str_width(text, amb) <= usize::from(content) {
                     self.put_flags(text, style, None, SpanFlags::CODE);
                 } else {
+                    self.out.narrowed = true;
                     let (kept, _) = cut_to_cols(text, content.saturating_sub(1), amb);
                     self.put_flags(kept, style, None, SpanFlags::CODE);
                     let used = self.cols().saturating_sub(start + left + gutter);

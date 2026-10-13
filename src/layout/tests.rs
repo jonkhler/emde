@@ -880,3 +880,396 @@ fn links_showing_their_url_get_no_number() {
     assert!(!inline::shows_url("", "https://a.b"));
     assert!(!inline::shows_url("a.b", "https://a.b"));
 }
+
+// ---------------------------------------------------------------------------
+// The pager's layouts: collapsed details, wide blocks
+// ---------------------------------------------------------------------------
+
+fn lay_interactive(md: &str, width: u16, opts: &RenderOptions, it: Interactive<'_>) -> Layout {
+    layout_with(
+        &doc(md),
+        width,
+        &Theme::test(),
+        &plain_caps(),
+        opts,
+        &PlainHighlighter,
+        &NoImages,
+        it,
+    )
+}
+
+/// Pager layouts: what [`check`] says, except that lines of wide blocks
+/// (and only those) may be wider than the measure.
+fn check_interactive(l: &Layout) {
+    for (i, line) in l.lines.iter().enumerate() {
+        let text = l.line_text(i);
+        assert_eq!(crate::text::str_width(&text, false), usize::from(line.cols));
+        if l.wide_at(i).is_none() {
+            assert!(line.cols <= l.measure, "line {i} {text:?}");
+        }
+        if i > 0 {
+            assert!(l.lines[i - 1].pos <= line.pos, "line {i}");
+        }
+    }
+    for w in &l.wide {
+        assert!(
+            w.start < w.end && w.cols > l.measure && w.x0 < l.measure,
+            "{w:?}"
+        );
+    }
+}
+
+const DETAILS: &str = "Before.\n\n<details>\n<summary>More <b>here</b></summary>\n\n\
+                       ## Inside\n\nHidden text.\n\n<details>\n<summary>Inner</summary>\n\n\
+                       Deeper.\n\n</details>\n\n</details>\n\nAfter.\n\n<details open>\n\
+                       <summary>Open</summary>\n\nShown.\n\n</details>\n";
+
+#[test]
+fn details_collapse_to_their_summary() {
+    let opts = RenderOptions::default();
+    let collapsed = Interactive {
+        hscroll: true,
+        details: Some(Folds::default()),
+    };
+    let l = lay_interactive(DETAILS, 40, &opts, collapsed);
+    check_interactive(&l);
+    let text = lines(&l);
+    assert_eq!(
+        text,
+        [
+            "Before.",
+            "",
+            "▸ More here (6 lines)",
+            "",
+            "After.",
+            "",
+            "▾ Open",
+            "  Shown.",
+        ],
+        "{text:#?}"
+    );
+    assert_eq!(l.details.len(), 3);
+    let (outer, inner, open) = (l.details[0], l.details[1], l.details[2]);
+    // The heading (two lines), a gap, the text, a gap, the inner summary.
+    assert!(!outer.open && outer.line == 2 && outer.rows == 1 && outer.body_lines == 6);
+    assert_eq!(outer.col, 0);
+    assert_eq!(inner.line, u32::MAX, "inside a collapsed block");
+    assert_eq!(inner.parent, 0);
+    assert!(open.open && open.open_attr && open.line == 6);
+    // The heading inside is not shown, but known to be in block 0.
+    assert_eq!(l.heading_line, [u32::MAX]);
+    assert_eq!(l.heading_details, [0]);
+    assert_eq!(l.heading_folds(HeadingId(0)), [0]);
+    assert_eq!(l.summary_at(2), Some(0));
+    assert_eq!(l.summary_at(3), None);
+    // Positions after the block are the same as when it is expanded.
+    let expanded = lay_interactive(DETAILS, 40, &opts, Interactive::default());
+    let after = |l: &Layout| {
+        let i = (0..l.len()).find(|&i| l.line_text(i) == "After.").unwrap();
+        l.lines[i].pos
+    };
+    assert_eq!(after(&l), after(&expanded));
+    let hidden = expanded.lines[(0..expanded.len())
+        .find(|&i| expanded.line_text(i).contains("Hidden"))
+        .unwrap()]
+    .pos;
+    assert_eq!(l.folded_at(hidden), [0]);
+    assert_eq!(l.line_at(hidden), 2, "hidden text maps to the summary");
+    assert!(outer.holds(hidden));
+    // Stream mode shows everything, as before.
+    let text = lines(&expanded);
+    assert!(text.contains(&"▾ More here".to_owned()), "{text:#?}");
+    assert!(text.contains(&"    Deeper.".to_owned()), "{text:#?}");
+    assert_eq!(expanded.details[1].line as usize, 8);
+}
+
+#[test]
+fn toggled_details_open_and_close() {
+    let opts = RenderOptions::default();
+    // Open the outer one: the inner one stays collapsed.
+    let toggled = [0];
+    let it = Interactive {
+        hscroll: false,
+        details: Some(Folds {
+            open: false,
+            toggled: &toggled,
+        }),
+    };
+    let l = lay_interactive(DETAILS, 40, &opts, it);
+    let text = lines(&l);
+    assert!(text.contains(&"▾ More here".to_owned()), "{text:#?}");
+    assert!(text.contains(&"  ▸ Inner (1 line)".to_owned()), "{text:#?}");
+    assert!(!text.iter().any(|t| t.contains("Deeper")));
+    assert_eq!(l.folded_chain(1), [1]);
+    assert!(l.heading_line[0] != u32::MAX);
+    // Expanded by default; toggling `open` blocks closes them.
+    let toggled = [2];
+    let it = Interactive {
+        hscroll: false,
+        details: Some(Folds {
+            open: true,
+            toggled: &toggled,
+        }),
+    };
+    let text = lines(&lay_interactive(DETAILS, 40, &opts, it));
+    assert!(text.contains(&"▸ Open (1 line)".to_owned()), "{text:#?}");
+    assert!(text.contains(&"    Deeper.".to_owned()), "{text:#?}");
+}
+
+#[test]
+fn collapsed_details_in_lists_and_quotes() {
+    let md = "- item\n\n  <details><summary>In a list</summary>\n\n  hidden\n\n  </details>\n- next\n\n\
+              > <details><summary>In a quote</summary>\n>\n> - hidden\n> - more\n>\n> </details>\n";
+    let it = Interactive {
+        hscroll: false,
+        details: Some(Folds::default()),
+    };
+    let l = lay_interactive(md, 40, &RenderOptions::default(), it);
+    check_interactive(&l);
+    let text = lines(&l);
+    assert!(
+        text.contains(&"  ▸ In a list (1 line)".to_owned()),
+        "{text:#?}"
+    );
+    assert!(
+        text.contains(&"▎ ▸ In a quote (2 lines)".to_owned()),
+        "{text:#?}"
+    );
+    assert!(!text.iter().any(|t| t.contains("hidden")), "{text:#?}");
+    assert_eq!(l.details[1].col, 2, "after the quote bar");
+}
+
+#[test]
+fn unwrapped_code_is_a_wide_block_in_the_pager() {
+    let mut opts = RenderOptions::default();
+    opts.code.wrap = false;
+    let long = "x".repeat(70);
+    let md = format!("- item\n\n  ```\n  short\n  {long}\n  ```\n");
+    // Stream mode: cut with ›.
+    let (_, l) = lay_with(&md, 40, &plain_caps(), &opts);
+    assert!(l.wide.is_empty() && l.narrowed);
+    assert!(lines(&l).iter().any(|t| t.contains('›')));
+    // The pager: the whole line, in a block recorded as wide.
+    let it = Interactive {
+        hscroll: true,
+        details: None,
+    };
+    let l = lay_interactive(&md, 40, &opts, it);
+    check_interactive(&l);
+    assert!(!l.narrowed);
+    assert_eq!(l.wide.len(), 1);
+    let w = l.wide[0];
+    assert_eq!(w.x0, 2, "after the list indentation");
+    assert!(lines(&l).iter().any(|t| t.contains(&long)));
+    assert_eq!(w.max_shift(l.measure), w.cols - l.measure);
+    let row = (0..l.len())
+        .find(|&i| l.line_text(i).contains(&long))
+        .unwrap();
+    assert_eq!(l.shift_at(row, 5), 5);
+    assert_eq!(l.shift_at(row, 999), w.max_shift(l.measure));
+    assert_eq!(l.shift_at(0, 5), 0, "not in the block");
+    // Columns through the window.
+    assert_eq!(l.shown_col(row, 1, 5), Some(1), "the prefix stays");
+    assert_eq!(l.shown_col(row, 10, 5), Some(5));
+    assert_eq!(l.shown_col(row, 4, 5), None, "shifted out");
+    assert_eq!(l.shown_col(row, l.measure + 5, 5), None, "beyond the edge");
+    assert_eq!(l.layout_col(row, 5, 5), 10);
+    assert_eq!(l.layout_col(row, 1, 5), 1);
+    // Code that fits is no wide block.
+    let l = lay_interactive("```\nshort\n```\n", 40, &opts, it);
+    assert!(l.wide.is_empty());
+}
+
+#[test]
+fn wide_tables_scroll_or_become_records() {
+    let head: Vec<String> = (1..=12).map(|i| format!("Column {i}")).collect();
+    let md = format!(
+        "| {} |\n|{}\n| {} |\n",
+        head.join(" | "),
+        "---|".repeat(12),
+        (1..=12)
+            .map(|i| format!("v{i}"))
+            .collect::<Vec<_>>()
+            .join(" | ")
+    );
+    let it = Interactive {
+        hscroll: true,
+        details: None,
+    };
+    let l = lay_interactive(&md, 40, &RenderOptions::default(), it);
+    check_interactive(&l);
+    assert_eq!(l.wide.len(), 1);
+    let w = l.wide[0];
+    assert_eq!((w.start, w.end), (0, 5), "borders, header, rule, row");
+    assert!(lines(&l)[1].contains("Column 12"));
+    // Every row of the grid is as wide as the block.
+    for i in w.start..w.end {
+        assert_eq!(l.lines[i as usize].cols, w.cols);
+    }
+    // `overflow = "records"`, and stream mode: records.
+    let mut opts = RenderOptions::default();
+    opts.tables.overflow = crate::options::TableOverflow::Records;
+    let l = lay_interactive(&md, 40, &opts, it);
+    assert!(l.wide.is_empty());
+    assert!(
+        lines(&l).iter().any(|t| t.starts_with("Column 1: v1")),
+        "{:#?}",
+        lines(&l)
+    );
+    let (_, l) = lay(&md, 40);
+    assert!(l.wide.is_empty() && l.narrowed);
+}
+
+#[test]
+fn collapsed_details_first_in_a_list_item_keep_the_marker() {
+    let md = "- <details><summary>First thing</summary>\n\n  hidden\n\n  </details>\n- second\n";
+    let it = Interactive {
+        hscroll: false,
+        details: Some(Folds::default()),
+    };
+    let l = lay_interactive(md, 40, &RenderOptions::default(), it);
+    check_interactive(&l);
+    assert_eq!(lines(&l), ["• ▸ First thing (1 line)", "", "• second"]);
+    assert_eq!(l.details[0].col, 2);
+    // Expanded: the body under it, the next item after.
+    let toggled = [0];
+    let it = Interactive {
+        hscroll: false,
+        details: Some(Folds {
+            open: false,
+            toggled: &toggled,
+        }),
+    };
+    let l = lay_interactive(md, 40, &RenderOptions::default(), it);
+    assert_eq!(lines(&l), ["• ▾ First thing", "    hidden", "", "• second"]);
+}
+
+#[test]
+fn nested_details_in_a_quote_in_a_list() {
+    let md = "- > <details><summary>Outer</summary>\n  >\n  > <details><summary>Inner</summary>\n  >\n  > \
+              ## Deep\n  >\n  > text\n  >\n  > </details>\n  >\n  > </details>\n\nAfter.\n";
+    let it = Interactive {
+        hscroll: false,
+        details: Some(Folds::default()),
+    };
+    let l = lay_interactive(md, 40, &RenderOptions::default(), it);
+    check_interactive(&l);
+    assert_eq!(lines(&l)[0], "• ▎ ▸ Outer (1 line)", "{:#?}", lines(&l));
+    assert_eq!(
+        l.heading_folds(HeadingId(0)),
+        [0, 1],
+        "both hide the heading"
+    );
+    // Both open: everything shows, positions unchanged.
+    let toggled = [0, 1];
+    let open = Interactive {
+        hscroll: false,
+        details: Some(Folds {
+            open: false,
+            toggled: &toggled,
+        }),
+    };
+    let o = lay_interactive(md, 40, &RenderOptions::default(), open);
+    check_interactive(&o);
+    assert!(
+        lines(&o).iter().any(|t| t.contains("text")),
+        "{:#?}",
+        lines(&o)
+    );
+    let last = |l: &Layout| l.lines.last().map(|x| x.pos);
+    assert_eq!(last(&l), last(&o));
+    assert!(o.heading_folds(HeadingId(0)).is_empty());
+}
+
+#[test]
+fn thirty_column_tables_scroll() {
+    let n = 30;
+    let row = |f: &dyn Fn(usize) -> String| {
+        format!("| {} |\n", (1..=n).map(f).collect::<Vec<_>>().join(" | "))
+    };
+    let md = format!(
+        "{}|{}\n{}{}",
+        row(&|i| format!("Column {i}")),
+        "---|".repeat(n),
+        row(&|i| format!("{i} 日本 😀")),
+        row(&|i| format!("[l{i}](https://example.com/{i})")),
+    );
+    let it = Interactive {
+        hscroll: true,
+        details: None,
+    };
+    let l = lay_interactive(&md, 80, &RenderOptions::default(), it);
+    check_interactive(&l);
+    assert_eq!(l.wide.len(), 1);
+    let w = l.wide[0];
+    assert!(w.cols > 300 && w.cols < MAX_WIDE, "{w:?}");
+    // Every row and border is as wide as the block: the borders line up
+    // whatever the shift.
+    for i in w.start..w.end {
+        assert_eq!(
+            l.lines[i as usize].cols,
+            w.cols,
+            "{}",
+            l.line_text(i as usize)
+        );
+    }
+    // The links, and their numbered references below (no OSC 8 here).
+    assert_eq!(l.link_hits.len(), 2 * n);
+}
+
+#[test]
+fn borderless_wide_tables_with_empty_rows() {
+    let mut opts = RenderOptions::default();
+    opts.glyphs.table = crate::options::TableBorder::None;
+    let cols = 14;
+    let md = format!(
+        "| {} |\n|{}\n| {} |\n",
+        (1..=cols)
+            .map(|i| format!("Head {i}"))
+            .collect::<Vec<_>>()
+            .join(" | "),
+        "---|".repeat(cols),
+        vec![" "; cols].join(" | "),
+    );
+    let it = Interactive {
+        hscroll: true,
+        details: None,
+    };
+    let l = lay_interactive(&md, 40, &opts, it);
+    check_interactive(&l);
+    assert_eq!(l.wide.len(), 1, "{}", l.dump());
+}
+
+#[test]
+fn empty_details_have_no_count() {
+    let it = Interactive {
+        hscroll: false,
+        details: Some(Folds::default()),
+    };
+    let l = lay_interactive(
+        "<details><summary>Nothing</summary>\n</details>\n",
+        40,
+        &RenderOptions::default(),
+        it,
+    );
+    assert_eq!(lines(&l), ["▸ Nothing"]);
+    assert_eq!(l.details[0].body_lines, 0);
+}
+
+#[test]
+fn links_in_collapsed_details_get_no_reference() {
+    // Plain output numbers links; a collapsed body's links are not shown.
+    let md = "[seen](https://a.example) and [twice](https://b.example)\n\n<details><summary>S</summary>\n\n\
+              [hidden](https://c.example) and [again](https://b.example)\n\n</details>\n\n\
+              [after](https://d.example)\n";
+    let it = Interactive {
+        hscroll: false,
+        details: Some(Folds::default()),
+    };
+    let l = lay_interactive(md, 60, &RenderOptions::default(), it);
+    let text = lines(&l).join("\n");
+    assert!(text.contains("[1]: https://a.example"), "{text}");
+    assert!(text.contains("[2]: https://b.example"), "{text}");
+    assert!(text.contains("[3]: https://d.example"), "{text}");
+    assert!(!text.contains("c.example"), "{text}");
+}

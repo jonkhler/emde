@@ -7,6 +7,7 @@
 //! one column of padding on each side a table needs `3n + 1` extra columns.
 
 use crate::ir::{HAlign, Table};
+use crate::options::TableOverflow;
 use crate::style::{Color, StyleId};
 use crate::term::ColorDepth;
 use crate::text::{Line as WrapLine, Piece};
@@ -138,6 +139,27 @@ fn shrink(min: &[u16], avail: u64) -> Vec<u16> {
     w
 }
 
+/// Widest a column of a shifted table gets (longer cells wrap).
+const SCROLL_COL: u16 = 32;
+
+/// Column widths for a table shown at its natural width (to be shifted
+/// sideways): columns up to [`SCROLL_COL`] wide keep their natural width,
+/// wider ones share what is left of `avail` (at least [`SCROLL_COL`]
+/// each). Never below a column's widest word (up to [`SCROLL_COL`]).
+fn scroll_widths(mins: &[u16], maxs: &[u16], avail: u16) -> Vec<u16> {
+    let budget = maxs
+        .iter()
+        .map(|&m| m.clamp(1, SCROLL_COL))
+        .fold(0u16, u16::saturating_add)
+        .max(avail);
+    allocate_columns(mins, maxs, budget).unwrap_or_else(|| {
+        mins.iter()
+            .zip(maxs)
+            .map(|(&lo, &hi)| hi.min(SCROLL_COL).max(lo.min(SCROLL_COL)).max(1))
+            .collect()
+    })
+}
+
 /// A wrapped cell: its lines and their pieces.
 type Wrapped = (Vec<WrapLine>, Vec<Piece>);
 
@@ -190,9 +212,17 @@ impl Builder<'_> {
         } else {
             None
         };
-        match widths {
-            Some(widths) => self.grid(t, &head, &rows, &widths, show_head, off, &row_offs),
-            None => self.records(t, &rows, width, off, &row_offs),
+        let scroll = self.interactive.hscroll && self.opts.tables.overflow == TableOverflow::Scroll;
+        match (widths, scroll) {
+            (Some(widths), _) => self.grid(t, &head, &rows, &widths, show_head, off, &row_offs),
+            (None, true) => {
+                let widths = scroll_widths(&mins, &maxs, width.saturating_sub(overhead));
+                self.wide_block(|b| b.grid(t, &head, &rows, &widths, show_head, off, &row_offs));
+            }
+            (None, false) => {
+                self.out.narrowed = true;
+                self.records(t, &rows, width, off, &row_offs);
+            }
         }
         self.off = off.saturating_add(to_u32(total));
     }

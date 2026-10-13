@@ -8,7 +8,7 @@
 use crate::color::mix_oklab;
 use crate::ir::{
     Alert, Block, CodeBlock, DefItem, FrontMatter, FrontMatterFormat, HAlign, HeadingId, Inlines,
-    List,
+    List, SrcPos,
 };
 use crate::options::{FrontMatterMode, H1Style, H2Style, When};
 use crate::style::{Attrs, Color, Rgb, Style, StyleId};
@@ -17,10 +17,10 @@ use crate::text::str_width;
 use crate::theme::Element;
 
 use super::build::{Builder, Fade, Seg};
-use super::inline::{Composed, Look, Tail};
+use super::inline::{Composed, Look, Tail, suffixed};
 use super::scripts::superscript;
 use super::style::Ctx;
-use super::{Fill, LineKind, SpanFlags};
+use super::{DetailsInfo, Fill, LineKind, SpanFlags};
 
 /// Share of the alert colour in an alert's background tint.
 pub(crate) const ALERT_TINT: f32 = 0.10;
@@ -57,7 +57,11 @@ impl Builder<'_> {
             Block::Rule => self.rule(),
             Block::Figure(f) => self.figure(f),
             Block::DefList(items) => self.deflist(items),
-            Block::Details { summary, body } => self.details(summary, body),
+            Block::Details {
+                summary,
+                body,
+                open,
+            } => self.details(summary, body, *open),
             Block::Align { align, body } => self.aligned(*align, |b| b.blocks(body, false)),
             Block::FrontMatter(fm) => self.front_matter(fm),
             Block::Html(raw) => self.html_block(raw),
@@ -561,10 +565,77 @@ impl Builder<'_> {
         }
     }
 
-    fn details(&mut self, summary: &Inlines, body: &[Block]) {
+    /// A `<details>`: its summary line, then its body, indented. In the
+    /// pager it may be collapsed: then its body is laid out (so the body's
+    /// lines can be counted and positions stay the same) and taken back,
+    /// and the summary line says how many lines are hidden.
+    fn details(&mut self, summary: &Inlines, body: &[Block], open_attr: bool) {
+        let id = to_u32(self.out.details.len());
+        let off = self.off;
+        let body_off = off.saturating_add(to_u32(summary.text.len()));
+        self.out.details.push(DetailsInfo {
+            line: u32::MAX,
+            rows: 0,
+            col: 0,
+            body_lines: 0,
+            open: true,
+            open_attr,
+            parent: self.details_stack.last().copied().unwrap_or(u32::MAX),
+            pos: SrcPos { top: self.top, off },
+            body: body_off,
+            end: body_off,
+        });
+        let open = self
+            .interactive
+            .details
+            .is_none_or(|f| f.is_open(id, open_attr));
+        let snap = (!open).then(|| self.snapshot());
+        let head = self.summary(summary, None);
+        let start = self.out.lines.len();
+        self.off = body_off;
+        self.details_stack.push(id);
+        let hang = to_u16(str_width(self.deco.details, self.amb)).saturating_add(1);
+        self.push_indent(hang);
+        self.blocks(body, false);
+        self.pop_level();
+        self.details_stack.pop();
+        let end = self.off;
+        let body_lines = to_u32(self.out.lines.len().saturating_sub(start));
+        let head = match snap {
+            Some(s) => {
+                self.rollback(s);
+                // What the body holds is not shown.
+                for d in self.out.details.iter_mut().skip(id as usize + 1) {
+                    d.line = u32::MAX;
+                    d.rows = 0;
+                }
+                self.off = off;
+                let head = self.summary(summary, Some(body_lines));
+                self.off = end;
+                head
+            }
+            None => head,
+        };
+        if let Some(d) = self.out.details.get_mut(id as usize) {
+            (d.line, d.rows, d.col) = head;
+            d.open = open;
+            d.body_lines = body_lines;
+            d.end = end;
+        }
+    }
+
+    /// The summary line of a `<details>`: `▾ Summary`, or `▸ Summary (42
+    /// lines)` collapsed with `hidden` lines. Returns its first line, its
+    /// number of lines and the marker's column.
+    fn summary(&mut self, summary: &Inlines, hidden: Option<u32>) -> (u32, u32, u16) {
         let marker_style = self.sty.el(Element::Muted);
         let strong = self.sty.el(Element::Strong);
-        let marker = format!("{} ", self.deco.details);
+        let glyph = if hidden.is_some() {
+            self.deco.folded
+        } else {
+            self.deco.details
+        };
+        let marker = format!("{glyph} ");
         let hang = to_u16(str_width(&marker, self.amb));
         let off = self.off;
         let c = if summary.is_empty() {
@@ -572,14 +643,40 @@ impl Builder<'_> {
         } else {
             self.compose(summary, strong)
         };
+        let c = match hidden {
+            // Nothing to count: no count.
+            Some(0) | None => c,
+            Some(n) => {
+                let s = if n == 1 { "" } else { "s" };
+                suffixed(c, &format!(" ({n} line{s})"), marker_style)
+            }
+        };
         let c = self.prefixed(&marker, marker_style, c);
         let width = self.avail();
         let look = Look { hang, ..Look::TEXT };
+        let before = self.out.lines.len();
         self.emit(&c, width, &look, off);
         self.off = off.saturating_add(to_u32(summary.text.len()));
-        self.push_indent(hang);
-        self.blocks(body, false);
-        self.pop_level();
+        // After the blank line before it, if one was drawn.
+        let after = self.out.lines.len();
+        let first = (before..after)
+            .find(|&i| {
+                self.out
+                    .lines
+                    .get(i)
+                    .is_some_and(|l| l.kind != LineKind::Blank)
+            })
+            .unwrap_or(before);
+        let rows = after.saturating_sub(first);
+        // The marker's column: where the first span showing it starts.
+        let mut col = 0u16;
+        for span in self.out.line_spans(first) {
+            if self.out.span_text(span).starts_with(glyph) {
+                break;
+            }
+            col = col.saturating_add(span.cols);
+        }
+        (to_u32(first), to_u32(rows), col)
     }
 
     // ----- front matter and raw HTML -----------------------------------------------

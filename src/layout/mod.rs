@@ -27,6 +27,19 @@
 //! their plain text, and [`CodeInfo`] holds the highlight runs the emitter
 //! paints by byte offset.
 //!
+//! # The pager's layouts
+//!
+//! [`layout_with`] takes what the pager changes about a layout
+//! ([`Interactive`]): which `<details>` are collapsed, and whether wide
+//! blocks keep their natural width. A collapsed `<details>` shows only its
+//! summary line (`▸ Summary (42 lines)`), but its body is still counted
+//! for source positions, so positions stay the same whichever blocks are
+//! open ([`Layout::details`] says where each one is). A wide block (code
+//! that is not wrapped, a table too wide for its columns) is laid out at
+//! its natural width instead of being cut or shown as records: its lines
+//! are wider than the measure, and [`Layout::wide`] tells the pager which
+//! columns it may shift sideways. Stream mode ([`layout`]) has neither.
+//!
 //! The work is split by concern: `build` holds the line and prefix machinery,
 //! `inline` turns inline content into wrapped lines, `blocks` lays out the
 //! block elements, and `code`, `table`, `figure` and `math` the elements with
@@ -50,7 +63,7 @@ use std::ops::Range;
 use bitflags::bitflags;
 
 use crate::highlight::{Highlighter, HlBlock};
-use crate::ir::{Document, ImageId, LinkId, SrcPos};
+use crate::ir::{Document, HeadingId, ImageId, LinkId, SrcPos};
 use crate::options::{Align, Height, RenderOptions};
 use crate::style::{Rgb, StyleId, StyleTable};
 use crate::term::Caps;
@@ -64,6 +77,9 @@ const MIN_MEASURE: u16 = 20;
 
 /// Figure height cap when the screen height is unknown.
 const DEFAULT_MAX_ROWS: u16 = 30;
+
+/// Widest a wide block is laid out (columns); longer code lines are cut.
+pub const MAX_WIDE: u16 = 2048;
 
 /// The tallest figure `opts.images.max_height` allows on a terminal of
 /// `caps.size`.
@@ -115,6 +131,112 @@ pub struct Layout {
     pub code: Vec<CodeInfo>,
     /// The styles spans and fills refer to.
     pub styles: StyleTable,
+    /// Blocks wider than the measure, top to bottom (pager layouts only;
+    /// see the module docs).
+    pub wide: Vec<Wide>,
+    /// The `‹` and `›` marking where a shifted wide block is clipped (ASCII
+    /// `<` and `>` with `ascii`).
+    pub clip: [&'static str; 2],
+    /// East Asian Ambiguous characters were measured as wide.
+    pub ambiguous_wide: bool,
+    /// Every `<details>`, in layout order (its index is its id, which
+    /// [`Folds::toggled`] uses).
+    pub details: Vec<DetailsInfo>,
+    /// For each outline heading (indexed like [`Document::headings`]), the
+    /// innermost `<details>` it is in; `u32::MAX` for none.
+    pub heading_details: Vec<u32>,
+    /// A wide block was cut to the measure or shown as records (only in
+    /// layouts without [`Interactive::hscroll`]).
+    pub narrowed: bool,
+}
+
+/// A block wider than the measure: its lines keep their natural width and
+/// the pager shows a window of them, shifted sideways. Columns before `x0`
+/// (the prefix of the containers around the block: list indentation,
+/// quote bars) never move.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Wide {
+    /// Its lines: `start..end`.
+    pub start: u32,
+    pub end: u32,
+    /// The column where the block starts (relative to the text column).
+    pub x0: u16,
+    /// Columns its widest line takes (relative to the text column).
+    pub cols: u16,
+    /// The style of the `‹` and `›` at the clipped edges.
+    pub marker: StyleId,
+}
+
+impl Wide {
+    /// The most the block can be shifted by in a text column `measure`
+    /// wide.
+    pub fn max_shift(&self, measure: u16) -> u16 {
+        self.cols.saturating_sub(measure)
+    }
+}
+
+/// One `<details>` block of a layout.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct DetailsInfo {
+    /// The first line of its summary; `u32::MAX` when not shown (it is
+    /// inside a collapsed block).
+    pub line: u32,
+    /// Lines the summary takes.
+    pub rows: u32,
+    /// Column of the `▸`/`▾` marker on the first line (relative to the
+    /// text column).
+    pub col: u16,
+    /// Lines its body takes when shown.
+    pub body_lines: u32,
+    /// Shown expanded.
+    pub open: bool,
+    /// Written `<details open>`.
+    pub open_attr: bool,
+    /// The `<details>` it is in; `u32::MAX` for none.
+    pub parent: u32,
+    /// Where it starts: the summary's position.
+    pub pos: SrcPos,
+    /// Content offsets (in block `pos.top`) where its body starts and
+    /// where it ends.
+    pub body: u32,
+    pub end: u32,
+}
+
+impl DetailsInfo {
+    /// Whether `pos` is in its body.
+    pub fn holds(&self, pos: SrcPos) -> bool {
+        pos.top == self.pos.top && (self.body..self.end).contains(&pos.off)
+    }
+}
+
+/// What the pager changes about a layout ([`layout_with`]); the default
+/// is stream mode's.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Interactive<'a> {
+    /// Wide blocks keep their natural width, to be shifted sideways: code
+    /// when it is not wrapped, and tables too wide for their columns when
+    /// `tables.overflow` is `scroll`. Off, code is cut with `›` and such
+    /// tables become records.
+    pub hscroll: bool,
+    /// Which `<details>` show their body; `None`: all of them.
+    pub details: Option<Folds<'a>>,
+}
+
+/// Which `<details>` are expanded.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Folds<'a> {
+    /// Blocks without `open` are expanded too (`pager.details =
+    /// "expanded"`).
+    pub open: bool,
+    /// Details ids (sorted) toggled from what they would be.
+    pub toggled: &'a [u32],
+}
+
+impl Folds<'_> {
+    /// Whether details `id` (written with `open` or not) is expanded.
+    pub fn is_open(&self, id: u32, open_attr: bool) -> bool {
+        (self.open || open_attr) != self.toggled.binary_search(&id).is_ok()
+    }
 }
 
 /// One line of output.
@@ -290,7 +412,6 @@ pub fn layout(
     highlighter: &dyn Highlighter,
     sizer: &dyn ImageSizer,
 ) -> Layout {
-    let (indent, measure) = geometry(width, opts, caps);
     let inputs = build::Inputs {
         doc,
         theme,
@@ -298,7 +419,40 @@ pub fn layout(
         opts,
         highlighter,
         sizer,
+        interactive: Interactive::default(),
     };
+    run(inputs, width)
+}
+
+/// [`layout`] for the pager: with collapsed `<details>` and wide blocks
+/// as `interactive` says (see the module docs). Lines of wide blocks may
+/// be wider than the measure.
+#[allow(clippy::too_many_arguments)]
+pub fn layout_with(
+    doc: &Document,
+    width: u16,
+    theme: &Theme,
+    caps: &Caps,
+    opts: &RenderOptions,
+    highlighter: &dyn Highlighter,
+    sizer: &dyn ImageSizer,
+    interactive: Interactive<'_>,
+) -> Layout {
+    let inputs = build::Inputs {
+        doc,
+        theme,
+        caps,
+        opts,
+        highlighter,
+        sizer,
+        interactive,
+    };
+    run(inputs, width)
+}
+
+#[inline(never)]
+fn run(inputs: build::Inputs<'_>, width: u16) -> Layout {
+    let (indent, measure) = geometry(width, inputs.opts, inputs.caps);
     build::Builder::new(inputs, width.max(1), indent, measure).run()
 }
 
@@ -370,6 +524,101 @@ impl Layout {
     /// Whether there are no lines.
     pub fn is_empty(&self) -> bool {
         self.lines.is_empty()
+    }
+
+    /// The wide block line `line` is in.
+    pub fn wide_at(&self, line: usize) -> Option<&Wide> {
+        let line = u32::try_from(line).ok()?;
+        let i = self.wide.partition_point(|w| w.end <= line);
+        self.wide.get(i).filter(|w| w.start <= line)
+    }
+
+    /// How far line `line` is shifted when the pager's offset is `hscroll`:
+    /// as far as its block allows (0 outside wide blocks).
+    pub fn shift_at(&self, line: usize, hscroll: u16) -> u16 {
+        self.wide_at(line)
+            .map_or(0, |w| hscroll.min(w.max_shift(self.measure)))
+    }
+
+    /// Columns line `line` covers: its spans and its background.
+    pub fn extent(&self, line: usize) -> u16 {
+        self.lines.get(line).map_or(0, |l| match l.fill {
+            Fill::Panel { to_col, .. } => l.cols.max(to_col),
+            _ => l.cols,
+        })
+    }
+
+    /// Where column `col` of line `line` (relative to the text column) is
+    /// shown when the line is shifted by `shift`: `None` when it is
+    /// shifted out of view, or under the `‹` or `›` at an edge.
+    pub fn shown_col(&self, line: usize, col: u16, shift: u16) -> Option<u16> {
+        match self.wide_at(line) {
+            Some(w) if col >= w.x0 => {
+                let shown = col.checked_sub(shift).filter(|&c| c >= w.x0)?;
+                let left = shift > 0 && shown == w.x0;
+                let right = shown.saturating_add(1) == self.measure
+                    && self.extent(line) > self.measure.saturating_add(shift);
+                (shown < self.measure && !left && !right).then_some(shown)
+            }
+            _ => Some(col),
+        }
+    }
+
+    /// The column of line `line` shown at column `col` (relative to the
+    /// text column) when the line is shifted by `shift`.
+    pub fn layout_col(&self, line: usize, col: u16, shift: u16) -> u16 {
+        match self.wide_at(line) {
+            Some(w) if col >= w.x0 => col.saturating_add(shift),
+            _ => col,
+        }
+    }
+
+    /// The `<details>` whose summary shows on line `line`: its id.
+    pub fn summary_at(&self, line: usize) -> Option<u32> {
+        let line = u32::try_from(line).ok()?;
+        let i = self.details.iter().position(|d| {
+            d.line != u32::MAX && (d.line..d.line.saturating_add(d.rows)).contains(&line)
+        })?;
+        u32::try_from(i).ok()
+    }
+
+    /// The collapsed `<details>` holding `pos` in its body, innermost
+    /// last (empty when `pos` is shown).
+    pub fn folded_at(&self, pos: SrcPos) -> Vec<u32> {
+        let mut out: Vec<u32> = Vec::new();
+        for (i, d) in self.details.iter().enumerate() {
+            if !d.open && d.holds(pos) {
+                out.push(u32::try_from(i).unwrap_or(u32::MAX));
+            }
+        }
+        out
+    }
+
+    /// The collapsed `<details>` around details `id` (itself included when
+    /// it is collapsed), outermost first.
+    pub fn folded_chain(&self, id: u32) -> Vec<u32> {
+        let mut out = Vec::new();
+        let mut cur = id;
+        while let Some(d) = self.details.get(cur as usize) {
+            if !d.open {
+                out.push(cur);
+            }
+            if d.parent >= cur {
+                break;
+            }
+            cur = d.parent;
+        }
+        out.reverse();
+        out
+    }
+
+    /// The collapsed `<details>` that hide heading `h`, outermost first
+    /// (empty when it is shown or in none).
+    pub fn heading_folds(&self, h: HeadingId) -> Vec<u32> {
+        match self.heading_details.get(h.index()) {
+            Some(&d) if d != u32::MAX => self.folded_chain(d),
+            _ => Vec::new(),
+        }
     }
 
     /// The line showing `pos` (for re-anchoring the view after a resize or

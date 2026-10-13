@@ -78,19 +78,19 @@ pub(crate) fn visible(o: &Occurrence, top: usize, rows: usize) -> bool {
     first < top + rows && last >= top
 }
 
-/// The first hit of `o` on lines `top..top + rows`: `(line, start column)`.
+/// The first hit of `o` on lines `top..top + rows`: `(line, columns)`.
 pub(crate) fn first_visible_hit(
     layout: &Layout,
     o: &Occurrence,
     top: usize,
     rows: usize,
-) -> Option<(usize, u16)> {
+) -> Option<(usize, std::ops::Range<u16>)> {
     let hits = layout
         .link_hits
         .get(o.first as usize..(o.first as usize).saturating_add(o.hits as usize))?;
     hits.iter()
         .find(|h| (h.line as usize) >= top && (h.line as usize) < top + rows)
-        .map(|h| (h.line as usize, h.cols.start))
+        .map(|h| (h.line as usize, h.cols.clone()))
 }
 
 /// `path` relative to `base` unless absolute.

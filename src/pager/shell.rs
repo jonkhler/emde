@@ -12,6 +12,7 @@
 use std::collections::{HashMap, VecDeque};
 use std::io;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -33,7 +34,7 @@ use super::images::{self, Images, WORK_POLL};
 use super::keymap::{Command, SEQUENCE_TIMEOUT};
 use super::os::{self, ClipboardPlan, OpenPlan};
 use super::sidebar;
-use super::state::{DocKey, Settings, State};
+use super::state::{DocKey, Page, Settings, State};
 use super::term::{
     MAX_POLL, MIN_POLL, MOUSE_OFF, MOUSE_ON, Signals, TermEvent, Terminal, clamp_poll,
 };
@@ -44,6 +45,31 @@ use super::{DocLoader, PagerExit, PagerSession};
 
 /// Quiet time after a resize before the layout follows.
 pub(crate) const RESIZE_DEBOUNCE: Duration = Duration::from_millis(30);
+/// Layouts kept to show again without laying out (a `<details>` closed
+/// again, a match's block opened again): those the last relayouts
+/// replaced.
+const LAYOUT_CACHE: usize = 2;
+
+/// What a layout of the current document was made from (besides what
+/// never changes while the pager runs).
+#[derive(Clone, Debug)]
+struct LayoutKey {
+    /// The document (held, so its address is never reused meanwhile).
+    page: Rc<Page>,
+    size: (u16, u16),
+    cols: u16,
+    wide: bool,
+    images: crate::term::Graphics,
+    toggled: Vec<u32>,
+}
+
+impl PartialEq for LayoutKey {
+    fn eq(&self, o: &Self) -> bool {
+        Rc::ptr_eq(&self.page, &o.page)
+            && (self.size, self.cols, self.wide, self.images) == (o.size, o.cols, o.wide, o.images)
+            && self.toggled == o.toggled
+    }
+}
 /// Events taken in one go before a frame is painted.
 const MAX_BATCH: usize = 64;
 
@@ -127,6 +153,12 @@ pub(crate) struct Shell<'t, T: Terminal> {
     /// baseline when a document comes back from memory).
     stamps: HashMap<PathBuf, Option<Stamp>>,
     resize: Option<((u16, u16), Instant)>,
+    /// Layouts replaced lately, newest last (see [`LAYOUT_CACHE`]).
+    layouts: Vec<(LayoutKey, Layout)>,
+    /// What the layout shown was made from.
+    made: Option<LayoutKey>,
+    /// Effects of the first actions, carried out when the loop starts.
+    startup: Vec<Effect>,
     /// When an unfinished key sequence stops waiting for its next key.
     key_deadline: Option<Instant>,
     signals: Signals,
@@ -176,14 +208,36 @@ impl<'t, T: Terminal> Shell<'t, T> {
         let width = size
             .0
             .saturating_sub(sidebar::cols(&settings.sidebar, None, size.0, &doc.doc));
-        let first = first.filter(|l| l.width == width).unwrap_or_else(|| {
-            layout::layout(&doc.doc, width, &theme, &caps, &opts, &*highlighter, sizer)
+        // A layout made for stream mode will do if it has neither
+        // `<details>` (collapsed here) nor wide blocks (cut there).
+        let first = first.filter(|l| l.width == width && l.details.is_empty() && !l.narrowed);
+        let made_here = first.is_none();
+        let first = first.unwrap_or_else(|| {
+            let it = settings.interactive();
+            layout::layout_with(
+                &doc.doc,
+                width,
+                &theme,
+                &caps,
+                &opts,
+                &*highlighter,
+                sizer,
+                it,
+            )
         });
         let mut stamps = HashMap::new();
         if let Origin::File(p) = &doc.source.origin {
             stamps.insert(p.clone(), watch::stamp(p));
         }
         let mut state = State::new(doc, key, first, size, &pager, settings);
+        let made = made_here.then(|| LayoutKey {
+            page: Rc::clone(&state.page),
+            size,
+            cols: width,
+            wide: false,
+            images: images.mode(),
+            toggled: Vec::new(),
+        });
         let more = more
             .into_iter()
             .map(|d| {
@@ -195,9 +249,12 @@ impl<'t, T: Terminal> Shell<'t, T> {
             })
             .collect();
         state.add_files(more);
-        if let Some(anchor) = anchor {
-            update(&mut state, Action::Anchor(anchor));
-        }
+        // Carried out once the terminal is set up (an anchor inside
+        // collapsed `<details>` lays the document out again).
+        let startup = match anchor {
+            Some(anchor) => update(&mut state, Action::Anchor(anchor)),
+            None => Vec::new(),
+        };
         if open_toc {
             update(&mut state, Action::Command(Command::Outline));
         }
@@ -223,6 +280,9 @@ impl<'t, T: Terminal> Shell<'t, T> {
             watcher: None,
             stamps,
             resize: None,
+            layouts: Vec::new(),
+            made,
+            startup,
             key_deadline: None,
             signals,
             dirty: true,
@@ -234,6 +294,10 @@ impl<'t, T: Terminal> Shell<'t, T> {
     pub(crate) fn run(mut self) -> io::Result<PagerExit> {
         self.term.term.set_cleanup(Vec::new());
         self.term.term.enter(self.state.mouse())?;
+        let startup = std::mem::take(&mut self.startup);
+        if let Some(exit) = self.run_effects(startup)? {
+            return Ok(exit);
+        }
         self.sync_watcher();
         self.paint()?;
         if self.panic_test {
@@ -397,8 +461,18 @@ impl<'t, T: Terminal> Shell<'t, T> {
             let more = match effect {
                 Effect::Quit => return Ok(Some(PagerExit::Quit)),
                 Effect::Relayout => {
-                    let layout = self.layout();
-                    update(&mut self.state, Action::Layout(layout))
+                    let (key, layout) = self.layout();
+                    let more = update(&mut self.state, Action::Layout(layout));
+                    // The layout it replaced, for later.
+                    if let (Some(made), Some(old)) =
+                        (self.made.replace(key), self.state.spare.take())
+                    {
+                        if self.layouts.len() >= LAYOUT_CACHE {
+                            self.layouts.remove(0);
+                        }
+                        self.layouts.push((made, old));
+                    }
+                    more
                 }
                 Effect::Redraw => {
                     self.screen.invalidate();
@@ -441,22 +515,44 @@ impl<'t, T: Terminal> Shell<'t, T> {
     }
 
     /// Lay the current document out for the current size and settings, in
-    /// the columns the outline sidebar leaves.
-    fn layout(&mut self) -> Layout {
+    /// the columns the outline sidebar leaves (or take a layout made for
+    /// them before); with what it was made from.
+    fn layout(&mut self) -> (LayoutKey, Layout) {
         let (cols, rows) = self.state.size();
         self.caps.size = Some((cols, rows));
         self.opts.max_width = if self.state.wide() { 0 } else { self.max_width };
+        let key = LayoutKey {
+            page: Rc::clone(&self.state.page),
+            size: (cols, rows),
+            cols: self.state.doc_cols(),
+            wide: self.state.wide(),
+            images: self.images.mode(),
+            toggled: self
+                .state
+                .doc_view()
+                .map(|v| v.toggled.clone())
+                .unwrap_or_default(),
+        };
         let doc = self.state.document();
+        // Also says which store the next frames show.
         let sizer = self.images.sizer(self.state.key(), doc);
-        layout::layout(
+        // Only the current document's layouts are kept.
+        self.layouts.retain(|(k, _)| Rc::ptr_eq(&k.page, &key.page));
+        if let Some(i) = self.layouts.iter().position(|(k, _)| *k == key) {
+            let (_, layout) = self.layouts.remove(i);
+            return (key, layout);
+        }
+        let layout = layout::layout_with(
             doc,
-            self.state.doc_cols(),
+            key.cols,
             &self.theme,
             &self.caps,
             &self.opts,
             &*self.highlighter,
             sizer,
-        )
+            self.state.interactive(),
+        );
+        (key, layout)
     }
 
     /// The image view's image: read (or found among those read already, a
@@ -506,7 +602,7 @@ impl<'t, T: Terminal> Shell<'t, T> {
         update(
             &mut self.state,
             Action::ImageShown {
-                doc,
+                doc: Box::new(doc),
                 layout,
                 pixels,
                 problem,

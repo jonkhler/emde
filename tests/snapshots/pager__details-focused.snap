@@ -1,0 +1,25 @@
+---
+source: tests/pager.rs
+expression: "screen_text(&term, 60, 20, \"focused\")"
+---
+ 1│   Guide                                                    │
+ 2│                                                            │
+ 3│  Intro text.                                               │
+ 4│                                                            │
+ 5│  ▸ Installation (6 lines)                                  │
+  │  ========================│
+ 6│                                                            │
+ 7│  Middle text.                                              │
+ 8│                                                            │
+ 9│  ▾ Notes                                                   │
+10│    Open by default.                                        │
+11│                                                            │
+12│  The end.                                                  │
+13│                                                            │
+14│                                                            │
+15│                                                            │
+16│                                                            │
+17│                                                            │
+18│                                                            │
+19│                                                            │
+20│ text › Guide                                   L 1/12 100% │

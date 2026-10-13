@@ -1419,3 +1419,215 @@ fn a_lone_g_goes_to_the_top_after_a_pause() {
         "Long document"
     );
 }
+
+// ---------------------------------------------------------------------------
+// Wide blocks and collapsible details
+// ---------------------------------------------------------------------------
+
+/// A table of twelve columns (one cell with a link), too wide for 60
+/// columns, between two paragraphs.
+fn wide_table_doc() -> String {
+    let head: Vec<String> = (1..=12).map(|i| format!("Head {i}")).collect();
+    let row: Vec<String> = (1..=12)
+        .map(|i| match i {
+            6 => "[link](https://example.com)".to_owned(),
+            7 => "日本語".to_owned(),
+            _ => format!("cell {i}"),
+        })
+        .collect();
+    format!(
+        "Text above the table.\n\n| {} |\n|{}\n| {} |\n\nText below the table.\n",
+        head.join(" | "),
+        "---|".repeat(12),
+        row.join(" | ")
+    )
+}
+
+#[test]
+fn wide_tables_scroll_sideways_with_edge_markers() {
+    let term = FakeTerminal::new(60, 10)
+        .mark("start")
+        .keys("zl")
+        .wait(ms(5))
+        .keys("zl")
+        .mark("shifted")
+        .keys("$")
+        .mark("end")
+        .keys("^")
+        .mark("back")
+        .code(KeyCode::Left)
+        .mark("left")
+        .keys("q");
+    let (term, exit) = run(term, session(&wide_table_doc()));
+    assert_eq!(exit, PagerExit::Quit);
+    let start = screen_text(&term, 60, 10, "start");
+    insta::assert_snapshot!("wide-table", start);
+    let shifted = screen_text(&term, 60, 10, "shifted");
+    insta::assert_snapshot!("wide-table-shifted", shifted);
+    insta::assert_snapshot!("wide-table-end", screen_text(&term, 60, 10, "end"));
+    assert_eq!(
+        screen_text(&term, 60, 10, "back"),
+        start,
+        "back at the start"
+    );
+    assert_eq!(
+        screen_text(&term, 60, 10, "left"),
+        start,
+        "nothing left of it"
+    );
+    // Text around the table never moves.
+    for name in ["shifted", "end"] {
+        assert_eq!(
+            row_text(&term, 60, 10, name, 0),
+            row_text(&term, 60, 10, "start", 0)
+        );
+    }
+}
+
+#[test]
+fn unwrapped_code_scrolls_sideways() {
+    let long = (0..12)
+        .map(|i| format!("word{i}"))
+        .collect::<Vec<_>>()
+        .join("_");
+    let md =
+        format!("# Code\n\n```rust\nfn main() {{ let {long} = 1; }}\nshort();\n```\n\nAfter.\n");
+    let mut s = session(&md);
+    s.opts.code.wrap = false;
+    let term = FakeTerminal::new(50, 10)
+        .mark("start")
+        .keys("zL")
+        .mark("half")
+        .keys("q");
+    let (term, _) = run(term, s);
+    insta::assert_snapshot!("code-unwrapped", screen_text(&term, 50, 10, "start"));
+    insta::assert_snapshot!("code-shifted", screen_text(&term, 50, 10, "half"));
+}
+
+#[test]
+fn a_shift_repaints_only_the_rows_of_wide_blocks() {
+    let term = FakeTerminal::new(60, 10)
+        .wait(ms(5))
+        .mark("start")
+        .keys("zl")
+        .wait(ms(5))
+        .mark("end")
+        .keys("q");
+    let (term, _) = run(term, session(&wide_table_doc()));
+    // The frame after `zl`: between the two marks.
+    let mut writes = Vec::new();
+    let mut on = false;
+    for chunk in term.chunks() {
+        match chunk {
+            Chunk::Mark(m) if m == "start" => on = true,
+            Chunk::Mark(m) if m == "end" => on = false,
+            Chunk::Write(bytes) if on => writes.extend_from_slice(bytes),
+            _ => {}
+        }
+    }
+    let text = String::from_utf8_lossy(&writes);
+    // Rows 3 to 7 hold the table (row 1 the text above it).
+    assert!(!text.contains("\x1b[1;1H"), "{text:?}");
+    assert!(text.contains("\x1b[3;1H"), "{text:?}");
+    assert!(!text.contains("\x1b[9;1H"), "{text:?}");
+}
+
+/// A document with collapsed details: one with a heading inside, one
+/// written open.
+const DETAILS_DOC: &str = "# Guide\n\nIntro text.\n\n<details>\n<summary>Installation</summary>\n\n\
+                           ## Install steps\n\nRun the needle installer.\n\nThen restart.\n\n\
+                           </details>\n\nMiddle text.\n\n<details open>\n<summary>Notes</summary>\n\n\
+                           Open by default.\n\n</details>\n\nThe end.\n";
+
+#[test]
+fn details_collapse_and_expand() {
+    let term = FakeTerminal::new(60, 20)
+        .mark("collapsed")
+        .code(KeyCode::Tab)
+        .mark("focused")
+        .code(KeyCode::Enter)
+        .mark("expanded")
+        .code(KeyCode::Enter)
+        .mark("again")
+        .mouse(Mouse {
+            kind: MouseKind::Press(Button::Left),
+            col: 10,
+            row: 4,
+        })
+        .mark("clicked")
+        .keys("q");
+    let (term, _) = run(term, session(DETAILS_DOC));
+    let collapsed = screen_text(&term, 60, 20, "collapsed");
+    insta::assert_snapshot!("details-collapsed", collapsed);
+    insta::assert_snapshot!("details-focused", screen_text(&term, 60, 20, "focused"));
+    insta::assert_snapshot!("details-expanded", screen_text(&term, 60, 20, "expanded"));
+    let again = screen_text(&term, 60, 20, "again");
+    assert!(
+        again.contains("▸ Installation (6 lines)"),
+        "Enter closes it again: {again}"
+    );
+    let clicked = screen_text(&term, 60, 20, "clicked");
+    assert!(clicked.contains("Run the needle installer"), "{clicked}");
+}
+
+#[test]
+fn search_opens_collapsed_details() {
+    let term = FakeTerminal::new(60, 20)
+        .keys("/needle\n")
+        .mark("found")
+        .keys("n")
+        .mark("next")
+        .keys("q");
+    let (term, _) = run(term, session(DETAILS_DOC));
+    let found = screen_text(&term, 60, 20, "found");
+    insta::assert_snapshot!("details-search", found);
+    assert!(found.contains("▾ Installation"), "{found}");
+    // The only match: `n` stays on it.
+    assert!(screen_text(&term, 60, 20, "next").contains("Run the needle"));
+}
+
+/// [`render`] with `-` under dimmed cells.
+fn render_dim(p: &vt100::Parser) -> String {
+    let screen = p.screen();
+    let (rows, cols) = screen.size();
+    let mut out = render(p);
+    out.push_str("dimmed:\n");
+    for r in 0..rows {
+        let marks: String = (0..cols)
+            .map(|c| match screen.cell(r, c) {
+                Some(cell) if cell.dim() => '-',
+                _ => ' ',
+            })
+            .collect();
+        if !marks.trim().is_empty() {
+            out.push_str(&format!("{:>2}│{}│\n", r + 1, marks.trim_end()));
+        }
+    }
+    out
+}
+
+#[test]
+fn the_outline_dims_headings_inside_collapsed_details() {
+    let term = FakeTerminal::new(60, 20)
+        .keys("t")
+        .mark("outline")
+        .code(KeyCode::Down)
+        .code(KeyCode::Enter)
+        .mark("jumped")
+        .keys("q");
+    let md = format!("{DETAILS_DOC}\n{}", "More text.\n\n".repeat(20));
+    let (term, _) = run(term, session(&md));
+    let outline = render_dim(&screen_at(&term, 60, 20, Some("outline")));
+    insta::assert_snapshot!("details-outline", outline);
+    // Going to it opens its block.
+    assert_eq!(row_text(&term, 60, 20, "jumped", 0).trim(), "Install steps");
+}
+
+#[test]
+fn a_start_anchor_inside_collapsed_details_opens_them() {
+    let mut s = session(&format!("{DETAILS_DOC}\n{}", "More text.\n\n".repeat(20)));
+    s.anchor = Some("install-steps".into());
+    let term = FakeTerminal::new(60, 20).mark("first").keys("q");
+    let (term, _) = run(term, s);
+    assert_eq!(row_text(&term, 60, 20, "first", 0).trim(), "Install steps");
+}

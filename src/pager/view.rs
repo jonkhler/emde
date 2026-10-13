@@ -144,8 +144,13 @@ impl Ctx {
 /// What a row shows.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Body {
-    /// Layout line `index`, with marks over its text.
-    Line { index: usize, marks: Vec<Mark> },
+    /// Layout line `index`, with marks over its text; a line of a wide
+    /// block shifted by `shift` columns.
+    Line {
+        index: usize,
+        marks: Vec<Mark>,
+        shift: u16,
+    },
     /// Nothing (past the end of the document).
     Blank,
     /// Ready bytes, the whole row wide (the status bar).
@@ -322,6 +327,7 @@ pub fn view(state: &State, ctx: &Ctx) -> Frame {
     // when it cannot be shown.
     let lines = !image || showing.image && !showing.layout.images.is_empty();
     let mut building: Vec<Building> = Vec::with_capacity(rows);
+    let hscroll = if image { 0 } else { state.hscroll() };
     if rows > 0 && state.cols > 0 {
         for r in 0..state.view_rows() {
             let index = showing.top + r;
@@ -333,6 +339,7 @@ pub fn view(state: &State, ctx: &Ctx) -> Frame {
                     } else {
                         marks(state, ctx, index)
                     },
+                    shift: showing.layout.shift_at(index, hscroll),
                 }
             } else {
                 Body::Blank
@@ -396,10 +403,15 @@ fn hash_row(generation: u64, left: u16, row: &Building) -> u64 {
     left.hash(&mut h);
     side.hash(&mut h);
     match body {
-        Body::Line { index, marks } => {
+        Body::Line {
+            index,
+            marks,
+            shift,
+        } => {
             0u8.hash(&mut h);
             generation.hash(&mut h);
             index.hash(&mut h);
+            shift.hash(&mut h);
             for m in marks {
                 m.range.start.hash(&mut h);
                 m.range.end.hash(&mut h);
@@ -449,9 +461,33 @@ fn marks(state: &State, ctx: &Ctx, index: usize) -> Vec<Mark> {
     merge(focus, found)
 }
 
-/// Marks over the spans of the focused link on line `index`.
+/// Marks over the spans of the focused link on line `index` (or of the
+/// focused `<details>` summary, from its marker on).
 fn focus_marks(state: &State, ctx: &Ctx, index: usize) -> Vec<Mark> {
     let mut out = Vec::new();
+    if let Some(d) = state
+        .summary_focus
+        .and_then(|id| state.layout.details.get(id as usize))
+        && d.line != u32::MAX
+        && (d.line as usize..d.line as usize + d.rows as usize).contains(&index)
+    {
+        let text = LineText::new(&state.layout, index);
+        // From the marker's column on (as bytes: the prefix before it is
+        // spaces and one-column bars).
+        let mut col = 0u16;
+        let mut from = 0usize;
+        for span in state.layout.line_spans(index) {
+            if col >= d.col {
+                break;
+            }
+            col = col.saturating_add(span.cols);
+            from += span.len as usize;
+        }
+        let rest = text.text.get(from..).unwrap_or("");
+        let start = from + (rest.len() - rest.trim_start().len());
+        text.marks(start..text.text.len(), ctx.styles.link_focus, &mut out);
+        return out;
+    }
     let Some(f) = state.focus else {
         return out;
     };
@@ -840,6 +876,13 @@ fn outline(state: &State, ctx: &Ctx, o: &Outline, rows: &mut [Building]) {
                         (false, true) => st.toc_current,
                         (false, false) => st.toc,
                     };
+                    // Inside a collapsed `<details>`: dimmed.
+                    let folded = state.layout.heading_line.get(h.index()) == Some(&u32::MAX);
+                    let style = if folded {
+                        style.with(Attrs::DIM)
+                    } else {
+                        style
+                    };
                     let indent = usize::from(heading.level.saturating_sub(base)) * 2;
                     vec![
                         (
@@ -1005,6 +1048,12 @@ fn sidebar(state: &State, ctx: &Ctx, rows: &mut [Building]) {
                 } else {
                     st.toc
                 };
+                // Inside a collapsed `<details>`: dimmed.
+                let style = if state.derived.is_folded(i) {
+                    style.with(Attrs::DIM)
+                } else {
+                    style
+                };
                 let pad = sidebar::indent(heading.level, base);
                 let mut text = String::from(if current == Some(i) { marker } else { "  " });
                 text.extend(std::iter::repeat_n(' ', pad));
@@ -1066,10 +1115,24 @@ fn selection(state: &State, ctx: &Ctx, rows: &mut [Building]) {
         let Some(line) = layout.lines.get(index) else {
             break;
         };
-        let pad = layout.measure.saturating_sub(line.cols);
+        // Where the text ends: a shifted line shows less of itself (its
+        // `‹` stays).
+        let shown = match layout.wide_at(index) {
+            Some(w) => {
+                let shift = layout.shift_at(index, state.hscroll());
+                let extent = layout.extent(index);
+                let marker = u16::from(shift > 0 && extent > w.x0);
+                extent
+                    .saturating_sub(shift)
+                    .max(w.x0.saturating_add(marker))
+                    .min(layout.measure)
+            }
+            None => line.cols,
+        };
+        let pad = layout.measure.saturating_sub(shown);
         let col = layout
             .indent
-            .saturating_add(line.cols)
+            .saturating_add(shown)
             .saturating_add(state.left());
         if pad == 0 || col >= state.cols {
             continue;

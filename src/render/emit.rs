@@ -11,6 +11,10 @@
 //! the next line (or into `less -R`). [`super::debug`] renders the same
 //! pieces as tags.
 //!
+//! A line of a wide block ([`crate::layout::Wide`]) is written through a
+//! window ([`super::clip`]): the pager's horizontal shift, and the text
+//! column's right edge, cut it.
+//!
 //! Figures are laid out as placeholder boxes ([`LineKind::Image`] rows).
 //! With an [`ImageRows`] provider ([`Emitter::with_images`]) a row shows
 //! the image instead: block-glyph cells, drawn with the same SGR diffing
@@ -284,16 +288,7 @@ fn split_marks(layout: &Layout, piece: Piece<'_>, marks: &[Mark], f: &mut dyn Fn
     }
 }
 
-/// `n` spaces, in pieces of a static string.
-fn spaces(n: u16, f: &mut dyn FnMut(&str)) {
-    const SPACES: &str = "                                                                ";
-    let mut left = usize::from(n);
-    while left > 0 {
-        let take = left.min(SPACES.len());
-        f(SPACES.get(..take).unwrap_or(""));
-        left -= take;
-    }
-}
+use super::clip::{Clip, Window, spaces};
 
 /// Pieces of one code span under its highlight runs; `start` is the span's
 /// offset in the expanded code line, `arena` its offset in the layout text.
@@ -528,6 +523,19 @@ impl<'a> Emitter<'a> {
     /// [`Emitter::write_line`] with `marks` (search matches, …) laid over
     /// the text.
     pub fn write_line_marked(&mut self, index: usize, marks: &[Mark], out: &mut Vec<u8>) {
+        self.write_line_shifted(index, marks, 0, out);
+    }
+
+    /// [`Emitter::write_line_marked`] for a line that may be in a wide
+    /// block: such a line is cut to the text column, after `shift` columns
+    /// of the block (see [`super::clip`]).
+    pub fn write_line_shifted(
+        &mut self,
+        index: usize,
+        marks: &[Mark],
+        shift: u16,
+        out: &mut Vec<u8>,
+    ) {
         let layout = self.layout;
         let Some(line) = layout.lines.get(index) else {
             return;
@@ -536,7 +544,8 @@ impl<'a> Emitter<'a> {
             self.write_image_row(index, &placement, content, out);
             return;
         }
-        if line.n == 0 && matches!(line.fill, Fill::None) {
+        let wide = layout.wide_at(index);
+        if line.n == 0 && matches!(line.fill, Fill::None) && wide.is_none() {
             out.push(b'\n');
             return;
         }
@@ -545,9 +554,25 @@ impl<'a> Emitter<'a> {
             style: Style::PLAIN,
             link: None,
         };
-        marked_segments(layout, index, marks, &mut |piece| {
-            self.piece(out, &mut pen, piece);
+        // A line of a wide block goes through a window on it.
+        let mut clip = wide.map(|w| {
+            let win = Window {
+                keep: w.x0,
+                from: w.x0.saturating_add(shift),
+                cols: layout.measure.saturating_sub(w.x0),
+                extent: layout.extent(index),
+            };
+            let marker = SegStyle::Id(w.marker);
+            Clip::new(win, marker, layout.clip, layout.ambiguous_wide)
         });
+        let mut put = |piece: Piece<'_>| self.piece(out, &mut pen, piece);
+        marked_segments(layout, index, marks, &mut |piece| match clip.as_mut() {
+            Some(c) => c.piece(piece, &mut put),
+            None => put(piece),
+        });
+        if let Some(c) = clip.as_mut() {
+            c.finish(&mut put);
+        }
         if pen.link.is_some() {
             osc8::close(out);
         }
@@ -1010,6 +1035,171 @@ mod tests {
         }
         for col in x0..x1 {
             assert_eq!(bg(first, col), Some(vt100::Color::Rgb(255, 0, 0)));
+        }
+    }
+
+    /// What a line of output shows: its text without escapes, whether its
+    /// OSC 8 links are all closed, and whether it ends with the SGR state
+    /// reset (or never set one).
+    fn scan(line: &str) -> (String, bool, bool) {
+        let mut text = String::new();
+        let mut link_open = false;
+        let mut balanced = true;
+        let mut last_sgr: Option<String> = None;
+        let mut chars = line.chars().peekable();
+        while let Some(c) = chars.next() {
+            if c != '\u{1b}' {
+                text.push(c);
+                continue;
+            }
+            match chars.next() {
+                Some('[') => {
+                    let mut seq = String::new();
+                    for d in chars.by_ref() {
+                        seq.push(d);
+                        if ('\u{40}'..='\u{7e}').contains(&d) {
+                            break;
+                        }
+                    }
+                    if seq.ends_with('m') {
+                        last_sgr = Some(seq);
+                    }
+                }
+                Some(']') => {
+                    let mut seq = String::new();
+                    while let Some(d) = chars.next() {
+                        if d == '\u{1b}' && chars.peek() == Some(&'\\') {
+                            chars.next();
+                            break;
+                        }
+                        seq.push(d);
+                    }
+                    if let Some(rest) = seq.strip_prefix("8;") {
+                        let opens = !rest.ends_with(';');
+                        // An open while open, or a close while closed.
+                        balanced &= opens != link_open;
+                        link_open = opens;
+                    }
+                }
+                _ => balanced = false,
+            }
+        }
+        let reset = last_sgr.is_none_or(|s| s == "0m");
+        (text, balanced && !link_open, reset)
+    }
+
+    /// Cells for generated tables: text, CJK, emoji, combining marks, links
+    /// (some wrapping over lines).
+    const CELLS: [&str; 8] = [
+        "plain",
+        "日本語テキスト",
+        "😀 emoji 😀",
+        "e\u{301}e\u{301}e\u{301}",
+        "[a link](https://example.com/a)",
+        "[日本 link 😀](https://example.com/b)",
+        "x",
+        "a longer cell that wraps over several lines in its column [and a link that wraps too](https://example.com/c)",
+    ];
+
+    proptest::proptest! {
+        #![proptest_config(proptest::prelude::ProptestConfig::with_cases(64))]
+        #[test]
+        fn shifted_lines_fill_the_text_column_and_balance_their_escapes(
+            cells in proptest::collection::vec(0..CELLS.len(), 24..40),
+            shift in 0u16..400,
+            width in 30u16..70,
+            quoted: bool,
+        ) {
+            let cols = cells.len() / 2;
+            let row = |r: &[usize]| {
+                let texts: Vec<&str> = r.iter().map(|&i| CELLS[i]).collect();
+                format!("| {} |", texts.join(" | "))
+            };
+            let (head, body) = cells.split_at(cols);
+            let table = [
+                row(head),
+                format!("|{}", "---|".repeat(cols)),
+                row(body.get(..cols).unwrap_or(body)),
+            ];
+            // Inside a quote: the bar stays, the table moves.
+            let prefix = if quoted { "> " } else { "" };
+            let md: String = table.iter().map(|l| format!("{prefix}{l}\n")).collect();
+            let doc = parse(&md, &ParseOptions::default());
+            let caps = Caps::full();
+            let l = crate::layout::layout_with(
+                &doc,
+                width,
+                &Theme::test(),
+                &caps,
+                &RenderOptions::default(),
+                &PlainHighlighter,
+                &NoImages,
+                crate::layout::Interactive { hscroll: true, details: None },
+            );
+            // Twelve columns or more never fit: a wide block.
+            proptest::prop_assert!(!l.wide.is_empty(), "{}", l.dump());
+            let cfg = cfg(&caps);
+            let mut e = Emitter::new(&doc, &l, &cfg);
+            for i in 0..l.len() {
+                let mut out = Vec::new();
+                e.write_line_shifted(i, &[], l.shift_at(i, shift), &mut out);
+                let line = String::from_utf8(out).unwrap();
+                let (text, balanced, reset) = scan(line.trim_end_matches('\n'));
+                proptest::prop_assert!(balanced, "line {i}: {line:?}");
+                proptest::prop_assert!(reset, "line {i}: {line:?}");
+                if l.wide_at(i).is_some() {
+                    let w = crate::text::str_width(&text, false);
+                    proptest::prop_assert_eq!(
+                        w,
+                        usize::from(l.indent + l.measure),
+                        "line {} {:?}", i, text
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn empty_lines_of_wide_blocks_fill_the_text_column_too() {
+        // Borders off: a row of empty cells has no text at all.
+        let mut opts = RenderOptions::default();
+        opts.glyphs.table = crate::options::TableBorder::None;
+        let cols = 14;
+        let head: Vec<String> = (1..=cols).map(|i| format!("Head {i}")).collect();
+        let md = format!(
+            "| {} |\n|{}\n| {} |\n",
+            head.join(" | "),
+            "---|".repeat(cols),
+            vec![" "; cols].join(" | ")
+        );
+        let doc = parse(&md, &ParseOptions::default());
+        let caps = Caps::full();
+        let it = crate::layout::Interactive {
+            hscroll: true,
+            details: None,
+        };
+        let l = crate::layout::layout_with(
+            &doc,
+            40,
+            &Theme::test(),
+            &caps,
+            &opts,
+            &PlainHighlighter,
+            &NoImages,
+            it,
+        );
+        let w = l.wide[0];
+        let cfg = cfg(&caps);
+        let mut e = Emitter::new(&doc, &l, &cfg);
+        for i in w.start as usize..w.end as usize {
+            let mut out = Vec::new();
+            e.write_line_shifted(i, &[], 3, &mut out);
+            let (text, _, _) = scan(String::from_utf8(out).unwrap().trim_end_matches('\n'));
+            assert_eq!(
+                crate::text::str_width(&text, false),
+                usize::from(l.indent + l.measure),
+                "line {i}: {text:?}"
+            );
         }
     }
 }

@@ -180,6 +180,7 @@ pub(crate) fn render_options(l: &ConfigLayer) -> RenderOptions {
         code: code_options(l, d.code),
         tables: TableOptions {
             zebra: l.tables.zebra.unwrap_or(d.tables.zebra),
+            overflow: l.tables.overflow.unwrap_or(d.tables.overflow),
         },
         math: math_mode(l, d.math, ambiguous_wide),
         images: image_options(l, d.images),
@@ -320,6 +321,7 @@ pub(crate) fn pager_options(l: &ConfigLayer) -> PagerOptions {
         open: p.open.clone().unwrap_or(d.open),
         toc_sidebar: p.toc_sidebar.unwrap_or(d.toc_sidebar),
         toc_width: p.toc_width.unwrap_or(d.toc_width),
+        details: p.details.unwrap_or(d.details),
         keys: p.keys.0.clone(),
     }
 }

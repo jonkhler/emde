@@ -137,6 +137,8 @@ pub enum Block {
     Details {
         summary: Inlines,
         body: Vec<Block>,
+        /// Written `<details open>`: the pager shows it expanded at first.
+        open: bool,
     },
     /// HTML `align=` / `<center>` wrapper.
     Align {
@@ -706,7 +708,7 @@ impl Document {
                 Block::Quote { body, .. } | Block::Align { body, .. } => {
                     self.validate_blocks(body)?;
                 }
-                Block::Details { summary, body } => {
+                Block::Details { summary, body, .. } => {
                     self.validate_inlines(summary)?;
                     self.validate_blocks(body)?;
                 }
@@ -801,7 +803,7 @@ impl Document {
             Block::Quote { body, .. } | Block::Align { body, .. } => {
                 body.iter().for_each(|b| self.write_plain(b, out));
             }
-            Block::Details { summary, body } => {
+            Block::Details { summary, body, .. } => {
                 line(&summary.text, out);
                 body.iter().for_each(|b| self.write_plain(b, out));
             }
@@ -937,8 +939,16 @@ impl Dumper<'_> {
                     }
                 }
             }
-            Block::Details { summary, body } => {
-                self.inlines("details", summary, depth);
+            Block::Details {
+                summary,
+                body,
+                open,
+            } => {
+                self.inlines(
+                    if *open { "details open" } else { "details" },
+                    summary,
+                    depth,
+                );
                 self.blocks(body, depth + 1);
             }
             Block::Align { align, body } => {

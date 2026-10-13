@@ -1,0 +1,14 @@
+---
+source: tests/pager.rs
+expression: "screen_text(&term, 50, 10, \"start\")"
+---
+ 1│   Code                                           │
+ 2│                                                  │
+ 3│                                               ›  │
+ 4│   fn main() { let word0_word1_word2_word3_word›  │
+ 5│   short();                                    ›  │
+ 6│                                               ›  │
+ 7│                                                  │
+ 8│  After.                                          │
+ 9│                                                  │
+10│ text › Code                           L 1/8 100% │

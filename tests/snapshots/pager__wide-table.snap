@@ -1,0 +1,14 @@
+---
+source: tests/pager.rs
+expression: start
+---
+ 1│  Text above the table.                                     │
+ 2│                                                            │
+ 3│  ╭────────┬────────┬────────┬────────┬────────┬────────┬›  │
+ 4│  │ Head 1 │ Head 2 │ Head 3 │ Head 4 │ Head 5 │ Head 6 │›  │
+ 5│  ├────────┼────────┼────────┼────────┼────────┼────────┼›  │
+ 6│  │ cell 1 │ cell 2 │ cell 3 │ cell 4 │ cell 5 │ link   │›  │
+ 7│  ╰────────┴────────┴────────┴────────┴────────┴────────┴›  │
+ 8│                                                            │
+ 9│  Text below the table.                                     │
+10│ text                                            L 1/9 100% │

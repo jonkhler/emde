@@ -20,6 +20,14 @@
 //! trims trailing spaces nobody would see, applies `align`, and records link
 //! hits.
 //!
+//! # Wide blocks and collapsed details
+//!
+//! [`Builder::wide_block`] lays out a block whose lines may be wider than
+//! the measure (up to [`super::MAX_WIDE`]) and records it in
+//! [`Layout::wide`] when it is. A collapsed `<details>` lays its body out
+//! to count it, then [`Builder::rollback`] takes the body's output back
+//! (see `blocks`).
+//!
 //! # Blank lines
 //!
 //! One blank line separates blocks. [`Builder::blocks`] asks for a gap
@@ -41,7 +49,9 @@ use crate::theme::{Element, Theme};
 
 use super::deco::Deco;
 use super::style::{Ctx, Styles};
-use super::{Fill, ImageSizer, Layout, LineKind, LinkHit, MathHit, Span, SpanFlags};
+use super::{
+    Fill, ImageSizer, Interactive, Layout, LineKind, LinkHit, MathHit, Span, SpanFlags, Wide,
+};
 
 /// Content keeps at least this many columns (or half the measure, if
 /// less) however deep the nesting.
@@ -55,6 +65,7 @@ pub(super) struct Inputs<'a> {
     pub(super) opts: &'a RenderOptions,
     pub(super) highlighter: &'a dyn Highlighter,
     pub(super) sizer: &'a dyn ImageSizer,
+    pub(super) interactive: Interactive<'a>,
 }
 
 /// A piece of a prefix.
@@ -143,6 +154,21 @@ impl Refs {
     pub(super) fn has_pending(&self) -> bool {
         !self.pending.is_empty()
     }
+
+    /// Where the references are now, for [`Refs::rollback`].
+    fn mark(&self) -> (u32, usize) {
+        (self.next, self.pending.len())
+    }
+
+    /// Forget the references numbered since `mark` (`doc` has their URLs).
+    fn rollback(&mut self, (next, len): (u32, usize), doc: &Document) {
+        for (_, link) in self.pending.drain(len.min(self.pending.len())..) {
+            if let Some(l) = doc.link(link) {
+                self.by_url.remove(&l.url);
+            }
+        }
+        self.next = next;
+    }
 }
 
 /// Whether a link gets a numbered reference: it goes somewhere a reader
@@ -215,6 +241,33 @@ pub(super) struct Builder<'a> {
     /// arena, its source position and length (the column is known once
     /// the line is aligned).
     line_math: Vec<(u32, SrcPos, u32)>,
+    /// What the pager changes (collapsed details, wide blocks).
+    pub(super) interactive: Interactive<'a>,
+    /// The widest a line may grow: the measure, more in a wide block.
+    limit: u16,
+    /// The `<details>` being laid out, innermost last.
+    pub(super) details_stack: Vec<u32>,
+    /// Headings given their first line, in order (taken back with a
+    /// collapsed body).
+    heading_log: Vec<HeadingId>,
+}
+
+/// Where the output was at some point, for [`Builder::rollback`].
+pub(super) struct Snapshot {
+    text: usize,
+    spans: usize,
+    lines: usize,
+    link_hits: usize,
+    math_hits: usize,
+    images: usize,
+    code: usize,
+    wide: usize,
+    headings: usize,
+    refs: (u32, usize),
+    pending_gap: Option<usize>,
+    block_first: Option<u32>,
+    pending_heading: Option<HeadingId>,
+    first_pending: Vec<bool>,
 }
 
 fn to_u32(n: usize) -> u32 {
@@ -234,6 +287,7 @@ impl<'a> Builder<'a> {
             opts,
             highlighter,
             sizer,
+            interactive,
         } = inputs;
         // OSC 8 needs escape sequences: without any, links are numbered
         // whatever `caps.hyperlinks` says.
@@ -249,6 +303,8 @@ impl<'a> Builder<'a> {
         // Capacity from the size of the top-level text, so large documents
         // do not grow the arrays a doubling at a time.
         let text_hint = text_estimate(doc);
+        let deco = Deco::new(opts);
+        let clip = [deco.clip_left, deco.clip];
         Builder {
             doc,
             theme,
@@ -256,7 +312,7 @@ impl<'a> Builder<'a> {
             opts,
             hl: highlighter,
             sizer,
-            deco: Deco::new(opts),
+            deco,
             sty: Styles::new(theme, caps.color),
             out: Layout {
                 width,
@@ -272,6 +328,12 @@ impl<'a> Builder<'a> {
                 images: Vec::new(),
                 code: Vec::new(),
                 styles: crate::style::StyleTable::new(),
+                wide: Vec::new(),
+                clip,
+                ambiguous_wide: opts.ambiguous_wide,
+                details: Vec::new(),
+                heading_details: vec![u32::MAX; doc.headings.len()],
+                narrowed: false,
             },
             refs,
             wrapper: Wrapper::new(),
@@ -292,6 +354,10 @@ impl<'a> Builder<'a> {
             block_first: None,
             pending_heading: None,
             line_math: Vec::new(),
+            interactive,
+            limit: measure,
+            details_stack: Vec::new(),
+            heading_log: Vec::new(),
         }
     }
 
@@ -364,6 +430,12 @@ impl<'a> Builder<'a> {
     /// The first line of the next content line belongs to this heading.
     pub(super) fn mark_heading(&mut self, id: HeadingId) {
         self.pending_heading = Some(id);
+        if let (Some(slot), Some(&d)) = (
+            self.out.heading_details.get_mut(id.index()),
+            self.details_stack.last(),
+        ) {
+            *slot = d;
+        }
     }
 
     /// The heading marked with [`Builder::mark_heading`] is laid out. If it
@@ -498,6 +570,7 @@ impl<'a> Builder<'a> {
             && let Some(slot) = self.out.heading_line.get_mut(h.index())
         {
             *slot = to_u32(self.out.lines.len());
+            self.heading_log.push(h);
         }
         self.start_prefix(self.levels.len(), false);
     }
@@ -710,8 +783,7 @@ impl<'a> Builder<'a> {
         if text.is_empty() {
             return;
         }
-        let limit = self.out.measure;
-        let room = limit.saturating_sub(self.cur.cols);
+        let room = self.limit.saturating_sub(self.cur.cols);
         let full = known.map_or_else(|| str_width(text, self.amb), usize::from);
         let (text, cols) = if full <= usize::from(room) {
             (text, to_u16(full))
@@ -802,7 +874,7 @@ impl<'a> Builder<'a> {
             }
             Fill::Panel { style, to_col } => Fill::Panel {
                 style,
-                to_col: to_col.min(self.out.measure),
+                to_col: to_col.min(self.limit),
             },
             Fill::Gradient { x0, x1, .. } if x1 <= x0 => Fill::None,
             Fill::Gradient { from, to, x0, x1 } => Fill::Gradient {
@@ -947,6 +1019,87 @@ impl<'a> Builder<'a> {
                 col = col.saturating_add(span.cols);
             }
         }
+    }
+
+    // ----- wide blocks and taking output back -------------------------------
+
+    /// Lay out a block with `f` letting its lines grow up to
+    /// [`super::MAX_WIDE`] columns; it is recorded in [`Layout::wide`] if
+    /// a line got wider than the measure.
+    pub(super) fn wide_block(&mut self, f: impl FnOnce(&mut Self)) {
+        let x0 = self.out.measure.saturating_sub(self.avail());
+        let start = self.out.lines.len();
+        let saved = self.limit;
+        self.limit = super::MAX_WIDE;
+        f(self);
+        self.limit = saved;
+        let end = self.out.lines.len();
+        let cols = (start..end).map(|i| self.out.extent(i)).max().unwrap_or(0);
+        if cols > self.out.measure {
+            let marker = self.sty.el(Element::Muted);
+            self.out.wide.push(Wide {
+                start: to_u32(start),
+                end: to_u32(end),
+                x0,
+                cols,
+                marker,
+            });
+        }
+    }
+
+    /// Where the output is now (between lines).
+    pub(super) fn snapshot(&self) -> Snapshot {
+        let o = &self.out;
+        Snapshot {
+            text: o.text.len(),
+            spans: o.spans.len(),
+            lines: o.lines.len(),
+            link_hits: o.link_hits.len(),
+            math_hits: o.math_hits.len(),
+            images: o.images.len(),
+            code: o.code.len(),
+            wide: o.wide.len(),
+            headings: self.heading_log.len(),
+            refs: self.refs.mark(),
+            pending_gap: self.pending_gap,
+            block_first: self.block_first,
+            pending_heading: self.pending_heading,
+            first_pending: self.levels.iter().map(|l| l.first_pending).collect(),
+        }
+    }
+
+    /// Take back everything laid out since `s`: lines, their side tables
+    /// and link references (headings laid out since lose their line).
+    pub(super) fn rollback(&mut self, s: Snapshot) {
+        let o = &mut self.out;
+        o.text.truncate(s.text);
+        o.spans.truncate(s.spans);
+        o.lines.truncate(s.lines);
+        o.link_hits.truncate(s.link_hits);
+        o.math_hits.truncate(s.math_hits);
+        o.images.truncate(s.images);
+        o.code.truncate(s.code);
+        o.wide.truncate(s.wide);
+        for h in self
+            .heading_log
+            .drain(s.headings.min(self.heading_log.len())..)
+        {
+            if let Some(slot) = o.heading_line.get_mut(h.index()) {
+                *slot = u32::MAX;
+            }
+        }
+        self.refs.rollback(s.refs, self.doc);
+        self.pending_gap = s.pending_gap;
+        self.block_first = s.block_first;
+        self.pending_heading = s.pending_heading;
+        for (level, first) in self.levels.iter_mut().zip(s.first_pending) {
+            level.first_pending = first;
+        }
+        self.line_math.clear();
+        self.cur = Cur {
+            first: self.out.spans.len(),
+            ..Cur::default()
+        };
     }
 
     /// A line holding only `text` in `style`.

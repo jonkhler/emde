@@ -102,7 +102,7 @@ Every key, with its default and the option that also sets it, if any.
 
 | Key | Default | Description |
 |---|---|---|
-| `wrap` | `true` | Wrap long lines; false cuts them off with ›. Flag: `--no-wrap-code` (false). |
+| `wrap` | `true` | Wrap long lines; false cuts them off with › (the pager shows them whole and shifts them sideways with zh and zl). Flag: `--no-wrap-code` (false). |
 | `line_numbers` | `false` | Line numbers. Flag: `--line-numbers`. |
 | `tab_width` | `4` | Tab stop width, 1 to 16. |
 | `label` | `true` | Language label. |
@@ -124,6 +124,7 @@ nu = "bash"
 | Key | Default | Description |
 |---|---|---|
 | `zebra` | `true` | Stripe every other row (24-bit colour only). |
+| `overflow` | `"scroll"` | A table too wide for its columns: scroll (the pager shows it at its natural width, shifted sideways with zh and zl; elsewhere, records) or records (one "header: value" record per row). |
 
 ### `[math]`
 
@@ -180,6 +181,7 @@ nu = "bash"
 | `open` | `"auto"` | Opening links and images (o in the image view): auto (open or xdg-open locally, copy the URL over SSH), never, or a command that gets the URL (or the image file) as its last argument. |
 | `toc_sidebar` | `"auto"` | The outline sidebar on the left (T shows it, a second T moves the keys into it, a third hides it): auto shows it when the terminal is at least toc\_width + max\_width + 2 \* margin + 4 columns wide (140 with the defaults; a max\_width of 0 counts as 100), always whenever the text keeps 40 columns beside it, never only when T asks for it. Documents without headings get none. |
 | `toc_width` | `32` | Width of the outline sidebar in columns, its border included (16 to 60). |
+| `details` | `"collapsed"` | \<details\> blocks: collapsed to their summary line (unless written \<details open\>; Enter, a click or za opens them) or expanded. Output that is not paged always shows them expanded. |
 
 ### `[pager.keys]`
 
@@ -526,6 +528,12 @@ one bound later, an action of your file winning over a default one; `emde
 | `zz` | centre the current match, link or middle line | `scroll-center` |
 | `zt` | … to the top | `scroll-top` |
 | `zb` | … to the bottom | `scroll-bottom` |
+| `zh` `←` | shift wide code and tables left | `scroll-left` |
+| `zl` `→` | … right | `scroll-right` |
+| `zH` | … half a screen left | `scroll-half-left` |
+| `zL` | … half a screen right | `scroll-half-right` |
+| `^` | … back to their start | `scroll-start` |
+| `$` | … to their end | `scroll-end` |
 
 **Jumping**
 
@@ -554,9 +562,10 @@ one bound later, an action of your file winning over a default one; `emde
 
 | Keys | Action | Name |
 |---|---|---|
-| `Tab` | focus the next link | `focus-next` |
-| `S-Tab` | focus the previous link | `focus-prev` |
-| `Enter` | follow the focused link | `follow` |
+| `Tab` | focus the next link or details summary | `focus-next` |
+| `S-Tab` | focus the previous one | `focus-prev` |
+| `Enter` | follow the focused link, open or close a focused details block | `follow` |
+| `za` | open or close the details block at the top (or click its summary) | `toggle-details` |
 | `o` | link hints: type a label to follow | `link-hints` |
 | `Backspace` `H` | back | `back` |
 | `L` | forward | `forward` |

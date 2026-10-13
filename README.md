@@ -14,13 +14,15 @@ emde README.md
   task lists, footnotes, alerts, definition lists, front matter and the
   HTML that READMEs use (`<img>`, `<details>`, `<kbd>`, `align="center"`,
   …). Text is wrapped to the window with hanging indents, tables shrink to
-  fit (or turn into cards), and long lines wrap instead of being cut off.
+  fit (in the pager, the widest scroll sideways; elsewhere they turn into
+  cards), and long lines wrap instead of being cut off.
   Every line ends with a reset, so styles never bleed, and a document can
   never send escape sequences of its own to the terminal.
 - **A built-in pager.** On a terminal, a document opens in the pager:
   incremental search (smart case, and a phrase is found even where it
   wraps), an outline and an outline sidebar that follows your reading, an
-  image view that steps through a document's pictures, jumps between
+  image view that steps through a document's pictures, `<details>` that
+  open and close, wide tables and code that scroll sideways, jumps between
   headings, marks, Vimium-style hints to
   follow links or copy code, math and tables as written, a Visual mode
   that copies lines as Markdown or text, `e` to edit the file at the line
@@ -189,6 +191,24 @@ beside the text (`[pager] toc_sidebar`, `toc_width`); `T` shows it, a
 second `T` moves the keys into it (`j`, `k`, `Enter`, `Esc`), a third hides
 it, and a click on an entry goes there.
 
+**`<details>`** blocks start collapsed to their summary line, which says
+how much they hide: `▸ Installation (42 lines)` (`[pager] details =
+"expanded"` opens them all; `<details open>` starts open). `Enter` opens or
+closes a summary that `Tab` focused, as does `f` with its label, a click on
+it, or `za` (the one at the top of the screen). A search finds text inside
+collapsed blocks and opens the one with the match it goes to; the outline
+and the sidebar list headings inside collapsed blocks dimmed, and going to
+one opens its block. Output that is not paged shows every block open.
+
+**Wide tables and code** keep their natural width in the pager: a table
+too wide for its columns (instead of becoming one card per row; `[tables]
+overflow = "records"` keeps the cards), and code when wrapping is off
+(`--no-wrap-code`, `[code] wrap = false`). `zl` and `zh` (or `→` and `←`,
+or the wheel sideways) shift every such block a few columns, `zL` and `zH`
+half a screen, `$` and `^` to their end and start; ordinary text stays
+where it is. `‹` and `›` mark the edges where a block goes on, and a search
+match or a focused link in one is shifted into view.
+
 <!-- BEGIN GENERATED keys (`cargo xtask docs`, from src/pager/keymap.rs) -->
 
 **Scrolling**
@@ -208,6 +228,12 @@ it, and a click on an entry goes there.
 | `zz` | centre the current match, link or middle line |
 | `zt` | … to the top |
 | `zb` | … to the bottom |
+| `zh` `←` | shift wide code and tables left |
+| `zl` `→` | … right |
+| `zH` | … half a screen left |
+| `zL` | … half a screen right |
+| `^` | … back to their start |
+| `$` | … to their end |
 
 **Jumping**
 
@@ -236,9 +262,10 @@ it, and a click on an entry goes there.
 
 | Keys | Action |
 |---|---|
-| `Tab` | focus the next link |
-| `S-Tab` | focus the previous link |
-| `Enter` | follow the focused link |
+| `Tab` | focus the next link or details summary |
+| `S-Tab` | focus the previous one |
+| `Enter` | follow the focused link, open or close a focused details block |
+| `za` | open or close the details block at the top (or click its summary) |
 | `o` | link hints: type a label to follow |
 | `Backspace` `H` | back |
 | `L` | forward |

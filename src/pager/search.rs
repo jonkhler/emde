@@ -156,7 +156,7 @@ impl Walker<'_> {
                     }
                 }
             }
-            Block::Details { summary, body } => {
+            Block::Details { summary, body, .. } => {
                 self.leaf(&summary.text);
                 self.blocks(body);
             }
@@ -437,7 +437,63 @@ fn line_range(layout: &Layout, index: usize) -> Option<(u32, Range<u32>)> {
         Some(p) if p.top == pos.top => p.off,
         _ => u32::MAX,
     };
+    // The summary of a collapsed `<details>` shows only the summary.
+    let end = match layout
+        .summary_at(index)
+        .and_then(|id| layout.details.get(id as usize))
+    {
+        Some(d) if !d.open => end.min(d.body),
+        _ => end,
+    };
     Some((pos.top, pos.off..end))
+}
+
+/// The column (relative to the text column) where byte `off` of the arena
+/// is on line `index`.
+fn arena_col(layout: &Layout, index: usize, off: u32) -> Option<u16> {
+    let mut col = 0u16;
+    for span in layout.line_spans(index) {
+        if span.off <= off && off <= span.off.saturating_add(span.len) {
+            let text = layout.span_text(span);
+            let before = text.get(..(off - span.off) as usize).unwrap_or("");
+            let w = crate::text::str_width(before, layout.ambiguous_wide);
+            return Some(col.saturating_add(u16::try_from(w).unwrap_or(u16::MAX)));
+        }
+        col = col.saturating_add(span.cols);
+    }
+    None
+}
+
+/// The columns (relative to the text column) the current match of
+/// `search` takes on line `index`.
+pub(crate) fn current_cols(
+    corpus: &Corpus,
+    layout: &Layout,
+    index: usize,
+    search: &Search,
+) -> Option<Range<u16>> {
+    let current = StylePatch {
+        set: crate::style::Attrs::REVERSE,
+        ..StylePatch::default()
+    };
+    let marks = line_marks(
+        corpus,
+        layout,
+        index,
+        search,
+        StylePatch::default(),
+        current,
+    );
+    let mut out: Option<Range<u16>> = None;
+    for m in marks.iter().filter(|m| m.patch == current) {
+        let a = arena_col(layout, index, m.range.start)?;
+        let b = arena_col(layout, index, m.range.end)?;
+        out = Some(match out {
+            Some(r) => r.start.min(a)..r.end.max(b),
+            None => a..b,
+        });
+    }
+    out
 }
 
 /// Whether no other line with the position of line `index` shows words

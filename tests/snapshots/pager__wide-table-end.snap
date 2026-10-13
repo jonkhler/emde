@@ -1,0 +1,14 @@
+---
+source: tests/pager.rs
+expression: "screen_text(&term, 60, 10, \"end\")"
+---
+ 1│  Text above the table.                                     │
+ 2│                                                            │
+ 3│  ‹──────┬────────┬────────┬─────────┬─────────┬─────────╮  │
+ 4│  ‹ead 7 │ Head 8 │ Head 9 │ Head 10 │ Head 11 │ Head 12 │  │
+ 5│  ‹──────┼────────┼────────┼─────────┼─────────┼─────────┤  │
+ 6│  ‹ 本語 │ cell 8 │ cell 9 │ cell 10 │ cell 11 │ cell 12 │  │
+ 7│  ‹──────┴────────┴────────┴─────────┴─────────┴─────────╯  │
+ 8│                                                            │
+ 9│  Text below the table.                                     │
+10│ text                                            L 1/9 100% │
