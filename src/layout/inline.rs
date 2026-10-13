@@ -1076,6 +1076,7 @@ mod tests {
     use super::wrap_atoms;
 
     #[test]
+    #[allow(clippy::single_range_in_vec_init)] // lists of ranges, one long
     fn groups_that_fit_replace_their_atoms() {
         let fits = |r: &std::ops::Range<u32>| r.end - r.start <= 10;
         // A group that fits holds the atoms inside it; one too wide leaves
