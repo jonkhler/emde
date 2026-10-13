@@ -6,7 +6,6 @@
 //! error that lists the accepted values and suggests the closest one.
 
 use std::fmt::{self, Write as _};
-use std::marker::PhantomData;
 
 use serde::Deserializer;
 use serde::de::{self, Unexpected, Visitor};
@@ -235,11 +234,6 @@ fn names<T: Named>() -> Vec<&'static str> {
     T::NAMES.iter().map(|(n, _)| *n).collect()
 }
 
-/// "`a`, `b` or `c`".
-fn name_list<T: Named>() -> String {
-    list_of(&names::<T>())
-}
-
 /// The error message for an unknown name.
 pub(crate) fn unknown_name<T: Named>(value: &str) -> String {
     unknown_among(value, &names::<T>())
@@ -268,30 +262,57 @@ fn unknown_among(value: &str, names: &[&str]) -> String {
     msg
 }
 
-struct NamedVisitor<T>(PhantomData<T>);
+/// Reads a [`Named`] value as the position of its name among `T::NAMES`
+/// then `T::ALIASES`. The visitor knows the names but not the type, so it
+/// (and the deserializer code it instantiates, which is most of it) is
+/// compiled once for all named settings rather than once per type.
+struct NameVisitor {
+    /// The documented names, for messages.
+    names: Vec<&'static str>,
+    /// Every accepted name, documented ones first.
+    accepted: Vec<&'static str>,
+}
 
-impl<'de, T: Named> Visitor<'de> for NamedVisitor<T> {
-    type Value = T;
+impl NameVisitor {
+    fn of<T: Named>() -> NameVisitor {
+        NameVisitor {
+            names: names::<T>(),
+            accepted: T::NAMES.iter().chain(T::ALIASES).map(|(n, _)| *n).collect(),
+        }
+    }
+
+    /// The position of `name` among the accepted names (see [`Named::from_name`]).
+    fn find(&self, name: &str) -> Option<usize> {
+        let key = normalize(name);
+        self.accepted.iter().position(|n| *n == key)
+    }
+}
+
+impl<'de> Visitor<'de> for NameVisitor {
+    type Value = usize;
 
     fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&name_list::<T>())
+        f.write_str(&list_of(&self.names))
     }
 
-    fn visit_str<E: de::Error>(self, v: &str) -> Result<T, E> {
-        T::from_name(v).ok_or_else(|| E::custom(unknown_name::<T>(v)))
+    fn visit_str<E: de::Error>(self, v: &str) -> Result<usize, E> {
+        self.find(v)
+            .ok_or_else(|| E::custom(unknown_among(v, &self.names)))
     }
 
-    fn visit_bool<E: de::Error>(self, v: bool) -> Result<T, E> {
-        T::from_name(if v { "true" } else { "false" })
+    fn visit_bool<E: de::Error>(self, v: bool) -> Result<usize, E> {
+        self.find(if v { "true" } else { "false" })
             .ok_or_else(|| E::invalid_type(Unexpected::Bool(v), &self))
     }
 
-    fn visit_i64<E: de::Error>(self, v: i64) -> Result<T, E> {
-        T::from_name(&v.to_string()).ok_or_else(|| E::invalid_type(Unexpected::Signed(v), &self))
+    fn visit_i64<E: de::Error>(self, v: i64) -> Result<usize, E> {
+        self.find(&v.to_string())
+            .ok_or_else(|| E::invalid_type(Unexpected::Signed(v), &self))
     }
 
-    fn visit_u64<E: de::Error>(self, v: u64) -> Result<T, E> {
-        T::from_name(&v.to_string()).ok_or_else(|| E::invalid_type(Unexpected::Unsigned(v), &self))
+    fn visit_u64<E: de::Error>(self, v: u64) -> Result<usize, E> {
+        self.find(&v.to_string())
+            .ok_or_else(|| E::invalid_type(Unexpected::Unsigned(v), &self))
     }
 }
 
@@ -301,9 +322,8 @@ where
     D: Deserializer<'de>,
     T: Named,
 {
-    deserializer
-        .deserialize_any(NamedVisitor(PhantomData))
-        .map(Some)
+    let i = deserializer.deserialize_any(NameVisitor::of::<T>())?;
+    Ok(T::NAMES.iter().chain(T::ALIASES).nth(i).map(|&(_, v)| v))
 }
 
 /// Whether a string contains characters that must never reach the terminal.
@@ -481,6 +501,23 @@ mod tests {
         assert_eq!(p.color, Some(ColorChoice::Ansi16));
         assert_eq!(p.width, Some(AmbiguousWidth::Narrow));
         assert!(probe("").unwrap().align.is_none());
+        // Aliases, as booleans and as strings, after the documented names.
+        let p = probe("color = true\nalign = \"Centre\"").unwrap();
+        assert_eq!(p.color, Some(ColorChoice::Always));
+        assert_eq!(p.align, Some(Align::Center));
+        let p = probe("color = \"24bit\"").unwrap();
+        assert_eq!(p.color, Some(ColorChoice::TrueColor));
+    }
+
+    #[test]
+    fn wrong_types_name_the_choices() {
+        let err = probe("width = true").unwrap_err();
+        assert_eq!(err, "invalid type: boolean `true`, expected `1` or `2`");
+        let err = probe("align = -1").unwrap_err();
+        assert_eq!(
+            err,
+            "invalid type: integer `-1`, expected `center` or `left`"
+        );
     }
 
     #[test]
