@@ -123,3 +123,20 @@ opt-level = "s"
 opt-level = "s"
 [profile.release.package.quick-xml]
 opt-level = "s"
+[profile.release.package.serde_json]
+opt-level = "s"
+# Terminal events, signals and file descriptors: a handful of calls per
+# key press or per run.
+[profile.release.package.crossterm]
+opt-level = "s"
+[profile.release.package.signal-hook]
+opt-level = "s"
+[profile.release.package.signal-hook-registry]
+opt-level = "s"
+[profile.release.package.filedescriptor]
+opt-level = "s"
+# Image headers (sizes only) and clap's suggestions for mistyped flags.
+[profile.release.package.imagesize]
+opt-level = "s"
+[profile.release.package.strsim]
+opt-level = "s"
