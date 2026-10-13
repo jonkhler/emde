@@ -358,16 +358,20 @@ impl Linear<'_> {
         let spacing = spacing::space(items, ctx.tight, lead, trail);
         let mut pending: i32 = 0;
         let mut break_before = false;
+        // How deep inside delimiters of this row (`(`, `[`, `\{`, paired
+        // bars) the item is: lines break only outside them.
+        let mut depth: i32 = 0;
         for (i, item) in items.iter().enumerate() {
             if let Node::Space(n) = item {
                 pending += i32::from(*n);
                 continue;
             }
-            pending += i32::try_from(spacing.before.get(i).copied().unwrap_or(0)).unwrap_or(0);
+            pending = spacing::combine(pending, spacing.before.get(i).copied().unwrap_or(0));
             flush(&mut pending, out);
-            if break_before && ctx.top {
+            if break_before && ctx.top && depth == 0 {
                 out.mark_break();
             }
+            depth = (depth + i32::from(spacing.nesting.get(i).copied().unwrap_or(0))).max(0);
             // Font switches are transparent: their content is still top-level.
             // So are the rows of an `aligned` or `gathered` block.
             let child = if matches!(item, Node::Styled { .. }) || is_block(item) {
@@ -385,7 +389,7 @@ impl Linear<'_> {
             }
             break_before = spacing.breaks_after(i);
         }
-        pending += i32::try_from(spacing.after).unwrap_or(0);
+        pending = spacing::combine(pending, spacing.after);
         flush(&mut pending, out);
     }
 
@@ -1108,7 +1112,55 @@ mod tests {
         assert_eq!(text(r"\operatorname{softmax}\left(x\right)"), "softmax(x)");
         assert_eq!(text(r"\sum_{\substack{i<n\\j<m}}"), "∑_(i<n, j<m)");
         assert_eq!(text(r"\int\!\!\int"), "∫∫");
-        assert_eq!(text(r"a \, + b"), "a  + b");
+        // A thin space where spacing puts a column already is absorbed;
+        // wider ones add to it.
+        assert_eq!(text(r"a \, + b"), "a + b");
+        assert_eq!(text(r"a,\quad b"), "a,   b");
+    }
+
+    /// Found in a real report: `b;\,a` showed two columns after `;`.
+    #[test]
+    fn explicit_thin_space_after_punctuation_is_one_column() {
+        assert_eq!(
+            text(r"\mathcal N\!\left(b;\,a,\sigma^2 I\right)"),
+            "𝒩(b; a, σ²I)"
+        );
+        assert_eq!(text(r"f(x;\, y)"), "f(x; y)");
+        assert_eq!(text(r"a \, b"), "a b");
+    }
+
+    /// Bars that pair up are delimiters, without relation spacing; a lone
+    /// bar is ordinary.
+    #[test]
+    fn paired_bars_are_delimiters() {
+        assert_eq!(text(r"\log|\det|"), "log|det|");
+        assert_eq!(text(r"\log|\det \Sigma|"), "log|det Σ|");
+        assert_eq!(text(r"|x|+|y|"), "|x| + |y|");
+        assert_eq!(text(r"|-x|"), "|−x|");
+        assert_eq!(text(r"\|x\| = 1"), "∥x∥ = 1");
+        assert_eq!(text(r"|x - |y||"), "|x − |y||");
+        assert_eq!(text(r"\vert x\vert^2"), "|x|²");
+        assert_eq!(text(r"\{x : |x| < 1\}"), "{x : |x| < 1}");
+        assert_eq!(text(r"p(x|y)"), "p(x|y)");
+        // A bar without a partner stays ordinary.
+        assert_eq!(text(r"|x - y"), "|x − y");
+    }
+
+    /// Found in a real report: `𝔼[a ∣` / `b]` broke inside the brackets.
+    #[test]
+    fn breaks_only_outside_delimiters() {
+        let opts = MathOptions::default();
+        assert!(inline(r"\mathbb E[a\mid b]", &opts).breaks.is_empty());
+        assert!(inline(r"\{a = b\}", &opts).breaks.is_empty());
+        assert!(inline(r"|a + b|", &opts).breaks.is_empty());
+        let line = inline(r"f(a + b) = |c - d| + e", &opts);
+        assert_eq!(line.text, "f(a + b) = |c − d| + e");
+        let at: Vec<&str> = line
+            .breaks
+            .iter()
+            .map(|&b| &line.text[b as usize..])
+            .collect();
+        assert_eq!(at, ["|c − d| + e", "e"]);
     }
 
     #[test]
@@ -1289,8 +1341,8 @@ mod tests {
         let line = inline(r"a + b = -c", &MathOptions::default());
         assert_eq!(line.text, "a + b = −c");
         assert_eq!(line.breaks, [4, 8]);
-        // Not inside groups.
-        assert_eq!(inline(r"(a+b)", &MathOptions::default()).breaks, [5]);
+        // Not inside groups or delimiters.
+        assert!(inline(r"(a+b)", &MathOptions::default()).breaks.is_empty());
         assert!(
             inline(r"\left(a+b\right)", &MathOptions::default())
                 .breaks

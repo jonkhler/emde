@@ -456,7 +456,7 @@ impl Layout<'_> {
                 pending += i32::from(*n);
                 continue;
             }
-            pending += i32::try_from(spacing.before.get(i).copied().unwrap_or(0)).ok()?;
+            pending = spacing::combine(pending, spacing.before.get(i).copied().unwrap_or(0));
             let gap = usize::try_from(pending.max(0)).ok()?;
             pending = 0;
             if let Node::Atom(Atom::Delim {
@@ -472,7 +472,7 @@ impl Layout<'_> {
                 class: spacing.classes.get(i).copied().flatten(),
             });
         }
-        let after = usize::try_from((pending + i32::try_from(spacing.after).ok()?).max(0)).ok()?;
+        let after = usize::try_from(spacing::combine(pending, spacing.after).max(0)).ok()?;
         if !stretchy.is_empty() {
             let others = || {
                 parts
