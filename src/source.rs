@@ -369,13 +369,24 @@ fn decode_utf16(bytes: &[u8], unit: fn([u8; 2]) -> u16) -> (String, usize) {
     (text, invalid)
 }
 
+/// Whether `bytes` hold a control character other than LF and tab, DEL,
+/// or a C1 control (`0xc2` starts their UTF-8 form, and some printable
+/// characters'). Without any, [`normalize`] has nothing to do. Branch-free
+/// over 32-byte blocks so that it vectorises: this reads every byte of
+/// every input.
+fn needs_normalizing(bytes: &[u8]) -> bool {
+    let special = |b: u8| (b < 0x20) & (b != b'\n') & (b != b'\t') | (b == 0x7f) | (b == 0xc2);
+    let (blocks, rest) = bytes.as_chunks::<32>();
+    blocks
+        .iter()
+        .any(|block| block.iter().fold(false, |any, &b| any | special(b)))
+        || rest.iter().any(|&b| special(b))
+}
+
 /// Normalise line endings to LF and replace unsafe control characters.
 /// Returns the text and the number of replaced control characters.
 fn normalize(text: String) -> (String, usize) {
-    let needs_work = text
-        .bytes()
-        .any(|b| (b < 0x20 && b != b'\n' && b != b'\t') || b == 0x7f || b == 0xc2);
-    if !needs_work {
+    if !needs_normalizing(text.as_bytes()) {
         return (text, 0);
     }
     let mut out = String::with_capacity(text.len());
@@ -401,6 +412,19 @@ fn normalize(text: String) -> (String, usize) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_quick_check_finds_every_special_byte() {
+        for b in 0..=255u8 {
+            let special = (b < 0x20 && b != b'\n' && b != b'\t') || b == 0x7f || b == 0xc2;
+            for at in [0, 5, 31, 32, 63, 64, 70] {
+                let mut bytes = vec![b'a'; 71];
+                bytes[at] = b;
+                assert_eq!(needs_normalizing(&bytes), special, "{b:#x} at {at}");
+            }
+        }
+        assert!(!needs_normalizing(b""));
+    }
 
     fn src(bytes: &[u8]) -> Source {
         Source::from_bytes(bytes.to_vec(), Origin::Memory)
