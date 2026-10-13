@@ -111,17 +111,22 @@ fn paging_decisions() {
         paging,
         ..PagerRequest::default()
     };
-    assert!(!wants_pager(&request(Paging::Auto), &tty, 23));
-    assert!(wants_pager(&request(Paging::Auto), &tty, 24));
-    assert!(wants_pager(&request(Paging::Always), &tty, 1));
-    assert!(!wants_pager(&request(Paging::Never), &tty, 1000));
+    assert!(!wants_pager(&request(Paging::Auto), &tty, || 23));
+    assert!(wants_pager(&request(Paging::Auto), &tty, || 24));
+    assert!(wants_pager(&request(Paging::Always), &tty, || 1));
+    assert!(!wants_pager(&request(Paging::Never), &tty, || 1000));
     let piped = Caps::plain();
-    assert!(!wants_pager(&request(Paging::Always), &piped, 1000));
+    assert!(!wants_pager(&request(Paging::Always), &piped, || 1000));
     let unknown = Caps {
         size: None,
         ..Caps::full()
     };
-    assert!(!wants_pager(&request(Paging::Auto), &unknown, 1000));
+    assert!(!wants_pager(&request(Paging::Auto), &unknown, || 1000));
+    // Only `auto` needs the height (which costs a layout of everything).
+    let unasked = || -> usize { panic!("the height is only needed for `auto`") };
+    assert!(wants_pager(&request(Paging::Always), &tty, unasked));
+    assert!(!wants_pager(&request(Paging::Never), &tty, unasked));
+    assert!(!wants_pager(&request(Paging::Auto), &piped, unasked));
     assert_eq!(Paging::from(When::Always), Paging::Always);
     assert_eq!(Paging::from(When::Never), Paging::Never);
     assert_eq!(Paging::from(When::Auto), Paging::Auto);
@@ -176,25 +181,25 @@ fn the_pager_opens_for_short_documents_on_a_terminal_by_default() {
     let default = paging(&[], &[]);
     assert_eq!(default.paging, Paging::Always);
     assert_eq!(PagerRequest::default().paging, Paging::Always);
-    assert!(wants_pager(&default, &tty, 1));
-    assert!(wants_pager(&default, &tty, 0), "even an empty one");
+    assert!(wants_pager(&default, &tty, || 1));
+    assert!(wants_pager(&default, &tty, || 0), "even an empty one");
     // Never when piped, with --plain or with --paging=never.
-    assert!(!wants_pager(&default, &Caps::plain(), 1000));
+    assert!(!wants_pager(&default, &Caps::plain(), || 1000));
     for args in [&["-p"][..], &["--plain"], &["--paging", "never"]] {
         let r = paging(args, &[]);
-        assert!(!wants_pager(&r, &tty, 1000), "{args:?}");
+        assert!(!wants_pager(&r, &tty, || 1000), "{args:?}");
     }
     assert!(!wants_pager(
         &paging(&[], &["pager.enabled=never"]),
         &tty,
-        1000
+        || 1000
     ));
     // `auto` keeps its meaning: only documents taller than the screen.
     let auto = paging(&["--paging", "auto"], &[]);
-    assert!(!wants_pager(&auto, &tty, 23));
-    assert!(wants_pager(&auto, &tty, 24));
+    assert!(!wants_pager(&auto, &tty, || 23));
+    assert!(wants_pager(&auto, &tty, || 24));
     let auto = paging(&[], &["pager.enabled=auto"]);
-    assert!(!wants_pager(&auto, &tty, 1));
+    assert!(!wants_pager(&auto, &tty, || 1));
 }
 
 #[test]
