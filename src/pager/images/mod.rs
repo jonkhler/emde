@@ -427,10 +427,10 @@ impl Images {
                 } else {
                     // Reloaded with other images.
                     self.purge(kept.id);
-                    self.load(key, doc, opts)
+                    self.load(Some(key), doc, opts, None)
                 }
             }
-            None => self.load(key, doc, opts),
+            None => self.load(Some(key), doc, opts, None),
         };
         self.current = Some(id);
         match self.stores.last() {
@@ -439,27 +439,36 @@ impl Images {
         }
     }
 
-    /// Load (or claim) the store of `doc` as the most recently used.
-    fn load(&mut self, key: &DocKey, doc: &Document, mut opts: StoreOptions) -> StoreId {
+    /// Load (or claim) the store of `doc` as the most recently used, for the
+    /// document `key` (`None`: the image view's, whose figure may be `read`
+    /// already).
+    fn load(
+        &mut self,
+        key: Option<&DocKey>,
+        doc: &Document,
+        mut opts: StoreOptions,
+        read: Option<Source>,
+    ) -> StoreId {
         let store = match self.spare.iter().position(|s| s.belongs_to(doc)) {
-            Some(i) => self.spare.swap_remove(i),
-            None => {
+            Some(i) if key.is_some() => self.spare.swap_remove(i),
+            _ => {
                 // With images off at first, `i` can still turn blocks on.
                 if opts.graphics == Graphics::None {
                     opts.graphics = Graphics::Blocks;
                 }
-                ImageStore::load_figures(doc, opts)
+                match read {
+                    Some(source) => ImageStore::with_source(doc, ImageId(0), source, opts),
+                    None => ImageStore::load_figures(doc, opts),
+                }
             }
         };
-        self.keep(Some(key.clone()), store)
-    }
-
-    /// Keep `store` (for the document `key`, `None` for the image view) as
-    /// the most recently used.
-    fn keep(&mut self, key: Option<DocKey>, store: ImageStore) -> StoreId {
         let id = StoreId(self.next_store);
         self.next_store += 1;
-        self.stores.push(Kept { key, id, store });
+        self.stores.push(Kept {
+            key: key.cloned(),
+            id,
+            store,
+        });
         id
     }
 
@@ -477,13 +486,14 @@ impl Images {
     /// made from `read` (the figure's image, read for its document already)
     /// or read now. The next frames show it. Returns the image's size in
     /// pixels, or why it cannot be shown.
+    #[inline(never)]
     pub(crate) fn view(
         &mut self,
         doc: &Document,
         read: Option<Source>,
     ) -> Result<(u32, u32), String> {
         self.viewing = None;
-        let Some(mut opts) = self.options.clone() else {
+        let Some(opts) = self.options.clone() else {
             return Err("images are off on this terminal".into());
         };
         if self.mode() == Graphics::None {
@@ -501,30 +511,14 @@ impl Images {
                 id
             }
             None => {
-                if opts.graphics == Graphics::None {
-                    opts.graphics = Graphics::Blocks;
+                // The oldest goes.
+                if self.stores.iter().filter(|k| k.key.is_none()).count() >= VIEW_STORES
+                    && let Some(i) = self.stores.iter().position(|k| k.key.is_none())
+                {
+                    let old = self.stores.remove(i);
+                    self.purge(old.id);
                 }
-                let store = match read {
-                    Some(source) => ImageStore::with_source(doc, ImageId(0), source, opts),
-                    None => ImageStore::load_figures(doc, opts),
-                };
-                let id = self.keep(None, store);
-                // The oldest of them go.
-                let views = self.stores.iter().filter(|k| k.key.is_none()).count();
-                let mut extra = views.saturating_sub(VIEW_STORES);
-                let mut gone = Vec::new();
-                self.stores.retain(|k| {
-                    let drop = extra > 0 && k.key.is_none();
-                    if drop {
-                        extra -= 1;
-                        gone.push(k.id);
-                    }
-                    !drop
-                });
-                for old in gone {
-                    self.purge(old);
-                }
-                id
+                self.load(None, doc, opts, read)
             }
         };
         self.viewing = Some(id);

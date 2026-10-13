@@ -146,7 +146,8 @@ impl Section {
 
 /// What a key does. In Visual mode the motions (`LineDown`, `HalfDown`,
 /// `Top`, `NextHeading`, `NextMatch`, `ScrollCenter`, …) move the end of
-/// the selection, and the view follows it.
+/// the selection, and the view follows it; in the outline sidebar and the
+/// image view `Top` and `Bottom` go to the first and last entry or image.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Command {
     /// A digit of the count for the next command.
@@ -239,8 +240,6 @@ pub enum Command {
     SidebarUp,
     SidebarPageDown,
     SidebarPageUp,
-    SidebarTop,
-    SidebarBottom,
     /// Go to the selected heading (the keys go back to the document).
     SidebarJump,
     /// The keys go back to the document.
@@ -249,8 +248,6 @@ pub enum Command {
     SidebarHide,
     ImageNext,
     ImagePrev,
-    ImageFirst,
-    ImageLast,
     /// Back to the text, where it was.
     ImageClose,
     /// Copy the image's path or URL.
@@ -412,15 +409,15 @@ pub const BINDINGS: &[Binding] = &[
     bind!(Sidebar, "sidebar-up", "k,Up,C-p", SidebarUp, "previous entry"),
     bind!(Sidebar, "sidebar-page-down", "Space,PgDn,C-f", SidebarPageDown, "down a page"),
     bind!(Sidebar, "sidebar-page-up", "b,PgUp,C-b", SidebarPageUp, "up a page"),
-    bind!(Sidebar, "sidebar-top", "g,Home", SidebarTop, "first entry"),
-    bind!(Sidebar, "sidebar-bottom", "G,End", SidebarBottom, "last entry"),
+    bind!(Sidebar, "sidebar-top", "g,Home", Top, "first entry"),
+    bind!(Sidebar, "sidebar-bottom", "G,End", Bottom, "last entry"),
     bind!(Sidebar, "sidebar-jump", "Enter", SidebarJump, "go to the heading"),
     bind!(Sidebar, "sidebar-leave", "Esc,q,C-c", SidebarLeave, "back to the document"),
     bind!(Sidebar, "sidebar-hide", "T", SidebarHide, "hide the sidebar"),
     bind!(Image, "image-next", "n,j,Right,Space,PgDn", ImageNext, "next image"),
     bind!(Image, "image-prev", "p,k,Left,Backspace,PgUp", ImagePrev, "previous image"),
-    bind!(Image, "image-first", "g,Home", ImageFirst, "first image"),
-    bind!(Image, "image-last", "G,End", ImageLast, "last image"),
+    bind!(Image, "image-first", "g,Home", Top, "first image"),
+    bind!(Image, "image-last", "G,End", Bottom, "last image"),
     bind!(Image, "image-yank", "y", ImageYank, "copy the image's path or URL"),
     bind!(Image, "image-open", "o", ImageOpen, "open the image with the system's opener"),
     bind!(Image, "image-cycle", "i", CycleImages, "cycle the image mode"),

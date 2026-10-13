@@ -6,11 +6,11 @@ expression: fake
 
 
 
+
 ╭──────────────────────────────────────╮
 │ a fake                               │
 │ fake.png                             │
-│ fake.png: not a PNG, JPEG, GIF or    │
-│ WebP image                           │
+│ fake.png: not a PNG, JPEG, GIF or W… │
 ╰──────────────────────────────────────╯
 
 

@@ -151,8 +151,7 @@ fn short_name(src: &str) -> String {
         .get(..5)
         .is_some_and(|s| s.eq_ignore_ascii_case("data:"))
     {
-        let kind = src.get(5..).and_then(|r| r.split([';', ',']).next());
-        return format!("data:{}", kind.unwrap_or(""));
+        return src.split([';', ',']).next().unwrap_or(src).to_owned();
     }
     src.to_owned()
 }
@@ -188,24 +187,29 @@ fn link_text(layout: &Layout, o: &Occurrence) -> String {
     let first = o.line as usize;
     let mut out = String::new();
     for line in first..first.saturating_add(o.hits as usize) {
+        if line > first {
+            out.push(' ');
+        }
         for span in layout.line_spans(line) {
             if span.link == Some(o.link) {
                 out.push_str(layout.span_text(span));
             }
         }
-        out.push(' ');
     }
-    out.split_whitespace().collect::<Vec<_>>().join(" ")
+    out
 }
 
 /// A figure's label: its alt text, and its title when that says more.
 fn figure_label(img: &ImageRef) -> String {
     let (alt, title) = (img.alt.trim(), img.title.trim());
-    match (alt.is_empty(), title.is_empty() || title == alt) {
-        (_, true) => alt.to_owned(),
-        (true, false) => title.to_owned(),
-        (false, false) => format!("{alt} — {title}"),
+    let mut label = alt.to_owned();
+    if !title.is_empty() && title != alt {
+        if !label.is_empty() {
+            label.push_str(" — ");
+        }
+        label.push_str(title);
     }
+    label
 }
 
 /// The gallery of the current document: its figures and the links to
@@ -231,7 +235,8 @@ pub(crate) fn build(state: &State, extra: Option<&Path>) -> Vec<Picture> {
             top: el.top,
             off: el.start,
         };
-        found.push((
+        add(
+            &mut found,
             layout.line_at(pos),
             Picture {
                 image: img.clone(),
@@ -240,7 +245,7 @@ pub(crate) fn build(state: &State, extra: Option<&Path>) -> Vec<Picture> {
                 label: figure_label(img),
                 figure: Some(f.image),
             },
-        ));
+        );
     });
     for o in &state.derived.links {
         let at = match link_location(state, o) {
@@ -260,7 +265,8 @@ pub(crate) fn build(state: &State, extra: Option<&Path>) -> Vec<Picture> {
             src: link.url.clone(),
             ..ImageRef::default()
         };
-        found.push((
+        add(
+            &mut found,
             o.line as usize,
             Picture {
                 image,
@@ -269,17 +275,25 @@ pub(crate) fn build(state: &State, extra: Option<&Path>) -> Vec<Picture> {
                 label: link_text(layout, o),
                 figure: None,
             },
-        ));
+        );
     }
-    // Stable: a figure and a link on one line keep their order.
-    found.sort_by_key(|(line, _)| *line);
-    let mut out: Vec<Picture> = Vec::with_capacity(found.len());
-    for (_, p) in found {
-        if !out.iter().any(|o| o.at == p.at) {
-            out.push(p);
+    found.into_iter().map(|(_, p)| p).collect()
+}
+
+/// Put `p`, on line `line`, among `found` (kept top to bottom, an entry
+/// after those on its line), where the first entry for its location is.
+fn add(found: &mut Vec<(usize, Picture)>, line: usize, p: Picture) {
+    if let Some(i) = found.iter().position(|(_, o)| o.at == p.at) {
+        match found.get(i) {
+            // The first one in the document stays.
+            Some(&(l, _)) if l <= line => return,
+            _ => {
+                found.remove(i);
+            }
         }
     }
-    out
+    let at = found.partition_point(|(l, _)| *l <= line);
+    found.insert(at, (line, p));
 }
 
 /// A document of one figure showing `picture`, its relative sources read
@@ -302,8 +316,9 @@ pub(crate) fn document(picture: &Picture, base_dir: Option<PathBuf>) -> Document
     }
 }
 
-/// Put the figure of the image view's layout in the middle of `rows`
-/// rows: blank lines above it.
+/// Put the figure of the image view's layout (a [`document`]: one figure,
+/// no caption, so no links, headings or math to move along) in the middle
+/// of `rows` rows: blank lines above it.
 pub(crate) fn centre(layout: &mut Layout, rows: usize) {
     let Some(p) = layout.images.first() else {
         return;
@@ -312,9 +327,6 @@ pub(crate) fn centre(layout: &mut Layout, rows: usize) {
     let Ok(n) = u32::try_from(pad) else {
         return;
     };
-    if n == 0 {
-        return;
-    }
     let blank = Line {
         first: 0,
         n: 0,
@@ -324,24 +336,12 @@ pub(crate) fn centre(layout: &mut Layout, rows: usize) {
         pos: SrcPos::default(),
     };
     layout.lines.splice(0..0, std::iter::repeat_n(blank, pad));
+    // The figure's block takes the blank lines (the ranges tile the lines).
+    for r in layout.block_lines.iter_mut().skip(1) {
+        r.start = r.start.saturating_add(n);
+    }
     for r in &mut layout.block_lines {
-        // The first block takes the blank lines (the ranges tile the
-        // lines).
-        if r.start > 0 {
-            r.start = r.start.saturating_add(n);
-        }
         r.end = r.end.saturating_add(n);
-    }
-    for l in &mut layout.heading_line {
-        if *l != u32::MAX {
-            *l = l.saturating_add(n);
-        }
-    }
-    for h in &mut layout.link_hits {
-        h.line = h.line.saturating_add(n);
-    }
-    for h in &mut layout.math_hits {
-        h.line = h.line.saturating_add(n);
     }
     for p in &mut layout.images {
         p.line = p.line.saturating_add(n);

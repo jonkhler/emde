@@ -10,6 +10,7 @@
 //! merely scroll.
 
 use std::borrow::Cow;
+use std::fmt::Write as _;
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 use crate::render::Mark;
@@ -28,8 +29,6 @@ use super::toc::{self, BoxGeom};
 
 /// Width of the keys column in the help.
 const HELP_KEYS: usize = 22;
-/// Widest box the image view shows when it cannot show the image.
-const MAX_IMAGE_BOX: u16 = 72;
 
 /// A style as a patch: its colours and attributes replace those
 /// underneath (default colours leave them alone).
@@ -317,26 +316,23 @@ fn draw_pieces(
 pub fn view(state: &State, ctx: &Ctx) -> Frame {
     let rows = usize::from(state.rows);
     let showing = state.showing();
-    let viewer = match &state.mode {
-        Mode::Image(v) => Some(v),
-        _ => None,
-    };
-    let left = if viewer.is_some() { 0 } else { state.left() };
+    let image = matches!(state.mode, Mode::Image(_));
+    let left = if image { 0 } else { state.left() };
+    // The image view's rows are blank until its image is laid out, and
+    // when it cannot be shown.
+    let lines = !image || showing.image && !showing.layout.images.is_empty();
     let mut building: Vec<Building> = Vec::with_capacity(rows);
-    if rows > 0 && state.cols > 0 && viewer.is_some() {
-        image_view(state, ctx, &mut building);
-        building.push(Building {
-            side: Vec::new(),
-            body: Body::Text(status_bar(state, ctx)),
-            overlays: Vec::new(),
-        });
-    } else if rows > 0 && state.cols > 0 {
+    if rows > 0 && state.cols > 0 {
         for r in 0..state.view_rows() {
-            let index = state.top + r;
-            let body = if index < state.layout.len() {
+            let index = showing.top + r;
+            let body = if lines && index < showing.layout.len() {
                 Body::Line {
                     index,
-                    marks: marks(state, ctx, index),
+                    marks: if image {
+                        Vec::new()
+                    } else {
+                        marks(state, ctx, index)
+                    },
                 }
             } else {
                 Body::Blank
@@ -355,6 +351,7 @@ pub fn view(state: &State, ctx: &Ctx) -> Frame {
             Mode::Help { scroll } => help(state, ctx, *scroll, &mut building),
             Mode::Hints(h) => hints(state, ctx, h, &mut building),
             Mode::Visual(_) => selection(state, ctx, &mut building),
+            Mode::Image(_) if showing.image && !lines => image_box(state, ctx, &mut building),
             Mode::Normal
             | Mode::Prompt(_)
             | Mode::Command(_)
@@ -622,13 +619,15 @@ fn status_left<'a>(state: &'a State, ctx: &Ctx, room: usize) -> Vec<(Style, Cow<
     }
     if let Mode::Image(v) = &state.mode {
         // `image 3/7 · figures/loss.png · 1200×800`
-        let mut text = format!("image {}/{}", v.index + 1, v.gallery.len());
-        if let Some(p) = v.gallery.get(v.index) {
-            text.push_str(" · ");
-            text.push_str(&clean(&p.name));
-        }
+        let name = v.gallery.get(v.index).map_or("", |p| p.name.as_str());
+        let mut text = format!(
+            "image {}/{} · {}",
+            v.index + 1,
+            v.gallery.len(),
+            clean(name)
+        );
         if let Some((w, h)) = state.image.as_ref().and_then(|p| p.pixels) {
-            text.push_str(&format!(" · {w}×{h}"));
+            let _ = write!(text, " · {w}×{h}");
         }
         return vec![(st.status, Cow::Owned(text))];
     }
@@ -916,65 +915,29 @@ fn help(state: &State, ctx: &Ctx, scroll: usize, rows: &mut [Building]) {
     put_segment(rows, bottom, g.x, border(ctx, &g, false, more, ascii, amb));
 }
 
-/// The image view: the rows of its figure, or, when the image cannot be
-/// shown, a box in the middle of the screen with its alt text or caption,
-/// where it is, and why.
-fn image_view(state: &State, ctx: &Ctx, rows: &mut Vec<Building>) {
-    let page = state.image.as_ref();
-    let layout = page.map(|p| &p.layout);
-    let shown = layout.is_some_and(|l| !l.images.is_empty());
-    for r in 0..state.view_rows() {
-        let body = match layout {
-            Some(l) if shown && r < l.len() => Body::Line {
-                index: r,
-                marks: Vec::new(),
-            },
-            _ => Body::Blank,
-        };
-        rows.push(Building {
-            side: Vec::new(),
-            body,
-            overlays: Vec::new(),
-        });
-    }
-    let (Some(page), Some(picture)) = (page, state.viewed()) else {
+/// The image view's box when the image cannot be shown, in the middle of
+/// the screen: its alt text or caption, where it is, and why (one line
+/// each, as wide as the screen allows).
+#[inline(never)]
+fn image_box(state: &State, ctx: &Ctx, rows: &mut [Building]) {
+    let (Some(page), Some(picture)) = (&state.image, state.viewed()) else {
         return;
     };
-    if shown {
-        return;
-    }
     let st = &ctx.styles;
     let amb = state.settings.ambiguous_wide;
     let ascii = state.settings.ascii;
-    let mut lines: Vec<(Style, Cow<'_, str>)> = Vec::new();
-    if !picture.label.is_empty() {
-        lines.push((st.text, clean(&picture.label)));
-    }
-    lines.push((st.key, clean(&picture.name)));
-    if let Some(why) = &page.problem {
-        lines.push((st.muted, clean(why)));
-    }
-    let widest = lines
-        .iter()
-        .map(|(_, t)| str_width(t, amb))
-        .max()
-        .unwrap_or(0);
+    let texts = [
+        (st.text, picture.label.as_str()),
+        (st.key, picture.name.as_str()),
+        (st.muted, page.problem.as_deref().unwrap_or("")),
+    ];
+    let widest = texts.iter().map(|(_, t)| str_width(t, amb)).max();
     let cols = state.cols;
-    let w = u16::try_from(widest.saturating_add(4))
+    let w = u16::try_from(widest.unwrap_or(0).saturating_add(4))
         .unwrap_or(u16::MAX)
-        .clamp(cols.min(24), cols.min(MAX_IMAGE_BOX));
-    // Lines too long for the box go on over more rows.
-    let room = usize::from(w).saturating_sub(4).max(1);
-    let lines: Vec<(Style, Cow<'_, str>)> = lines
-        .into_iter()
-        .flat_map(|(style, text)| {
-            wrap(&text, room, amb)
-                .into_iter()
-                .map(move |l| (style, Cow::Owned(l)))
-        })
-        .collect();
+        .clamp(cols.min(24), cols);
     let area = u16::try_from(state.view_rows()).unwrap_or(u16::MAX);
-    let h = u16::try_from(lines.len() + 2).unwrap_or(u16::MAX).min(area);
+    let h = 5.min(area);
     let g = BoxGeom {
         x: (cols - w) / 2,
         y: (area - h) / 2,
@@ -986,10 +949,9 @@ fn image_view(state: &State, ctx: &Ctx, rows: &mut Vec<Building>) {
     }
     let y = usize::from(g.y);
     put_segment(rows, y, g.x, border(ctx, &g, true, "", ascii, amb));
-    for (i, (style, text)) in lines.iter().take(g.inner_rows()).enumerate() {
-        let room = g.inner_cols().saturating_sub(2);
-        let text = ellipsize(text, room, amb);
-        let pieces = [(*style, Cow::Owned(format!(" {text}")))];
+    for (i, (style, text)) in texts.into_iter().take(g.inner_rows()).enumerate() {
+        let text = ellipsize(&clean(text), g.inner_cols().saturating_sub(2), amb).into_owned();
+        let pieces = [(st.text, Cow::Borrowed(" ")), (style, Cow::Owned(text))];
         put_segment(
             rows,
             y + 1 + i,
@@ -1001,52 +963,11 @@ fn image_view(state: &State, ctx: &Ctx, rows: &mut Vec<Building>) {
     put_segment(rows, bottom, g.x, border(ctx, &g, false, "", ascii, amb));
 }
 
-/// `text` in lines of at most `cols` columns, broken at spaces (a word
-/// longer than that is cut).
-fn wrap(text: &str, cols: usize, amb: bool) -> Vec<String> {
-    let mut out: Vec<String> = Vec::new();
-    let mut line = String::new();
-    for word in text.split(' ').filter(|w| !w.is_empty()) {
-        let mut word = word;
-        loop {
-            let used = str_width(&line, amb);
-            let need = str_width(word, amb) + usize::from(used > 0);
-            if used + need <= cols {
-                if used > 0 {
-                    line.push(' ');
-                }
-                line.push_str(word);
-                break;
-            }
-            if used > 0 {
-                out.push(std::mem::take(&mut line));
-                continue;
-            }
-            // Longer than a line on its own.
-            let (head, _) = fit(word, cols.max(1), amb);
-            let head = if head.is_empty() {
-                word.get(..word.chars().next().map_or(0, char::len_utf8))
-                    .unwrap_or(word)
-            } else {
-                head
-            };
-            out.push(head.to_owned());
-            word = word.get(head.len()..).unwrap_or("");
-            if word.is_empty() {
-                break;
-            }
-        }
-    }
-    if !line.is_empty() || out.is_empty() {
-        out.push(line);
-    }
-    out
-}
-
 /// The outline sidebar beside the document rows: one heading per row,
 /// indented by level and cut with `…`, the current section marked, the
 /// selected entry (with the keys in the sidebar) in reverse video, and a
 /// border on its right.
+#[inline(never)]
 fn sidebar(state: &State, ctx: &Ctx, rows: &mut [Building]) {
     let width = usize::from(state.left());
     let st = &ctx.styles;
@@ -1082,18 +1003,22 @@ fn sidebar(state: &State, ctx: &Ctx, rows: &mut [Building]) {
                     st.toc
                 };
                 let pad = sidebar::indent(heading.level, base);
-                let room = inner.saturating_sub(2 + pad);
-                let title = ellipsize(&clean(&heading.title), room, amb).into_owned();
-                let mark = if current == Some(i) { marker } else { "  " };
-                (style, format!("{mark}{}{title}", " ".repeat(pad)))
+                let mut text = String::from(if current == Some(i) { marker } else { "  " });
+                text.extend(std::iter::repeat_n(' ', pad));
+                text.push_str(&ellipsize(
+                    &clean(&heading.title),
+                    inner.saturating_sub(2 + pad),
+                    amb,
+                ));
+                (style, text)
             });
         let mut w = Styled::new(ctx);
+        w.spaces(&Style::PLAIN, 1);
         match entry {
             Some((style, text)) => {
-                w.spaces(&Style::PLAIN, 1);
                 draw_pieces(&mut w, &[(style, Cow::Owned(text))], inner + 1, &style, amb);
             }
-            None => w.spaces(&Style::PLAIN, inner + 2),
+            None => w.spaces(&Style::PLAIN, inner + 1),
         }
         w.put(&st.toc_border, bar, amb);
         row.side = w.finish();
@@ -1223,16 +1148,5 @@ mod tests {
         assert_eq!(ellipsize("short", 8, false), "short");
         assert_eq!(ellipsize("x", 0, false), "");
         assert_eq!(clean("a\u{1b}b\tc"), "a␛b c");
-    }
-
-    #[test]
-    fn wrapping_text() {
-        assert_eq!(wrap("one two three", 7, false), ["one two", "three"]);
-        assert_eq!(wrap("abcdefghij", 4, false), ["abcd", "efgh", "ij"]);
-        assert_eq!(wrap("a  b", 9, false), ["a b"]);
-        assert_eq!(wrap("", 5, false), [""]);
-        assert_eq!(wrap("日本語", 3, false), ["日", "本", "語"]);
-        assert_eq!(wrap("日本", 1, false), ["日", "本"], "never stuck");
-        assert_eq!(wrap("x y", 0, false), ["x", "y"]);
     }
 }

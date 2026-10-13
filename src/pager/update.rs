@@ -436,6 +436,20 @@ fn command(state: &mut State, cmd: Command) -> Vec<Effect> {
     if matches!(state.mode, Mode::Visual(_)) && visual::motion(state, cmd, n, count) {
         return Vec::new();
     }
+    // The ends of the sidebar and of the gallery.
+    let end = match cmd {
+        Command::Top => Some(isize::MIN),
+        Command::Bottom => Some(isize::MAX),
+        _ => None,
+    };
+    match (&state.mode, end) {
+        (Mode::Sidebar(_), Some(delta)) => {
+            sidebar_move(state, delta);
+            return Vec::new();
+        }
+        (Mode::Image(_), Some(delta)) => return image_step(state, delta),
+        _ => {}
+    }
     match cmd {
         Command::Count => {}
         Command::LineDown => scroll(state, lines(n, true)),
@@ -476,8 +490,6 @@ fn command(state: &mut State, cmd: Command) -> Vec<Effect> {
         Command::SidebarUp => sidebar_move(state, -1),
         Command::SidebarPageDown => sidebar_move(state, lines(state.view_rows().max(1), true)),
         Command::SidebarPageUp => sidebar_move(state, lines(state.view_rows().max(1), false)),
-        Command::SidebarTop => sidebar_move(state, isize::MIN),
-        Command::SidebarBottom => sidebar_move(state, isize::MAX),
         Command::SidebarJump => {
             if let Mode::Sidebar(i) = state.mode {
                 state.mode = Mode::Normal;
@@ -540,8 +552,6 @@ fn command(state: &mut State, cmd: Command) -> Vec<Effect> {
         Command::Gallery => return view_image(state, None, None),
         Command::ImageNext => return image_step(state, lines(n, true)),
         Command::ImagePrev => return image_step(state, lines(n, false)),
-        Command::ImageFirst => return image_step(state, isize::MIN),
-        Command::ImageLast => return image_step(state, isize::MAX),
         Command::ImageClose => state.mode = Mode::Normal,
         Command::ImageYank => {
             if let Some(p) = state.viewed() {

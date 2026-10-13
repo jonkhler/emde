@@ -70,6 +70,7 @@ pub(crate) fn key_of(origin: &Origin) -> Option<DocKey> {
 
 /// Whether the file at `path` starts like an image (reading its first
 /// bytes only).
+#[inline(never)]
 fn sniff_file(path: &Path) -> bool {
     use std::io::Read as _;
     let mut head = [0u8; 512];
@@ -457,30 +458,42 @@ impl<'t, T: Terminal> Shell<'t, T> {
     /// The image view's image: read (or found among those read already, a
     /// figure's in its document's store), laid out alone to fill the screen
     /// above the status bar, keeping its aspect ratio, centred.
+    #[inline(never)]
     fn show_image(&mut self) -> Vec<Effect> {
-        let Some(picture) = self.state.viewed().cloned() else {
+        let Some(picture) = self.state.viewed() else {
             return Vec::new();
         };
-        let (cols, rows) = self.state.size();
-        let view_rows = rows.saturating_sub(1).max(1);
-        let doc = gallery::document(&picture, self.state.page.doc.base_dir.clone());
+        let doc = gallery::document(picture, self.state.page.doc.base_dir.clone());
         let read = picture
             .figure
             .and_then(|id| self.images.source_of(self.state.key(), id));
+        let (cols, rows) = self.state.size();
+        let view_rows = rows.saturating_sub(1).max(1);
         let found = self.images.view(&doc, read);
-        let mut opts = self.opts.clone();
-        opts.max_width = 0;
-        opts.margin = 0;
-        opts.images.max_height = Height::Rows(view_rows);
+        // The whole screen: no text column, no margins, no height cap
+        // below the screen's.
+        let kept = (
+            self.opts.max_width,
+            self.opts.margin,
+            self.opts.images.max_height,
+        );
+        self.opts.max_width = 0;
+        self.opts.margin = 0;
+        self.opts.images.max_height = Height::Rows(view_rows);
         let mut layout = layout::layout(
             &doc,
             cols,
             &self.theme,
             &self.caps,
-            &opts,
+            &self.opts,
             &*self.highlighter,
             &self.images.view_sizer(),
         );
+        (
+            self.opts.max_width,
+            self.opts.margin,
+            self.opts.images.max_height,
+        ) = kept;
         gallery::centre(&mut layout, usize::from(view_rows));
         let (pixels, problem) = match found {
             Ok(px) => (Some(px), None),
@@ -588,38 +601,32 @@ impl<'t, T: Terminal> Shell<'t, T> {
     }
 
     fn open_url(&mut self, url: &str) -> io::Result<Vec<Effect>> {
-        let remote = self.caps.over_ssh;
-        let message = match os::open_plan(&self.open, &self.env, remote, url) {
-            OpenPlan::Spawn(argv) => match os::spawn_detached(&argv) {
-                Ok(()) => Action::Message(format!("opened {url}")),
-                Err(e) => {
-                    self.copy(url)?;
-                    Action::Error(format!("could not open the link ({e}); URL copied"))
-                }
-            },
-            OpenPlan::Copy(reason) => {
-                self.copy(url)?;
-                Action::Message(format!("copied {url} · {reason}"))
-            }
-        };
-        Ok(update(&mut self.state, message))
+        let plan = os::open_plan(&self.open, &self.env, self.caps.over_ssh, url);
+        self.open_with(plan, url)
     }
 
     /// `o` in the image view: open a local image with the system's opener
     /// (or copy its path where that is not possible).
+    #[inline(never)]
     fn open_file(&mut self, path: &Path) -> io::Result<Vec<Effect>> {
-        let shown = crate::text::sanitize(&path.display().to_string()).into_owned();
-        let remote = self.caps.over_ssh;
-        let message = match os::open_file_plan(&self.open, &self.env, remote, path) {
+        let plan = os::open_file_plan(&self.open, &self.env, self.caps.over_ssh, path);
+        self.open_with(plan, &path.display().to_string())
+    }
+
+    /// Carry out `plan` for `what` (a URL or a path, copied when it cannot
+    /// be opened).
+    fn open_with(&mut self, plan: OpenPlan, what: &str) -> io::Result<Vec<Effect>> {
+        let shown = crate::text::sanitize(what).into_owned();
+        let message = match plan {
             OpenPlan::Spawn(argv) => match os::spawn_detached(&argv) {
                 Ok(()) => Action::Message(format!("opened {shown}")),
                 Err(e) => {
-                    self.copy(&path.display().to_string())?;
-                    Action::Error(format!("could not open the image ({e}); path copied"))
+                    self.copy(what)?;
+                    Action::Error(format!("could not open it ({e}); copied it instead"))
                 }
             },
             OpenPlan::Copy(reason) => {
-                self.copy(&path.display().to_string())?;
+                self.copy(what)?;
                 Action::Message(format!("copied {shown} · {reason}"))
             }
         };
