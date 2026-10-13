@@ -288,7 +288,7 @@ pub enum BlocksArg {
 pub enum MathArg {
     /// One line of Unicode.
     Unicode,
-    /// Plain ASCII.
+    /// Plain ASCII (for now the TeX source, as `raw`).
     Ascii,
     /// The TeX source.
     Raw,

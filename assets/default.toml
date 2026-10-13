@@ -75,19 +75,20 @@ code = "auto"
 # underline = "curly"
 
 [render]
-# Total width in columns; 0 uses the terminal's width (80 when the output is
-# not a terminal).
+# Total width in columns; 0 uses the terminal's width (when the output is
+# not a terminal: $COLUMNS, else 80).
 width = 0
 # Maximum width of the text column; 0 for no limit.
 max_width = 100
-# Columns kept free on both sides on a terminal.
+# Columns kept free on both sides.
 margin = 2
 # Text column on wide terminals: center or left.
 align = "center"
 # Images: auto (the best the terminal supports), kitty, iterm, sixel, blocks
 # (drawn with text characters) or none (a box with the alt text).
 images = "auto"
-# Inline math: unicode, ascii or raw (the TeX source).
+# Inline math: unicode, ascii (for now the TeX source, as raw) or raw (the
+# TeX source).
 math = "unicode"
 # Colours: auto, always, never, truecolor, 256 or 16.
 color = "auto"
@@ -188,7 +189,8 @@ tmux_passthrough = "if-enabled"
 max_pixels = 40_000_000
 
 [markdown]
-# $...$ and $$...$$ math.
+# Math: $...$ and $$...$$ (false also leaves \(...\), \[...\] and ```math
+# fences alone).
 math = true
 # Turn bare URLs into links.
 linkify = true
@@ -234,10 +236,11 @@ open = "auto"
 # The outline sidebar on the left (T shows it, a second T moves the keys
 # into it, a third hides it): auto shows it when the terminal is at least
 # toc_width + max_width + 2 * margin + 4 columns wide (140 with the
-# defaults; a max_width of 0 counts as 100), always whenever the text keeps 40 columns beside it, never
-# only when T asks for it. Documents without headings get none.
+# defaults; a max_width of 0 counts as 100), always whenever the text keeps
+# 40 columns beside it, never only when T asks for it. Documents without headings get none.
 toc_sidebar = "auto"
-# Width of the outline sidebar in columns, its border included (16 to 60).
+# Width of the outline sidebar in columns, its border included (16 to 60;
+# other values are clamped).
 toc_width = 32
 # <details> blocks: collapsed to their summary line (unless written
 # <details open>; Enter, a click or za opens them) or expanded. Output

@@ -153,9 +153,9 @@ emde --doctor                        # what emde found out about the terminal
 | `-w`, `--width N` · `-m`, `--max-width N` | The width, and the widest text column (default 100). |
 | `--color auto\|always\|never\|truecolor\|256\|16` | Colours, also when piping. |
 | `-t`, `--theme NAME\|PATH` · `--background auto\|dark\|light` | The theme and its variant. |
-| `--code-theme NAME\|PATH` | The code theme (`--list-code-themes`). |
+| `--code-theme NAME\|PATH` | The code theme (`--list-code-themes`; languages: `--list-languages`). |
 | `--images auto\|kitty\|iterm\|sixel\|blocks\|none` | How to show images. |
-| `--toc` | Open the pager with the outline shown. |
+| `--toc` · `--anchor SLUG` | Open the pager with the outline shown, or at a heading. |
 | `-s`, `--set KEY=VALUE` | Change any setting for this run (see [Configuration](#configuration)). |
 | `--doctor[=json]` | Show every terminal decision and why it was made. |
 | `--print-default-config` · `--check-config` | The settings with their defaults; check your config file. |
@@ -529,7 +529,8 @@ more out of the terminal. In iTerm2 → SSH → tmux 3.4 it says:
   that claim more colours than they have.
 - Odd characters or misaligned tables: a font without the glyphs (see the
   iTerm2 tip), or a terminal that draws East Asian ambiguous characters
-  wide (`render.ambiguous_width = 2`); `--ascii` uses ASCII decorations.
+  wide (`render.ambiguous_width = 2`); `--ascii` uses ASCII decorations
+  (math stays Unicode; `--math raw` shows its TeX).
 - `emde --check-config` explains problems in your config file; `-v` shows
   every problem in full, also problems with the document.
 - Slow? `EMDE_TRACE=1 emde -p notes.md > /dev/null` prints how long each

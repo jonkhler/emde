@@ -74,12 +74,12 @@ Every key, with its default and the option that also sets it, if any.
 
 | Key | Default | Description |
 |---|---|---|
-| `width` | `0` | Total width in columns; 0 uses the terminal's width (80 when the output is not a terminal). Flag: `--width`, `-w`. |
+| `width` | `0` | Total width in columns; 0 uses the terminal's width (when the output is not a terminal: \$COLUMNS, else 80). Flag: `--width`, `-w`. |
 | `max_width` | `100` | Maximum width of the text column; 0 for no limit. Flag: `--max-width`, `-m`. |
-| `margin` | `2` | Columns kept free on both sides on a terminal. |
+| `margin` | `2` | Columns kept free on both sides. |
 | `align` | `"center"` | Text column on wide terminals: center or left. Flag: `--align`. |
 | `images` | `"auto"` | Images: auto (the best the terminal supports), kitty, iterm, sixel, blocks (drawn with text characters) or none (a box with the alt text). Flag: `--images`. |
-| `math` | `"unicode"` | Inline math: unicode, ascii or raw (the TeX source). Flag: `--math`. |
+| `math` | `"unicode"` | Inline math: unicode, ascii (for now the TeX source, as raw) or raw (the TeX source). Flag: `--math`. |
 | `color` | `"auto"` | Colours: auto, always, never, truecolor, 256 or 16. Flag: `--color`. |
 | `hyperlinks` | `"auto"` | OSC 8 hyperlinks: auto, always or never. Flag: `--hyperlinks`. |
 | `link_refs` | `"auto"` | Numbered link references ([1\]) where hyperlinks are off: auto, always or never. Flag: `--link-refs`. |
@@ -152,7 +152,7 @@ nu = "bash"
 
 | Key | Default | Description |
 |---|---|---|
-| `math` | `true` | \$...\$ and \$\$...\$\$ math. |
+| `math` | `true` | Math: \$...\$ and \$\$...\$\$ (false also leaves \\(...\\), \\[...\\\] and ```math fences alone). |
 | `linkify` | `true` | Turn bare URLs into links. |
 | `definition_lists` | `true` | Definition lists (a term line followed by ": definition"). |
 | `smart_punctuation` | `false` | Curly quotes and dashes. |
@@ -180,7 +180,7 @@ nu = "bash"
 | `search_case` | `"smart"` | Search case: smart (case-sensitive only with an uppercase letter), sensitive or insensitive. |
 | `open` | `"auto"` | Opening links and images (o in the image view): auto (open or xdg-open locally, copy the URL over SSH), never, or a command that gets the URL (or the image file) as its last argument. |
 | `toc_sidebar` | `"auto"` | The outline sidebar on the left (T shows it, a second T moves the keys into it, a third hides it): auto shows it when the terminal is at least toc\_width + max\_width + 2 \* margin + 4 columns wide (140 with the defaults; a max\_width of 0 counts as 100), always whenever the text keeps 40 columns beside it, never only when T asks for it. Documents without headings get none. |
-| `toc_width` | `32` | Width of the outline sidebar in columns, its border included (16 to 60). |
+| `toc_width` | `32` | Width of the outline sidebar in columns, its border included (16 to 60; other values are clamped). |
 | `details` | `"collapsed"` | \<details\> blocks: collapsed to their summary line (unless written \<details open\>; Enter, a click or za opens them) or expanded. Output that is not paged always shows them expanded. |
 
 ### `[pager.keys]`
