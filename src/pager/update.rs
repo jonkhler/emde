@@ -22,7 +22,7 @@ use super::state::{
     Derived, DocKey, Focus, Goto, HintKind, Mode, Outline, Page, Place, Prompt, State, Visit,
 };
 use super::term::{Button, Key, KeyCode, Mouse, MouseKind};
-use super::{toc, visual};
+use super::{sidebar, toc, visual};
 
 /// Largest count prefix.
 const MAX_COUNT: u32 = 1_000_000;
@@ -129,6 +129,12 @@ pub struct LoadRequest {
 
 /// Apply an action; see the module docs.
 pub fn update(state: &mut State, action: Action) -> Vec<Effect> {
+    let effects = apply(state, action);
+    sidebar::follow(state);
+    effects
+}
+
+fn apply(state: &mut State, action: Action) -> Vec<Effect> {
     match action {
         Action::Key(key) => {
             state.message = None;
@@ -219,6 +225,7 @@ fn context(mode: &Mode) -> Context {
         Mode::Help { .. } => Context::Help,
         Mode::Hints(_) => Context::Hints,
         Mode::Command(_) => Context::Command,
+        Mode::Sidebar(_) => Context::Sidebar,
     }
 }
 
@@ -356,7 +363,7 @@ fn type_text(state: &mut State, text: &str) -> Vec<Effect> {
             input.push_str(&clean);
             Vec::new()
         }
-        Mode::Normal | Mode::Help { .. } | Mode::Visual(_) => Vec::new(),
+        Mode::Normal | Mode::Help { .. } | Mode::Visual(_) | Mode::Sidebar(_) => Vec::new(),
     }
 }
 
@@ -410,6 +417,24 @@ fn command(state: &mut State, cmd: Command) -> Vec<Effect> {
         Command::NextSection => heading_jump(state, n, true, true),
         Command::PrevSection => heading_jump(state, n, false, true),
         Command::Outline => open_outline(state),
+        Command::Sidebar => return toggle_sidebar(state),
+        Command::SidebarDown => sidebar_move(state, 1),
+        Command::SidebarUp => sidebar_move(state, -1),
+        Command::SidebarPageDown => sidebar_move(state, lines(state.view_rows().max(1), true)),
+        Command::SidebarPageUp => sidebar_move(state, lines(state.view_rows().max(1), false)),
+        Command::SidebarTop => sidebar_move(state, isize::MIN),
+        Command::SidebarBottom => sidebar_move(state, isize::MAX),
+        Command::SidebarJump => {
+            if let Mode::Sidebar(i) = state.mode {
+                state.mode = Mode::Normal;
+                sidebar_jump(state, i);
+            }
+        }
+        Command::SidebarLeave => state.mode = Mode::Normal,
+        Command::SidebarHide => {
+            state.mode = Mode::Normal;
+            return set_sidebar(state, false);
+        }
         Command::SearchForward => open_prompt(state, false),
         Command::SearchBackward => open_prompt(state, true),
         Command::NextMatch => next_match(state, n, false),
@@ -740,6 +765,64 @@ fn outline_jump(state: &mut State) {
     if let Some(&line) = state.layout.heading_line.get(h.index())
         && line != u32::MAX
     {
+        jump_recorded(state, line as usize);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// The outline sidebar
+// ---------------------------------------------------------------------------
+
+/// `T`: show the sidebar; when it is shown, move the keys into it.
+fn toggle_sidebar(state: &mut State) -> Vec<Effect> {
+    if state.sidebar_cols() > 0 {
+        let selected = sidebar::current(state).unwrap_or(0);
+        state.mode = Mode::Sidebar(selected);
+        return Vec::new();
+    }
+    if state.page.doc.headings.is_empty() {
+        state.say("no headings");
+        return Vec::new();
+    }
+    if !sidebar::fits(&state.settings.sidebar, state.cols) {
+        let need = state
+            .settings
+            .sidebar
+            .width
+            .saturating_add(sidebar::MIN_TEXT_COLS);
+        state.complain(format!("the outline sidebar needs {need} columns"));
+        return Vec::new();
+    }
+    set_sidebar(state, true)
+}
+
+/// Show or hide the sidebar for the rest of the session, laying the
+/// document out again at the same place.
+fn set_sidebar(state: &mut State, shown: bool) -> Vec<Effect> {
+    let before = state.sidebar_cols();
+    state.sidebar.toggled = Some(shown);
+    if state.sidebar_cols() == before {
+        return Vec::new();
+    }
+    state.pending = Some(Goto::Place(state.top_place()));
+    vec![Effect::Relayout]
+}
+
+/// Move the sidebar's selection by `delta` entries.
+fn sidebar_move(state: &mut State, delta: isize) {
+    let last = state.derived.headings.len().saturating_sub(1);
+    if let Mode::Sidebar(i) = &mut state.mode {
+        *i = if delta >= 0 {
+            i.saturating_add(delta.unsigned_abs()).min(last)
+        } else {
+            i.saturating_sub(delta.unsigned_abs())
+        };
+    }
+}
+
+/// Go to the heading of sidebar entry `i`.
+fn sidebar_jump(state: &mut State, i: usize) {
+    if let Some(&(line, _)) = state.derived.headings.get(i) {
         jump_recorded(state, line as usize);
     }
 }
@@ -1428,6 +1511,8 @@ fn on_mouse(state: &mut State, m: Mouse) -> Vec<Effect> {
             match state.mode {
                 Mode::Outline(_) => outline_move(state, delta.signum()),
                 Mode::Help { .. } => help_scroll(state, delta),
+                Mode::Sidebar(_) if m.col < state.left() => sidebar_move(state, delta.signum()),
+                _ if m.col < state.left() => sidebar::scroll(state, delta),
                 _ => scroll(state, delta),
             }
             Vec::new()
@@ -1470,8 +1555,16 @@ fn click(state: &mut State, col: u16, row: u16) -> Vec<Effect> {
             state.mode = Mode::Normal;
             Vec::new()
         }
-        Mode::Hints(_) | Mode::Prompt(_) | Mode::Command(_) | Mode::Normal | Mode::Visual(_) => {
-            if matches!(state.mode, Mode::Hints(_) | Mode::Visual(_)) {
+        Mode::Hints(_)
+        | Mode::Prompt(_)
+        | Mode::Command(_)
+        | Mode::Normal
+        | Mode::Visual(_)
+        | Mode::Sidebar(_) => {
+            if matches!(
+                state.mode,
+                Mode::Hints(_) | Mode::Visual(_) | Mode::Sidebar(_)
+            ) {
                 state.mode = Mode::Normal;
             }
             if matches!(state.mode, Mode::Prompt(_) | Mode::Command(_)) {
@@ -1481,8 +1574,16 @@ fn click(state: &mut State, col: u16, row: u16) -> Vec<Effect> {
             if row >= state.view_rows() {
                 return Vec::new();
             }
+            let left = state.left();
+            if col < left {
+                // The sidebar: its entries go to their headings.
+                if let Some(i) = sidebar::entry_at(state, row) {
+                    sidebar_jump(state, i);
+                }
+                return Vec::new();
+            }
             let line = state.top + row;
-            let Some(col) = col.checked_sub(state.layout.indent) else {
+            let Some(col) = col.checked_sub(left.saturating_add(state.layout.indent)) else {
                 return Vec::new();
             };
             match links::occurrence_at(&state.layout, &state.derived, line, col) {

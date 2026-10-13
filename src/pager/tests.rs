@@ -73,7 +73,7 @@ fn drive(s: &mut State, action: Action) -> Vec<Effect> {
     while !queue.is_empty() {
         let effect = queue.remove(0);
         if effect == Effect::Relayout {
-            let l = lay(s.document(), s.size().0, s.wide());
+            let l = lay(s.document(), s.doc_cols(), s.wide());
             queue.extend(update(s, Action::Layout(l)));
         } else {
             out.push(effect);
@@ -1287,3 +1287,4 @@ proptest::proptest! {
 
 // Hints, Visual mode, marks and the editor.
 mod modes;
+mod sidebar;

@@ -66,7 +66,7 @@ code = "auto"
 #   math math_var math_num math_op math_rel math_func math_text math_delim
 #   math_error
 #   muted status status_msg search_match search_current selection prompt hint
-#   toc toc_current
+#   toc toc_current toc_border
 #
 # Example:
 # [style.h1]

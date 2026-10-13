@@ -14,13 +14,14 @@ use std::rc::Rc;
 use crate::config::{PagerOptions, SearchCase};
 use crate::ir::{Document, HeadingId, ImageId, LinkId, SrcPos};
 use crate::layout::Layout;
-use crate::options::{FrontMatterMode, RenderOptions};
+use crate::options::{FrontMatterMode, RenderOptions, When};
 use crate::source::{Origin, Source};
 
 use super::PagerDoc;
 use super::hints::Target;
 use super::keymap::{Command, Keymap};
 use super::search::{Corpus, Search};
+use super::sidebar::{self, Sidebar};
 use super::term::Key;
 
 /// Documents kept in memory for back and forward.
@@ -271,6 +272,9 @@ pub(crate) enum Mode {
     Command(String),
     /// Selecting lines.
     Visual(Visual),
+    /// The keys move in the outline sidebar: the selected entry (an index
+    /// into [`Derived::headings`]).
+    Sidebar(usize),
 }
 
 /// A message in the status bar, shown until the next key.
@@ -392,6 +396,19 @@ pub struct Settings {
     /// The quote bar and the code wrap marker as layout draws them (left
     /// out of copied text).
     pub glyphs: (String, String),
+    /// The outline sidebar.
+    pub sidebar: SidebarSettings,
+}
+
+/// The outline sidebar's settings (see [`super::sidebar`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SidebarSettings {
+    /// `pager.toc_sidebar`.
+    pub when: When,
+    /// `pager.toc_width`: columns, the border included.
+    pub width: u16,
+    /// The terminal width from which `auto` shows it.
+    pub auto_cols: u16,
 }
 
 impl Settings {
@@ -406,6 +423,11 @@ impl Settings {
             ambiguous_wide: render.ambiguous_wide,
             keymap: Keymap::new(&pager.keys).0,
             glyphs: crate::layout::deco_glyphs(render),
+            sidebar: SidebarSettings {
+                when: pager.toc_sidebar,
+                width: pager.toc_width,
+                auto_cols: sidebar::auto_cols(pager.toc_width, render.max_width, render.margin),
+            },
         }
     }
 }
@@ -464,6 +486,8 @@ pub struct State {
     marks: Vec<(DocKey, char, Place)>,
     /// The figure shown at full size (`f` on an image).
     pub(crate) zoom: Option<ImageId>,
+    /// The outline sidebar.
+    pub(crate) sidebar: Sidebar,
     next_unnamed: u32,
     next_link_base: u32,
 }
@@ -514,6 +538,7 @@ impl State {
             awaiting: None,
             marks: Vec::new(),
             zoom: None,
+            sidebar: Sidebar::default(),
             next_unnamed: 1,
             next_link_base: links,
         };
@@ -554,6 +579,34 @@ impl State {
         let n = u32::try_from(links).unwrap_or(u32::MAX);
         self.next_link_base = base.saturating_add(n);
         base
+    }
+
+    /// Columns the outline sidebar takes when the document is laid out
+    /// (0: not shown).
+    pub(crate) fn sidebar_cols(&self) -> u16 {
+        sidebar::cols(
+            &self.settings.sidebar,
+            self.sidebar.toggled,
+            self.cols,
+            &self.page.doc,
+        )
+    }
+
+    /// Columns the document is laid out for: what the sidebar leaves.
+    pub fn doc_cols(&self) -> u16 {
+        self.cols.saturating_sub(self.sidebar_cols())
+    }
+
+    /// The screen column of the layout's column 0: the sidebar's width
+    /// when it is shown beside a layout made for the columns it leaves (0
+    /// while a layout for another width is still on screen).
+    pub(crate) fn left(&self) -> u16 {
+        let w = self.sidebar_cols();
+        if w > 0 && self.layout.width.saturating_add(w) <= self.cols {
+            w
+        } else {
+            0
+        }
     }
 
     /// Rows for the document (all but the status bar).
@@ -748,6 +801,7 @@ impl State {
             Mode::Hints(_) => "hints",
             Mode::Command(_) => "command",
             Mode::Visual(_) => "visual",
+            Mode::Sidebar(_) => "sidebar",
         }
     }
 

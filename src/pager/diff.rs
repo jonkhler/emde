@@ -17,7 +17,12 @@
 //! drawn over it (no overlay, no pixel image that would not move with the
 //! text), the terminal scrolls the document rows itself (a scroll region
 //! that leaves the status bar alone) and only the `k` exposed rows are
-//! drawn — about one line of bytes per line scrolled.
+//! drawn — about one line of bytes per line scrolled. Not while the
+//! outline sidebar is shown: a scroll region spans whole rows, and the
+//! sidebar does not move with the text.
+//!
+//! A row with the sidebar ([`Frame::left`] columns) has it written first,
+//! from column 1, and the document line after it.
 //!
 //! Line bytes come from [`Emitter`] (with the image layer's figure rows,
 //! [`Extras::images`]); `ESC[K` clears the rest of a row unless the line
@@ -53,6 +58,7 @@ pub struct Screen {
     /// Hash of each row; `None` where the content is unknown.
     rows: Vec<Option<u64>>,
     cols: u16,
+    left: u16,
     top: usize,
     generation: u64,
     overlay: bool,
@@ -131,7 +137,7 @@ impl Screen {
     /// screen then counts `frame` as painted.
     pub(crate) fn diff(&mut self, frame: &Frame) -> Diff {
         let n = frame.lines.len();
-        let known = self.rows.len() == n && self.cols == frame.cols;
+        let known = self.rows.len() == n && self.cols == frame.cols && self.left == frame.left;
         let mut old: Vec<Option<u64>> = if known {
             self.rows.clone()
         } else {
@@ -147,6 +153,7 @@ impl Screen {
             .collect();
         self.rows = frame.lines.iter().map(|r| Some(r.hash)).collect();
         self.cols = frame.cols;
+        self.left = frame.left;
         self.top = frame.top;
         self.generation = frame.generation;
         self.overlay = frame.overlay;
@@ -188,6 +195,10 @@ impl Screen {
                 continue;
             };
             let _ = write!(out, "\x1b[{};1H", i + 1);
+            out.extend_from_slice(&row.side);
+            if frame.left > 0 && !matches!(row.body, Body::Text(_)) {
+                let _ = write!(out, "\x1b[{};{}H", i + 1, u32::from(frame.left) + 1);
+            }
             match &row.body {
                 Body::Line { index, marks } => {
                     let e = emitter.get_or_insert_with(|| {
@@ -205,7 +216,7 @@ impl Screen {
                     if !out.get(start..).is_some_and(|b| b.ends_with(RESET)) {
                         out.extend_from_slice(RESET);
                     }
-                    if row_end(layout, *index) < usize::from(frame.cols) {
+                    if usize::from(frame.left) + row_end(layout, *index) < usize::from(frame.cols) {
                         out.extend_from_slice(ERASE_LINE);
                     }
                 }
@@ -232,6 +243,8 @@ impl Screen {
         let region = frame.lines.len().checked_sub(1)?;
         if region < 2
             || self.generation != frame.generation
+            || self.left > 0
+            || frame.left > 0
             || self.overlay
             || frame.overlay
             || self.images
@@ -297,12 +310,14 @@ mod tests {
         let mut lines: Vec<Row> = (0..rows - 1)
             .map(|i| Row {
                 hash: (top + i) as u64,
+                side: Vec::new(),
                 body: Body::Blank,
                 overlays: Vec::new(),
             })
             .collect();
         lines.push(Row {
             hash: 9999,
+            side: Vec::new(),
             body: Body::Text(b"status".to_vec()),
             overlays: Vec::new(),
         });
@@ -311,6 +326,7 @@ mod tests {
             rows: u16::try_from(rows).unwrap(),
             top,
             generation: 1,
+            left: 0,
             lines,
             overlay: false,
             images,
@@ -356,6 +372,35 @@ mod tests {
         assert_eq!(s.diff(&frame(10, 2, true)).scroll, None, "visible now");
         assert_eq!(s.diff(&frame(10, 3, false)).scroll, None, "visible before");
         assert!(s.diff(&frame(10, 4, false)).scroll.is_some());
+    }
+
+    #[test]
+    fn the_sidebar_is_written_first_and_never_scrolled() {
+        let (doc, layout) = empty();
+        let cfg = RenderConfig::plain();
+        let with_sidebar = |top: usize| {
+            let mut f = frame(10, top, false);
+            f.left = 4;
+            for (i, row) in f.lines.iter_mut().enumerate().take(9) {
+                row.side = format!("S{i}|").into_bytes();
+            }
+            f
+        };
+        let mut s = Screen::new();
+        let f = with_sidebar(0);
+        let d = s.diff(&f);
+        let text =
+            String::from_utf8(s.write(&f, &d, &doc, &layout, &cfg, Extras::default())).unwrap();
+        // The sidebar from column 1, the row after it from column 5; the
+        // status bar from column 1.
+        assert!(text.contains("\x1b[2;1HS1|\x1b[2;5H"), "{text:?}");
+        assert!(text.contains("\x1b[10;1Hstatus"), "{text:?}");
+        // A scroll repaints instead of scrolling the sidebar along.
+        assert_eq!(s.diff(&with_sidebar(1)).scroll, None);
+        // Without it, the same scroll takes the fast path.
+        let mut s = Screen::new();
+        s.diff(&frame(10, 0, false));
+        assert!(s.diff(&frame(10, 1, false)).scroll.is_some());
     }
 
     #[test]

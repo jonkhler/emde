@@ -700,6 +700,64 @@ fn pixels_are_drawn_again_after_a_resize() {
     );
 }
 
+/// Where kitty classic placements go: `(row, column)`, 1-based.
+fn kitty_places(bytes: &[u8]) -> Vec<(usize, usize)> {
+    let text = String::from_utf8_lossy(bytes);
+    let mut out = Vec::new();
+    for (i, _) in text.match_indices("\x1b_Ga=p,") {
+        let before = &text[..i];
+        let cup = before.rfind("\x1b[").unwrap();
+        let pos = before[cup + 2..].trim_end_matches('H');
+        let (row, col) = pos.split_once(';').unwrap();
+        out.push((row.parse().unwrap(), col.parse().unwrap()));
+    }
+    out
+}
+
+#[test]
+fn pixel_images_are_offset_by_the_sidebar() {
+    let doc = tall_figure("sidebar-offset");
+    // Without the sidebar on a terminal as wide as the text area beside a
+    // 16-column one, and with it.
+    let script = |cols| {
+        FakeTerminal::new(cols, 12)
+            .keys("jjj")
+            .wait(ms(300))
+            .mark("drawn")
+            .keys("q")
+    };
+    let with_sidebar = |opts| {
+        let mut s = session(&doc, opts);
+        s.pager.toc_sidebar = emde::options::When::Always;
+        s.pager.toc_width = 16;
+        s
+    };
+    let (alone, _) = run(script(44), session(&doc, options(Graphics::Iterm)));
+    let (beside, _) = run(script(60), with_sidebar(options(Graphics::Iterm)));
+    let alone = iterm_draws(&written(&alone, None, Some("drawn")));
+    let beside = iterm_draws(&written(&beside, None, Some("drawn")));
+    assert_eq!(alone.len(), 1);
+    let (row, col, height) = alone[0];
+    assert_eq!(beside, [(row, col + 16, height)]);
+    assert!(col + 16 > 16, "never over the sidebar");
+    // kitty classic placements too.
+    let (alone, _) = run(script(44), session(&doc, options(Graphics::KittyClassic)));
+    let (beside, _) = run(script(60), with_sidebar(options(Graphics::KittyClassic)));
+    let alone = kitty_places(&written(&alone, None, Some("drawn")));
+    let beside_places = kitty_places(&written(&beside, None, Some("drawn")));
+    assert!(!alone.is_empty());
+    let shifted: Vec<(usize, usize)> = alone.iter().map(|&(r, c)| (r, c + 16)).collect();
+    assert_eq!(beside_places, shifted);
+    // The sidebar is on screen beside the image, its border in column 16.
+    let p = screen_at(&beside, 60, 12, Some("drawn"));
+    assert!(
+        row_text(&p, 0).starts_with(" ▸ Figures"),
+        "{}",
+        row_text(&p, 0)
+    );
+    assert_eq!(row_text(&p, 3).chars().nth(15), Some('│'));
+}
+
 // ---------------------------------------------------------------------------
 // Modes, documents, stopping
 // ---------------------------------------------------------------------------

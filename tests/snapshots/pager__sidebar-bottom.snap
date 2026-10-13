@@ -1,0 +1,25 @@
+---
+source: tests/pager.rs
+expression: bottom
+---
+ 1│     Section 3                 │         Section 18                                                                                                   │
+ 2│     Section 4                 │         ━━━━━━━━━━──────────────────────────────────────────────────────────────────────────────────────────         │
+ 3│     Section 5                 │                                                                                                                      │
+ 4│     Section 6                 │         Paragraph 18 has a few words of text in it.                                                                  │
+ 5│     Section 7                 │                                                                                                                      │
+ 6│     Section 8                 │         Section 19                                                                                                   │
+ 7│     Section 9                 │         ━━━━━━━━━━──────────────────────────────────────────────────────────────────────────────────────────         │
+ 8│     Section 10                │                                                                                                                      │
+ 9│     Section 11                │         Paragraph 19 has a few words of text in it.                                                                  │
+10│     Section 12                │                                                                                                                      │
+11│     Section 13                │         Section 20                                                                                                   │
+12│     Section 14                │         ━━━━━━━━━━──────────────────────────────────────────────────────────────────────────────────────────         │
+13│     Section 15                │                                                                                                                      │
+14│     Section 16                │         Paragraph 20 has a few words of text in it.                                                                  │
+15│     Section 17                │                                                                                                                      │
+16│     Section 18                │         A very long heading that does not fit in the sidebar, not even close                                         │
+17│ ▸   Section 19                │         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━────────────────────────────────         │
+18│     Section 20                │                                                                                                                      │
+19│     A very long heading that… │         The end.                                                                                                     │
+  │ ==============================│
+20│ -- OUTLINE --  Enter goes to the heading, Esc back to the text                                                                         L 88/106 100% │

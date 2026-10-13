@@ -203,6 +203,7 @@ back to it, and `''` to where you were before the last jump.
 | `}` | next heading of the same or a higher level |
 | `{` | previous heading of the same or a higher level |
 | `t` | outline (type to filter) |
+| `T` | outline sidebar: show it; again: keys in it; again: hide it |
 | `m` | mark the place: m and a letter (ma) |
 | `'` | go to a mark ('a); '' back to before the last jump |
 
@@ -307,6 +308,20 @@ back to it, and `''` to where you were before the last jump.
 | `Enter` | go to the heading |
 | `Esc` `^C` | close |
 | `Backspace` | delete a filter character |
+
+**In the outline sidebar**
+
+| Keys | Action |
+|---|---|
+| `j` `↓` `^N` | next entry |
+| `k` `↑` `^P` | previous entry |
+| `Space` `PgDn` `^F` | down a page |
+| `b` `PgUp` `^B` | up a page |
+| `g` `Home` | first entry |
+| `G` `End` | last entry |
+| `Enter` | go to the heading |
+| `Esc` `q` `^C` | back to the document |
+| `T` | hide the sidebar |
 
 **With hints**
 

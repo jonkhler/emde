@@ -32,6 +32,7 @@ use super::diff::{Extras, Screen};
 use super::images::{self, Images, WORK_POLL};
 use super::keymap::{Command, SEQUENCE_TIMEOUT};
 use super::os::{self, ClipboardPlan, OpenPlan};
+use super::sidebar;
 use super::state::{DocKey, Settings, State};
 use super::term::{
     MAX_POLL, MIN_POLL, MOUSE_OFF, MOUSE_ON, Signals, TermEvent, Terminal, clamp_poll,
@@ -166,8 +167,12 @@ impl<'t, T: Terminal> Shell<'t, T> {
         let mut images = Images::new(images);
         let key = key_of(&doc.source.origin);
         let sizer = images.sizer(&key.clone().unwrap_or(DocKey::Unnamed(0)), &doc.doc);
-        let first = first.filter(|l| l.width == size.0).unwrap_or_else(|| {
-            layout::layout(&doc.doc, size.0, &theme, &caps, &opts, &*highlighter, sizer)
+        // The columns the outline sidebar leaves.
+        let width = size
+            .0
+            .saturating_sub(sidebar::cols(&settings.sidebar, None, size.0, &doc.doc));
+        let first = first.filter(|l| l.width == width).unwrap_or_else(|| {
+            layout::layout(&doc.doc, width, &theme, &caps, &opts, &*highlighter, sizer)
         });
         let mut stamps = HashMap::new();
         if let Origin::File(p) = &doc.source.origin {
@@ -451,7 +456,7 @@ impl<'t, T: Terminal> Shell<'t, T> {
         };
         let out = layout::layout(
             doc,
-            cols,
+            self.state.doc_cols(),
             &self.theme,
             &self.caps,
             &self.opts,

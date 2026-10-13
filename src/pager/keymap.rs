@@ -47,6 +47,8 @@ pub enum Context {
     Help,
     /// The `:` prompt.
     Command,
+    /// The keys in the outline sidebar.
+    Sidebar,
 }
 
 impl Context {
@@ -74,13 +76,14 @@ pub enum Section {
     Prompt,
     Command,
     Outline,
+    Sidebar,
     Hints,
     Help,
 }
 
 impl Section {
     /// Every section, in help order.
-    pub const ALL: [Section; 12] = [
+    pub const ALL: [Section; 13] = [
         Section::Scroll,
         Section::Jump,
         Section::Search,
@@ -91,6 +94,7 @@ impl Section {
         Section::Prompt,
         Section::Command,
         Section::Outline,
+        Section::Sidebar,
         Section::Hints,
         Section::Help,
     ];
@@ -101,6 +105,7 @@ impl Section {
             Section::Visual => Context::Visual,
             Section::Prompt => Context::Prompt,
             Section::Outline => Context::Outline,
+            Section::Sidebar => Context::Sidebar,
             Section::Hints => Context::Hints,
             Section::Help => Context::Help,
             Section::Command => Context::Command,
@@ -125,6 +130,7 @@ impl Section {
             Section::Visual => "In Visual mode",
             Section::Prompt => "In the search prompt",
             Section::Outline => "In the outline",
+            Section::Sidebar => "In the outline sidebar",
             Section::Hints => "With hints",
             Section::Help => "In this help",
             Section::Command => "At the : prompt",
@@ -163,6 +169,8 @@ pub enum Command {
     /// The start of the block, or of the previous one (Visual mode).
     PrevBlock,
     Outline,
+    /// The outline sidebar: show it, then move the keys into it.
+    Sidebar,
     /// `m` and a letter.
     SetMark,
     /// `'` and a letter (or `'`).
@@ -219,6 +227,18 @@ pub enum Command {
     OutlineJump,
     OutlineClose,
     OutlineErase,
+    SidebarDown,
+    SidebarUp,
+    SidebarPageDown,
+    SidebarPageUp,
+    SidebarTop,
+    SidebarBottom,
+    /// Go to the selected heading (the keys go back to the document).
+    SidebarJump,
+    /// The keys go back to the document.
+    SidebarLeave,
+    /// Hide the sidebar.
+    SidebarHide,
     HintsCancel,
     HintsErase,
     HelpDown,
@@ -298,6 +318,7 @@ pub const BINDINGS: &[Binding] = &[
     bind!(Jump, "next-section", "}", NextSection, "next heading of the same or a higher level"),
     bind!(Jump, "prev-section", "{", PrevSection, "previous heading of the same or a higher level"),
     bind!(Jump, "outline", "t", Outline, "outline (type to filter)"),
+    bind!(Jump, "toc-sidebar", "T", Sidebar, "outline sidebar: show it; again: keys in it; again: hide it"),
     bind!(Jump, "set-mark", "m", SetMark, "mark the place: m and a letter (ma)"),
     bind!(Jump, "jump-mark", "'", JumpMark, "go to a mark ('a); '' back to before the last jump"),
     bind!(Search, "search-forward", "/", SearchForward, "search forward"),
@@ -368,6 +389,15 @@ pub const BINDINGS: &[Binding] = &[
     bind!(Outline, "outline-jump", "Enter", OutlineJump, "go to the heading"),
     bind!(Outline, "outline-close", "Esc,C-c", OutlineClose, "close"),
     bind!(Outline, "outline-erase", "Backspace", OutlineErase, "delete a filter character"),
+    bind!(Sidebar, "sidebar-down", "j,Down,C-n", SidebarDown, "next entry"),
+    bind!(Sidebar, "sidebar-up", "k,Up,C-p", SidebarUp, "previous entry"),
+    bind!(Sidebar, "sidebar-page-down", "Space,PgDn,C-f", SidebarPageDown, "down a page"),
+    bind!(Sidebar, "sidebar-page-up", "b,PgUp,C-b", SidebarPageUp, "up a page"),
+    bind!(Sidebar, "sidebar-top", "g,Home", SidebarTop, "first entry"),
+    bind!(Sidebar, "sidebar-bottom", "G,End", SidebarBottom, "last entry"),
+    bind!(Sidebar, "sidebar-jump", "Enter", SidebarJump, "go to the heading"),
+    bind!(Sidebar, "sidebar-leave", "Esc,q,C-c", SidebarLeave, "back to the document"),
+    bind!(Sidebar, "sidebar-hide", "T", SidebarHide, "hide the sidebar"),
     bind!(Hints, "hints-cancel", "Esc,C-c", HintsCancel, "cancel"),
     bind!(Hints, "hints-erase", "Backspace", HintsErase, "delete a label character"),
     bind!(Help, "help-down", "j,Down", HelpDown, "down a line"),
@@ -893,6 +923,7 @@ mod tests {
             Context::Hints,
             Context::Help,
             Context::Command,
+            Context::Sidebar,
         ] {
             assert_eq!(lookup(context, ctrl('z')), Some(Command::Suspend));
             assert_eq!(lookup(context, ctrl('l')), Some(Command::Redraw));
@@ -1205,7 +1236,7 @@ mod tests {
         let (map, issues) = Keymap::new(&overrides(&[
             ("pgae-down", &["x"]),
             ("count", &["x"]),
-            ("top", &["PgDwn", "T"]),
+            ("top", &["PgDwn", "X"]),
         ]));
         let messages: Vec<&str> = issues.iter().map(|i| i.message.as_str()).collect();
         assert_eq!(
@@ -1216,7 +1247,7 @@ mod tests {
                 "unknown key `PgDwn` (did you mean `PgDn`?)",
             ]
         );
-        assert_eq!(map.command(Context::Normal, c('T')), Some(Command::Top));
+        assert_eq!(map.command(Context::Normal, c('X')), Some(Command::Top));
         assert_eq!(map.command(Context::Normal, c('x')), None);
     }
 }

@@ -38,8 +38,10 @@
 //!   never reach the status row, and inside tmux at most
 //!   [`TMUX_MAX_SIXELS`] sixel images are on screen at once.
 //!
-//! No image is placed or drawn on rows an overlay (outline, help, link
-//! hints) draws on: it would hide the overlay. While a classic or pixel
+//! Figures are placed in the columns the outline sidebar leaves
+//! ([`super::Frame::left`]), never over it. No image is placed or drawn on
+//! rows an overlay (outline, help, link hints) draws on: it would hide the
+//! overlay. While a classic or pixel
 //! image is on screen the painter's scroll fast path is off
 //! ([`super::Frame::images`]): the terminal would scroll pixels it does not
 //! track. Images are drawn (and kitty images placed) again after an
@@ -255,7 +257,8 @@ struct Shown {
 struct At {
     /// The first document line on screen.
     top: usize,
-    /// The layout's indent (figure columns are relative to it).
+    /// The screen column of the text column: the outline sidebar's width
+    /// and the layout's indent (figure columns are relative to it).
     indent: u16,
     /// The screen rows an overlay (outline, help, link hints) draws on;
     /// empty without one.
@@ -272,7 +275,7 @@ impl At {
         };
         At {
             top: state.top,
-            indent: state.layout.indent,
+            indent: state.layout.indent.saturating_add(frame.left),
             covered,
         }
     }

@@ -579,6 +579,7 @@ mod tests {
         Element::ImageAlt,
         Element::ImageFrame,
         Element::Muted,
+        Element::TocBorder,
     ];
 
     /// Every element whose colours are less than the WCAG minimum apart, on

@@ -376,8 +376,9 @@ draws it (`—`: as its parent).
 | `selection` | `text` | The lines selected in Visual mode (`V`). | `reverse` |
 | `prompt` | `status` | The search prompt. | `fg=accent` |
 | `hint` | `text` | Hint labels (`f`, `o`, `y`, `v`). | `fg=base bg=accent bold` |
-| `toc` | `text` | The outline (`t`). | — |
-| `toc_current` | `toc` | The current section in the outline. | `fg=accent bold` |
+| `toc` | `text` | The outline (`t`) and the outline sidebar (`T`). | — |
+| `toc_current` | `toc` | The current section in the outline and the sidebar. | `fg=accent bold` |
+| `toc_border` | `muted` | The outline sidebar's border. | — |
 
 ## Themes
 
@@ -535,6 +536,7 @@ one bound later, an action of your file winning over a default one; `emde
 | `}` | next heading of the same or a higher level | `next-section` |
 | `{` | previous heading of the same or a higher level | `prev-section` |
 | `t` | outline (type to filter) | `outline` |
+| `T` | outline sidebar: show it; again: keys in it; again: hide it | `toc-sidebar` |
 | `m` | mark the place: m and a letter (ma) | `set-mark` |
 | `'` | go to a mark ('a); '' back to before the last jump | `jump-mark` |
 
@@ -639,6 +641,20 @@ one bound later, an action of your file winning over a default one; `emde
 | `Enter` | go to the heading | `outline-jump` |
 | `Esc` `^C` | close | `outline-close` |
 | `Backspace` | delete a filter character | `outline-erase` |
+
+**In the outline sidebar**
+
+| Keys | Action | Name |
+|---|---|---|
+| `j` `↓` `^N` | next entry | `sidebar-down` |
+| `k` `↑` `^P` | previous entry | `sidebar-up` |
+| `Space` `PgDn` `^F` | down a page | `sidebar-page-down` |
+| `b` `PgUp` `^B` | up a page | `sidebar-page-up` |
+| `g` `Home` | first entry | `sidebar-top` |
+| `G` `End` | last entry | `sidebar-bottom` |
+| `Enter` | go to the heading | `sidebar-jump` |
+| `Esc` `q` `^C` | back to the document | `sidebar-leave` |
+| `T` | hide the sidebar | `sidebar-hide` |
 
 **With hints**
 

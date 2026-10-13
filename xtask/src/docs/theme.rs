@@ -146,8 +146,12 @@ const ELEMENT_GROUPS: &[(&str, &[(&str, &str)])] = &[
             ("selection", "The lines selected in Visual mode (`V`)."),
             ("prompt", "The search prompt."),
             ("hint", "Hint labels (`f`, `o`, `y`, `v`)."),
-            ("toc", "The outline (`t`)."),
-            ("toc_current", "The current section in the outline."),
+            ("toc", "The outline (`t`) and the outline sidebar (`T`)."),
+            (
+                "toc_current",
+                "The current section in the outline and the sidebar.",
+            ),
+            ("toc_border", "The outline sidebar's border."),
         ],
     ),
 ];
