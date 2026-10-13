@@ -1115,14 +1115,24 @@ fn selection(state: &State, ctx: &Ctx, rows: &mut [Building]) {
         let Some(line) = layout.lines.get(index) else {
             break;
         };
-        if layout.wide_at(index).is_some() {
-            // Wide lines fill the text column.
-            continue;
-        }
-        let pad = layout.measure.saturating_sub(line.cols);
+        // Where the text ends: a shifted line shows less of itself (its
+        // `‹` stays).
+        let shown = match layout.wide_at(index) {
+            Some(w) => {
+                let shift = layout.shift_at(index, state.hscroll());
+                let extent = layout.extent(index);
+                let marker = u16::from(shift > 0 && extent > w.x0);
+                extent
+                    .saturating_sub(shift)
+                    .max(w.x0.saturating_add(marker))
+                    .min(layout.measure)
+            }
+            None => line.cols,
+        };
+        let pad = layout.measure.saturating_sub(shown);
         let col = layout
             .indent
-            .saturating_add(line.cols)
+            .saturating_add(shown)
             .saturating_add(state.left());
         if pad == 0 || col >= state.cols {
             continue;

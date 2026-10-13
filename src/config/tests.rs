@@ -445,7 +445,7 @@ probe_timeout_ms = 500
     assert_eq!(c.pager.search_case, SearchCase::Insensitive);
     assert_eq!(c.pager.open, OpenCommand::Command("firefox".into()));
     assert_eq!((c.pager.toc_sidebar, c.pager.toc_width), (When::Never, 40));
-    assert_eq!(c.pager.details, crate::options::DetailsMode::Expanded);
+    assert_eq!(c.pager.details, DetailsMode::Expanded);
     assert_eq!(
         c.pager.keys,
         [
@@ -603,7 +603,7 @@ fn table_overflow_and_details_names() {
         c.render.tables.overflow,
         crate::options::TableOverflow::Scroll
     );
-    assert_eq!(c.pager.details, crate::options::DetailsMode::Collapsed);
+    assert_eq!(c.pager.details, DetailsMode::Collapsed);
     let setup = Setup::new("names-set");
     let loaded = setup.load(&["tables.overflow=Records", "pager.details=EXPANDED"]);
     no_diagnostics(&loaded);
@@ -611,10 +611,7 @@ fn table_overflow_and_details_names() {
         loaded.config.render.tables.overflow,
         crate::options::TableOverflow::Records
     );
-    assert_eq!(
-        loaded.config.pager.details,
-        crate::options::DetailsMode::Expanded
-    );
+    assert_eq!(loaded.config.pager.details, DetailsMode::Expanded);
 }
 
 #[test]

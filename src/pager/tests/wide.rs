@@ -621,3 +621,40 @@ fn a_link_cut_by_the_left_edge_gets_its_hint_where_it_shows() {
     // Right after the `‹`.
     assert_eq!((t.line, t.col), (line, x0 + 1));
 }
+
+#[test]
+fn the_selection_fills_what_shifted_lines_leave() {
+    // Gutter code: short lines in a wide block end before the edge.
+    let long = "x".repeat(90);
+    let md = format!("```\n{long}\nab\n```\n");
+    let mut opts = RenderOptions::default();
+    opts.code.wrap = false;
+    opts.code.style = crate::options::CodeStyle::Gutter;
+    let doc = pdoc(&md, Origin::Memory);
+    let pager = PagerOptions::default();
+    let settings = Settings::new(&pager, &opts);
+    let l = crate::layout::layout_with(
+        &doc.doc,
+        60,
+        &Theme::test(),
+        &Caps::full(),
+        &opts,
+        &PlainHighlighter,
+        &NoImages,
+        settings.interactive(),
+    );
+    let mut s = State::new(doc, None, l, (60, 12), &pager, settings);
+    let short = 1;
+    assert_eq!(s.layout().line_text(short).trim(), "▎ ab");
+    keys(&mut s, "zl");
+    keys(&mut s, "Vj");
+    let f = view(&s, &Ctx::new(&Theme::test(), &Caps::full()));
+    let x0 = s.layout().wide_at(short).unwrap().x0;
+    let indent = s.layout().indent;
+    // Shifted past its end: the fill starts right after the `‹`.
+    let fill = &f.lines[short].overlays;
+    assert_eq!(fill.len(), 1, "{fill:?}");
+    assert_eq!(fill[0].col, indent + x0 + 1);
+    // The long line fills the text column itself.
+    assert!(f.lines[0].overlays.is_empty());
+}
