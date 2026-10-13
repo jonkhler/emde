@@ -155,6 +155,7 @@ fn breaks_into(text: &str, ascii: bool, extra: &[u32], out: &mut Vec<u32>) {
             out.sort_unstable();
             out.dedup();
         }
+        keep_leading_hyphens(text, out);
         return;
     }
     let mut extra = extra.iter().copied().peekable();
@@ -171,6 +172,37 @@ fn breaks_into(text: &str, ascii: bool, extra: &[u32], out: &mut Vec<u32>) {
         out.sort_unstable();
     }
     out.dedup();
+    keep_leading_hyphens(text, out);
+}
+
+/// Drop the breaks right after the hyphens a word starts with, before a
+/// letter: `-v` and `--verbose` never end a line at their hyphens (UAX #14
+/// in Unicode 15.1, LB20a, for one hyphen; command-line options have two).
+/// A word starts after the start, whitespace, or an opening bracket, quote
+/// or backtick.
+fn keep_leading_hyphens(text: &str, breaks: &mut Vec<u32>) {
+    let bytes = text.as_bytes();
+    if !bytes.contains(&b'-') {
+        return;
+    }
+    breaks.retain(|&b| {
+        let b = b as usize;
+        if b == 0 || bytes.get(b - 1) != Some(&b'-') {
+            return true;
+        }
+        let letter = text
+            .get(b..)
+            .and_then(|rest| rest.chars().next())
+            .is_some_and(char::is_alphabetic);
+        if !letter {
+            return true;
+        }
+        let before = text.get(..b).unwrap_or("").trim_end_matches('-');
+        let initial = before.chars().next_back().is_none_or(|c| {
+            c.is_whitespace() || matches!(c, '(' | '[' | '{' | '"' | '\'' | '`' | '\u{a0}')
+        });
+        !initial
+    });
 }
 
 /// Wrap `text` into `out` (cleared first) given its break opportunities
@@ -783,6 +815,23 @@ mod tests {
                 s
             })
             .collect()
+    }
+
+    /// Found in real READMEs: `the --` / `verbose flag`.
+    #[test]
+    fn no_break_after_leading_hyphens() {
+        assert_eq!(
+            lines("pass the --verbose flag", 12),
+            ["pass the", "--verbose", "flag"]
+        );
+        assert_eq!(lines("pass -v now", 6), ["pass", "-v now"]);
+        assert_eq!(lines("x `--deco` y", 8), ["x", "`--deco`", "y"]);
+        // Hyphens inside a word still break; so does non-ASCII text.
+        assert_eq!(lines("well-known", 6), ["well-", "known"]);
+        assert_eq!(lines("é --verbose", 10), ["é", "--verbose"]);
+        let mut b = Vec::new();
+        break_opportunities("`--decorations`", &[], &mut b);
+        assert!(!b.contains(&3), "{b:?}");
     }
 
     #[test]

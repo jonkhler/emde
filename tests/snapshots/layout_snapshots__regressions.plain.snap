@@ -97,8 +97,8 @@ code in tables
 ├─────────┼────────┤
 │ `git    │ rewrit │
 │ commit  │ e the  │
-│ --      │ last   │
-│ amend`  │ commit │
+│ --amend │ last   │
+│ `       │ commit │
 ╰─────────┴────────╯
 
 mdcat 43: footnote
@@ -215,8 +215,8 @@ glamour 315: inline code in tables
 ╭─────────────────┬────────────────╮
 │ Command         │ Meaning        │
 ├─────────────────┼────────────────┤
-│ `git commit --  │ rewrite the    │
-│ amend`          │ last commit    │
+│ `git commit     │ rewrite the    │
+│ --amend`        │ last commit    │
 ╰─────────────────┴────────────────╯
 
 mdcat 43: footnote in a table, and
