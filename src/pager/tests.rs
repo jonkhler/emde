@@ -94,7 +94,7 @@ fn drive(s: &mut State, action: Action) -> Vec<Effect> {
             queue.extend(update(
                 s,
                 Action::ImageShown {
-                    doc,
+                    doc: Box::new(doc),
                     layout,
                     pixels: None,
                     problem: Some("images are off".into()),

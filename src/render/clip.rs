@@ -105,7 +105,7 @@ impl<'g> Clip<'g> {
         if c < self.win.keep {
             Some(c)
         } else if (self.shown.0..self.shown.1).contains(&c) {
-            Some(self.win.keep + (c - self.win.from))
+            Some(self.win.keep.saturating_add(c - self.win.from))
         } else {
             None
         }
@@ -122,7 +122,7 @@ impl<'g> Clip<'g> {
                 link: None,
                 off: None,
             });
-            self.out = keep + 1;
+            self.out = keep.saturating_add(1);
         }
         if to > self.out {
             self.blank(to - self.out, SegStyle::Id(StyleId(0)), f);
@@ -151,11 +151,11 @@ impl<'g> Clip<'g> {
         if w > 0 {
             let end = self.col;
             if let Some(at) = self.place(start)
-                && self.place(end - 1) == Some(at + (w - 1))
+                && self.place(end - 1) == Some(at.saturating_add(w - 1))
             {
                 self.pad_to(at, f);
                 f(piece);
-                self.out = at + w;
+                self.out = at.saturating_add(w);
                 return;
             }
             let hidden = |a: u16, b: u16| end <= a || start >= b;
@@ -180,9 +180,9 @@ impl<'g> Clip<'g> {
             let gw = to_u16(grapheme_width(text.get(pos..next).unwrap_or(""), self.amb));
             let whole = match gw {
                 0 => self.place(c).map(|_| self.out),
-                _ => self
-                    .place(c)
-                    .filter(|&at| self.place(c + gw - 1) == Some(at + gw - 1)),
+                _ => self.place(c).filter(|&at| {
+                    self.place(c.saturating_add(gw - 1)) == Some(at.saturating_add(gw - 1))
+                }),
             };
             match (whole, run) {
                 (Some(at), Some(_)) if at == self.out => {}
@@ -202,13 +202,13 @@ impl<'g> Clip<'g> {
                         if let Some(at) = self.place(k) {
                             self.pad_to(at, f);
                             self.blank(1, piece.style, f);
-                            self.out = at + 1;
+                            self.out = at.saturating_add(1);
                         }
                     }
                 }
             }
             if let (Some(_), Some(at)) = (run, whole) {
-                self.out = at + gw;
+                self.out = at.saturating_add(gw);
             }
             c = c.saturating_add(gw);
             pos = next;

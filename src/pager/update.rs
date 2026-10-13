@@ -84,7 +84,7 @@ pub enum Action {
     /// the image cannot be shown); the image's size in pixels when it was
     /// read, and why it cannot be shown.
     ImageShown {
-        doc: Document,
+        doc: Box<Document>,
         layout: Layout,
         pixels: Option<(u32, u32)>,
         problem: Option<String>,
@@ -254,7 +254,7 @@ fn apply(state: &mut State, action: Action) -> Vec<Effect> {
         } => {
             if matches!(state.mode, Mode::Image(_)) {
                 state.image = Some(ImagePage {
-                    doc,
+                    doc: *doc,
                     layout,
                     pixels,
                     problem,

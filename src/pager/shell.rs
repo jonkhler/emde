@@ -575,7 +575,7 @@ impl<'t, T: Terminal> Shell<'t, T> {
         update(
             &mut self.state,
             Action::ImageShown {
-                doc,
+                doc: Box::new(doc),
                 layout,
                 pixels,
                 problem,
