@@ -553,6 +553,9 @@ pub(crate) enum Goto {
 pub struct State {
     pub(crate) page: Rc<Page>,
     pub(crate) layout: Layout,
+    /// The layout the last new one replaced, until the shell takes it (to
+    /// show again later).
+    pub(crate) spare: Option<Layout>,
     pub(crate) derived: Derived,
     /// Bumped with every new layout (row hashes include it).
     pub(crate) generation: u64,
@@ -624,6 +627,7 @@ impl State {
             derived: Derived::new(&layout),
             page,
             layout,
+            spare: None,
             generation: 1,
             cols,
             rows,

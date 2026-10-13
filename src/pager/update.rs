@@ -1878,7 +1878,7 @@ fn reloaded(state: &mut State, doc: PagerDoc) -> Vec<Effect> {
 
 /// A new layout from the shell.
 fn install(state: &mut State, layout: Layout) {
-    state.layout = layout;
+    state.spare = Some(mem::replace(&mut state.layout, layout));
     state.derived = Derived::new(&state.layout);
     state.generation = state.generation.wrapping_add(1);
     if let Some(goto) = state.pending.take() {

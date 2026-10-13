@@ -46,7 +46,8 @@ use super::{DocLoader, PagerExit, PagerSession};
 /// Quiet time after a resize before the layout follows.
 pub(crate) const RESIZE_DEBOUNCE: Duration = Duration::from_millis(30);
 /// Layouts kept to show again without laying out (a `<details>` closed
-/// again, a match's block opened again).
+/// again, a match's block opened again): those the last relayouts
+/// replaced.
 const LAYOUT_CACHE: usize = 2;
 
 /// What a layout of the current document was made from (besides what
@@ -152,8 +153,10 @@ pub(crate) struct Shell<'t, T: Terminal> {
     /// baseline when a document comes back from memory).
     stamps: HashMap<PathBuf, Option<Stamp>>,
     resize: Option<((u16, u16), Instant)>,
-    /// Layouts made lately, newest last (see [`LAYOUT_CACHE`]).
+    /// Layouts replaced lately, newest last (see [`LAYOUT_CACHE`]).
     layouts: Vec<(LayoutKey, Layout)>,
+    /// What the layout shown was made from.
+    made: Option<LayoutKey>,
     /// When an unfinished key sequence stops waiting for its next key.
     key_deadline: Option<Instant>,
     signals: Signals,
@@ -205,26 +208,34 @@ impl<'t, T: Terminal> Shell<'t, T> {
             .saturating_sub(sidebar::cols(&settings.sidebar, None, size.0, &doc.doc));
         // A layout made for stream mode will do if it has neither
         // `<details>` (collapsed here) nor wide blocks (cut there).
-        let first = first
-            .filter(|l| l.width == width && l.details.is_empty() && !l.narrowed)
-            .unwrap_or_else(|| {
-                let it = settings.interactive();
-                layout::layout_with(
-                    &doc.doc,
-                    width,
-                    &theme,
-                    &caps,
-                    &opts,
-                    &*highlighter,
-                    sizer,
-                    it,
-                )
-            });
+        let first = first.filter(|l| l.width == width && l.details.is_empty() && !l.narrowed);
+        let made_here = first.is_none();
+        let first = first.unwrap_or_else(|| {
+            let it = settings.interactive();
+            layout::layout_with(
+                &doc.doc,
+                width,
+                &theme,
+                &caps,
+                &opts,
+                &*highlighter,
+                sizer,
+                it,
+            )
+        });
         let mut stamps = HashMap::new();
         if let Origin::File(p) = &doc.source.origin {
             stamps.insert(p.clone(), watch::stamp(p));
         }
         let mut state = State::new(doc, key, first, size, &pager, settings);
+        let made = made_here.then(|| LayoutKey {
+            page: Rc::clone(&state.page),
+            size,
+            cols: width,
+            wide: false,
+            images: images.mode(),
+            toggled: Vec::new(),
+        });
         let more = more
             .into_iter()
             .map(|d| {
@@ -265,6 +276,7 @@ impl<'t, T: Terminal> Shell<'t, T> {
             stamps,
             resize: None,
             layouts: Vec::new(),
+            made,
             key_deadline: None,
             signals,
             dirty: true,
@@ -439,8 +451,18 @@ impl<'t, T: Terminal> Shell<'t, T> {
             let more = match effect {
                 Effect::Quit => return Ok(Some(PagerExit::Quit)),
                 Effect::Relayout => {
-                    let layout = self.layout();
-                    update(&mut self.state, Action::Layout(layout))
+                    let (key, layout) = self.layout();
+                    let more = update(&mut self.state, Action::Layout(layout));
+                    // The layout it replaced, for later.
+                    if let (Some(made), Some(old)) =
+                        (self.made.replace(key), self.state.spare.take())
+                    {
+                        if self.layouts.len() >= LAYOUT_CACHE {
+                            self.layouts.remove(0);
+                        }
+                        self.layouts.push((made, old));
+                    }
+                    more
                 }
                 Effect::Redraw => {
                     self.screen.invalidate();
@@ -483,8 +505,9 @@ impl<'t, T: Terminal> Shell<'t, T> {
     }
 
     /// Lay the current document out for the current size and settings, in
-    /// the columns the outline sidebar leaves.
-    fn layout(&mut self) -> Layout {
+    /// the columns the outline sidebar leaves (or take a layout made for
+    /// them before); with what it was made from.
+    fn layout(&mut self) -> (LayoutKey, Layout) {
         let (cols, rows) = self.state.size();
         self.caps.size = Some((cols, rows));
         self.opts.max_width = if self.state.wide() { 0 } else { self.max_width };
@@ -506,10 +529,8 @@ impl<'t, T: Terminal> Shell<'t, T> {
         // Only the current document's layouts are kept.
         self.layouts.retain(|(k, _)| Rc::ptr_eq(&k.page, &key.page));
         if let Some(i) = self.layouts.iter().position(|(k, _)| *k == key) {
-            let entry = self.layouts.remove(i);
-            let layout = entry.1.clone();
-            self.layouts.push(entry);
-            return layout;
+            let (_, layout) = self.layouts.remove(i);
+            return (key, layout);
         }
         let layout = layout::layout_with(
             doc,
@@ -521,11 +542,7 @@ impl<'t, T: Terminal> Shell<'t, T> {
             sizer,
             self.state.interactive(),
         );
-        if self.layouts.len() >= LAYOUT_CACHE {
-            self.layouts.remove(0);
-        }
-        self.layouts.push((key, layout.clone()));
-        layout
+        (key, layout)
     }
 
     /// The image view's image: read (or found among those read already, a
