@@ -334,7 +334,8 @@ fn is_border(c: char, ascii: bool) -> bool {
 
 /// Whether line `i` is the header of a code block (its language label or
 /// title, on the panel or in the frame's top border): decoration, not text.
-fn is_code_header(layout: &Layout, i: usize) -> bool {
+/// `quote` is the quote bar glyph, which may come before the frame.
+fn is_code_header(layout: &Layout, i: usize, quote: &str) -> bool {
     let (Some(line), Some(next)) = (layout.lines.get(i), layout.lines.get(i + 1)) else {
         return false;
     };
@@ -344,7 +345,10 @@ fn is_code_header(layout: &Layout, i: usize) -> bool {
     let panel = matches!(line.fill, Fill::Panel { .. }) && line.fill == next.fill;
     // A frame's top border: a corner (`+-` in ASCII).
     let text = layout.line_text(i);
-    let text = text.trim_start();
+    let mut text = text.trim_start();
+    while let Some(rest) = text.strip_prefix(quote).filter(|_| !quote.is_empty()) {
+        text = rest.trim_start();
+    }
     let frame = text.starts_with(['┌', '╭', '┏', '╔']) || text.starts_with("+-");
     panel || frame
 }
@@ -418,7 +422,7 @@ pub(crate) fn selected_text(state: &State, lo: usize, hi: usize) -> String {
             LineKind::Image { .. } => continue,
             _ => code_prev = false,
         }
-        if is_code_header(layout, i) {
+        if is_code_header(layout, i, state.settings.glyphs.0.as_str()) {
             continue;
         }
         match line_text(state, i) {

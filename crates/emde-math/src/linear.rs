@@ -1142,6 +1142,15 @@ mod tests {
         assert_eq!(text(r"\vert x\vert^2"), "|x|²");
         assert_eq!(text(r"\{x : |x| < 1\}"), "{x : |x| < 1}");
         assert_eq!(text(r"p(x|y)"), "p(x|y)");
+        // Not across brackets (found in review): the conditionals' bars
+        // are no pair, and the formula still breaks at `=` and `∪`.
+        let opts = MathOptions::default();
+        let line = inline(r"P(A|B)P(B) = P(B|A)P(A)", &opts);
+        assert_eq!(line.text, "P(A|B)P(B) = P(B|A)P(A)");
+        assert_eq!(line.breaks.len(), 1, "{line:?}");
+        let line = inline(r"\{x | x>0\} \cup \{y | y<0\}", &opts);
+        assert!(!line.breaks.is_empty(), "{line:?}");
+        assert_eq!(text(r"(|x|)"), "(|x|)");
         // A bar without a partner stays ordinary.
         assert_eq!(text(r"|x - y"), "|x − y");
     }

@@ -213,6 +213,9 @@ struct Part {
     b: MBox,
     gap: usize,
     class: Option<(Class, Class)>,
+    /// A `\quad` or wider space comes before it (one space alone, not
+    /// thin spaces in a row).
+    wide: bool,
 }
 
 /// Join parts (and `after` trailing columns) into one box.
@@ -292,11 +295,10 @@ impl Layout<'_> {
     /// Step 2, first: a formula of parts that a top-level `\quad` or wider
     /// space separates (`x = 1, \qquad y = 2`) as one centred row per
     /// part, each split before its relations when it is too wide itself.
-    /// Spacing alone never gives more than one column, so a wider gap is
-    /// such a space.
+    /// Thin spaces in a row (`f(x)\;\;dx`) separate nothing.
     fn split_at_spaces(&self, parts: &[Part]) -> Option<MBox> {
         let mut cuts: Vec<usize> = (1..parts.len())
-            .filter(|&i| parts.get(i).is_some_and(|p| p.gap >= 2))
+            .filter(|&i| parts.get(i).is_some_and(|p| p.wide))
             .collect();
         if cuts.is_empty() {
             return None;
@@ -341,6 +343,7 @@ impl Layout<'_> {
                     b: p.b.clone(),
                     gap: if j == 0 { 0 } else { p.gap },
                     class: p.class,
+                    wide: p.wide,
                 });
             }
             chunks.push((gap, join(&body, 0)?));
@@ -485,9 +488,11 @@ impl Layout<'_> {
         let mut parts = Vec::with_capacity(items.len());
         let mut stretchy = Vec::new();
         let mut pending: i32 = 0;
+        let mut wide = false;
         for (i, item) in items.iter().enumerate() {
             if let Node::Space(n) = item {
                 pending += i32::from(*n);
+                wide |= *n >= 2;
                 continue;
             }
             pending = spacing::combine(pending, spacing.before.get(i).copied().unwrap_or(0));
@@ -504,6 +509,7 @@ impl Layout<'_> {
                 b: self.node(item, ctx.followed_by(followed))?,
                 gap,
                 class: spacing.classes.get(i).copied().flatten(),
+                wide: std::mem::take(&mut wide),
             });
         }
         let after = usize::try_from(spacing::combine(pending, spacing.after).max(0)).ok()?;
@@ -1315,6 +1321,9 @@ mod tests {
                 "      d"
             ]
         );
+        // Thin spaces in a row are no separator (found in review).
+        let r = rows(r"\int_0^1 f(x)\;\;dx = \frac{a}{b} + c", 18);
+        assert!(r.iter().any(|row| row.contains("f(x)  dx")), "{r:#?}");
         // A part still too wide splits before its relations.
         assert_eq!(
             rows(r"x + y + z = a + b, \qquad c = d", 12),

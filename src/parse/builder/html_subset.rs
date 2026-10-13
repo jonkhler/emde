@@ -127,6 +127,8 @@ impl Builder {
                 }
             }
             n if block && strip_breaks(n) => self.flush_leaf(true),
+            // Cells of a row keep a space between them.
+            "td" | "th" => self.text(" "),
             _ => {}
         }
     }
@@ -474,8 +476,6 @@ fn skipped_tag(name: &str) -> &'static str {
     }
 }
 
-/// Block-level HTML elements without special meaning: they separate
-/// paragraphs.
 /// Tags that end a paragraph when tags are stripped.
 fn strip_breaks(name: &str) -> bool {
     is_block_tag(name)
@@ -501,6 +501,8 @@ fn strip_breaks(name: &str) -> bool {
         )
 }
 
+/// Block-level HTML elements without special meaning: they separate
+/// paragraphs.
 fn is_block_tag(name: &str) -> bool {
     matches!(
         name,

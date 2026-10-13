@@ -1058,6 +1058,14 @@ fn html_modes() {
         },
     );
     assert_eq!(paras(&strip), ["Title", "More", "Hidden\ntext", "a b c"]);
+    let strip = doc_with(
+        "<table><tr><td>A</td><td>B</td></tr></table>\n",
+        &ParseOptions {
+            html: HtmlMode::Strip,
+            ..ParseOptions::default()
+        },
+    );
+    assert_eq!(paras(&strip), ["A B"]);
     assert!(
         strip.links.is_empty() && strip.images.is_empty(),
         "{strip:#?}"

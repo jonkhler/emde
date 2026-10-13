@@ -284,8 +284,12 @@ fn wrap_atoms(
         while let Some(g) = k.next_if(|g| g.end <= a.start) {
             out.push(g.clone());
         }
-        // An atom inside a kept group is held by it.
-        if !k.peek().is_some_and(|g| g.start < a.end) {
+        // An atom inside a kept group is held by it; one crossing it or
+        // around it merges with it below.
+        if !k
+            .peek()
+            .is_some_and(|g| g.start <= a.start && a.end <= g.end)
+        {
             out.push(a.clone());
         }
     }
@@ -1064,5 +1068,32 @@ impl<'a> Builder<'a> {
             5 => Element::H5,
             _ => Element::H6,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::wrap_atoms;
+
+    #[test]
+    fn groups_that_fit_replace_their_atoms() {
+        let fits = |r: &std::ops::Range<u32>| r.end - r.start <= 10;
+        // A group that fits holds the atoms inside it; one too wide leaves
+        // them alone.
+        assert_eq!(
+            wrap_atoms(&[0..2, 3..5, 12..14], &[0..5], fits, fits),
+            [0..5, 12..14]
+        );
+        assert_eq!(
+            wrap_atoms(&[0..2, 3..5], &[0..20], fits, fits),
+            [0..2, 3..5]
+        );
+        // Nested groups: the outer one wins where it fits, else the inner.
+        assert_eq!(wrap_atoms(&[], &[0..8, 6..8], fits, fits), [0..8]);
+        assert_eq!(wrap_atoms(&[], &[0..18, 16..18], fits, fits), [16..18]);
+        // An atom around a group (a key cap holding a reference) is kept
+        // whole; one wider than the line is released.
+        assert_eq!(wrap_atoms(&[0..9], &[4..8], fits, fits), [0..9]);
+        assert_eq!(wrap_atoms(&[0..12], &[4..8], fits, fits), [4..8]);
     }
 }

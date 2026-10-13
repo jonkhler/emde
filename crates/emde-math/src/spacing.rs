@@ -150,7 +150,8 @@ fn bar(node: &Node) -> Option<(char, bool)> {
 /// operand (anything but nothing, a binary operator, a relation, an opening
 /// delimiter or punctuation): `\log|\det|` closes after `\det`, while in
 /// `|x - |y||` the second bar opens. Otherwise it opens when another bar of
-/// its kind follows in the row, and stays ordinary when none does.
+/// its kind follows in the row, and stays ordinary when none does, or when
+/// a bracket closes around it first (pairs never straddle brackets).
 fn pair_bars(
     items: &[Node],
     classes: &mut [Option<(Class, Class)>],
@@ -180,9 +181,13 @@ fn pair_bars(
     if left == [0, 0] {
         return nesting;
     }
-    /// A bar still open: its kind, index and classes before opening.
-    type OpenBar = (char, usize, Option<(Class, Class)>);
+    /// A bar still open: its kind, index, classes before opening and the
+    /// bracket depth it is at.
+    type OpenBar = (char, usize, Option<(Class, Class)>, i32);
     let mut open: Vec<OpenBar> = Vec::new();
+    // Bars whose bracket closed before they did: ordinary after all.
+    let mut unmatched: Vec<OpenBar> = Vec::new();
+    let mut depth: i32 = 0;
     let mut prev = lead;
     for (i, found) in bars.iter().enumerate() {
         if let Some((c, scripted)) = *found {
@@ -194,22 +199,34 @@ fn pair_bars(
                 prev,
                 None | Some(Class::Bin | Class::Rel | Class::Open | Class::Punct)
             );
-            let side = if after_operand && open.last().is_some_and(|o| o.0 == c) {
+            let side = if after_operand && open.last().is_some_and(|o| o.0 == c && o.3 == depth) {
                 open.pop();
                 Some((Class::Close, -1))
             } else if !scripted && left.get(kind).is_some_and(|&n| n > 0) {
-                open.push((c, i, classes.get(i).copied().flatten()));
+                open.push((c, i, classes.get(i).copied().flatten(), depth));
                 Some((Class::Open, 1))
             } else {
                 None
             };
-            if let Some((class, depth)) = side {
+            if let Some((class, delta)) = side {
                 if let Some(slot) = classes.get_mut(i) {
                     *slot = Some((class, class));
                 }
                 if let Some(slot) = nesting.get_mut(i) {
-                    *slot = depth;
+                    *slot = delta;
                 }
+            }
+        } else {
+            // A pair never straddles a bracket: `P(A|B) = P(B|A)` has none.
+            match nesting.get(i).copied().unwrap_or(0) {
+                n if n > 0 => depth += 1,
+                n if n < 0 => {
+                    depth -= 1;
+                    while let Some(o) = open.pop_if(|o| o.3 > depth) {
+                        unmatched.push(o);
+                    }
+                }
+                _ => {}
             }
         }
         if let Some(Some((_, right))) = classes.get(i) {
@@ -217,7 +234,7 @@ fn pair_bars(
         }
     }
     // Bars that never found their partner are ordinary after all.
-    for (_, i, class) in open {
+    for (_, i, class, _) in open.into_iter().chain(unmatched) {
         if let Some(slot) = classes.get_mut(i) {
             *slot = class;
         }

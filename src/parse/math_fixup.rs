@@ -6,9 +6,9 @@
 //! * **Digit rule.** A closing `$` followed by an ASCII digit does not
 //!   close math (`$5-$10` stays prose): such `InlineMath` reverts to text.
 //! * **Shell variables.** Neither does a `$` that starts another shell
-//!   variable after one (`$PATH:$HOME`): math that starts with an
-//!   upper-case name of two or more characters, closed by a `$` with a
-//!   letter or `_` after it. `$n$th` stays math.
+//!   variable after one (`$PATH:$HOME`): math that is an upper-case name
+//!   and a separator, closed by a `$` with a letter or `_` after it.
+//!   `$n$th` and `$X_i$s` stay math.
 //! * **GitHub's `` $`…`$ `` form**: the backticks are stripped.
 //! * **`\(…\)` and `\[…\]`** (when enabled). CommonMark reads `\(` as an
 //!   escaped `(`: the `Text` event starts at the `(` and the backslash
@@ -389,14 +389,27 @@ fn fix_inline_math<'a>(item: Item<'a>, src: &str) -> Item<'a> {
     }
 }
 
-/// Whether `tex` starts like a shell variable's name: an upper-case
-/// letter or `_`, then at least one more of those or digits.
+/// Whether `tex` is a shell variable's name and a separator, as between
+/// two variables (`PATH:` of `$PATH:$HOME`): two or more upper-case
+/// letters, digits or `_`, starting with a letter or `_` and holding two
+/// letters in a row (`X_1`, `H_0` are math), then one of `: / ; , = . -`.
 fn is_shell_name(tex: &str) -> bool {
-    let name = tex
-        .bytes()
-        .take_while(|b| b.is_ascii_uppercase() || b.is_ascii_digit() || *b == b'_')
-        .count();
-    name >= 2 && tex.bytes().next().is_some_and(|b| !b.is_ascii_digit())
+    let Some((sep, name)) = tex
+        .char_indices()
+        .next_back()
+        .and_then(|(i, c)| Some((c, tex.get(..i)?)))
+    else {
+        return false;
+    };
+    let shell = |b: u8| b.is_ascii_uppercase() || b.is_ascii_digit() || b == b'_';
+    matches!(sep, ':' | '/' | ';' | ',' | '=' | '.' | '-')
+        && name.len() >= 2
+        && name.bytes().all(shell)
+        && name.bytes().next().is_some_and(|b| !b.is_ascii_digit())
+        && name
+            .as_bytes()
+            .windows(2)
+            .any(|w| w.iter().all(u8::is_ascii_uppercase))
 }
 
 /// `` `x` `` (GitHub's `` $`x`$ `` form) → `x`; `None` if not in that form.
@@ -469,8 +482,15 @@ mod tests {
         assert_eq!(show("the $n$th one", true), r#"t"the " $"n" t"th one""#);
         assert_eq!(show("$AB$", true), r#"$"AB""#);
         assert_eq!(show("$X$s", true), r#"$"X" t"s""#);
-        assert!(!is_shell_name("1A"));
-        assert!(is_shell_name("_A"));
+        // Subscripted capitals in plurals (found in review).
+        assert_eq!(
+            show("the $X_i$s and $H_0$s", true),
+            r#"t"the " $"X_i" t"s and " $"H_0" t"s""#
+        );
+        assert_eq!(show("$AB$s", true), r#"$"AB" t"s""#);
+        assert!(!is_shell_name("1A:"));
+        assert!(!is_shell_name("PATH"));
+        assert!(is_shell_name("_AB/"));
     }
 
     #[test]
