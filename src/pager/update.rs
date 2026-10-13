@@ -1529,7 +1529,7 @@ fn toggle_near_top(state: &mut State) -> Vec<Effect> {
     match found.and_then(|i| u32::try_from(i).ok()) {
         Some(id) => toggle(state, id),
         None => {
-            state.say("no <details> at the top");
+            state.say("no details block at the top");
             Vec::new()
         }
     }

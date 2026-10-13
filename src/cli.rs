@@ -121,7 +121,8 @@ pub struct Cli {
     #[arg(long = "line-numbers", help_heading = "Code")]
     pub line_numbers: bool,
 
-    /// Cut long code lines instead of wrapping them.
+    /// Do not wrap long code lines: cut them (the pager scrolls them
+    /// sideways instead).
     #[arg(long = "no-wrap-code", help_heading = "Code")]
     pub no_wrap_code: bool,
 

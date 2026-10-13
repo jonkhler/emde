@@ -528,6 +528,12 @@ one bound later, an action of your file winning over a default one; `emde
 | `zz` | centre the current match, link or middle line | `scroll-center` |
 | `zt` | … to the top | `scroll-top` |
 | `zb` | … to the bottom | `scroll-bottom` |
+| `zh` `←` | shift wide code and tables left | `scroll-left` |
+| `zl` `→` | … right | `scroll-right` |
+| `zH` | … half a screen left | `scroll-half-left` |
+| `zL` | … half a screen right | `scroll-half-right` |
+| `^` | … back to their start | `scroll-start` |
+| `$` | … to their end | `scroll-end` |
 
 **Jumping**
 
@@ -556,9 +562,10 @@ one bound later, an action of your file winning over a default one; `emde
 
 | Keys | Action | Name |
 |---|---|---|
-| `Tab` | focus the next link | `focus-next` |
-| `S-Tab` | focus the previous link | `focus-prev` |
-| `Enter` | follow the focused link | `follow` |
+| `Tab` | focus the next link or details summary | `focus-next` |
+| `S-Tab` | focus the previous one | `focus-prev` |
+| `Enter` | follow the focused link, open or close a focused details block | `follow` |
+| `za` | open or close the details block at the top (or click its summary) | `toggle-details` |
 | `o` | link hints: type a label to follow | `link-hints` |
 | `Backspace` `H` | back | `back` |
 | `L` | forward | `forward` |
