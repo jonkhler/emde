@@ -284,6 +284,59 @@ impl InlineBuf {
         url_break_points(&self.text, range, &mut self.extra_breaks);
     }
 
+    /// The text of `link` has ended: whitespace at its end (a space, or a
+    /// soft break still waiting for the next character) leaves the link, so
+    /// the link, its underline and its reference number end at its last
+    /// visible character. HTML puts such whitespace into links all the
+    /// time (`<a href=…>⏎<img …>⏎</a>`), Markdown sometimes (`[Two ](…)`).
+    pub(crate) fn unlink_trailing_space(&mut self, link: LinkId) {
+        if let Some(style) = self.pending_soft.as_mut()
+            && style.link == Some(link)
+        {
+            style.link = None;
+        }
+        let len = to_u32(self.text.len());
+        let n = self.runs.len();
+        let start = n
+            .checked_sub(2)
+            .and_then(|i| self.runs.get(i))
+            .map_or(0, |r| r.end);
+        let Some(last) = self.runs.last_mut() else {
+            return;
+        };
+        if last.link != Some(link)
+            || last.kind != RunKind::Text
+            || last.end != len
+            || !self.text.ends_with(' ')
+        {
+            return;
+        }
+        // Prose never ends with more than one space (they collapse).
+        let space = len - 1;
+        let flags = last.flags;
+        if space > start {
+            last.end = space;
+            self.runs.push(Run {
+                end: len,
+                kind: RunKind::Text,
+                flags,
+                link: None,
+            });
+            return;
+        }
+        // The run is only the space: unlink it, and merge it into the run
+        // before when the two now look alike.
+        last.link = None;
+        if let Some(prev) = n.checked_sub(2).and_then(|i| self.runs.get_mut(i))
+            && prev.kind == RunKind::Text
+            && prev.flags == flags
+            && prev.link.is_none()
+        {
+            prev.end = len;
+            self.runs.pop();
+        }
+    }
+
     /// Finish: trim trailing whitespace, add key-cap atoms and normalise the
     /// constraint lists.
     pub(crate) fn finish(mut self) -> Inlines {

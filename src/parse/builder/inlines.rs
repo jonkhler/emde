@@ -265,7 +265,8 @@ impl Builder {
     }
 
     /// Close the innermost Markdown (`html == false`) or HTML link; link
-    /// text that is a URL gets URL break points.
+    /// text that is a URL gets URL break points, and whitespace at its end
+    /// leaves the link.
     pub(super) fn end_link(&mut self, html: bool) {
         let Some(i) = self.links.iter().rposition(|l| l.html == html) else {
             return;
@@ -274,10 +275,13 @@ impl Builder {
         if let Some(leaf) = self.leaf.as_mut()
             && leaf.seq == frame.leaf
         {
+            leaf.buf.unlink_trailing_space(frame.id);
             let end = leaf.buf.len();
             let text = leaf.buf.text().get(frame.start..end).unwrap_or("");
+            let text = text.trim_end_matches(' ');
+            let url_end = frame.start + text.len();
             if frame.url_like || linkify::looks_like_url(text) {
-                leaf.buf.url_breaks(frame.start..end);
+                leaf.buf.url_breaks(frame.start..url_end);
             }
         }
     }

@@ -881,6 +881,28 @@ fn links_showing_their_url_get_no_number() {
     assert!(!inline::shows_url("a.b", "https://a.b"));
 }
 
+/// Found in real READMEs (badge rows in HTML): whitespace at the end of a
+/// link stayed in it, so the number came after the space and glued to
+/// the next word (`▣ Test [1]▣ Coverage[2]`, `Two [3]and more.`).
+#[test]
+fn whitespace_at_the_end_of_a_link_leaves_it() {
+    let md = "<p>\n<a href=\"https://a.example/ci\">\n  <img src=\"ci.svg\" alt=\"Test\">\n</a>\n\
+              <a href=\"https://a.example/cov\">\n  <img src=\"cov.svg\" alt=\"Coverage\">\n</a>\n</p>\n\n\
+              [Two ](https://a.example/y) and more.\n";
+    let (d, l) = lay(md, 60);
+    check(&l, &d);
+    let text = lines(&l);
+    assert_eq!(text[0], "▣ Test[1] ▣ Coverage[2]", "{text:?}");
+    assert_eq!(text[2], "Two[3] and more.", "{text:?}");
+    // The space is not part of the link (nor underlined).
+    let crate::ir::Block::Para(p) = &d.blocks[1] else {
+        panic!("{:#?}", d.blocks)
+    };
+    let space = p.text.find(' ').unwrap();
+    let run = p.runs.iter().find(|r| r.end as usize > space).unwrap();
+    assert_eq!(run.link, None, "{:?}", p.runs);
+}
+
 // ---------------------------------------------------------------------------
 // The pager's layouts: collapsed details, wide blocks
 // ---------------------------------------------------------------------------
