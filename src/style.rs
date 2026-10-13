@@ -146,7 +146,7 @@ pub struct StylePatch {
 pub struct StyleId(pub u16);
 
 /// Interning table for styles used by one layout.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct StyleTable {
     styles: Vec<Style>,
     index: HashMap<Style, StyleId>,

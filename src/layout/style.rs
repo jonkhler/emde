@@ -120,9 +120,16 @@ impl Styles {
         }
     }
 
-    /// The finished table.
-    pub(super) fn into_table(self) -> StyleTable {
-        self.table
+    /// The table so far, for a layout that stops here; give it back with
+    /// [`Styles::restore_table`] before interning more.
+    pub(super) fn take_table(&mut self) -> StyleTable {
+        std::mem::take(&mut self.table)
+    }
+
+    /// Go on with the table [`Styles::take_table`] handed out (the cached
+    /// ids refer to it).
+    pub(super) fn restore_table(&mut self, table: StyleTable) {
+        self.table = table;
     }
 
     /// The colour depth styles are made for.

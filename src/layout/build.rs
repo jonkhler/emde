@@ -50,23 +50,13 @@ use crate::theme::{Element, Theme};
 use super::deco::Deco;
 use super::style::{Ctx, Styles};
 use super::{
-    Fill, ImageSizer, Interactive, Layout, LineKind, LinkHit, MathHit, Span, SpanFlags, Wide,
+    Fill, ImageSizer, Interactive, Layout, LayoutInputs as Inputs, LineKind, LinkHit, MathHit,
+    Span, SpanFlags, Wide,
 };
 
 /// Content keeps at least this many columns (or half the measure, if
 /// less) however deep the nesting.
 const MIN_CONTENT: u16 = 10;
-
-/// What [`super::layout`] was called with.
-pub(super) struct Inputs<'a> {
-    pub(super) doc: &'a Document,
-    pub(super) theme: &'a Theme,
-    pub(super) caps: &'a Caps,
-    pub(super) opts: &'a RenderOptions,
-    pub(super) highlighter: &'a dyn Highlighter,
-    pub(super) sizer: &'a dyn ImageSizer,
-    pub(super) interactive: Interactive<'a>,
-}
 
 /// A piece of a prefix.
 #[derive(Clone, Debug)]
@@ -250,6 +240,47 @@ pub(super) struct Builder<'a> {
     /// Headings given their first line, in order (taken back with a
     /// collapsed body).
     heading_log: Vec<HeadingId>,
+    /// The first line of each top-level block laid out so far; its length
+    /// is the index of the next one.
+    firsts: Vec<u32>,
+    /// Whether a top-level block showed something (the next one gets a
+    /// blank line before it).
+    produced: bool,
+}
+
+/// Everything a [`Builder`] owns but the layout it fills: what laying out
+/// the next top-level block needs from the blocks before it (link
+/// references waiting for the end of their section, heading numbers, the
+/// pending blank line, the style ids handed out so far), and buffers worth
+/// keeping. Laying out can stop after any top-level block and go on later
+/// from here ([`super::LayoutJob`]).
+pub(super) struct Saved {
+    deco: Deco,
+    sty: Styles,
+    refs: Refs,
+    wrapper: Wrapper,
+    fades: HashMap<FadeKey, Vec<(StyleId, u16)>>,
+    scratch_lines: Vec<crate::text::Line>,
+    scratch_pieces: Vec<crate::text::Piece>,
+    amb: bool,
+    top: u32,
+    off: u32,
+    text_el: Element,
+    list_depth: usize,
+    numbers: [u32; 6],
+    levels: Vec<Level>,
+    ctx: Vec<Ctx>,
+    align: Option<(HAlign, usize)>,
+    cur: Cur,
+    pending_gap: Option<usize>,
+    block_first: Option<u32>,
+    pending_heading: Option<HeadingId>,
+    line_math: Vec<(u32, SrcPos, u32)>,
+    limit: u16,
+    details_stack: Vec<u32>,
+    heading_log: Vec<HeadingId>,
+    firsts: Vec<u32>,
+    produced: bool,
 }
 
 /// Where the output was at some point, for [`Builder::rollback`].
@@ -358,43 +389,216 @@ impl<'a> Builder<'a> {
             limit: measure,
             details_stack: Vec::new(),
             heading_log: Vec::new(),
+            firsts: Vec::with_capacity(doc.blocks.len()),
+            produced: false,
         }
     }
 
     /// Lay out every top-level block and finish the side tables.
     pub(super) fn run(mut self) -> Layout {
+        self.advance(&mut |_| false);
+        self.suspend().0
+    }
+
+    /// Lay out top-level blocks until `enough` holds after one of them
+    /// (it is asked with the lines so far; the other side tables are
+    /// complete only after [`Builder::suspend`]), or none is left: then the
+    /// trailing link references are added too. Returns whether every block
+    /// is laid out.
+    ///
+    /// Lines are only ever appended: a block never changes the lines of
+    /// the blocks before it, so the lines of a layout that stopped are the
+    /// first lines of the whole layout.
+    pub(super) fn advance(&mut self, enough: &mut dyn FnMut(&Layout) -> bool) -> bool {
         let doc = self.doc;
-        let mut firsts: Vec<u32> = Vec::with_capacity(doc.blocks.len());
-        let mut produced = false;
-        for (i, block) in doc.blocks.iter().enumerate() {
+        while let Some(block) = doc.blocks.get(self.firsts.len()) {
             if self.refs.has_pending() && starts_section(block) {
                 self.flush_refs();
             }
-            self.top = to_u32(i);
+            self.top = to_u32(self.firsts.len());
             self.off = 0;
             self.block_first = None;
             let before = self.out.lines.len();
-            if produced {
+            if self.produced {
                 self.request_gap();
             }
             self.block(block);
             if self.out.lines.len() > before {
-                produced = true;
+                self.produced = true;
             }
-            firsts.push(self.block_first.unwrap_or(to_u32(self.out.lines.len())));
+            self.firsts
+                .push(self.block_first.unwrap_or(to_u32(self.out.lines.len())));
+            if self.firsts.len() < doc.blocks.len() && enough(&self.out) {
+                return false;
+            }
         }
         self.pending_gap = None;
         if self.refs.has_pending() {
             self.flush_refs();
         }
+        true
+    }
+
+    /// Stop: the layout so far, usable as it is (the lines of the blocks
+    /// laid out, their ranges in [`Layout::block_lines`], the style table),
+    /// and what laying out the rest needs ([`Builder::resume`]).
+    pub(super) fn suspend(mut self) -> (Layout, Saved) {
         let end = to_u32(self.out.lines.len());
+        let firsts = &self.firsts;
         self.out.block_lines = firsts
             .iter()
             .enumerate()
             .map(|(i, &start)| start..firsts.get(i + 1).copied().unwrap_or(end))
             .collect();
-        self.out.styles = self.sty.into_table();
-        self.out
+        self.out.styles = self.sty.take_table();
+        // Exhaustive, so that a new field cannot be forgotten here.
+        let Builder {
+            doc: _,
+            theme: _,
+            caps: _,
+            opts: _,
+            hl: _,
+            sizer: _,
+            interactive: _,
+            out,
+            deco,
+            sty,
+            refs,
+            wrapper,
+            fades,
+            scratch_lines,
+            scratch_pieces,
+            amb,
+            top,
+            off,
+            text_el,
+            list_depth,
+            numbers,
+            levels,
+            ctx,
+            align,
+            cur,
+            pending_gap,
+            block_first,
+            pending_heading,
+            line_math,
+            limit,
+            details_stack,
+            heading_log,
+            firsts,
+            produced,
+        } = self;
+        let saved = Saved {
+            deco,
+            sty,
+            refs,
+            wrapper,
+            fades,
+            scratch_lines,
+            scratch_pieces,
+            amb,
+            top,
+            off,
+            text_el,
+            list_depth,
+            numbers,
+            levels,
+            ctx,
+            align,
+            cur,
+            pending_gap,
+            block_first,
+            pending_heading,
+            line_math,
+            limit,
+            details_stack,
+            heading_log,
+            firsts,
+            produced,
+        };
+        (out, saved)
+    }
+
+    /// Go on where [`Builder::suspend`] stopped, adding to `out` (the
+    /// layout it returned with `saved`). `inputs` must be the ones the
+    /// layout was started with.
+    pub(super) fn resume(inputs: Inputs<'a>, mut out: Layout, saved: Saved) -> Builder<'a> {
+        let Inputs {
+            doc,
+            theme,
+            caps,
+            opts,
+            highlighter,
+            sizer,
+            interactive,
+        } = inputs;
+        let Saved {
+            deco,
+            mut sty,
+            refs,
+            wrapper,
+            fades,
+            scratch_lines,
+            scratch_pieces,
+            amb,
+            top,
+            off,
+            text_el,
+            list_depth,
+            numbers,
+            levels,
+            ctx,
+            align,
+            cur,
+            pending_gap,
+            block_first,
+            pending_heading,
+            line_math,
+            limit,
+            details_stack,
+            heading_log,
+            firsts,
+            produced,
+        } = saved;
+        // The ids handed out so far stay valid: interning goes on in the
+        // same table.
+        sty.restore_table(std::mem::take(&mut out.styles));
+        Builder {
+            doc,
+            theme,
+            caps,
+            opts,
+            hl: highlighter,
+            sizer,
+            interactive,
+            out,
+            deco,
+            sty,
+            refs,
+            wrapper,
+            fades,
+            scratch_lines,
+            scratch_pieces,
+            amb,
+            top,
+            off,
+            text_el,
+            list_depth,
+            numbers,
+            levels,
+            ctx,
+            align,
+            cur,
+            pending_gap,
+            block_first,
+            pending_heading,
+            line_math,
+            limit,
+            details_stack,
+            heading_log,
+            firsts,
+            produced,
+        }
     }
 
     /// Lay out a list of sibling blocks, one blank line apart unless
