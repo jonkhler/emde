@@ -156,7 +156,7 @@ impl Walker<'_> {
                     }
                 }
             }
-            Block::Details { summary, body } => {
+            Block::Details { summary, body, .. } => {
                 self.leaf(&summary.text);
                 self.blocks(body);
             }

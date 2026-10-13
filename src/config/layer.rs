@@ -17,8 +17,8 @@ use super::value::{
     named, open_command,
 };
 use crate::options::{
-    Align, BlockGlyphs, CodeStyle, DisplayMath, FrontMatterMode, H1Style, H2Style, Height,
-    HtmlMode, IconSet, ImageMode, InlineMath, TableBorder, When,
+    Align, BlockGlyphs, CodeStyle, DetailsMode, DisplayMath, FrontMatterMode, H1Style, H2Style,
+    Height, HtmlMode, IconSet, ImageMode, InlineMath, TableBorder, TableOverflow, When,
 };
 use crate::theme::spec::{PaletteTable, StyleTable, VariantTable};
 use emde_math::{Bold, Fractions, Letters, ScriptSet};
@@ -203,6 +203,8 @@ layered! {
     /// `[tables]`
     pub(crate) struct TablesLayer {
         pub(crate) zebra: Option<bool>,
+        #[serde(deserialize_with = "named")]
+        pub(crate) overflow: Option<TableOverflow>,
     }
 }
 
@@ -299,6 +301,8 @@ layered! {
         #[serde(deserialize_with = "named")]
         pub(crate) toc_sidebar: Option<When>,
         pub(crate) toc_width: Option<u16>,
+        #[serde(deserialize_with = "named")]
+        pub(crate) details: Option<DetailsMode>,
         #[serde(skip)]
         pub(crate) keys: KeysTable,
     }
@@ -460,7 +464,7 @@ mod tests {
 
     #[test]
     fn keys_and_unset_paths() {
-        assert_eq!(TablesLayer::KEYS, &["zebra"]);
+        assert_eq!(TablesLayer::KEYS, &["zebra", "overflow"]);
         let layer = ConfigLayer::default();
         let unset = layer.unset_paths();
         assert!(unset.contains(&"render.max_width".to_owned()));

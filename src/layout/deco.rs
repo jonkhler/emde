@@ -111,8 +111,11 @@ pub(super) struct Deco {
     pub(super) rule: Glyph,
     /// Marks wrapped code lines.
     pub(super) wrap: Glyph,
-    /// Marks clipped code lines.
+    /// Marks clipped code lines (and the right edge of a shifted wide
+    /// block).
     pub(super) clip: &'static str,
+    /// Marks the left edge of a shifted wide block.
+    pub(super) clip_left: &'static str,
     /// Table borders.
     pub(super) table: Borders,
     /// Frames of code blocks, image boxes and front matter cards.
@@ -134,6 +137,8 @@ pub(super) struct Deco {
     pub(super) chip: &'static str,
     /// `<details>` marker.
     pub(super) details: &'static str,
+    /// Marker of a collapsed `<details>`.
+    pub(super) folded: &'static str,
 }
 
 /// ASCII stand-ins for the default bullets.
@@ -177,6 +182,7 @@ impl Deco {
             rule: pick(&g.rule, "-"),
             wrap: pick(&g.wrap_marker, ">"),
             clip: alt("›", ">"),
+            clip_left: alt("‹", "<"),
             table: Borders::table(g.table, ascii),
             frame: if ascii {
                 Borders::ASCII
@@ -192,6 +198,7 @@ impl Deco {
             backref: alt("↑", "^"),
             chip: alt("▣", "[img]"),
             details: alt("▾", "v"),
+            folded: alt("▸", ">"),
         }
     }
 
@@ -278,7 +285,16 @@ mod tests {
         assert_eq!(d.markers[2].text, "| ");
         assert_eq!(d.table.cross, "+");
         assert!(d.icons.iter().all(|i| i.is_ascii()));
-        for g in [d.h1_rule, d.h2_heavy, d.h2_light, d.backref, d.chip, d.clip] {
+        for g in [
+            d.h1_rule,
+            d.h2_heavy,
+            d.h2_light,
+            d.backref,
+            d.chip,
+            d.clip,
+            d.clip_left,
+            d.folded,
+        ] {
             assert!(g.is_ascii(), "{g}");
         }
     }

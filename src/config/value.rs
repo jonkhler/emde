@@ -13,8 +13,8 @@ use serde::de::{self, Unexpected, Visitor};
 
 use super::suggest::did_you_mean;
 use crate::options::{
-    Align, BlockGlyphs, CodeStyle, DisplayMath, FrontMatterMode, H1Style, H2Style, Height,
-    HtmlMode, IconSet, ImageMode, InlineMath, TableBorder, When,
+    Align, BlockGlyphs, CodeStyle, DetailsMode, DisplayMath, FrontMatterMode, H1Style, H2Style,
+    Height, HtmlMode, IconSet, ImageMode, InlineMath, TableBorder, TableOverflow, When,
 };
 use crate::style::Underline;
 use emde_math::{Bold, Fractions, Letters, ScriptSet};
@@ -172,6 +172,8 @@ named_values!(CodeStyle {
     "frame" => CodeStyle::Frame,
     "gutter" => CodeStyle::Gutter,
 });
+named_values!(TableOverflow { "records" => TableOverflow::Records, "scroll" => TableOverflow::Scroll });
+named_values!(DetailsMode { "collapsed" => DetailsMode::Collapsed, "expanded" => DetailsMode::Expanded });
 named_values!(InlineMath { "unicode" => InlineMath::Unicode, "ascii" => InlineMath::Ascii, "raw" => InlineMath::Raw });
 named_values!(DisplayMath { "2d" => DisplayMath::TwoD, "linear" => DisplayMath::Linear, "raw" => DisplayMath::Raw });
 named_values!(ImageMode {
@@ -451,6 +453,8 @@ mod tests {
         check::<FrontMatterMode>();
         check::<HtmlMode>();
         check::<CodeStyle>();
+        check::<TableOverflow>();
+        check::<DetailsMode>();
         check::<InlineMath>();
         check::<DisplayMath>();
         check::<ImageMode>();

@@ -248,7 +248,7 @@ impl<'d> Walker<'d, '_> {
                 }
                 Kind::Other
             }
-            Block::Details { summary, body } => {
+            Block::Details { summary, body, .. } => {
                 self.leaf(summary.text.len());
                 self.blocks(body);
                 Kind::Other

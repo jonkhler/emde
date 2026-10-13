@@ -231,15 +231,40 @@ impl Default for CodeOptions {
     }
 }
 
+/// What happens to a table too wide for its columns (`tables.overflow`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum TableOverflow {
+    /// One record per row (`header: value` lines).
+    Records,
+    /// The pager shows it at its natural width, shifted sideways with
+    /// `zh`/`zl`; stream mode, which cannot scroll, still shows records.
+    #[default]
+    Scroll,
+}
+
+/// How the pager shows `<details>` at first (`pager.details`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum DetailsMode {
+    /// Collapsed to their summary, unless written `<details open>`.
+    #[default]
+    Collapsed,
+    /// All expanded.
+    Expanded,
+}
+
 /// Table options.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct TableOptions {
     pub zebra: bool,
+    pub overflow: TableOverflow,
 }
 
 impl Default for TableOptions {
     fn default() -> Self {
-        TableOptions { zebra: true }
+        TableOptions {
+            zebra: true,
+            overflow: TableOverflow::Scroll,
+        }
     }
 }
 

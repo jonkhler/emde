@@ -11,6 +11,10 @@
 //! the next line (or into `less -R`). [`super::debug`] renders the same
 //! pieces as tags.
 //!
+//! A line of a wide block ([`crate::layout::Wide`]) is written through a
+//! window ([`super::clip`]): the pager's horizontal shift, and the text
+//! column's right edge, cut it.
+//!
 //! Figures are laid out as placeholder boxes ([`LineKind::Image`] rows).
 //! With an [`ImageRows`] provider ([`Emitter::with_images`]) a row shows
 //! the image instead: block-glyph cells, drawn with the same SGR diffing
@@ -284,16 +288,7 @@ fn split_marks(layout: &Layout, piece: Piece<'_>, marks: &[Mark], f: &mut dyn Fn
     }
 }
 
-/// `n` spaces, in pieces of a static string.
-fn spaces(n: u16, f: &mut dyn FnMut(&str)) {
-    const SPACES: &str = "                                                                ";
-    let mut left = usize::from(n);
-    while left > 0 {
-        let take = left.min(SPACES.len());
-        f(SPACES.get(..take).unwrap_or(""));
-        left -= take;
-    }
-}
+use super::clip::{Clip, Window, spaces};
 
 /// Pieces of one code span under its highlight runs; `start` is the span's
 /// offset in the expanded code line, `arena` its offset in the layout text.
@@ -528,6 +523,19 @@ impl<'a> Emitter<'a> {
     /// [`Emitter::write_line`] with `marks` (search matches, …) laid over
     /// the text.
     pub fn write_line_marked(&mut self, index: usize, marks: &[Mark], out: &mut Vec<u8>) {
+        self.write_line_shifted(index, marks, 0, out);
+    }
+
+    /// [`Emitter::write_line_marked`] for a line that may be in a wide
+    /// block: such a line is cut to the text column, after `shift` columns
+    /// of the block (see [`super::clip`]).
+    pub fn write_line_shifted(
+        &mut self,
+        index: usize,
+        marks: &[Mark],
+        shift: u16,
+        out: &mut Vec<u8>,
+    ) {
         let layout = self.layout;
         let Some(line) = layout.lines.get(index) else {
             return;
@@ -545,9 +553,34 @@ impl<'a> Emitter<'a> {
             style: Style::PLAIN,
             link: None,
         };
-        marked_segments(layout, index, marks, &mut |piece| {
-            self.piece(out, &mut pen, piece);
-        });
+        match layout.wide_at(index) {
+            Some(w) => {
+                let extent = match line.fill {
+                    Fill::Panel { to_col, .. } => line.cols.max(to_col),
+                    _ => line.cols,
+                };
+                let win = Window {
+                    keep: w.x0,
+                    from: w.x0.saturating_add(shift),
+                    cols: layout.measure.saturating_sub(w.x0),
+                    extent,
+                };
+                let mut clip = Clip::new(
+                    win,
+                    SegStyle::Id(w.marker),
+                    layout.clip,
+                    layout.ambiguous_wide,
+                );
+                let mut put = |piece: Piece<'_>| self.piece(out, &mut pen, piece);
+                marked_segments(layout, index, marks, &mut |piece| {
+                    clip.piece(piece, &mut put)
+                });
+                clip.finish(&mut put);
+            }
+            None => marked_segments(layout, index, marks, &mut |piece| {
+                self.piece(out, &mut pen, piece);
+            }),
+        }
         if pen.link.is_some() {
             osc8::close(out);
         }

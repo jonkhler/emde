@@ -243,6 +243,51 @@ fn to_u32(n: usize) -> u32 {
     u32::try_from(n).unwrap_or(u32::MAX)
 }
 
+/// `c` with `suffix` after it in `style`, as one unbreakable piece (a
+/// collapsed `<details>`' line count); offsets in it map to the end of the
+/// IR text.
+pub(super) fn suffixed<'t>(c: Composed<'t>, suffix: &str, style: StyleId) -> Composed<'t> {
+    let end = to_u32(c.text.len());
+    let ir_end = c.ir_offset(end);
+    let mut map = if c.map.is_empty() {
+        vec![MapEntry {
+            disp: 0,
+            ir: 0,
+            ir_end: end,
+            verbatim: true,
+        }]
+    } else {
+        c.map
+    };
+    map.push(MapEntry {
+        disp: end,
+        ir: ir_end,
+        ir_end,
+        verbatim: false,
+    });
+    let mut text = c.text.into_owned();
+    text.push_str(suffix);
+    let len = to_u32(text.len());
+    let mut runs = c.runs;
+    runs.push(CRun {
+        end: len,
+        style,
+        link: None,
+        flags: SpanFlags::empty(),
+        pill: false,
+    });
+    let mut atoms = c.atoms;
+    // The space before the count may break; the count may not.
+    atoms.push(end.saturating_add(1).min(len)..len);
+    Composed {
+        text: Cow::Owned(text),
+        runs,
+        atoms,
+        breaks: c.breaks,
+        map,
+    }
+}
+
 /// Whether a link's text is its URL already (`[https://x.org](https://x.org)`,
 /// `[me@x.org](mailto:me@x.org)`), so a numbered reference would only
 /// repeat it.

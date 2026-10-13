@@ -5,9 +5,11 @@
 //! * [`osc8`] — hyperlink sequences and URL safety;
 //! * [`emit`] — layout lines to bytes, with the highlight overlay,
 //!   gradient backgrounds and images ([`ImageRows`]) applied;
+//! * [`clip`] — horizontal windows on the lines of wide blocks;
 //! * [`stream`] — the buffered sink for standard output;
 //! * [`debug`] — style tags instead of escapes, for snapshots.
 
+pub mod clip;
 pub mod debug;
 pub mod emit;
 pub mod osc8;

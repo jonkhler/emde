@@ -171,10 +171,11 @@ impl Builder {
                 }
             }
             Container::Html { kind, body, .. } => match kind {
-                HtmlBox::Details { summary } => self.push_block(
+                HtmlBox::Details { summary, open } => self.push_block(
                     Block::Details {
                         summary: summary.unwrap_or_default(),
                         body,
+                        open,
                     },
                     Vec::new(),
                 ),
@@ -336,7 +337,7 @@ impl Builder {
             LeafKind::Summary => {
                 let here = Anchor::Block(BlockId(to_u32(self.root.len())));
                 if let Some(Container::Html {
-                    kind: HtmlBox::Details { summary },
+                    kind: HtmlBox::Details { summary, .. },
                     ..
                 }) = self.stack.last_mut()
                 {

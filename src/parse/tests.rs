@@ -826,7 +826,7 @@ fn details_across_html_blocks() {
         "<details>\n<summary>Click <b>me</b></summary>\n\nHidden *markdown*.\n\n- item\n\n\
          </details>\n\nAfter\n",
     );
-    let [Block::Details { summary, body }, Block::Para(after)] = d.blocks.as_slice() else {
+    let [Block::Details { summary, body, .. }, Block::Para(after)] = d.blocks.as_slice() else {
         panic!("{:#?}", d.blocks)
     };
     assert_eq!(summary.text, "Click me");

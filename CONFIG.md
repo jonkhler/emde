@@ -102,7 +102,7 @@ Every key, with its default and the option that also sets it, if any.
 
 | Key | Default | Description |
 |---|---|---|
-| `wrap` | `true` | Wrap long lines; false cuts them off with ›. Flag: `--no-wrap-code` (false). |
+| `wrap` | `true` | Wrap long lines; false cuts them off with › (the pager shows them whole and shifts them sideways with zh and zl). Flag: `--no-wrap-code` (false). |
 | `line_numbers` | `false` | Line numbers. Flag: `--line-numbers`. |
 | `tab_width` | `4` | Tab stop width, 1 to 16. |
 | `label` | `true` | Language label. |
@@ -124,6 +124,7 @@ nu = "bash"
 | Key | Default | Description |
 |---|---|---|
 | `zebra` | `true` | Stripe every other row (24-bit colour only). |
+| `overflow` | `"scroll"` | A table too wide for its columns: scroll (the pager shows it at its natural width, shifted sideways with zh and zl; elsewhere, records) or records (one "header: value" record per row). |
 
 ### `[math]`
 
@@ -180,6 +181,7 @@ nu = "bash"
 | `open` | `"auto"` | Opening links and images (o in the image view): auto (open or xdg-open locally, copy the URL over SSH), never, or a command that gets the URL (or the image file) as its last argument. |
 | `toc_sidebar` | `"auto"` | The outline sidebar on the left (T shows it, a second T moves the keys into it, a third hides it): auto shows it when the terminal is at least toc\_width + max\_width + 2 \* margin + 4 columns wide (140 with the defaults; a max\_width of 0 counts as 100), always whenever the text keeps 40 columns beside it, never only when T asks for it. Documents without headings get none. |
 | `toc_width` | `32` | Width of the outline sidebar in columns, its border included (16 to 60). |
+| `details` | `"collapsed"` | \<details\> blocks: collapsed to their summary line (unless written \<details open\>; Enter, a click or za opens them) or expanded. Output that is not paged always shows them expanded. |
 
 ### `[pager.keys]`
 

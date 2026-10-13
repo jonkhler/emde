@@ -101,6 +101,8 @@ enum Container {
 enum HtmlBox {
     Details {
         summary: Option<Inlines>,
+        /// `<details open>`.
+        open: bool,
     },
     Align(HAlign),
     /// A plain `<div>`/`<p>`: transparent, only separates paragraphs.

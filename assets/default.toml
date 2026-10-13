@@ -125,7 +125,8 @@ markers = ["", "", "▎ ", "", "", ""]
 numbers = false
 
 [code]
-# Wrap long lines; false cuts them off with ›.
+# Wrap long lines; false cuts them off with › (the pager shows them whole
+# and shifts them sideways with zh and zl).
 wrap = true
 # Line numbers.
 line_numbers = false
@@ -148,6 +149,10 @@ style = "auto"
 [tables]
 # Stripe every other row (24-bit colour only).
 zebra = true
+# A table too wide for its columns: scroll (the pager shows it at its
+# natural width, shifted sideways with zh and zl; elsewhere, records) or
+# records (one "header: value" record per row).
+overflow = "scroll"
 
 [math]
 # Display math: 2d (stacked fractions, limits above and below), linear or
@@ -233,6 +238,10 @@ open = "auto"
 toc_sidebar = "auto"
 # Width of the outline sidebar in columns, its border included (16 to 60).
 toc_width = 32
+# <details> blocks: collapsed to their summary line (unless written
+# <details open>; Enter, a click or za opens them) or expanded. Output
+# that is not paged always shows them expanded.
+details = "collapsed"
 
 [pager.keys]
 # Other keys for the pager: an action name from the key tables and its

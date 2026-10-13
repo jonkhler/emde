@@ -61,7 +61,7 @@ impl Words<'_> {
                     self.out.push(' ');
                 }
                 Block::Quote { body, .. } | Block::Align { body, .. } => self.blocks(body),
-                Block::Details { summary, body } => {
+                Block::Details { summary, body, .. } => {
                     self.inlines(summary);
                     self.blocks(body);
                 }
