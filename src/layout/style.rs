@@ -11,7 +11,7 @@
 //! Everything is interned into the layout's [`StyleTable`], with small
 //! caches so the per-run work is a hash lookup.
 
-use std::collections::HashMap;
+use crate::hash::FastMap;
 
 use emde_math::MathRole;
 
@@ -88,8 +88,8 @@ pub(super) struct Styles {
     /// Every element's difference from `Text`.
     deltas: Vec<StylePatch>,
     ids: Vec<Option<StyleId>>,
-    inline_cache: HashMap<InlineKey, StyleId>,
-    ctx_cache: HashMap<(StyleId, Ctx), StyleId>,
+    inline_cache: FastMap<InlineKey, StyleId>,
+    ctx_cache: FastMap<(StyleId, Ctx), StyleId>,
 }
 
 /// The patch that turns `base` into `s`.
@@ -115,8 +115,8 @@ impl Styles {
             styles,
             deltas,
             ids: vec![None; Element::COUNT],
-            inline_cache: HashMap::new(),
-            ctx_cache: HashMap::new(),
+            inline_cache: FastMap::default(),
+            ctx_cache: FastMap::default(),
         }
     }
 

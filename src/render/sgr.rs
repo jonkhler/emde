@@ -13,7 +13,7 @@
 //! followed by the new style's parameters. SGR `22` turns off *both* bold
 //! and dim, so an attribute that stays on is written again after it.
 
-use std::collections::HashMap;
+use crate::hash::FastMap;
 
 use crate::color;
 use crate::style::{Attrs, Color, Rgb, Style, Underline};
@@ -27,7 +27,7 @@ pub const RESET: &[u8] = b"\x1b[0m";
 pub struct Palette {
     depth: ColorDepth,
     styled_underline: bool,
-    memo: HashMap<Rgb, Color>,
+    memo: FastMap<Rgb, Color>,
 }
 
 impl Palette {
@@ -36,7 +36,7 @@ impl Palette {
         Palette {
             depth,
             styled_underline,
-            memo: HashMap::new(),
+            memo: FastMap::default(),
         }
     }
 

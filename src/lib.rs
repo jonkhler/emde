@@ -17,6 +17,7 @@ pub mod cli;
 pub mod color;
 pub mod config;
 pub mod gfx;
+mod hash;
 pub mod highlight;
 pub mod ir;
 pub mod layout;
