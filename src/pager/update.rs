@@ -1254,7 +1254,18 @@ fn focus_step(state: &mut State, n: usize, forward: bool) {
         }
     }
     state.reveal(line);
-    reveal_cols(state, line, col..col.saturating_add(1));
+    // A link shows whole where it can (its first hit, on `line`).
+    let cols = match stop {
+        Stop::Link(i) => state
+            .derived
+            .links
+            .get(i)
+            .and_then(|o| state.layout.link_hits.get(o.first as usize))
+            .filter(|h| h.line as usize == line)
+            .map(|h| h.cols.clone()),
+        Stop::Summary(_) => None,
+    };
+    reveal_cols(state, line, cols.unwrap_or(col..col.saturating_add(1)));
 }
 
 /// The focused `<details>` summary, if it is on screen.
@@ -1471,6 +1482,8 @@ fn reveal_cols(state: &mut State, line: usize, cols: std::ops::Range<u16>) {
         .end
         .max(cols.start.saturating_add(1))
         .saturating_sub(w.x0);
+    // Columns wider than the view show from their start.
+    let hi = hi.min(lo.saturating_add(view.saturating_sub(2 * HSCROLL_MARGIN + 1).max(1)));
     let to = if cur > 0 && lo <= cur {
         lo.saturating_sub(HSCROLL_MARGIN)
     } else if hi.saturating_add(1) > cur.saturating_add(view) {
@@ -1489,11 +1502,19 @@ fn reveal_match_cols(state: &mut State) {
     let Some(pos) = s.current.and_then(|i| s.matches.get(i)).map(|m| m.pos()) else {
         return;
     };
-    let line = state.layout.line_at(pos);
-    if state.layout.wide_at(line).is_none() {
+    // The match is on one of the lines starting at its position: the first
+    // can be a code block's padding or a table's top border.
+    let layout = &state.layout;
+    let first = layout.line_at(pos);
+    let Some(at) = layout.lines.get(first).map(|l| l.pos) else {
         return;
-    }
-    if let Some(cols) = current_cols(state.page.corpus(), &state.layout, line, s) {
+    };
+    let shown = (first..layout.len())
+        .take_while(|&i| layout.lines.get(i).is_some_and(|l| l.pos == at))
+        .take(64)
+        .filter(|&i| layout.wide_at(i).is_some())
+        .find_map(|i| Some((i, current_cols(state.page.corpus(), layout, i, s)?)));
+    if let Some((line, cols)) = shown {
         reveal_cols(state, line, cols);
     }
 }

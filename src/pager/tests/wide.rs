@@ -251,6 +251,45 @@ fn tab_shifts_a_focused_link_into_view() {
     let line = hit.line as usize;
     let shift = s.layout().shift_at(line, s.hscroll());
     assert!(s.layout().shown_col(line, hit.cols.start, shift).is_some());
+    // The whole link (found in a pty run: only its first two columns were).
+    assert!(
+        s.layout()
+            .shown_col(line, hit.cols.end - 1, shift)
+            .is_some(),
+        "{hit:?} at {shift}"
+    );
+}
+
+/// Found in a pty run: a match in a table's header row (or on a cut code
+/// block's first line) stayed off screen: the search looked for it on
+/// the border (or padding) line sharing its position.
+#[test]
+fn a_search_shifts_to_matches_on_first_lines() {
+    let mut s = state(&table_doc(14, 0), 60, 12);
+    keys(&mut s, "/Head 14\n");
+    assert!(s.hscroll() > 0);
+    let code = format!(
+        "# C\n\n```\nx = \"{}TAILMARK\";\nsecond\n```\n",
+        "0123456789-".repeat(12)
+    );
+    let mut opts = RenderOptions::default();
+    opts.code.wrap = false;
+    let doc = pdoc(&code, Origin::Memory);
+    let pager = PagerOptions::default();
+    let settings = Settings::new(&pager, &opts);
+    let l = crate::layout::layout_with(
+        &doc.doc,
+        60,
+        &Theme::test(),
+        &Caps::full(),
+        &opts,
+        &PlainHighlighter,
+        &NoImages,
+        settings.interactive(),
+    );
+    let mut s = State::new(doc, None, l, (60, 12), &pager, settings);
+    keys(&mut s, "/TAILMARK\n");
+    assert!(s.hscroll() > 0);
 }
 
 #[test]
