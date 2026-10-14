@@ -15,14 +15,18 @@
 //! # Scroll-spy
 //!
 //! The current section ([`current`]) is the last heading at or above the
-//! top third of the screen. Headings inside collapsed `<details>` are
-//! listed dimmed (going to one opens them), but never current. The sidebar scrolls itself to keep it in view
+//! top line, as in the status bar's breadcrumb (at the very bottom of the
+//! document: at or above the top third of the screen, so the last short
+//! sections can be current too). A jump to a heading puts it on the top
+//! line, so the entry clicked is the entry marked. Headings inside
+//! collapsed `<details>` are listed dimmed (going to one opens them), but
+//! never current. The sidebar scrolls itself to keep it in view
 //! ([`follow`], after every update) unless the reader scrolled the sidebar
 //! with the wheel since the current section last changed; with the keys in
 //! the sidebar (`T` a second time) the selected entry is kept in view
 //! instead.
 
-use crate::ir::Document;
+use crate::ir::{Document, HeadingId};
 use crate::options::When;
 
 use super::state::{Mode, SidebarSettings, State};
@@ -86,12 +90,28 @@ pub(crate) struct Sidebar {
     pub(crate) manual: bool,
     /// The current entry when it was last followed.
     pub(crate) spied: Option<usize>,
+    /// The heading last jumped to: current at the bottom of the document
+    /// while it is on screen (a jump there cannot put it on the top line).
+    pub(crate) jumped: Option<HeadingId>,
 }
 
-/// The current section's entry: the last heading at or above the top third
-/// of the screen (`None` above the first heading).
+/// The current section's entry: the last heading at or above the top line,
+/// as the status bar's breadcrumb has it (`None` above the first heading).
+/// At the bottom of the document, where the last sections can never reach
+/// the top line: the heading last jumped to while it is on screen, else the
+/// last heading at or above the top third of the screen.
 pub(crate) fn current(state: &State) -> Option<usize> {
-    state.derived.entry_at(state.top + state.view_rows() / 3)
+    if state.top < state.max_top() || state.top == 0 {
+        return state.derived.entry_at(state.top);
+    }
+    let rows = state.view_rows();
+    let visible = |line: u32| (state.top..state.top + rows).contains(&(line as usize));
+    let headings = &state.derived.headings;
+    let jumped = state.sidebar.jumped.and_then(|h| {
+        (0..headings.len())
+            .find(|&i| headings[i].1 == h && visible(headings[i].0) && !state.derived.is_folded(i))
+    });
+    jumped.or_else(|| state.derived.entry_at(state.top + rows / 3))
 }
 
 /// Keep the right entry in view after an update: the selected one with the

@@ -2,9 +2,9 @@
 source: tests/pager.rs
 expression: hints
 ---
- 1│   Guide                       │          auide                                                                                                       │
+ 1│ ▸ Guide                       │          auide                                                                                                       │
   │                                         ##│
- 2│ ▸   Install                   │                                                                                                                      │
+ 2│     Install                   │                                                                                                                      │
  3│     Use                       │         Read she docs first.                                                                                         │
   │                                              #│
  4│                               │                                                                                                                      │

@@ -8,11 +8,11 @@ expression: "screen_text(&term, 150, 20, \"moved\")"
  4│     Section 3                 │         Paragraph 6 has a few words of text in it.                                                                   │
  5│     Section 4                 │                                                                                                                      │
  6│     Section 5                 │         Section 7                                                                                                    │
- 7│     Section 6                 │         ━━━━━━━━━───────────────────────────────────────────────────────────────────────────────────────────         │
- 8│ ▸   Section 7                 │                                                                                                                      │
+ 7│ ▸   Section 6                 │         ━━━━━━━━━───────────────────────────────────────────────────────────────────────────────────────────         │
+ 8│     Section 7                 │                                                                                                                      │
  9│     Section 8                 │         Paragraph 7 has a few words of text in it.                                                                   │
-10│     Section 9                 │                                                                                                                      │
   │ ==============================│
+10│     Section 9                 │                                                                                                                      │
 11│     Section 10                │         Section 8                                                                                                    │
 12│     Section 11                │         ━━━━━━━━━───────────────────────────────────────────────────────────────────────────────────────────         │
 13│     Section 12                │                                                                                                                      │

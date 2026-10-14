@@ -209,8 +209,8 @@ fn the_outline_sidebar_follows_the_reading() {
     // The current section is marked, the text starts after the border.
     let marked: Vec<&str> = section.lines().filter(|l| l.contains("▸")).collect();
     assert_eq!(marked.len(), 1, "{section}");
-    // The last heading at or above the top third of the screen.
-    assert!(marked[0].contains("▸   Section 7"), "{section}");
+    // The heading jumped to, now on the top line (as in the breadcrumb).
+    assert!(marked[0].contains("▸   Section 6"), "{section}");
     assert!(
         row_text(&term, 150, 20, "section", 0).starts_with("   Long document"),
         "{section}"
@@ -218,7 +218,8 @@ fn the_outline_sidebar_follows_the_reading() {
     insta::assert_snapshot!("sidebar-section", section);
     insta::assert_snapshot!("sidebar-keys", screen_text(&term, 150, 20, "moved"));
     let jumped = row_text(&term, 150, 20, "jumped", 0);
-    assert!(jumped.ends_with("Section 9"), "{jumped:?}");
+    // `T` selected the current entry (Section 6), `jj` two below it.
+    assert!(jumped.ends_with("Section 8"), "{jumped:?}");
     // Long headings are cut; the selection is kept in view.
     let bottom = screen_text(&term, 150, 20, "bottom");
     assert!(bottom.contains("  A very long heading that… │"), "{bottom}");

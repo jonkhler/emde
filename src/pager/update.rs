@@ -858,6 +858,7 @@ fn outline_jump(state: &mut State) -> Vec<Effect> {
 
 /// Go to heading `h`, opening the `<details>` that hide it.
 fn jump_heading(state: &mut State, h: HeadingId) -> Vec<Effect> {
+    state.sidebar.jumped = Some(h);
     let folds = state.layout.heading_folds(h);
     if folds.is_empty() {
         if let Some(&line) = state.layout.heading_line.get(h.index())
@@ -1862,6 +1863,7 @@ fn switch(state: &mut State, page: Rc<Page>, req: LoadRequest) -> Vec<Effect> {
     state.search = None;
     state.focus = None;
     state.summary_focus = None;
+    state.sidebar.jumped = None;
     state.pending = Some(goto);
     vec![Effect::Relayout]
 }
@@ -1905,6 +1907,7 @@ fn reloaded(state: &mut State, doc: PagerDoc) -> Vec<Effect> {
     let page = Rc::new(Page::new(doc, key, base, state.settings.front_matter));
     state.history.touch(&page);
     state.page = page;
+    state.sidebar.jumped = None;
     state.pending = Some(Goto::Place(state.top_place()));
     if let Some(s) = state.search.take() {
         let mut again = Search::run(

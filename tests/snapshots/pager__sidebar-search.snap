@@ -2,8 +2,8 @@
 source: tests/pager.rs
 expression: "screen_text(&term, 150, 20, \"search\")"
 ---
- 1│   Long document               │          Long document                                                                                               │
- 2│ ▸   Section 1                 │                                                                                                                      │
+ 1│ ▸ Long document               │          Long document                                                                                               │
+ 2│     Section 1                 │                                                                                                                      │
  3│     Section 2                 │         Section 1                                                                                                    │
  4│     Section 3                 │         ━━━━━━━━━───────────────────────────────────────────────────────────────────────────────────────────         │
  5│     Section 4                 │                                                                                                                      │

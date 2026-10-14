@@ -66,7 +66,7 @@ fn t_shows_focuses_and_hides_it() {
     assert_eq!(top_text(&s), before, "the same place");
     // A second T moves the keys into it, at the current section.
     let cur = sidebar::current(&s).unwrap();
-    assert_eq!(entry(&s, cur), "Section 1", "within the top third");
+    assert_eq!(entry(&s, cur), "Title", "the heading at the top line");
     keys(&mut s, "T");
     assert_eq!(s.mode, Mode::Sidebar(cur));
     keys(&mut s, "jjj");
@@ -108,23 +108,26 @@ fn t_explains_when_it_cannot_show() {
 }
 
 #[test]
-fn the_current_section_follows_the_top_third() {
+fn the_current_section_follows_the_top_line() {
     let mut s = wide(&long_doc(30, 3), 150, 21);
-    // Section 1 starts within the first third of the screen.
-    assert_eq!(current(&s).as_deref(), Some("Section 1"));
-    s.top = 1;
-    drive(&mut s, Action::Message(String::new()));
-    assert_eq!(current(&s).as_deref(), Some("Section 1"));
+    assert_eq!(current(&s).as_deref(), Some("Title"));
     let line = heading_line(&s, "Section 4");
-    // The heading just below the top third: not current yet.
-    s.top = line - 7;
+    // Section 4 is on screen but not yet at the top: still in Detail 3.
+    s.top = line - 1;
     drive(&mut s, Action::Message(String::new()));
     assert_eq!(current(&s).as_deref(), Some("Detail 3"));
-    s.top = line - 6;
+    s.top = line;
     drive(&mut s, Action::Message(String::new()));
     assert_eq!(current(&s).as_deref(), Some("Section 4"));
-    // The sidebar keeps the current entry in view.
+    // At the bottom, the last sections count from the top third, and a
+    // heading jumped to there (it cannot reach the top line) is current.
     keys(&mut s, "G");
+    assert_eq!(current(&s).as_deref(), Some("Detail 29"));
+    let last = s.derived.headings.len() - 1;
+    let row = u16::try_from(last - s.sidebar.scroll).unwrap();
+    click(&mut s, 5, row);
+    assert_eq!(current(&s).as_deref(), Some("Detail 30"));
+    // The sidebar keeps the current entry in view.
     let cur = sidebar::current(&s).unwrap();
     let rows = s.view_rows();
     assert!(
@@ -329,4 +332,37 @@ fn plain(s: &str) -> String {
         }
     }
     out
+}
+
+/// Reported by the user: clicking a short section's entry marked the entry
+/// below it, because the next heading also sat in the top third.
+#[test]
+fn a_jump_to_a_short_section_marks_that_section() {
+    let mut md = String::from("# Long\n\n");
+    for i in 0..40 {
+        md.push_str(&format!("Filler paragraph {i}.\n\n"));
+    }
+    md.push_str("## Short\n\nOne line.\n\n## Next\n\n");
+    for i in 0..40 {
+        md.push_str(&format!("More text {i}.\n\n"));
+    }
+    let mut s = wide(&md, 150, 30);
+    let short = (0..s.derived.headings.len())
+        .find(|&i| entry(&s, i) == "Short")
+        .unwrap();
+    let row = u16::try_from(short - s.sidebar.scroll).unwrap();
+    click(&mut s, 5, row);
+    assert_eq!(
+        s.top(),
+        heading_line(&s, "Short"),
+        "the jump puts it on top"
+    );
+    assert_eq!(current(&s).as_deref(), Some("Short"));
+    // Scrolling a line keeps it marked until the next heading reaches the
+    // top.
+    keys(&mut s, "j");
+    assert_eq!(current(&s).as_deref(), Some("Short"));
+    s.top = heading_line(&s, "Next");
+    drive(&mut s, Action::Message(String::new()));
+    assert_eq!(current(&s).as_deref(), Some("Next"));
 }
