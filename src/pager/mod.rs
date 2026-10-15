@@ -77,6 +77,8 @@ pub mod keymap;
 mod links;
 mod os;
 mod partial;
+mod picker;
+pub(crate) mod recent;
 mod search;
 mod shell;
 mod sidebar;
@@ -89,17 +91,18 @@ mod visual;
 mod watch;
 
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 pub use diff::{SYNC_OFF, SYNC_ON, Screen};
 pub use images::PagerImages;
+pub use picker::{PickerEvent, PickerJob};
 pub use state::{DocKey, Place, Settings, SidebarSettings, State};
 pub use term::{Signals, Terminal};
 pub use update::{Action, Effect, LoadRequest, Nav, update};
 pub use view::{Body, Ctx, Frame, Row, Segment, view};
 
-use crate::config::PagerOptions;
+use crate::config::{PagerOptions, PickerOptions};
 use crate::highlight::{Highlighter, PlainHighlighter};
 use crate::ir::Document;
 use crate::layout::Layout;
@@ -168,6 +171,45 @@ impl DocLoader for FileLoader {
     }
 }
 
+/// How the file picker (`O`) and `:e` find files, and where the files
+/// opened lately are kept.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct PickerSetup {
+    /// `[picker]`.
+    pub options: PickerOptions,
+    /// The home directory (`~` in paths; without one `~` cannot be used).
+    pub home: Option<PathBuf>,
+    /// The working directory (`None`: the process's).
+    pub cwd: Option<PathBuf>,
+    /// The file of the recent files store (`None`: nothing is recorded).
+    pub recent: Option<PathBuf>,
+    /// Ask git for the files of the current document's repository.
+    pub git: bool,
+    /// Take the search's results only when the terminal is idle, waiting
+    /// for all of them (for tests: what is on screen then never depends on
+    /// how fast the search thread is).
+    pub wait_when_idle: bool,
+}
+
+impl PickerSetup {
+    /// The setup for this process: `options`, `$HOME`, the store under
+    /// `$XDG_STATE_HOME` (or `~/.local/state`), git.
+    pub fn from_process(options: PickerOptions) -> PickerSetup {
+        let home = std::env::var_os("HOME")
+            .map(PathBuf::from)
+            .filter(|h| h.is_absolute());
+        let state = std::env::var("XDG_STATE_HOME").ok();
+        PickerSetup {
+            options,
+            recent: recent::store_path(state.as_deref(), home.as_deref()),
+            home,
+            cwd: None,
+            git: true,
+            wait_when_idle: false,
+        }
+    }
+}
+
 /// Everything the pager needs. [`PagerSession::new`] fills in defaults;
 /// set the fields to change them.
 pub struct PagerSession {
@@ -202,13 +244,17 @@ pub struct PagerSession {
     /// (e.g. for the paging decision); used for the first frame if the
     /// width still matches.
     pub layout: Option<Layout>,
+    /// The file picker and the recent files.
+    pub picker: PickerSetup,
 }
 
 impl PagerSession {
     /// A session for `doc` with the given render context and defaults for
     /// the rest: no other documents, files loaded with parse options from
     /// `opts`, no syntax highlighting, figures as alt text boxes, default
-    /// pager options, the process environment.
+    /// pager options, the process environment, a file picker without git,
+    /// home directory or recent files ([`PickerSetup::from_process`] has
+    /// them).
     pub fn new(doc: PagerDoc, theme: Theme, caps: Caps, opts: RenderOptions) -> PagerSession {
         PagerSession {
             loader: Box::new(FileLoader::new(ParseOptions::from(&opts))),
@@ -226,6 +272,7 @@ impl PagerSession {
             tmux: None,
             late_replies: LateReplyFilter::inactive(),
             layout: None,
+            picker: PickerSetup::default(),
         }
     }
 }

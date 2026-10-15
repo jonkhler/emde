@@ -259,6 +259,20 @@ details = "collapsed"
 # hints-follow = ["F"]
 # quit = ["q", "ZZ"]
 
+[picker]
+# The file picker (O) and :e. Typed text is matched against the files of
+# the current document's git repository (or its directory), the files
+# opened lately, and these directories (searched in the background, for a
+# couple of seconds at most), e.g. ["~/notes", "~/dev"].
+roots = []
+# The most files the picker collects.
+max_files = 50000
+# List hidden files and directories (names starting with a dot).
+show_hidden = false
+# What counts as Markdown (Ctrl-T in the picker lists every file); a
+# README without an extension always does.
+extensions = ["md", "markdown", "mdx", "mkd"]
+
 [terminal]
 # Ask the terminal once for its background colour, image support and cell
 # size.

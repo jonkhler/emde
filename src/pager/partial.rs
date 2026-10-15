@@ -101,6 +101,7 @@ fn command_need(state: &State, cmd: Command) -> Need {
         | C::ToggleWidth
         | C::CycleImages
         | C::ToggleMouse
+        | C::Picker
         | C::Redraw
         | C::Suspend
         | C::Quit => around_screen(state, state.rows),
@@ -111,6 +112,11 @@ fn command_need(state: &State, cmd: Command) -> Need {
 
 /// What `action` needs of the current layout before it runs.
 pub(crate) fn action_need(state: &State, action: &Action) -> Need {
+    if matches!(state.mode, Mode::Picker(_)) {
+        // The picker never looks at the document; what it opens is laid
+        // out anew.
+        return around_screen(state, state.rows);
+    }
     if !local(state) {
         return Need::Whole;
     }

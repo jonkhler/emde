@@ -7,9 +7,11 @@
 //! still missing falls back to the struct's `Default`, which matches
 //! `default.toml`.
 
+use std::path::PathBuf;
+
 use super::layer::ConfigLayer;
 use super::value::{AmbiguousWidth, TmuxPassthrough, has_control};
-use super::{PagerOptions, TerminalOptions, ThemeOptions};
+use super::{PagerOptions, PickerOptions, TerminalOptions, ThemeOptions};
 use crate::options::{
     CodeOptions, Glyphs, H1Style, HeadingOptions, ImageOptions, MarkdownOptions, MathMode,
     RenderOptions, TableOptions,
@@ -73,6 +75,31 @@ pub(crate) fn validate(layer: &mut ConfigLayer) -> Vec<Invalid> {
         &["code", "aliases"],
         "has empty or invalid entries",
     );
+
+    clear_if(&mut layer.picker.max_files, |n| {
+        !check(*n > 0, &["picker", "max_files"], "must be at least 1")
+    });
+    if let Some(roots) = &mut layer.picker.roots {
+        let before = roots.len();
+        roots.retain(|r| text_ok(r));
+        check(
+            roots.len() == before,
+            &["picker", "roots"],
+            "has empty or invalid entries",
+        );
+    }
+    if let Some(exts) = &mut layer.picker.extensions {
+        let before = exts.len();
+        exts.retain(|e| text_ok(e) && !e.contains('/'));
+        let ok = check(
+            exts.len() == before,
+            &["picker", "extensions"],
+            "has empty or invalid entries",
+        );
+        if !ok && exts.is_empty() {
+            layer.picker.extensions = None;
+        }
+    }
 
     clear_if(&mut layer.math.max_height, |h| {
         !check(*h > 0, &["math", "max_height"], "must be at least 1")
@@ -323,6 +350,26 @@ pub(crate) fn pager_options(l: &ConfigLayer) -> PagerOptions {
         toc_width: p.toc_width.unwrap_or(d.toc_width),
         details: p.details.unwrap_or(d.details),
         keys: p.keys.0.clone(),
+    }
+}
+
+/// `[picker]` as [`PickerOptions`]: extensions without their dot, in
+/// lowercase.
+pub(crate) fn picker_options(l: &ConfigLayer) -> PickerOptions {
+    let d = PickerOptions::default();
+    let p = &l.picker;
+    PickerOptions {
+        roots: p.roots.as_ref().map_or(d.roots, |r| {
+            r.iter().filter(|s| !s.is_empty()).map(PathBuf::from).collect()
+        }),
+        max_files: p.max_files.unwrap_or(d.max_files),
+        show_hidden: p.show_hidden.unwrap_or(d.show_hidden),
+        extensions: p.extensions.as_ref().map_or(d.extensions, |e| {
+            e.iter()
+                .map(|x| x.trim().trim_start_matches('.').to_lowercase())
+                .filter(|x| !x.is_empty())
+                .collect()
+        }),
     }
 }
 

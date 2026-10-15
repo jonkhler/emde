@@ -309,6 +309,16 @@ layered! {
 }
 
 layered! {
+    /// `[picker]`: the file picker (`O`) and `:e`.
+    pub(crate) struct PickerLayer {
+        pub(crate) roots: Option<Vec<String>>,
+        pub(crate) max_files: Option<usize>,
+        pub(crate) show_hidden: Option<bool>,
+        pub(crate) extensions: Option<Vec<String>>,
+    }
+}
+
+layered! {
     /// `[terminal]`: terminal detection.
     pub(crate) struct TerminalLayer {
         pub(crate) probe: Option<bool>,
@@ -338,6 +348,7 @@ layered! {
         pub(crate) markdown: MarkdownLayer,
         pub(crate) glyphs: GlyphsLayer,
         pub(crate) pager: PagerLayer,
+        pub(crate) picker: PickerLayer,
         pub(crate) terminal: TerminalLayer,
     }
 }
@@ -359,6 +370,7 @@ pub(crate) fn section_keys(section: &str) -> Option<&'static [&'static str]> {
         "markdown" => MarkdownLayer::KEYS,
         "glyphs" => GlyphsLayer::KEYS,
         "pager" => PagerLayer::KEYS,
+        "picker" => PickerLayer::KEYS,
         "terminal" => TerminalLayer::KEYS,
         _ => return None,
     })
