@@ -1,0 +1,13 @@
+---
+source: tests/pager_picker.rs
+expression: "screen(&term, 60, 8, \"completed\")"
+---
+ 1│   README                                                   │
+ 2│                                                            │
+ 3│  About README.                                             │
+ 4│                                                            │
+ 5│  Usage                                                     │
+ 6│  ━━━━━───────────────────────────────────────────────────  │
+ 7│                                                            │
+ 8│ :e notes/meeting-2024.md                        L 1/11 63% │
+  │                         =│

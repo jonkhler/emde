@@ -26,7 +26,8 @@ emde README.md
   headings, marks, Vimium-style hints to
   follow links or copy code, math and tables as written, a Visual mode
   that copies lines as Markdown or text, `e` to edit the file at the line
-  you are reading, back and forward through linked documents, reload when
+  you are reading, a fuzzy file picker (`O`) and `:e FILE`, back and
+  forward through linked documents, reload when
   the file changes, the mouse wheel, and re-wrapping on resize that keeps
   your place. Pipes and `--plain` get the rendered text, like `bat` does
   (and with `pager.enabled = "auto"`, documents that fit on the screen).
@@ -209,6 +210,40 @@ half a screen, `$` and `^` to their end and start; ordinary text stays
 where it is. `‹` and `›` mark the edges where a block goes on, and a search
 match or a focused link in one is shifted into view.
 
+### Opening other files
+
+`O` opens the **file picker**. Type a few letters of a name and the
+Markdown files around the document come up best first: those you opened
+lately, then the files of the document's git repository (or of its
+directory, four levels deep), then the directories you list in `[picker]
+roots`. Matching works like fzf: the letters must appear in order, word
+starts and the file name count most, and words separated by spaces must
+all match. `↓` and `↑` (or `^N` and `^P`) choose, `Enter` opens, and
+`Backspace` in the document goes back. `^T` lists every file instead of
+Markdown only. On terminals 100 columns wide or more, the headings of the
+chosen file show beside the list.
+
+```text
+O  aamr          ala2_all_atom_md_results.md, from initials of its words
+O  pager upd     docs/pager/update-notes.md: both words match
+O  ~/notes/      a directory: its entries, directories first
+O  ../do<Tab>    completes to ../docs/; Enter goes into a directory
+```
+
+A query that starts with `/`, `~`, `./` or `../`, or has a `/` in it, is a
+path: the picker lists that directory, filtered by what follows the last
+`/`, and `Tab` completes. `:e FILE` (or `:edit`, `:open`) opens any path,
+relative to the document's directory, with the same completion on `Tab`. A
+directory opens its README (or `index.md`), an image opens in the image
+view, and every document you open is remembered for the picker in
+`~/.local/state/emde/recent` (`$XDG_STATE_HOME/emde/recent`).
+
+```toml
+[picker]
+roots = ["~/notes", "~/dev"]
+max_files = 50000
+```
+
 <!-- BEGIN GENERATED keys (`cargo xtask docs`, from src/pager/keymap.rs) -->
 
 **Scrolling**
@@ -267,6 +302,7 @@ match or a focused link in one is shifted into view.
 | `Enter` | follow the focused link, open or close a focused details block |
 | `za` | open or close the details block at the top (or click its summary) |
 | `o` | link hints: type a label to follow |
+| `O` | open a file: type a name, or a path (/ ~ ./); :e PATH too |
 | `Backspace` `H` | back |
 | `L` | forward |
 
@@ -290,7 +326,7 @@ match or a focused link in one is shifted into view.
 | `gi` | image view: the document's images, from the first |
 | `w` | full width, on or off |
 | `M` | mouse, on or off (off: select text) |
-| `:` | command: :n next file, :p previous file, :q quit |
+| `:` | command: :e FILE open, :n next file, :p previous file, :q quit |
 | `h` `F1` | this help |
 | `^L` | redraw the screen (anywhere) |
 | `^Z` | suspend (anywhere) |
@@ -339,6 +375,7 @@ match or a focused link in one is shifted into view.
 | `Esc` `^C` | cancel |
 | `Backspace` | delete a character |
 | `^U` | clear the command |
+| `Tab` | complete the path after :e |
 
 **In the outline**
 
@@ -351,6 +388,22 @@ match or a focused link in one is shifted into view.
 | `Enter` | go to the heading |
 | `Esc` `^C` | close |
 | `Backspace` | delete a filter character |
+
+**In the file picker**
+
+| Keys | Action |
+|---|---|
+| `↓` `^N` `^J` | next file |
+| `↑` `^P` `^K` | previous file |
+| `PgDn` | down a page |
+| `PgUp` | up a page |
+| `Enter` | open the file, or go into the directory |
+| `Esc` `^C` | close |
+| `Backspace` | delete a character |
+| `^W` | delete a word or a path component |
+| `^U` | clear the query |
+| `Tab` | complete the path (a directory's common prefix, else the selection) |
+| `^T` | every file, or Markdown only |
 
 **In the outline sidebar**
 

@@ -1,0 +1,30 @@
+---
+source: tests/pager_picker.rs
+expression: "screen(&term, 80, 20, \"typed\")"
+---
+ 1│   README                                                                       │
+ 2│  ╭─ Open ───────────────────────────────────────────────────────────────────╮  │
+ 3│  │ › gd                                                            Markdown │  │
+  │        =│
+ 4│  │  guide.md                                                                │  │
+  │   ==~==~====================================================================│
+ 5│  │  notes/gardening.md                                                      │  │
+  │           ~  ~│
+ 6│  │  archive/old-guide.md                                                    │  │
+  │                 ~  ~│
+ 7│  │  notes/getting-started.md                                                │  │
+  │           ~             ~│
+ 8│  │  notes/meeting-2024.md                                                   │  │
+  │                 ~       ~│
+ 9│  │                                                                          │  │
+10│  │                                                                          │  │
+11│  │                                                                          │  │
+12│  │                                                                          │  │
+13│  │                                                                          │  │
+14│  │                                                                          │  │
+15│  │                                                                          │  │
+16│  │                                                                          │  │
+17│  │                                                                          │  │
+18│  ╰─ 1/5 ────────────────────────────────────────────────────────────────────╯  │
+19│                                                                                │
+20│ -- OPEN --  Enter opens · Tab completes · ^T all files · Esc closes            │

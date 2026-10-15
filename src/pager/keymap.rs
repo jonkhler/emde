@@ -51,16 +51,22 @@ pub enum Context {
     Sidebar,
     /// The image view.
     Image,
+    /// The file picker.
+    Picker,
 }
 
 impl Context {
     /// Whether keys that are not bound type text here (the search prompt,
-    /// the outline filter, hints, the `:` prompt): bindings are single
-    /// keys.
+    /// the outline filter, hints, the `:` prompt, the file picker):
+    /// bindings are single keys.
     pub const fn types_text(self) -> bool {
         matches!(
             self,
-            Context::Prompt | Context::Outline | Context::Hints | Context::Command
+            Context::Prompt
+                | Context::Outline
+                | Context::Hints
+                | Context::Command
+                | Context::Picker
         )
     }
 }
@@ -78,6 +84,7 @@ pub enum Section {
     Prompt,
     Command,
     Outline,
+    Picker,
     Sidebar,
     Image,
     Hints,
@@ -86,7 +93,7 @@ pub enum Section {
 
 impl Section {
     /// Every section, in help order.
-    pub const ALL: [Section; 14] = [
+    pub const ALL: [Section; 15] = [
         Section::Scroll,
         Section::Jump,
         Section::Search,
@@ -97,6 +104,7 @@ impl Section {
         Section::Prompt,
         Section::Command,
         Section::Outline,
+        Section::Picker,
         Section::Sidebar,
         Section::Image,
         Section::Hints,
@@ -114,6 +122,7 @@ impl Section {
             Section::Hints => Context::Hints,
             Section::Help => Context::Help,
             Section::Command => Context::Command,
+            Section::Picker => Context::Picker,
             Section::Scroll
             | Section::Jump
             | Section::Search
@@ -140,6 +149,7 @@ impl Section {
             Section::Hints => "With hints",
             Section::Help => "In this help",
             Section::Command => "At the : prompt",
+            Section::Picker => "In the file picker",
         }
     }
 }
@@ -229,6 +239,8 @@ pub enum Command {
     ToggleMouse,
     /// Open the `:` prompt.
     CommandLine,
+    /// The file picker.
+    Picker,
     Help,
     Redraw,
     Suspend,
@@ -280,6 +292,23 @@ pub enum Command {
     CommandCancel,
     CommandErase,
     CommandClear,
+    /// Complete the path after `:e`.
+    CommandComplete,
+    PickerDown,
+    PickerUp,
+    PickerPageDown,
+    PickerPageUp,
+    /// Open the selected file (or go into the selected directory).
+    PickerOpen,
+    PickerClose,
+    PickerErase,
+    /// Delete the word (or path component) before the cursor.
+    PickerEraseWord,
+    PickerClear,
+    /// Complete the path typed.
+    PickerComplete,
+    /// Every file, or Markdown only.
+    PickerToggleAll,
 }
 
 /// One row of the table.
@@ -367,6 +396,7 @@ pub const BINDINGS: &[Binding] = &[
     bind!(Links, "follow", "Enter", Follow, "follow the focused link, open or close a focused details block"),
     bind!(Links, "toggle-details", "za", ToggleDetails, "open or close the details block at the top (or click its summary)"),
     bind!(Links, "link-hints", "o", LinkHints, "link hints: type a label to follow"),
+    bind!(Links, "open-file", "O", Picker, "open a file: type a name, or a path (/ ~ ./); :e PATH too"),
     bind!(Links, "back", "Backspace,H", Back, "back"),
     bind!(Links, "forward", "L", Forward, "forward"),
     bind!(Pick, "hints-follow", "f", FollowHints, "hints: follow a link, go to a heading or block, view an image"),
@@ -380,7 +410,7 @@ pub const BINDINGS: &[Binding] = &[
     bind!(Other, "gallery", "gi", Gallery, "image view: the document's images, from the first"),
     bind!(Other, "toggle-width", "w", ToggleWidth, "full width, on or off"),
     bind!(Other, "toggle-mouse", "M", ToggleMouse, "mouse, on or off (off: select text)"),
-    bind!(Other, "command-line", ":", CommandLine, "command: :n next file, :p previous file, :q quit"),
+    bind!(Other, "command-line", ":", CommandLine, "command: :e FILE open, :n next file, :p previous file, :q quit"),
     bind!(Other, "help", "h,F1", Help, "this help"),
     bind!(Other, "redraw", "C-l", Redraw, "redraw the screen (anywhere)"),
     bind!(Other, "suspend", "C-z", Suspend, "suspend (anywhere)"),
@@ -420,6 +450,7 @@ pub const BINDINGS: &[Binding] = &[
     bind!(Command, "command-cancel", "Esc,C-c", CommandCancel, "cancel"),
     bind!(Command, "command-erase", "Backspace", CommandErase, "delete a character"),
     bind!(Command, "command-clear", "C-u", CommandClear, "clear the command"),
+    bind!(Command, "command-complete", "Tab", CommandComplete, "complete the path after :e"),
     bind!(Outline, "outline-down", "Down,C-n,C-j", OutlineDown, "next entry"),
     bind!(Outline, "outline-up", "Up,C-p,C-k", OutlineUp, "previous entry"),
     bind!(Outline, "outline-page-down", "PgDn", OutlinePageDown, "down a page"),
@@ -427,6 +458,17 @@ pub const BINDINGS: &[Binding] = &[
     bind!(Outline, "outline-jump", "Enter", OutlineJump, "go to the heading"),
     bind!(Outline, "outline-close", "Esc,C-c", OutlineClose, "close"),
     bind!(Outline, "outline-erase", "Backspace", OutlineErase, "delete a filter character"),
+    bind!(Picker, "picker-down", "Down,C-n,C-j", PickerDown, "next file"),
+    bind!(Picker, "picker-up", "Up,C-p,C-k", PickerUp, "previous file"),
+    bind!(Picker, "picker-page-down", "PgDn", PickerPageDown, "down a page"),
+    bind!(Picker, "picker-page-up", "PgUp", PickerPageUp, "up a page"),
+    bind!(Picker, "picker-open", "Enter", PickerOpen, "open the file, or go into the directory"),
+    bind!(Picker, "picker-close", "Esc,C-c", PickerClose, "close"),
+    bind!(Picker, "picker-erase", "Backspace", PickerErase, "delete a character"),
+    bind!(Picker, "picker-erase-word", "C-w", PickerEraseWord, "delete a word or a path component"),
+    bind!(Picker, "picker-clear", "C-u", PickerClear, "clear the query"),
+    bind!(Picker, "picker-complete", "Tab", PickerComplete, "complete the path (a directory's common prefix, else the selection)"),
+    bind!(Picker, "picker-toggle-all", "C-t", PickerToggleAll, "every file, or Markdown only"),
     bind!(Sidebar, "sidebar-down", "j,Down,C-n", SidebarDown, "next entry"),
     bind!(Sidebar, "sidebar-up", "k,Up,C-p", SidebarUp, "previous entry"),
     bind!(Sidebar, "sidebar-page-down", "Space,PgDn,C-f", SidebarPageDown, "down a page"),
@@ -803,6 +845,15 @@ impl Keymap {
         out
     }
 
+    /// The first key of `command` in `context`, as the help writes it
+    /// (`None` when it has no key).
+    pub fn first_key(&self, context: Context, command: Command) -> Option<String> {
+        self.keys
+            .iter()
+            .find(|(b, _)| b.section.context() == context && b.command == command)
+            .map(|(_, seq)| seq_label(seq))
+    }
+
     /// The command bound to the single key `key` in `context` (or
     /// everywhere).
     pub fn command(&self, context: Context, key: Key) -> Option<Command> {
@@ -833,8 +884,13 @@ impl Keymap {
             }
             let note = match section {
                 Section::Prompt => Some("other keys type the pattern (smart case)"),
-                Section::Command => Some("other keys type the command: n, p, x (first file) or q"),
+                Section::Command => {
+                    Some("other keys type the command: e FILE, n, p, x (first file) or q")
+                }
                 Section::Outline => Some("other keys type a filter"),
+                Section::Picker => {
+                    Some("other keys type the query: a name, or a path (/ ~ ./ ../)")
+                }
                 Section::Hints => Some("other keys type a label"),
                 _ => None,
             };
@@ -971,6 +1027,7 @@ mod tests {
             Context::Command,
             Context::Sidebar,
             Context::Image,
+            Context::Picker,
         ] {
             assert_eq!(lookup(context, ctrl('z')), Some(Command::Suspend));
             assert_eq!(lookup(context, ctrl('l')), Some(Command::Redraw));

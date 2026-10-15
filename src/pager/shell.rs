@@ -41,8 +41,11 @@ use super::images::{self, Images, WORK_POLL};
 use super::keymap::{Command, SEQUENCE_TIMEOUT};
 use super::os::{self, ClipboardPlan, OpenPlan};
 use super::partial::{self, Need};
+use super::picker::scan::{self, Scanner};
+use super::picker::{self, Event, PickerEvent, PickerJob};
+use super::recent;
 use super::sidebar;
-use super::state::{DocKey, Page, Settings, State};
+use super::state::{DocKey, Mode, Page, Settings, State};
 use super::term::{
     MAX_POLL, MIN_POLL, MOUSE_OFF, MOUSE_ON, Signals, TermEvent, Terminal, clamp_poll,
 };
@@ -87,6 +90,9 @@ impl PartialEq for LayoutKey {
 }
 /// Events taken in one go before a frame is painted.
 const MAX_BATCH: usize = 64;
+/// The longest the event loop waits for the picker's search when it waits
+/// for it at all ([`super::PickerSetup::wait_when_idle`]).
+const SCAN_SETTLE: Duration = Duration::from_secs(10);
 
 /// Puts the terminal back when the shell ends, however it ends.
 struct Guard<'t, T: Terminal> {
@@ -131,6 +137,17 @@ fn sniff_file(path: &Path) -> bool {
         n += k;
     }
     gallery::sniff(&head[..n])
+}
+
+/// An I/O error as a message: what went wrong, without the OS error
+/// number.
+fn io_reason(e: &io::Error) -> String {
+    match e.kind() {
+        io::ErrorKind::NotFound => "not found".to_owned(),
+        io::ErrorKind::PermissionDenied => "permission denied".to_owned(),
+        io::ErrorKind::NotADirectory => "not a directory".to_owned(),
+        _ => e.to_string(),
+    }
 }
 
 /// A directory's README, or the path itself.
@@ -209,6 +226,14 @@ pub(crate) struct Shell<'t, T: Terminal> {
     dirty: bool,
     /// Panic after the first frame (`EMDE_TEST_PANIC=1`).
     panic_test: bool,
+    /// The file picker's background search.
+    scanner: Scanner,
+    /// What the search needs.
+    scan_setup: scan::Setup,
+    /// Take the search's results only when idle, all of them.
+    scan_waits: bool,
+    /// The file recorded in the recent files store last.
+    recorded: Option<PathBuf>,
 }
 
 impl<'t, T: Terminal> Shell<'t, T> {
@@ -241,9 +266,17 @@ impl<'t, T: Terminal> Shell<'t, T> {
             tmux,
             late_replies: _,
             layout: first,
+            picker,
         } = session;
         caps.size = Some(size);
-        let settings = Settings::new(&pager, &opts);
+        let mut settings = Settings::new(&pager, &opts);
+        settings.picker = picker.options.clone();
+        settings.home = picker.home.clone();
+        settings.cwd = picker
+            .cwd
+            .clone()
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| PathBuf::from("/"));
         let mut images = Images::new(images);
         let key = key_of(&doc.source.origin);
         let sizer = images.sizer(&key.clone().unwrap_or(DocKey::Unnamed(0)), &doc.doc);
@@ -351,6 +384,15 @@ impl<'t, T: Terminal> Shell<'t, T> {
             signals,
             dirty: true,
             panic_test,
+            scanner: Scanner::default(),
+            scan_setup: scan::Setup {
+                options: picker.options,
+                home: picker.home,
+                recent: picker.recent,
+                git: picker.git,
+            },
+            scan_waits: picker.wait_when_idle,
+            recorded: None,
         }
     }
 
@@ -382,6 +424,15 @@ impl<'t, T: Terminal> Shell<'t, T> {
                 self.resume()?;
                 self.images.reset(false);
                 self.paint()?;
+            }
+            if !self.scan_waits && self.scanner.busy() {
+                let found = self.scanner.take();
+                if let Some(exit) = self.found(found)? {
+                    return Ok(exit);
+                }
+                if self.resize.is_none() {
+                    self.paint()?;
+                }
             }
             if !self.images.waits_when_idle() && self.images.collect() {
                 // Show what came in now, not after the next poll (which
@@ -452,6 +503,9 @@ impl<'t, T: Terminal> Shell<'t, T> {
         if self.images.busy() && !self.images.waits_when_idle() {
             due = due.min(WORK_POLL);
         }
+        if self.scanner.busy() && !self.scan_waits {
+            due = due.min(WORK_POLL);
+        }
         clamp_poll(due)
     }
 
@@ -507,6 +561,12 @@ impl<'t, T: Terminal> Shell<'t, T> {
         }
         if self.images.waits_when_idle() && self.images.busy() && self.images.settle() {
             self.dirty = true;
+        }
+        if self.scan_waits && self.scanner.busy() {
+            let found = self.scanner.wait(SCAN_SETTLE);
+            if let Some(exit) = self.found(found)? {
+                return Ok(Some(exit));
+            }
         }
         let changed = match &mut self.watcher {
             Some(w) => w.poll(now),
@@ -584,9 +644,16 @@ impl<'t, T: Terminal> Shell<'t, T> {
                 Effect::CycleImages => self.cycle_images(),
                 Effect::ShowImage => self.show_image(),
                 Effect::OpenFile(path) => self.open_file(&path)?,
+                Effect::OpenPath(path) => self.open_path(path),
+                Effect::Picker(PickerJob(job)) => self.picker_job(job),
             };
             queue.extend(more);
         }
+        // The search is for the picker only.
+        if self.scanner.busy() && !matches!(self.state.mode, Mode::Picker(_)) {
+            self.scanner.stop();
+        }
+        self.record_recent();
         // Images of documents the history dropped go with them (and those
         // of the image view once it closes).
         let state = &self.state;
@@ -594,6 +661,109 @@ impl<'t, T: Terminal> Shell<'t, T> {
             .retain(|key| state.has_page(key), state.image_view().is_some());
         self.sync_watcher();
         Ok(None)
+    }
+
+    /// What the picker's search found: all batches in one action per
+    /// search.
+    fn found(&mut self, batches: Vec<scan::Batch>) -> io::Result<Option<PagerExit>> {
+        let mut merged: Vec<(u64, Vec<picker::Candidate>, bool)> = Vec::new();
+        for b in batches {
+            match merged.iter_mut().find(|(scan, ..)| *scan == b.scan) {
+                Some(m) => {
+                    m.1.extend(b.files);
+                    m.2 |= b.done;
+                }
+                None => merged.push((b.scan, b.files, b.done)),
+            }
+        }
+        for (scan, files, done) in merged {
+            let event = Event::Found { scan, files, done };
+            if let Some(exit) = self.dispatch(Action::Picker(PickerEvent(event)))? {
+                return Ok(Some(exit));
+            }
+        }
+        Ok(None)
+    }
+
+    /// Work for the picker or the `:` prompt.
+    fn picker_job(&mut self, job: picker::Job) -> Vec<Effect> {
+        let event = match job {
+            picker::Job::Scan(req) => {
+                self.scanner.start(req, &self.scan_setup);
+                return Vec::new();
+            }
+            picker::Job::Stop => {
+                self.scanner.stop();
+                return Vec::new();
+            }
+            picker::Job::List(dir) => {
+                let entries = picker::paths::list(&dir, picker::MAX_ENTRIES).map_err(|e| {
+                    let shown = picker::paths::tilde(&dir, self.state.settings.home.as_deref());
+                    format!("{}: {}", crate::text::sanitize(&shown), io_reason(&e))
+                });
+                Event::Listed { dir, entries }
+            }
+            picker::Job::Preview(path) => {
+                let parse = crate::parse::ParseOptions::from(&self.opts);
+                let exts = &self.state.settings.picker.extensions;
+                Event::Previewed(picker::read_preview(&path, exts, &parse))
+            }
+        };
+        update(&mut self.state, Action::Picker(PickerEvent(event)))
+    }
+
+    /// Open `path` for the picker or `:e`: a Markdown file as a document, a
+    /// directory through its README or index (else listed in the picker),
+    /// an image in the image view; anything else is only named.
+    fn open_path(&mut self, path: PathBuf) -> Vec<Effect> {
+        let home = self.state.settings.home.clone();
+        let shown =
+            crate::text::sanitize(&picker::paths::tilde(&path, home.as_deref())).into_owned();
+        let push = |path| LoadRequest {
+            path,
+            anchor: None,
+            restore: None,
+            nav: Nav::Push,
+        };
+        let error = match std::fs::metadata(&path) {
+            Ok(m) if m.is_dir() => {
+                let index = find_readme(&path).or_else(|| {
+                    let index = path.join("index.md");
+                    index.is_file().then_some(index)
+                });
+                return match index {
+                    Some(doc) => self.load(push(doc)),
+                    None => update(
+                        &mut self.state,
+                        Action::Picker(PickerEvent(Event::Browse(path))),
+                    ),
+                };
+            }
+            Ok(m) if !m.is_file() => format!("not a regular file: {shown}"),
+            Ok(_) if scan::is_markdown(&path, &self.state.settings.picker.extensions) => {
+                return self.load(push(path));
+            }
+            Ok(_) if sniff_file(&path) => return update(&mut self.state, Action::ViewFile(path)),
+            Ok(_) => {
+                let text = format!("not Markdown: {shown}");
+                return update(&mut self.state, Action::Message(text));
+            }
+            Err(e) if e.kind() == io::ErrorKind::NotFound => format!("no such file: {shown}"),
+            Err(e) => format!("cannot open {shown}: {}", io_reason(&e)),
+        };
+        update(&mut self.state, Action::Error(error))
+    }
+
+    /// Record the document shown in the recent files store (once per
+    /// visit).
+    fn record_recent(&mut self) {
+        let (Some(store), Some(path)) = (&self.scan_setup.recent, self.state.key().path()) else {
+            return;
+        };
+        if self.recorded.as_deref() != Some(path) {
+            recent::record(store, path);
+            self.recorded = Some(path.to_path_buf());
+        }
     }
 
     /// Lay the current document out for the current size and settings, in

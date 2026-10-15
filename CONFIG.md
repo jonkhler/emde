@@ -195,6 +195,17 @@ hints-follow = ["F"]
 quit = ["q", "ZZ"]
 ```
 
+### `[picker]`
+
+The file picker (O) and :e. The picker matches what you type against the files opened lately, the files of the current document's git repository (or of its directory), and the roots below.
+
+| Key | Default | Description |
+|---|---|---|
+| `roots` | `[]` | More directories to search, e.g. ["\~/notes", "\~/dev"\] (searched in the background, for two seconds at most). |
+| `max_files` | `50000` | The most files the picker collects. |
+| `show_hidden` | `false` | List hidden files and directories (names starting with a dot). |
+| `extensions` | `["md", "markdown", "mdx", "mkd"]` | What counts as Markdown (Ctrl-T in the picker lists every file); a README without an extension always does. |
+
 ### `[terminal]`
 
 | Key | Default | Description |
@@ -568,6 +579,7 @@ one bound later, an action of your file winning over a default one; `emde
 | `Enter` | follow the focused link, open or close a focused details block | `follow` |
 | `za` | open or close the details block at the top (or click its summary) | `toggle-details` |
 | `o` | link hints: type a label to follow | `link-hints` |
+| `O` | open a file: type a name, or a path (/ ~ ./); :e PATH too | `open-file` |
 | `Backspace` `H` | back | `back` |
 | `L` | forward | `forward` |
 
@@ -591,7 +603,7 @@ one bound later, an action of your file winning over a default one; `emde
 | `gi` | image view: the document's images, from the first | `gallery` |
 | `w` | full width, on or off | `toggle-width` |
 | `M` | mouse, on or off (off: select text) | `toggle-mouse` |
-| `:` | command: :n next file, :p previous file, :q quit | `command-line` |
+| `:` | command: :e FILE open, :n next file, :p previous file, :q quit | `command-line` |
 | `h` `F1` | this help | `help` |
 | `^L` | redraw the screen (anywhere) | `redraw` |
 | `^Z` | suspend (anywhere) | `suspend` |
@@ -640,6 +652,7 @@ one bound later, an action of your file winning over a default one; `emde
 | `Esc` `^C` | cancel | `command-cancel` |
 | `Backspace` | delete a character | `command-erase` |
 | `^U` | clear the command | `command-clear` |
+| `Tab` | complete the path after :e | `command-complete` |
 
 **In the outline**
 
@@ -652,6 +665,22 @@ one bound later, an action of your file winning over a default one; `emde
 | `Enter` | go to the heading | `outline-jump` |
 | `Esc` `^C` | close | `outline-close` |
 | `Backspace` | delete a filter character | `outline-erase` |
+
+**In the file picker**
+
+| Keys | Action | Name |
+|---|---|---|
+| `↓` `^N` `^J` | next file | `picker-down` |
+| `↑` `^P` `^K` | previous file | `picker-up` |
+| `PgDn` | down a page | `picker-page-down` |
+| `PgUp` | up a page | `picker-page-up` |
+| `Enter` | open the file, or go into the directory | `picker-open` |
+| `Esc` `^C` | close | `picker-close` |
+| `Backspace` | delete a character | `picker-erase` |
+| `^W` | delete a word or a path component | `picker-erase-word` |
+| `^U` | clear the query | `picker-clear` |
+| `Tab` | complete the path (a directory's common prefix, else the selection) | `picker-complete` |
+| `^T` | every file, or Markdown only | `picker-toggle-all` |
 
 **In the outline sidebar**
 

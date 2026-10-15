@@ -878,7 +878,7 @@ fn the_colon_prompt_edits_and_cancels() {
     colon(&mut s, "frobnicate");
     assert_eq!(
         s.message(),
-        Some("unknown command :frobnicate (:n, :p, :x, :q)")
+        Some("unknown command :frobnicate (:e FILE, :n, :p, :x, :q)")
     );
     assert!(colon(&mut s, "").is_empty());
 }
@@ -1329,5 +1329,6 @@ proptest::proptest! {
 // Hints, Visual mode, marks and the editor.
 mod gallery_view;
 mod modes;
+mod picker;
 mod sidebar;
 mod wide;

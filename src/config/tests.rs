@@ -1125,3 +1125,33 @@ count = ["x"]
     no_diagnostics(&loaded);
     assert_eq!(loaded.config.pager.keys.len(), 2);
 }
+
+#[test]
+fn picker_settings() {
+    let (setup, loaded) = load_config(
+        "picker",
+        "[picker]\nroots = [\"~/notes\", \"rel\", \"/abs\"]\nmax_files = 10\n\
+         show_hidden = true\nextensions = [\".MD\", \"txt\"]\n",
+    );
+    no_diagnostics(&loaded);
+    let p = &loaded.config.picker;
+    let home = setup.dir.path();
+    assert_eq!(
+        p.roots,
+        [
+            home.join("notes"),
+            home.join(".config/emde/rel"),
+            PathBuf::from("/abs")
+        ],
+        "~ and the config file's directory"
+    );
+    assert_eq!(p.max_files, 10);
+    assert!(p.show_hidden);
+    assert_eq!(p.extensions, ["md", "txt"]);
+    // The defaults, and values that make no sense.
+    let defaults = Setup::new("picker-defaults").load(&[]);
+    assert_eq!(defaults.config.picker, PickerOptions::default());
+    let bad = Setup::new("picker-bad").load(&["picker.max_files=0", "picker.extensions=[\"\"]"]);
+    assert_eq!(bad.config.picker, PickerOptions::default());
+    assert_eq!(bad.diagnostics.len(), 2, "{:?}", bad.diagnostics);
+}

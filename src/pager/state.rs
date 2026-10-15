@@ -11,7 +11,7 @@ use std::cell::OnceCell;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
-use crate::config::{PagerOptions, SearchCase};
+use crate::config::{PagerOptions, PickerOptions, SearchCase};
 use crate::ir::{Document, HeadingId, LinkId, SrcPos};
 use crate::layout::{Folds, Interactive, Layout};
 use crate::options::{DetailsMode, FrontMatterMode, RenderOptions, When};
@@ -21,6 +21,7 @@ use super::PagerDoc;
 use super::gallery::Picture;
 use super::hints::Target;
 use super::keymap::{Command, Keymap};
+use super::picker::Picker;
 use super::search::{Corpus, Search};
 use super::sidebar::{self, Sidebar};
 use super::term::Key;
@@ -323,6 +324,8 @@ pub(crate) enum Mode {
     Sidebar(usize),
     /// The image view.
     Image(Viewer),
+    /// The file picker.
+    Picker(Box<Picker>),
 }
 
 /// The image view: a gallery and the image shown.
@@ -484,6 +487,12 @@ pub struct Settings {
     pub remote_images: bool,
     /// `<details>` start expanded (`pager.details = "expanded"`).
     pub details_open: bool,
+    /// The file picker and `:e` (`[picker]`).
+    pub picker: PickerOptions,
+    /// The home directory (`~` in paths; none: `~` cannot be used).
+    pub home: Option<PathBuf>,
+    /// The working directory (where a document from standard input is).
+    pub cwd: PathBuf,
 }
 
 /// The outline sidebar's settings (`[pager] toc_sidebar` and `toc_width`).
@@ -528,6 +537,9 @@ impl Settings {
             },
             remote_images: render.images.remote,
             details_open: pager.details == DetailsMode::Expanded,
+            picker: PickerOptions::default(),
+            home: None,
+            cwd: PathBuf::from("/"),
         }
     }
 }
@@ -603,6 +615,14 @@ pub struct State {
     pub(crate) sidebar: Sidebar,
     /// What the reader changed about each document's look.
     views: Vec<(DocKey, DocView)>,
+    /// The number of the last file picker search.
+    pub(crate) scans: u64,
+    /// The `:` prompt's input when Tab asked for its directory to be
+    /// listed.
+    pub(crate) completing: Option<String>,
+    /// What Tab at the `:` prompt found when it could not complete (shown
+    /// after the input until the next key; empty: nothing).
+    pub(crate) completions: Option<Vec<String>>,
     next_unnamed: u32,
     next_link_base: u32,
 }
@@ -658,6 +678,9 @@ impl State {
             image: None,
             sidebar: Sidebar::default(),
             views: Vec::new(),
+            scans: 0,
+            completing: None,
+            completions: None,
             next_unnamed: 1,
             next_link_base: links,
         };
@@ -996,6 +1019,7 @@ impl State {
             Mode::Visual(_) => "visual",
             Mode::Sidebar(_) => "sidebar",
             Mode::Image(_) => "image",
+            Mode::Picker(_) => "picker",
         }
     }
 

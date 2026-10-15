@@ -21,7 +21,8 @@ use crate::text::str_width;
 use crate::text::width::{grapheme_width, next_grapheme_end};
 use crate::theme::{Element, Theme};
 
-use super::keymap::{self, HelpLine};
+use super::keymap::{self, Command, Context, HelpLine};
+use super::picker::{self, Picker};
 use super::search::{LineText, line_marks};
 use super::sidebar;
 use super::state::{HintKind, Hints, Mode, Outline, State};
@@ -359,6 +360,7 @@ pub fn view(state: &State, ctx: &Ctx) -> Frame {
             Mode::Hints(h) => hints(state, ctx, h, &mut building),
             Mode::Visual(_) => selection(state, ctx, &mut building),
             Mode::Image(_) if showing.image && !lines => image_box(state, ctx, &mut building),
+            Mode::Picker(p) => picker_overlay(state, ctx, p, &mut building),
             Mode::Normal
             | Mode::Prompt(_)
             | Mode::Command(_)
@@ -576,16 +578,12 @@ fn status_right(state: &State) -> String {
     let mut typed: String = state.count.map(|n| n.to_string()).unwrap_or_default();
     typed.push_str(&keymap::seq_label(&state.keys));
     if let Some(cmd) = state.awaiting {
-        typed.push(if cmd == keymap::Command::SetMark {
-            'm'
-        } else {
-            '\''
-        });
+        typed.push(if cmd == Command::SetMark { 'm' } else { '\'' });
     }
     if !typed.is_empty() {
         parts.push(typed);
     }
-    if matches!(state.mode, Mode::Image(_)) {
+    if matches!(state.mode, Mode::Image(_) | Mode::Picker(_)) {
         return parts.join("  ");
     }
     if let Some(s) = &state.search {
@@ -640,17 +638,31 @@ fn prompt_tail(input: &str, room: usize, amb: bool) -> Cow<'_, str> {
 fn status_left<'a>(state: &'a State, ctx: &Ctx, room: usize) -> Vec<(Style, Cow<'a, str>)> {
     let st = &ctx.styles;
     let amb = state.settings.ambiguous_wide;
+    let boxed_picker = picker::picker_box(state.cols, state.rows).list;
     let prompt = match &state.mode {
         Mode::Prompt(p) => Some((if p.backward { "?" } else { "/" }, p.input.as_str())),
         Mode::Command(input) => Some((":", input.as_str())),
+        // Too small a screen for the picker's box: its query here.
+        Mode::Picker(p) if !picker_fits(&boxed_picker) => Some(("›", p.query.as_str())),
         _ => None,
     };
     if let Some((sigil, input)) = prompt {
-        return vec![
+        let mut out = vec![
             (st.prompt, Cow::Borrowed(sigil)),
             (st.prompt, prompt_tail(input, room, amb)),
             (st.cursor, Cow::Borrowed(" ")),
         ];
+        // What Tab found at the `:` prompt.
+        if let (Mode::Command(_), Some(found)) = (&state.mode, &state.completions) {
+            let text = if found.is_empty() {
+                "no match".to_owned()
+            } else {
+                found.join("  ")
+            };
+            out.push((st.message, Cow::Borrowed("   ")));
+            out.push((st.message, Cow::Owned(clean(&text).into_owned())));
+        }
+        return out;
     }
     if let Some(m) = &state.message {
         let style = if m.error { st.error } else { st.message };
@@ -693,6 +705,7 @@ fn status_left<'a>(state: &'a State, ctx: &Ctx, room: usize) -> Vec<(Style, Cow<
             "-- OUTLINE --",
             "Enter goes to the heading, Esc back to the text".to_owned(),
         )),
+        Mode::Picker(_) => Some(("-- OPEN --", picker_hints(state))),
         _ => None,
     };
     if let Some((name, rest)) = mode {
@@ -914,6 +927,270 @@ fn outline(state: &State, ctx: &Ctx, o: &Outline, rows: &mut [Building]) {
         g.x,
         border(ctx, &g, false, &count, ascii, amb),
     );
+}
+
+/// The picker's keys, as the status bar shows them (the keys in effect).
+fn picker_hints(state: &State) -> String {
+    let map = &state.settings.keymap;
+    [
+        (Command::PickerOpen, "opens"),
+        (Command::PickerComplete, "completes"),
+        (Command::PickerToggleAll, "all files"),
+        (Command::PickerClose, "closes"),
+    ]
+    .iter()
+    .filter_map(|&(cmd, what)| {
+        let key = map.first_key(Context::Picker, cmd)?;
+        Some(format!("{key} {what}"))
+    })
+    .collect::<Vec<_>>()
+    .join(" · ")
+}
+
+/// Whether the picker's box can be drawn at all.
+fn picker_fits(g: &BoxGeom) -> bool {
+    g.h >= 4 && g.w >= 12
+}
+
+/// `text` styled for a picker row: `base` before byte `split` (the
+/// directories), `name` after it, matched bytes (`at`, sorted) with
+/// `matched` over them; cut from the left with `…` to `cols` columns.
+fn picker_text<'a>(
+    text: &'a str,
+    split: usize,
+    at: &[u32],
+    (base, name, matched): (Style, Style, &StylePatch),
+    cols: usize,
+    amb: bool,
+) -> Vec<(Style, Cow<'a, str>)> {
+    let mut start = 0;
+    let mut out = Vec::new();
+    if str_width(text, amb) > cols && cols > 0 {
+        // Keep the end (the base name) in view.
+        let mut width = str_width(text, amb);
+        while width + 1 > cols && start < text.len() {
+            let end = next_grapheme_end(text, start);
+            width -= grapheme_width(text.get(start..end).unwrap_or(""), amb);
+            start = end;
+        }
+        out.push((base, Cow::Borrowed("…")));
+    }
+    let mut run_start = start;
+    let mut run_style = None;
+    let mut pos = start;
+    while pos < text.len() {
+        let end = next_grapheme_end(text, pos);
+        let mut style = if pos >= split { name } else { base };
+        if at
+            .binary_search(&u32::try_from(pos).unwrap_or(u32::MAX))
+            .is_ok()
+        {
+            style = style.patch(matched);
+        }
+        if run_style != Some(style) {
+            if let Some(s) = run_style
+                && let Some(piece) = text.get(run_start..pos)
+            {
+                out.push((s, Cow::Borrowed(piece)));
+            }
+            run_start = pos;
+            run_style = Some(style);
+        }
+        pos = end;
+    }
+    if let Some(s) = run_style
+        && let Some(piece) = text.get(run_start..)
+    {
+        out.push((s, Cow::Borrowed(piece)));
+    }
+    out
+}
+
+/// The file picker: the query line and the results, and on wide screens
+/// the preview of the selected file beside them.
+#[inline(never)]
+fn picker_overlay(state: &State, ctx: &Ctx, p: &Picker, rows: &mut [Building]) {
+    let boxes = picker::picker_box(state.cols, state.rows);
+    let g = boxes.list;
+    if !picker_fits(&g) {
+        return;
+    }
+    let st = &ctx.styles;
+    let amb = state.settings.ambiguous_wide;
+    let ascii = state.settings.ascii;
+    let y = usize::from(g.y);
+    let path_mode = p.path_mode();
+    put_segment(rows, y, g.x, border(ctx, &g, true, "Open", ascii, amb));
+    // The query, and on the right the mode and whether the search goes on.
+    let mode = match (path_mode, p.all) {
+        (true, _) => "path",
+        (false, true) => "all files",
+        (false, false) => "Markdown",
+    };
+    let right = if p.scanning {
+        format!("{mode} · scanning… ")
+    } else {
+        format!("{mode} ")
+    };
+    let inner = g.inner_cols();
+    let room = inner.saturating_sub(str_width(&right, amb) + 4);
+    let query = prompt_tail(&p.query, room.max(4), amb);
+    let used = 3 + str_width(&query, amb) + 1;
+    let mut line: Vec<(Style, Cow<'_, str>)> = vec![
+        (st.prompt, Cow::Borrowed(" › ")),
+        (st.text, query),
+        (st.cursor, Cow::Borrowed(" ")),
+    ];
+    if used + str_width(&right, amb) <= inner {
+        line.push((
+            st.toc,
+            Cow::Owned(" ".repeat(inner - used - str_width(&right, amb))),
+        ));
+        line.push((st.muted, Cow::Owned(right)));
+    }
+    put_segment(rows, y + 1, g.x, boxed(ctx, &g, &line, &st.toc, ascii, amb));
+    let list = picker::list_rows_of(&boxes);
+    let dir_style = Style {
+        fg: st.muted.fg,
+        ..st.toc
+    };
+    for i in 0..list {
+        let index = p.scroll + i;
+        let selected = index == p.selected;
+        let hit = p.hits.get(index);
+        let fill = if selected && hit.is_some() {
+            st.toc_selected
+        } else {
+            st.toc
+        };
+        let pieces = match hit.and_then(|h| Some((h, p.text(h)?))) {
+            Some((h, (text, split, dir))) => {
+                let styles = if selected {
+                    (st.toc_selected, st.toc_selected.with(Attrs::BOLD))
+                } else if path_mode {
+                    let s = if dir {
+                        st.toc.with(Attrs::BOLD)
+                    } else {
+                        st.toc
+                    };
+                    (s, s)
+                } else {
+                    (dir_style, st.toc.with(Attrs::BOLD))
+                };
+                let mut v = vec![(fill, Cow::Borrowed("  "))];
+                let suffix = if dir { "/" } else { "" };
+                let room = inner.saturating_sub(2 + suffix.len());
+                let (base, name) = styles;
+                v.extend(picker_text(
+                    text,
+                    split,
+                    &h.positions,
+                    (base, name, &st.search_match),
+                    room,
+                    amb,
+                ));
+                v.push((name, Cow::Borrowed(suffix)));
+                v
+            }
+            None => Vec::new(),
+        };
+        put_segment(
+            rows,
+            y + 2 + i,
+            g.x,
+            boxed(ctx, &g, &pieces, &fill, ascii, amb),
+        );
+    }
+    let bottom = y + usize::from(g.h) - 1;
+    let count = match (&p.problem, p.hits.len()) {
+        (Some(why), _) => clean(why).into_owned(),
+        (None, 0) if p.scanning || (path_mode && p.entries().is_none()) => String::new(),
+        (None, 0) => "no match".to_owned(),
+        (None, _) if path_mode => format!("{}/{}", p.selected + 1, p.matched),
+        (None, n) => {
+            let plus = if p.matched > n { "+" } else { "" };
+            format!("{}/{}{plus}", p.selected + 1, p.matched)
+        }
+    };
+    put_segment(
+        rows,
+        bottom,
+        g.x,
+        border(ctx, &g, false, &count, ascii, amb),
+    );
+    if let Some(pg) = boxes.preview {
+        picker_preview(state, ctx, p, &pg, rows);
+    }
+}
+
+/// The preview pane: the selected file's headings, indented by level (or
+/// its first lines).
+fn picker_preview(state: &State, ctx: &Ctx, p: &Picker, g: &BoxGeom, rows: &mut [Building]) {
+    let st = &ctx.styles;
+    let amb = state.settings.ambiguous_wide;
+    let ascii = state.settings.ascii;
+    let y = usize::from(g.y);
+    let target = p.current().and_then(|h| p.target(h));
+    let preview = p
+        .preview
+        .as_ref()
+        .filter(|pv| target.as_ref().is_some_and(|(t, _)| *t == pv.path));
+    let title = match (&target, preview) {
+        (Some((_, true)), _) => "directory".to_owned(),
+        (_, Some(pv)) => pv
+            .path
+            .file_name()
+            .map(|n| clean(&n.to_string_lossy()).into_owned())
+            .unwrap_or_default(),
+        _ => String::new(),
+    };
+    put_segment(rows, y, g.x, border(ctx, g, true, &title, ascii, amb));
+    let lines: Vec<(Style, String)> = match preview {
+        Some(pv) => {
+            let base = pv
+                .lines
+                .iter()
+                .map(|l| l.0)
+                .filter(|&l| l > 0)
+                .min()
+                .unwrap_or(1);
+            let mut v: Vec<(Style, String)> = pv
+                .lines
+                .iter()
+                .map(|(level, text)| match level {
+                    0 => (st.muted, format!(" {}", clean(text))),
+                    &l => {
+                        let pad = usize::from(l.saturating_sub(base)) * 2;
+                        let style = if l == base {
+                            st.toc.with(Attrs::BOLD)
+                        } else {
+                            st.toc
+                        };
+                        (style, format!(" {}{}", " ".repeat(pad), clean(text)))
+                    }
+                })
+                .collect();
+            if let Some(note) = &pv.note {
+                v.push((st.muted, format!(" {}", clean(note))));
+            }
+            v
+        }
+        None => Vec::new(),
+    };
+    for i in 0..g.inner_rows() {
+        let pieces: Vec<(Style, Cow<'_, str>)> = match lines.get(i) {
+            Some((style, text)) => vec![(*style, Cow::Borrowed(text.as_str()))],
+            None => Vec::new(),
+        };
+        put_segment(
+            rows,
+            y + 1 + i,
+            g.x,
+            boxed(ctx, g, &pieces, &st.toc, ascii, amb),
+        );
+    }
+    let bottom = y + usize::from(g.h) - 1;
+    put_segment(rows, bottom, g.x, border(ctx, g, false, "", ascii, amb));
 }
 
 fn help(state: &State, ctx: &Ctx, scroll: usize, rows: &mut [Building]) {

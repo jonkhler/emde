@@ -19,6 +19,7 @@ use super::gallery::{self, Location};
 use super::hints::{self, Act};
 use super::keymap::{Command, Context};
 use super::links::{self, Follow};
+use super::picker::{self, PickerEvent, PickerJob};
 use super::search::{Corpus, Search, current_cols};
 use super::state::{
     Derived, DocKey, Focus, Goto, HintKind, ImagePage, Mode, Outline, Page, Place, Prompt, State,
@@ -92,6 +93,8 @@ pub enum Action {
     /// A link led to this local file (after [`Effect::ShowFile`]), and its
     /// first bytes are an image's: show it in the image view.
     ViewFile(PathBuf),
+    /// What the shell found for the file picker or the `:` prompt.
+    Picker(PickerEvent),
 }
 
 /// Something for the shell to do.
@@ -129,6 +132,13 @@ pub enum Effect {
     /// Open a local file (an image) with the system's opener (or copy its
     /// path where opening is not possible).
     OpenFile(PathBuf),
+    /// Open any path in the pager (the file picker, `:e`): a Markdown file
+    /// as a document, a directory through its README or index (else listed
+    /// in the picker), an image in the image view.
+    OpenPath(PathBuf),
+    /// Work for the file picker or the `:` prompt (searching, listing a
+    /// directory, a preview).
+    Picker(PickerJob),
 }
 
 /// How a load moves through the history.
@@ -171,6 +181,7 @@ fn apply(state: &mut State, action: Action) -> Vec<Effect> {
     match action {
         Action::Key(key) => {
             state.message = None;
+            state.completions = None;
             on_key(state, key)
         }
         Action::KeyTimeout => {
@@ -264,6 +275,7 @@ fn apply(state: &mut State, action: Action) -> Vec<Effect> {
             Vec::new()
         }
         Action::ViewFile(path) => view_image(state, Some(gallery::file(&path)), Some(&path)),
+        Action::Picker(PickerEvent(e)) => picker::event(state, e),
     }
 }
 
@@ -282,6 +294,7 @@ fn context(mode: &Mode) -> Context {
         Mode::Command(_) => Context::Command,
         Mode::Sidebar(_) => Context::Sidebar,
         Mode::Image(_) => Context::Image,
+        Mode::Picker(_) => Context::Picker,
     }
 }
 
@@ -419,6 +432,7 @@ fn type_text(state: &mut State, text: &str) -> Vec<Effect> {
             input.push_str(&clean);
             Vec::new()
         }
+        Mode::Picker(_) => picker::typed(state, &clean),
         Mode::Normal | Mode::Help { .. } | Mode::Visual(_) | Mode::Sidebar(_) | Mode::Image(_) => {
             Vec::new()
         }
@@ -596,6 +610,19 @@ fn command(state: &mut State, cmd: Command) -> Vec<Effect> {
         }
         Command::CommandLine => state.mode = Mode::Command(String::new()),
         Command::CommandRun => return run_command(state),
+        Command::CommandComplete => return picker::command_tab(state),
+        Command::Picker => return picker::open(state, String::new()),
+        Command::PickerDown => return picker::key(state, picker::Key::Move(1)),
+        Command::PickerUp => return picker::key(state, picker::Key::Move(-1)),
+        Command::PickerPageDown => return picker::key(state, picker::Key::Page(true)),
+        Command::PickerPageUp => return picker::key(state, picker::Key::Page(false)),
+        Command::PickerOpen => return picker::key(state, picker::Key::Open),
+        Command::PickerClose => return picker::key(state, picker::Key::Close),
+        Command::PickerErase => return picker::key(state, picker::Key::Erase),
+        Command::PickerEraseWord => return picker::key(state, picker::Key::EraseWord),
+        Command::PickerClear => return picker::key(state, picker::Key::Clear),
+        Command::PickerComplete => return picker::key(state, picker::Key::Complete),
+        Command::PickerToggleAll => return picker::key(state, picker::Key::ToggleAll),
         Command::CommandCancel => state.mode = Mode::Normal,
         Command::CommandErase => {
             if let Mode::Command(input) = &mut state.mode
@@ -1689,8 +1716,13 @@ fn run_command(state: &mut State) -> Vec<Effect> {
         "x" | "first" => go_file(state, 0),
         "q" | "quit" => vec![Effect::Quit],
         other => {
+            if let Some(arg) = picker::edit_arg(other) {
+                return picker::edit(state, arg);
+            }
             let shown = crate::text::sanitize(other).into_owned();
-            state.complain(format!("unknown command :{shown} (:n, :p, :x, :q)"));
+            state.complain(format!(
+                "unknown command :{shown} (:e FILE, :n, :p, :x, :q)"
+            ));
             Vec::new()
         }
     }
@@ -2024,6 +2056,9 @@ fn resize(state: &mut State, cols: u16, rows: u16) -> Vec<Effect> {
         // The image fills the new screen.
         out.push(Effect::ShowImage);
     }
+    if matches!(state.mode, Mode::Picker(_)) {
+        out.extend(picker::resized(state));
+    }
     out
 }
 
@@ -2066,6 +2101,10 @@ fn on_mouse(state: &mut State, m: Mouse) -> Vec<Effect> {
             };
             match state.mode {
                 Mode::Image(_) => {}
+                Mode::Picker(_) => {
+                    let k = picker::Key::Move(delta.signum());
+                    return picker::key(state, k);
+                }
                 Mode::Outline(_) => outline_move(state, delta.signum()),
                 Mode::Help { .. } => help_scroll(state, delta),
                 Mode::Sidebar(_) if m.col < state.left() => sidebar_move(state, delta.signum()),
@@ -2077,7 +2116,7 @@ fn on_mouse(state: &mut State, m: Mouse) -> Vec<Effect> {
         MouseKind::WheelLeft | MouseKind::WheelRight => {
             if !matches!(
                 state.mode,
-                Mode::Image(_) | Mode::Outline(_) | Mode::Help { .. }
+                Mode::Image(_) | Mode::Outline(_) | Mode::Help { .. } | Mode::Picker(_)
             ) && m.col >= state.left()
                 && wide_on_screen(state).is_some()
             {
@@ -2124,6 +2163,7 @@ fn click(state: &mut State, col: u16, row: u16) -> Vec<Effect> {
             state.mode = Mode::Normal;
             Vec::new()
         }
+        Mode::Picker(_) => picker::click(state, col, row),
         Mode::Image(_) => Vec::new(),
         Mode::Hints(_)
         | Mode::Prompt(_)

@@ -153,6 +153,33 @@ impl Default for PagerOptions {
     }
 }
 
+/// The file picker (`O`) and `:e` (`[picker]`).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PickerOptions {
+    /// Directories searched besides the current document's repository or
+    /// directory (absolute: `~` and paths relative to the config file are
+    /// resolved).
+    pub roots: Vec<PathBuf>,
+    /// The most files the picker collects.
+    pub max_files: usize,
+    /// Hidden files and directories are listed too.
+    pub show_hidden: bool,
+    /// What counts as Markdown: file name extensions (lowercase, without
+    /// the dot); a README without one always does.
+    pub extensions: Vec<String>,
+}
+
+impl Default for PickerOptions {
+    fn default() -> Self {
+        PickerOptions {
+            roots: Vec::new(),
+            max_files: 50_000,
+            show_hidden: false,
+            extensions: ["md", "markdown", "mdx", "mkd"].map(str::to_owned).to_vec(),
+        }
+    }
+}
+
 /// Terminal detection settings (`[terminal]`, plus `render.color` and
 /// `render.hyperlinks`).
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -331,6 +358,7 @@ impl LoadOptions {
 pub struct Config {
     pub render: RenderOptions,
     pub pager: PagerOptions,
+    pub picker: PickerOptions,
     pub terminal: TerminalOptions,
     pub theme: ThemeOptions,
     /// Name of the configured theme (after lookup).
@@ -423,6 +451,7 @@ fn load_with(opts: &LoadOptions, checks: Checks) -> Loaded {
     let config = Config {
         render,
         pager: resolve::pager_options(&merged),
+        picker: resolve::picker_options(&merged),
         terminal: resolve::terminal_options(&merged),
         theme: resolve::theme_options(&merged, explicit),
         theme_name: theme
@@ -510,8 +539,8 @@ fn user_layers(
     (path, docs)
 }
 
-/// Make theme and code-theme paths absolute relative to the file that
-/// names them, and expand `~/`.
+/// Make theme and code-theme paths and the picker's roots absolute
+/// relative to the file that names them, and expand `~/`.
 fn resolve_paths(layer: &mut ConfigLayer, base_dir: Option<&Path>, env: &ConfigEnv) {
     for slot in [&mut layer.theme.name, &mut layer.theme.code] {
         if let Some(s) = slot.as_mut().filter(|s| paths::looks_like_path(s)) {
@@ -519,6 +548,11 @@ fn resolve_paths(layer: &mut ConfigLayer, base_dir: Option<&Path>, env: &ConfigE
                 .display()
                 .to_string();
         }
+    }
+    for root in layer.picker.roots.iter_mut().flatten() {
+        *root = paths::resolve_relative(env, root, base_dir)
+            .display()
+            .to_string();
     }
 }
 

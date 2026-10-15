@@ -51,7 +51,7 @@ use crate::highlight::{self, Highlighter, PlainHighlighter};
 use crate::ir::Document;
 use crate::layout::{ImageSizer, Layout, NoImages, layout};
 use crate::options::{FrontMatterMode, Height, ImageMode, RenderOptions, When};
-use crate::pager::{self, FileLoader, PagerDoc, PagerImages, PagerSession};
+use crate::pager::{self, FileLoader, PagerDoc, PagerImages, PagerSession, PickerSetup};
 use crate::parse::{ParseOptions, parse_source};
 use crate::render::{ImageRows, RenderConfig, StreamSink, is_broken_pipe};
 use crate::source::{Input, Source, SourceError};
@@ -707,6 +707,7 @@ fn pager_session(setup: Setup, docs: Vec<Doc>, request: PagerRequest) -> Option<
     session.env = setup.env;
     session.tmux = setup.tmux;
     session.late_replies = LateReplyFilter::after(setup.probe.as_ref(), Instant::now());
+    session.picker = PickerSetup::from_process(setup.config.picker.clone());
     Some(session)
 }
 
@@ -873,15 +874,20 @@ fn report_content(out: &mut dyn io::Write, docs: &[Doc], verbose: bool) {
     }
 }
 
-/// With `-v`, panics that were caught (and worked around) along the way.
+/// With `-v`, panics that were caught (and worked around) along the way,
+/// and problems with the pager's recent files store.
 fn report_caught(verbose: bool) {
     let caught = crate::panic::take_caught();
-    if !verbose || caught.is_empty() {
+    let recent = pager::recent::take_problems();
+    if !verbose {
         return;
     }
     let mut err = io::stderr().lock();
     for message in caught {
         let _ = writeln!(err, "emde: recovered from an internal error: {message}");
+    }
+    for message in recent {
+        let _ = writeln!(err, "emde: recent files: {message}");
     }
 }
 
