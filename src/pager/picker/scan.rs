@@ -27,7 +27,6 @@ use std::io::{BufRead as _, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender, TryRecvError};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -99,12 +98,16 @@ pub(crate) struct Batch {
     pub(crate) done: bool,
 }
 
+/// What a search found and the event loop has not taken yet.
+pub(crate) type Queue = Arc<Mutex<Vec<Batch>>>;
+
 /// Runs searches on a thread; see the module docs.
 #[derive(Debug)]
 pub(crate) struct Scanner {
     /// The search wanted now (0: none).
     live: Arc<AtomicU64>,
-    results: Option<Receiver<Batch>>,
+    /// Its results (`None`: no search running).
+    results: Option<Queue>,
 }
 
 impl Default for Scanner {
@@ -126,35 +129,25 @@ impl Scanner {
     /// Start search `req` (cancelling any other).
     pub(crate) fn start(&mut self, req: Request, setup: &Setup) {
         self.live.store(req.scan, Ordering::Relaxed);
-        let (tx, rx) = mpsc::channel();
+        let queue: Queue = Arc::default();
         let live = Arc::clone(&self.live);
         let setup = setup.clone();
         let scan = req.scan;
+        let out = Arc::clone(&queue);
         let spawned = std::thread::Builder::new()
             .name("emde-picker".into())
             .spawn(move || {
-                let done = tx.clone();
                 // A panic loses this search's remaining files only.
-                if crate::panic::guarded(|| search(&req, &setup, live, tx)).is_none() {
-                    let _ = done.send(Batch {
-                        scan,
-                        files: Vec::new(),
-                        done: true,
-                    });
+                let found = crate::panic::guarded(|| search(&req, &setup, live, &out));
+                if found.is_none() {
+                    push(&out, scan, Vec::new(), true);
                 }
             });
         if spawned.is_err() {
             // No thread: nothing found, and done.
-            let (tx, rx) = mpsc::channel();
-            let _ = tx.send(Batch {
-                scan,
-                files: Vec::new(),
-                done: true,
-            });
-            self.results = Some(rx);
-            return;
+            push(&queue, scan, Vec::new(), true);
         }
-        self.results = Some(rx);
+        self.results = Some(queue);
     }
 
     /// Cancel the search (its thread stops at its next check).
@@ -170,26 +163,15 @@ impl Scanner {
 
     /// The batches that came in.
     pub(crate) fn take(&mut self) -> Vec<Batch> {
-        let mut out = Vec::new();
-        let Some(rx) = &self.results else {
-            return out;
+        let out = match &self.results {
+            Some(q) => q
+                .lock()
+                .map(|mut v| std::mem::take(&mut *v))
+                .unwrap_or_default(),
+            None => return Vec::new(),
         };
-        loop {
-            match rx.try_recv() {
-                Ok(b) => {
-                    let done = b.done;
-                    out.push(b);
-                    if done {
-                        self.results = None;
-                        break;
-                    }
-                }
-                Err(TryRecvError::Empty) => break,
-                Err(TryRecvError::Disconnected) => {
-                    self.results = None;
-                    break;
-                }
-            }
+        if out.last().is_some_and(|b| b.done) {
+            self.results = None;
         }
         out
     }
@@ -197,21 +179,19 @@ impl Scanner {
     /// Wait for the search to end (at most `limit`) and take its batches.
     pub(crate) fn wait(&mut self, limit: Duration) -> Vec<Batch> {
         let end = Instant::now() + limit;
-        let mut out = Vec::new();
-        while let Some(rx) = &self.results {
-            match rx.recv_timeout(end.saturating_duration_since(Instant::now())) {
-                Ok(b) => {
-                    let done = b.done;
-                    out.push(b);
-                    if done {
-                        self.results = None;
-                    }
-                }
-                Err(RecvTimeoutError::Timeout) => break,
-                Err(RecvTimeoutError::Disconnected) => self.results = None,
-            }
+        let mut out = self.take();
+        while self.busy() && Instant::now() < end {
+            std::thread::sleep(Duration::from_millis(1));
+            out.extend(self.take());
         }
         out
+    }
+}
+
+/// Add a batch to `queue`.
+fn push(queue: &Queue, scan: u64, files: Vec<Candidate>, done: bool) {
+    if let Ok(mut v) = queue.lock() {
+        v.push(Batch { scan, files, done });
     }
 }
 
@@ -271,7 +251,7 @@ struct Sink<'a> {
     req: &'a Request,
     setup: &'a Setup,
     live: Arc<AtomicU64>,
-    tx: Sender<Batch>,
+    out: &'a Queue,
     display: Display,
     seen: HashSet<PathBuf>,
     batch: Vec<Candidate>,
@@ -322,14 +302,11 @@ impl Sink<'_> {
         if files.is_empty() && !done {
             return Flow::Go;
         }
-        let batch = Batch {
-            scan: self.req.scan,
-            files,
-            done,
-        };
-        match self.tx.send(batch) {
-            Ok(()) if !self.cancelled() => Flow::Go,
-            _ => Flow::Stop,
+        push(self.out, self.req.scan, files, done);
+        if self.cancelled() {
+            Flow::Stop
+        } else {
+            Flow::Go
         }
     }
 }
@@ -339,8 +316,8 @@ fn canonical(path: &Path) -> PathBuf {
     fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
 }
 
-/// Search as `req` says, sending batches on `tx`; see the module docs.
-fn search(req: &Request, setup: &Setup, live: Arc<AtomicU64>, tx: Sender<Batch>) {
+/// Search as `req` says, adding batches to `out`; see the module docs.
+fn search(req: &Request, setup: &Setup, live: Arc<AtomicU64>, out: &Queue) {
     let dir = canonical(&req.dir);
     let repo = if setup.git {
         git_toplevel(&dir, &live, req.scan).map(|r| canonical(&r))
@@ -351,7 +328,7 @@ fn search(req: &Request, setup: &Setup, live: Arc<AtomicU64>, tx: Sender<Batch>)
         req,
         setup,
         live,
-        tx,
+        out,
         display: Display {
             base: repo.clone().unwrap_or_else(|| dir.clone()),
             repo: repo.clone(),

@@ -88,7 +88,7 @@ pub(crate) fn frecency(v: &Visit, now: u64) -> u32 {
 /// The visits in a store file's text, most frecent first (lines that do
 /// not parse are skipped).
 pub(crate) fn parse(text: &str, now: u64) -> Vec<Visit> {
-    let mut out: Vec<Visit> = text
+    let out: Vec<Visit> = text
         .lines()
         .filter_map(|line| {
             let mut parts = line.splitn(3, '\t');
@@ -98,18 +98,13 @@ pub(crate) fn parse(text: &str, now: u64) -> Vec<Visit> {
             (count > 0 && path.is_absolute()).then_some(Visit { count, last, path })
         })
         .collect();
-    sort(&mut out, now);
-    out
+    sort(out, now)
 }
 
 /// Most frecent first, then most recent.
-fn sort(visits: &mut [Visit], now: u64) {
-    visits.sort_by_key(|v| {
-        (
-            std::cmp::Reverse(frecency(v, now)),
-            std::cmp::Reverse(v.last),
-        )
-    });
+fn sort(visits: Vec<Visit>, now: u64) -> Vec<Visit> {
+    let key = |v: &Visit| (frecency(v, now), v.last);
+    super::picker::sorted(visits, &|a, b| key(b).cmp(&key(a)))
 }
 
 /// The text of a store file.
@@ -159,7 +154,7 @@ pub(crate) fn visited(mut visits: Vec<Visit>, path: &Path, now: u64) -> Vec<Visi
             path: path.to_path_buf(),
         }),
     }
-    sort(&mut visits, now);
+    let mut visits = sort(visits, now);
     visits.truncate(CAP);
     visits
 }
@@ -186,10 +181,9 @@ pub(crate) fn write_atomically(path: &Path, bytes: &[u8]) -> io::Result<()> {
     fs::create_dir_all(dir)?;
     let name = path.file_name().unwrap_or_default().to_string_lossy();
     let tmp = dir.join(format!(".{name}.{}.tmp", std::process::id()));
-    let written = fs::File::create(&tmp).and_then(|mut f| {
-        f.write_all(bytes)?;
-        f.sync_all()
-    });
+    // No fsync: the store is a convenience, and recording must never make
+    // opening a document wait for the disk.
+    let written = fs::File::create(&tmp).and_then(|mut f| f.write_all(bytes));
     match written.and_then(|()| fs::rename(&tmp, path)) {
         Ok(()) => Ok(()),
         Err(e) => {

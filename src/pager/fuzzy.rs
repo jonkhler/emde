@@ -101,9 +101,10 @@ struct Cell {
 /// Reusable buffers for matching (no allocation per path).
 #[derive(Debug, Default)]
 pub(crate) struct Scratch {
-    folded_bytes: Vec<u8>,
-    chars: Vec<char>,
-    folded_chars: Vec<char>,
+    /// The text's characters, as code points.
+    text: Vec<u32>,
+    /// The same, folded when case is ignored.
+    folded: Vec<u32>,
     work: Work,
 }
 
@@ -119,10 +120,8 @@ struct Work {
 /// A parsed query; see the module docs.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(crate) struct Pattern {
-    /// Its terms (folded when case is ignored).
-    terms: Vec<Vec<char>>,
-    /// The same as bytes, when they are all ASCII.
-    ascii: Option<Vec<Vec<u8>>>,
+    /// Its terms as code points (folded when case is ignored).
+    terms: Vec<Vec<u32>>,
     case_sensitive: bool,
     /// What a path must contain: [`mask`] of every term.
     mask: u64,
@@ -138,41 +137,6 @@ enum Class {
     Upper,
     Digit,
     Other,
-}
-
-fn class(c: char) -> Class {
-    match c {
-        ' ' | '\t' => Class::White,
-        '/' | ':' | ';' | ',' | '|' => Class::Delimiter,
-        'a'..='z' => Class::Lower,
-        'A'..='Z' => Class::Upper,
-        '0'..='9' => Class::Digit,
-        c if c.is_ascii() => Class::NonWord,
-        c if c.is_lowercase() => Class::Lower,
-        c if c.is_uppercase() => Class::Upper,
-        c if c.is_alphanumeric() => Class::Other,
-        _ => Class::NonWord,
-    }
-}
-
-/// The bonus for a match on a `cur` character after a `prev` one.
-fn bonus(prev: Class, cur: Class) -> i32 {
-    match (prev, cur) {
-        (_, Class::White | Class::Delimiter | Class::NonWord) => 0,
-        (Class::White, _) => BONUS_WHITE,
-        (Class::Delimiter, _) => BONUS_DELIMITER,
-        (Class::NonWord, _) => BONUS_BOUNDARY,
-        (Class::Lower, Class::Upper)
-        | (Class::Lower | Class::Upper | Class::Other, Class::Digit) => BONUS_CAMEL,
-        _ => 0,
-    }
-}
-
-/// A unit of text: an ASCII byte (the fast path) or a character.
-trait Unit: Copy + Eq {
-    fn class(self) -> Class;
-    /// The indexes of `needle` in `hay`, in order, into `out`.
-    fn find(hay: &[Self], needle: Self, out: &mut Vec<u32>);
 }
 
 /// The class of every ASCII character.
@@ -193,36 +157,29 @@ const ASCII_CLASSES: [Class; 128] = {
     t
 };
 
-impl Unit for u8 {
-    fn class(self) -> Class {
-        ASCII_CLASSES
-            .get(usize::from(self))
-            .copied()
-            .unwrap_or(Class::NonWord)
+/// The class of code point `u`.
+fn class(u: u32) -> Class {
+    if let Some(&c) = ASCII_CLASSES.get(u as usize) {
+        return c;
     }
-
-    fn find(hay: &[u8], needle: u8, out: &mut Vec<u32>) {
-        // Paths are short: a plain loop beats memchr's setup.
-        for (i, &b) in hay.iter().enumerate() {
-            if b == needle {
-                out.push(i as u32);
-            }
-        }
+    match char::from_u32(u) {
+        Some(c) if c.is_lowercase() => Class::Lower,
+        Some(c) if c.is_uppercase() => Class::Upper,
+        Some(c) if c.is_alphanumeric() => Class::Other,
+        _ => Class::NonWord,
     }
 }
 
-impl Unit for char {
-    fn class(self) -> Class {
-        class(self)
-    }
-
-    fn find(hay: &[char], needle: char, out: &mut Vec<u32>) {
-        out.extend(
-            hay.iter()
-                .enumerate()
-                .filter(|&(_, &c)| c == needle)
-                .map(|(i, _)| u32::try_from(i).unwrap_or(u32::MAX)),
-        );
+/// The bonus for a match on a `cur` character after a `prev` one.
+fn bonus(prev: Class, cur: Class) -> i32 {
+    match (prev, cur) {
+        (_, Class::White | Class::Delimiter | Class::NonWord) => 0,
+        (Class::White, _) => BONUS_WHITE,
+        (Class::Delimiter, _) => BONUS_DELIMITER,
+        (Class::NonWord, _) => BONUS_BOUNDARY,
+        (Class::Lower, Class::Upper)
+        | (Class::Lower | Class::Upper | Class::Other, Class::Digit) => BONUS_CAMEL,
+        _ => 0,
     }
 }
 
@@ -230,24 +187,17 @@ impl Pattern {
     /// The pattern for `query` (see the module docs).
     pub(crate) fn new(query: &str) -> Pattern {
         let case_sensitive = query.chars().any(char::is_uppercase);
-        let terms: Vec<Vec<char>> = query
+        let terms: Vec<Vec<u32>> = query
             .split_whitespace()
             .map(|t| {
                 t.chars()
-                    .map(|c| if case_sensitive { c } else { fold(c) })
+                    .map(|c| u32::from(if case_sensitive { c } else { fold(c) }))
                     .collect()
             })
             .collect();
-        let ascii = terms.iter().flatten().all(char::is_ascii).then(|| {
-            terms
-                .iter()
-                .map(|t| t.iter().map(|&c| c as u8).collect())
-                .collect()
-        });
-        let mask = terms.iter().flatten().fold(0, |m, &c| m | bit(fold(c)));
+        let mask = query.split_whitespace().map(mask).fold(0, |m, t| m | t);
         Pattern {
             terms,
-            ascii,
             case_sensitive,
             mask,
         }
@@ -290,56 +240,37 @@ impl Pattern {
             score: -(len / LENGTH_DIVISOR),
             positions: Vec::new(),
         };
-        let mut add = |found: (i32, Vec<u32>)| {
-            out.score = out.score.saturating_add(found.0);
-            out.positions.extend(found.1);
+        let ascii = text.is_ascii();
+        s.text.clear();
+        s.folded.clear();
+        let base = if ascii {
+            // Bytes are characters: the fast path.
+            s.text.extend(text.bytes().map(u32::from));
+            if self.case_sensitive {
+                s.folded.extend_from_slice(&s.text);
+            } else {
+                s.folded
+                    .extend(text.bytes().map(|b| u32::from(b.to_ascii_lowercase())));
+            }
+            base
+        } else {
+            s.text.extend(text.chars().map(u32::from));
+            if self.case_sensitive {
+                s.folded.extend_from_slice(&s.text);
+            } else {
+                s.folded.extend(text.chars().map(|c| u32::from(fold(c))));
+            }
+            text.get(..base).map_or(0, |b| b.chars().count())
         };
-        match &self.ascii {
-            Some(terms) if text.is_ascii() => {
-                // Bytes are characters.
-                let orig = text.as_bytes();
-                s.folded_bytes.clear();
-                s.folded_bytes.extend_from_slice(orig);
-                if !self.case_sensitive {
-                    s.folded_bytes.make_ascii_lowercase();
-                }
-                for term in terms {
-                    add(best(
-                        orig,
-                        &s.folded_bytes,
-                        term,
-                        base,
-                        &mut s.work,
-                        positions,
-                    )?);
-                }
-            }
-            _ => {
-                s.chars.clear();
-                s.chars.extend(text.chars());
-                s.folded_chars.clear();
-                if self.case_sensitive {
-                    s.folded_chars.extend_from_slice(&s.chars);
-                } else {
-                    s.folded_chars.extend(s.chars.iter().map(|&c| fold(c)));
-                }
-                let base = text.get(..base).map_or(0, |b| b.chars().count());
-                for term in &self.terms {
-                    add(best(
-                        &s.chars,
-                        &s.folded_chars,
-                        term,
-                        base,
-                        &mut s.work,
-                        positions,
-                    )?);
-                }
-            }
+        for term in &self.terms {
+            let (score, at) = best(&s.text, &s.folded, term, base, &mut s.work, positions)?;
+            out.score = out.score.saturating_add(score);
+            out.positions.extend(at);
         }
         if positions {
             out.positions.sort_unstable();
             out.positions.dedup();
-            if !text.is_ascii() {
+            if !ascii {
                 // Character indexes to byte offsets.
                 let offsets: Vec<u32> = text
                     .char_indices()
@@ -355,16 +286,17 @@ impl Pattern {
 }
 
 /// The bonus for a match at `i` of `text`.
-fn bonus_at<T: Unit>(text: &[T], i: usize) -> i32 {
+fn bonus_at(text: &[u32], i: usize) -> i32 {
     let prev = match i.checked_sub(1).and_then(|k| text.get(k)) {
-        Some(c) => c.class(),
+        Some(&c) => class(c),
         None => Class::White,
     };
-    bonus(prev, text.get(i).map_or(Class::Other, |c| c.class()))
+    bonus(prev, text.get(i).map_or(Class::Other, |&c| class(c)))
 }
 
 /// The best way `term` matches `text` (`folded` as compared; base name
-/// from unit `base`): its score and, with `positions`, the indexes.
+/// from character `base`): its score and, with `positions`, the
+/// character indexes.
 ///
 /// The dynamic program only has cells where a term character matches:
 /// row `j` holds the places where `term[j]` can end the best match of
@@ -372,10 +304,10 @@ fn bonus_at<T: Unit>(text: &[T], i: usize) -> i32 {
 /// the row above, or follows the best cell further left over a gap (the
 /// gap's cost grows by [`GAP_EXTEND`] per character, so the best one is a
 /// running maximum of `score - GAP_EXTEND * pos`).
-fn best<T: Unit>(
-    text: &[T],
-    folded: &[T],
-    term: &[T],
+fn best(
+    text: &[u32],
+    folded: &[u32],
+    term: &[u32],
     base: usize,
     w: &mut Work,
     positions: bool,
@@ -386,6 +318,7 @@ fn best<T: Unit>(
     let lo = folded.iter().position(|&c| c == first)?;
     let hi = folded.iter().rposition(|&c| c == last)?;
     let window = folded.get(lo..=hi)?;
+    let lo = u32::try_from(lo).ok()?;
     let gain = |i: u32| {
         MATCH
             + if i as usize >= base {
@@ -399,12 +332,15 @@ fn best<T: Unit>(
     rows.clear();
     for (j, &unit) in term.iter().enumerate() {
         found.clear();
-        T::find(window, unit, found);
+        for (r, &c) in window.iter().enumerate() {
+            if c == unit {
+                found.push(r as u32 + lo);
+            }
+        }
         let start = cells.len();
         rows.push(start);
         if j == 0 {
-            for &r in found.iter() {
-                let i = r + lo as u32;
+            for &i in found.iter() {
                 let own = bonus_at(text, i as usize);
                 let first = if own == 0 {
                     SCATTERED
@@ -420,13 +356,11 @@ fn best<T: Unit>(
             }
             continue;
         }
-        let prev_start = rows.get(j - 1).copied().unwrap_or(0);
-        let mut k = prev_start;
+        let mut k = rows.get(j - 1).copied().unwrap_or(0);
         // The best cell of the row above at least two places left, as
         // `score - GAP_EXTEND * pos`, and which it is.
         let mut gap = (NONE, u32::MAX);
-        for &r in found.iter() {
-            let i = r + lo as u32;
+        for &i in found.iter() {
             while let Some(c) = cells.get(k).filter(|c| k < start && c.pos + 2 <= i) {
                 let v = c.score - GAP_EXTEND * c.pos as i32;
                 if v > gap.0 {

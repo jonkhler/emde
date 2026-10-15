@@ -43,6 +43,46 @@ pub(crate) const PREVIEW_BYTES: u64 = 64 * 1024;
 /// The most entries listed of one directory.
 pub(crate) const MAX_ENTRIES: usize = 20_000;
 
+/// The order of `n` items by `cmp` (a stable bottom-up merge sort of
+/// their indexes): one small sort for every list the picker sorts, rather
+/// than a copy of the standard library's for each type.
+pub(crate) fn order(n: usize, cmp: &dyn Fn(usize, usize) -> std::cmp::Ordering) -> Vec<usize> {
+    let mut a: Vec<usize> = (0..n).collect();
+    let mut b = vec![0; n];
+    let mut width = 1;
+    while width < n {
+        let mut i = 0;
+        while i < n {
+            let mid = (i + width).min(n);
+            let end = (i + 2 * width).min(n);
+            let (mut l, mut r) = (i, mid);
+            for slot in &mut b[i..end] {
+                let left = l < mid && (r >= end || cmp(a[l], a[r]) != std::cmp::Ordering::Greater);
+                if left {
+                    *slot = a[l];
+                    l += 1;
+                } else {
+                    *slot = a[r];
+                    r += 1;
+                }
+            }
+            i = end;
+        }
+        std::mem::swap(&mut a, &mut b);
+        width *= 2;
+    }
+    a
+}
+
+/// `items` sorted by `cmp` (see [`order`]).
+pub(crate) fn sorted<T>(items: Vec<T>, cmp: &dyn Fn(&T, &T) -> std::cmp::Ordering) -> Vec<T> {
+    let idx = order(items.len(), &|a, b| cmp(&items[a], &items[b]));
+    let mut slots: Vec<Option<T>> = items.into_iter().map(Some).collect();
+    idx.into_iter()
+        .filter_map(|i| slots.get_mut(i)?.take())
+        .collect()
+}
+
 /// A file the picker can open (fuzzy mode).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Candidate {
@@ -481,33 +521,33 @@ fn best_of(
             .collect()
     };
     let mut top = Top::new();
-    for h in kept {
+    for h in &kept {
         if let Some(c) = cands.get(h.index) {
-            top.push((rank_of(c, h.index, h.score), Some(h.positions)));
+            top.push(rank_of(c, h.index, h.score));
         }
     }
     let mut matched = Vec::new();
     for (ranks, m) in scored {
         for r in ranks {
-            top.push((r, None));
+            top.push(r);
         }
         matched.extend(m);
     }
     let mut scratch = Scratch::default();
     let hits = top
         .into_sorted()
-        .map(|(rank, positions)| {
+        .map(|rank| {
             let index = rank.first.0;
-            let positions = positions.unwrap_or_else(|| {
-                if pattern.is_empty() {
-                    return Vec::new();
-                }
-                cands
+            // Positions: kept, or found for the newcomers.
+            let positions = match kept.iter().find(|h| h.index == index) {
+                Some(h) => h.positions.clone(),
+                None if pattern.is_empty() => Vec::new(),
+                None => cands
                     .get(index)
                     .and_then(|c| pattern.matches(&c.shown, c.base as usize, &mut scratch))
                     .map(|m| m.positions)
-                    .unwrap_or_default()
-            });
+                    .unwrap_or_default(),
+            };
             Hit {
                 index,
                 score: rank.score,

@@ -100,7 +100,7 @@ pub(crate) fn tilde(path: &Path, home: Option<&Path>) -> String {
 /// A directory entry.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Entry {
-    /// The name (lossy UTF-8, as shown).
+    /// The name as shown: lossy UTF-8, control characters as symbols.
     pub(crate) name: Box<str>,
     pub(crate) path: PathBuf,
     /// A directory (or a link to one).
@@ -116,14 +116,19 @@ pub(crate) fn list(dir: &Path, cap: usize) -> io::Result<Vec<Entry>> {
         let Ok(entry) = entry else {
             continue;
         };
-        let name = entry.file_name().to_string_lossy().into();
+        // Shown, so control characters become visible symbols (a name
+        // with them cannot be typed or completed, only picked).
+        let raw = entry.file_name();
+        let name = crate::text::sanitize(&raw.to_string_lossy())
+            .replace(['\n', '\t'], " ")
+            .into();
         let path = entry.path();
         let dir = match entry.file_type() {
             Ok(t) if t.is_symlink() => fs::metadata(&path).is_ok_and(|m| m.is_dir()),
             Ok(t) => t.is_dir(),
             Err(_) => false,
         };
-        let hidden = entry.file_name().as_encoded_bytes().starts_with(b".");
+        let hidden = raw.as_encoded_bytes().starts_with(b".");
         out.push(Entry {
             name,
             path,
@@ -131,8 +136,9 @@ pub(crate) fn list(dir: &Path, cap: usize) -> io::Result<Vec<Entry>> {
             hidden,
         });
     }
-    out.sort_by(|a, b| b.dir.cmp(&a.dir).then_with(|| a.name.cmp(&b.name)));
-    Ok(out)
+    Ok(super::sorted(out, &|a, b| {
+        b.dir.cmp(&a.dir).then_with(|| a.name.cmp(&b.name))
+    }))
 }
 
 /// Whether entry `e` is listed for `leaf`: hidden entries only with
@@ -146,7 +152,7 @@ fn shown(e: &Entry, leaf: &str, hidden: bool) -> bool {
 pub(crate) fn filter(entries: &[Entry], leaf: &str, hidden: bool) -> Vec<(usize, i32)> {
     let pattern = Pattern::new(leaf);
     let mut scratch = Scratch::default();
-    let mut out: Vec<(usize, i32)> = entries
+    let out: Vec<(usize, i32)> = entries
         .iter()
         .enumerate()
         .filter(|(_, e)| shown(e, leaf, hidden))
@@ -155,8 +161,8 @@ pub(crate) fn filter(entries: &[Entry], leaf: &str, hidden: bool) -> Vec<(usize,
             Some((i, score))
         })
         .collect();
-    out.sort_by_key(|&(i, score)| (!entries[i].dir, std::cmp::Reverse(score), i));
-    out
+    let dir = |i: usize| entries.get(i).is_some_and(|e| e.dir);
+    super::sorted(out, &|a, b| (!dir(a.0), b.1).cmp(&(!dir(b.0), a.1)))
 }
 
 /// What Tab does with `leaf` among `entries`.
@@ -172,21 +178,23 @@ pub(crate) enum Completion {
     Nothing,
 }
 
+/// Whether `name` starts with `leaf`, ignoring ASCII case unless `leaf`
+/// has an uppercase letter.
+fn starts(name: &str, leaf: &str, sensitive: bool) -> bool {
+    match name.as_bytes().get(..leaf.len()) {
+        Some(head) if sensitive => head == leaf.as_bytes(),
+        Some(head) => head.eq_ignore_ascii_case(leaf.as_bytes()),
+        None => false,
+    }
+}
+
 /// Tab after `leaf`: the entries whose names start with it (ignoring case
 /// unless it has an uppercase letter), and how far they agree.
 pub(crate) fn complete(entries: &[Entry], leaf: &str, hidden: bool) -> Completion {
     let sensitive = leaf.chars().any(char::is_uppercase);
-    let fold = |s: &str| -> Vec<char> {
-        if sensitive {
-            s.chars().collect()
-        } else {
-            s.chars().flat_map(char::to_lowercase).collect()
-        }
-    };
-    let want = fold(leaf);
     let found: Vec<&Entry> = entries
         .iter()
-        .filter(|e| shown(e, leaf, hidden) && fold(&e.name).starts_with(&want))
+        .filter(|e| shown(e, leaf, hidden) && starts(&e.name, leaf, sensitive))
         .collect();
     let Some(first) = found.first() else {
         return Completion::Nothing;
@@ -195,21 +203,18 @@ pub(crate) fn complete(entries: &[Entry], leaf: &str, hidden: bool) -> Completio
         return Completion::Unique(only.name.to_string(), only.dir);
     }
     // The longest prefix all share (in the first one's spelling).
-    let chars: Vec<char> = first.name.chars().collect();
-    let mut n = chars.len();
+    let mut n = first.name.len();
     for e in &found[1..] {
-        let other: Vec<char> = e.name.chars().collect();
-        n = n.min(
-            chars
-                .iter()
-                .zip(&other)
-                .take_while(|(a, b)| fold(&a.to_string()) == fold(&b.to_string()))
-                .count(),
-        );
+        n = n.min(e.name.len());
+        while n > 0
+            && (!first.name.is_char_boundary(n)
+                || !starts(&e.name, first.name.get(..n).unwrap_or(""), sensitive))
+        {
+            n -= 1;
+        }
     }
-    let prefix: String = chars.get(..n).unwrap_or_default().iter().collect();
-    if prefix.chars().count() > leaf.chars().count() {
-        Completion::Longer(prefix)
+    if n > leaf.len() {
+        Completion::Longer(first.name.get(..n).unwrap_or("").to_owned())
     } else {
         Completion::Several(found.iter().map(|e| e.name.to_string()).collect())
     }
@@ -406,5 +411,36 @@ mod tests {
         assert_eq!(entries[0].path, dir.join(odd), "the real name opens");
         assert_eq!(filter(&entries, "caf", false).len(), 1);
         let _ = fs::remove_dir_all(&dir);
+    }
+}
+
+#[cfg(test)]
+mod more_tests {
+    use super::*;
+
+    fn e(name: &str) -> Entry {
+        Entry {
+            name: name.into(),
+            path: PathBuf::from(name),
+            dir: false,
+            hidden: false,
+        }
+    }
+
+    #[test]
+    fn completion_never_splits_a_character() {
+        let entries = [e("café-a.md"), e("café-b.md"), e("cafè.md")];
+        assert_eq!(
+            complete(&entries, "caf", false),
+            Completion::Several(vec![
+                "café-a.md".into(),
+                "café-b.md".into(),
+                "cafè.md".into()
+            ])
+        );
+        assert_eq!(
+            complete(&entries[..2], "c", false),
+            Completion::Longer("café-".into())
+        );
     }
 }
