@@ -94,7 +94,7 @@ expression: "Scenario::mosh().json()"
     },
     {
       "topic": "graphics",
-      "detail": "kitty/iterm ✗ passthrough off · sixel ✗ client lacks sixel"
+      "detail": "kitty ✗ client lacks RGB · sixel ✗ client lacks sixel"
     },
     {
       "topic": "blocks",

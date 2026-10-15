@@ -2245,6 +2245,15 @@ mod tests {
             Cache::new(&a, Some(&off), &tmux_batch).unwrap().path(),
             Cache::new(&a, Some(&on), &tmux_batch).unwrap().path()
         );
+        // The same session attached from iTerm2 over SSH, then through mosh:
+        // replies cached for one client never stand for the other (and the
+        // client's features themselves are asked afresh on every run).
+        let iterm = tmux::parse(tmux::fixtures::USER_SESSION).unwrap();
+        let mosh = tmux::parse(tmux::fixtures::MOSH_CLIENT).unwrap();
+        assert_ne!(
+            Cache::new(&a, Some(&iterm), &tmux_batch).unwrap().path(),
+            Cache::new(&a, Some(&mosh), &tmux_batch).unwrap().path()
+        );
         // No runtime directory, no cache.
         assert_eq!(Cache::new(&Env::default(), None, &batch), None);
         assert_eq!(

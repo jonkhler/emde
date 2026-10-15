@@ -851,6 +851,11 @@ fn tmux_placeholders(
     if !opts.tmux_passthrough {
         return Err("kitty/iterm ✗ images.tmux_passthrough off".into());
     }
+    // Before passthrough: without RGB (mosh, say), turning it on would not
+    // help.
+    if !tmux.has_feature("RGB") {
+        return Err("kitty ✗ client lacks RGB".into());
+    }
     if !tmux.passthrough.enabled() {
         return Err("kitty/iterm ✗ passthrough off".into());
     }
@@ -864,9 +869,6 @@ fn tmux_placeholders(
             }
             Some(_) => {}
         }
-    }
-    if !tmux.has_feature("RGB") {
-        return Err("kitty ✗ client lacks RGB".into());
     }
     let passthrough = tmux.passthrough.as_str();
     if !check_outer {
