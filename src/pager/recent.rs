@@ -239,7 +239,7 @@ mod tests {
 
     #[test]
     fn frecency_weighs_recent_visits() {
-        let now = 1_000_000;
+        let now = 100_000_000;
         let v = |count, ago| Visit {
             count,
             last: now - ago,
@@ -250,7 +250,7 @@ mod tests {
         assert_eq!(frecency(&v(3, 200_000), now), 6);
         assert_eq!(frecency(&v(5, 10_000_000), now), 5);
         // Yesterday's single visit beats last month's three.
-        let text = "3\t900000\t/old.md\n1\t999000\t/new.md\n";
+        let text = "3\t97000000\t/old.md\n1\t99990000\t/new.md\n";
         let got: Vec<_> = parse(text, now).into_iter().map(|v| v.path).collect();
         assert_eq!(got, [PathBuf::from("/new.md"), PathBuf::from("/old.md")]);
     }
