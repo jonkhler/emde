@@ -69,6 +69,7 @@
 //! ```
 
 mod diff;
+mod fuzzy;
 mod gallery;
 mod hints;
 mod images;
