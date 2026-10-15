@@ -10,11 +10,12 @@
 //!   camelCase or letter-to-digit boundary;
 //! * runs of consecutive matches (a run keeps the bonus of its first
 //!   character);
-//! * matches inside the base name rather than the directories (strongly),
-//!   and a term that is a prefix of the base name;
+//! * matches inside the base name (without its extension) rather than the
+//!   directories, strongly, and a term that is a prefix of the base name;
 //!
-//! and penalises gaps (more for opening one than for making it longer) and
-//! long paths, a little. Before any of that, a 64-bit mask of the
+//! and penalises gaps (more for opening one than for making it longer), a
+//! match in the middle of a word that continues no run (people type the
+//! initials of words), and long paths, a little. Before any of that, a 64-bit mask of the
 //! characters a path contains ([`mask`], computed once per path) rejects
 //! most paths that cannot match at all.
 
@@ -42,9 +43,9 @@ const FIRST_MULTIPLIER: i32 = 2;
 /// Every matched character inside the base name.
 const BONUS_BASENAME: i32 = 8;
 /// A term that is a prefix of the base name.
-const BONUS_PREFIX: i32 = 24;
+const BONUS_PREFIX: i32 = 12;
 /// One point off per this many characters of path.
-const LENGTH_DIVISOR: i32 = 16;
+const LENGTH_DIVISOR: i32 = 32;
 /// Scores below this are impossible.
 const NONE: i32 = i32::MIN / 2;
 
@@ -243,7 +244,13 @@ impl Pattern {
         let ascii = text.is_ascii();
         s.text.clear();
         s.folded.clear();
-        let base = if ascii {
+        // The extension (from the base name's last dot) is not the name.
+        let ext = text
+            .get(base..)
+            .and_then(|b| b.rfind('.'))
+            .filter(|&i| i > 0)
+            .map_or(text.len(), |i| base + i);
+        let (base, ext) = if ascii {
             // Bytes are characters: the fast path.
             s.text.extend(text.bytes().map(u32::from));
             if self.case_sensitive {
@@ -252,7 +259,7 @@ impl Pattern {
                 s.folded
                     .extend(text.bytes().map(|b| u32::from(b.to_ascii_lowercase())));
             }
-            base
+            (base, ext)
         } else {
             s.text.extend(text.chars().map(u32::from));
             if self.case_sensitive {
@@ -260,10 +267,12 @@ impl Pattern {
             } else {
                 s.folded.extend(text.chars().map(|c| u32::from(fold(c))));
             }
-            text.get(..base).map_or(0, |b| b.chars().count())
+            let chars = |b: usize| text.get(..b).map_or(0, |t| t.chars().count());
+            (chars(base), chars(ext))
         };
         for term in &self.terms {
-            let (score, at) = best(&s.text, &s.folded, term, base, &mut s.work, positions)?;
+            let name = base..ext;
+            let (score, at) = best(&s.text, &s.folded, term, name, &mut s.work, positions)?;
             out.score = out.score.saturating_add(score);
             out.positions.extend(at);
         }
@@ -294,9 +303,9 @@ fn bonus_at(text: &[u32], i: usize) -> i32 {
     bonus(prev, text.get(i).map_or(Class::Other, |&c| class(c)))
 }
 
-/// The best way `term` matches `text` (`folded` as compared; base name
-/// from character `base`): its score and, with `positions`, the
-/// character indexes.
+/// The best way `term` matches `text` (`folded` as compared; the base
+/// name without its extension at characters `name`): its score and, with
+/// `positions`, the character indexes.
 ///
 /// The dynamic program only has cells where a term character matches:
 /// row `j` holds the places where `term[j]` can end the best match of
@@ -308,7 +317,7 @@ fn best(
     text: &[u32],
     folded: &[u32],
     term: &[u32],
-    base: usize,
+    name: std::ops::Range<usize>,
     w: &mut Work,
     positions: bool,
 ) -> Option<(i32, Vec<u32>)> {
@@ -321,7 +330,7 @@ fn best(
     let lo = u32::try_from(lo).ok()?;
     let gain = |i: u32| {
         MATCH
-            + if i as usize >= base {
+            + if name.contains(&(i as usize)) {
                 BONUS_BASENAME
             } else {
                 0
@@ -401,7 +410,9 @@ fn best(
         .enumerate()
         .skip(last_row)
         .max_by_key(|&(_, c)| (c.score, std::cmp::Reverse(c.pos)))?;
-    let prefix = folded.get(base..).is_some_and(|b| b.starts_with(term));
+    let prefix = folded
+        .get(name.start..)
+        .is_some_and(|b| b.starts_with(term));
     let score = cell.score + if prefix { BONUS_PREFIX } else { 0 };
     let mut at = Vec::new();
     if positions {

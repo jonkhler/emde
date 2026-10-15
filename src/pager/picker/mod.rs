@@ -469,7 +469,7 @@ impl<T: Ord> Top<T> {
 }
 
 /// Candidates ranked on one thread at a time.
-const CHUNK: usize = 8192;
+const CHUNK: usize = 2048;
 
 /// The best ranks among candidates `fresh` (indexes into `cands`) that
 /// match `pattern`, and the indexes of all that match.
@@ -510,7 +510,7 @@ fn best_of(
 ) -> (Vec<Hit>, Vec<u32>) {
     let chunks: Vec<&[u32]> = fresh.chunks(CHUNK).collect();
     let scored: Vec<(Vec<Rank<'_>>, Vec<u32>)> = if chunks.len() > 1 {
-        crate::parallel::map(&chunks, usize::MAX, |c| score_chunk(pattern, cands, c))
+        crate::parallel::map(&chunks, 8, |c| score_chunk(pattern, cands, c))
             .into_iter()
             .map(Option::unwrap_or_default)
             .collect()
@@ -1012,6 +1012,7 @@ fn command_listed(
 /// The preview of the file at `path`: its first [`PREVIEW_BYTES`],
 /// parsed with `parse` for its headings when it is Markdown (by `exts`),
 /// else its first lines.
+#[inline(never)]
 pub(crate) fn read_preview(
     path: &Path,
     exts: &[String],
@@ -1043,9 +1044,10 @@ pub(crate) fn read_preview(
         preview.note = Some("a binary file".into());
         return preview;
     }
-    let text = String::from_utf8_lossy(&bytes);
+    let source = crate::source::Source::from_bytes(bytes, crate::source::Origin::Memory);
+    let text = &source.text;
     if scan::is_markdown(path, exts) {
-        let doc = crate::parse::parse(&text, parse);
+        let doc = crate::parse::parse_source(&source, parse);
         preview.lines = doc
             .headings
             .iter()
