@@ -86,17 +86,33 @@ pub(crate) struct Match {
     pub(crate) positions: Vec<u32>,
 }
 
+/// One way a term character can match: at `pos`, with the best score of
+/// the term up to it, the bonus of the run it ends, and the cell of the
+/// previous term character it came from.
+#[derive(Clone, Copy, Debug)]
+struct Cell {
+    pos: u32,
+    score: i32,
+    run: i32,
+    back: u32,
+}
+
 /// Reusable buffers for matching (no allocation per path).
 #[derive(Debug, Default)]
 pub(crate) struct Scratch {
-    text: Vec<char>,
-    folded: Vec<char>,
-    bonus: Vec<i32>,
-    prev: Vec<(i32, i32)>,
-    cur: Vec<(i32, i32)>,
-    /// For each term character and window position: where the previous
-    /// term character matched (`u32::MAX`: no match here).
-    back: Vec<u32>,
+    folded_bytes: Vec<u8>,
+    chars: Vec<char>,
+    folded_chars: Vec<char>,
+    work: Work,
+}
+
+/// The dynamic program's cells, row by row (one row per term character,
+/// with a cell where that character can match only).
+#[derive(Debug, Default)]
+struct Work {
+    found: Vec<u32>,
+    cells: Vec<Cell>,
+    rows: Vec<usize>,
 }
 
 /// A parsed query; see the module docs.
@@ -104,6 +120,8 @@ pub(crate) struct Scratch {
 pub(crate) struct Pattern {
     /// Its terms (folded when case is ignored).
     terms: Vec<Vec<char>>,
+    /// The same as bytes, when they are all ASCII.
+    ascii: Option<Vec<Vec<u8>>>,
     case_sensitive: bool,
     /// What a path must contain: [`mask`] of every term.
     mask: u64,
@@ -150,6 +168,61 @@ fn bonus(prev: Class, cur: Class) -> i32 {
     }
 }
 
+/// A unit of text: an ASCII byte (the fast path) or a character.
+trait Unit: Copy + Eq {
+    fn class(self) -> Class;
+    /// The indexes of `needle` in `hay`, in order, into `out`.
+    fn find(hay: &[Self], needle: Self, out: &mut Vec<u32>);
+}
+
+/// The class of every ASCII character.
+const ASCII_CLASSES: [Class; 128] = {
+    let mut t = [Class::NonWord; 128];
+    let mut i = 0;
+    while i < 128 {
+        t[i] = match i as u8 {
+            b' ' | b'\t' => Class::White,
+            b'/' | b':' | b';' | b',' | b'|' => Class::Delimiter,
+            b'a'..=b'z' => Class::Lower,
+            b'A'..=b'Z' => Class::Upper,
+            b'0'..=b'9' => Class::Digit,
+            _ => Class::NonWord,
+        };
+        i += 1;
+    }
+    t
+};
+
+impl Unit for u8 {
+    fn class(self) -> Class {
+        ASCII_CLASSES.get(usize::from(self)).copied().unwrap_or(Class::NonWord)
+    }
+
+    fn find(hay: &[u8], needle: u8, out: &mut Vec<u32>) {
+        // Paths are short: a plain loop beats memchr's setup.
+        for (i, &b) in hay.iter().enumerate() {
+            if b == needle {
+                out.push(i as u32);
+            }
+        }
+    }
+}
+
+impl Unit for char {
+    fn class(self) -> Class {
+        class(self)
+    }
+
+    fn find(hay: &[char], needle: char, out: &mut Vec<u32>) {
+        out.extend(
+            hay.iter()
+                .enumerate()
+                .filter(|&(_, &c)| c == needle)
+                .map(|(i, _)| u32::try_from(i).unwrap_or(u32::MAX)),
+        );
+    }
+}
+
 impl Pattern {
     /// The pattern for `query` (see the module docs).
     pub(crate) fn new(query: &str) -> Pattern {
@@ -162,12 +235,19 @@ impl Pattern {
                     .collect()
             })
             .collect();
+        let ascii = terms.iter().flatten().all(char::is_ascii).then(|| {
+            terms
+                .iter()
+                .map(|t| t.iter().map(|&c| c as u8).collect())
+                .collect()
+        });
         let mask = terms
             .iter()
             .flatten()
             .fold(0, |m, &c| m | bit(fold(c)));
         Pattern {
             terms,
+            ascii,
             case_sensitive,
             mask,
         }
@@ -202,31 +282,48 @@ impl Pattern {
     }
 
     fn run(&self, text: &str, base: usize, s: &mut Scratch, positions: bool) -> Option<Match> {
-        s.text.clear();
-        s.text.extend(text.chars());
-        s.folded.clear();
-        if self.case_sensitive {
-            s.folded.extend_from_slice(&s.text);
-        } else {
-            s.folded.extend(s.text.iter().map(|&c| fold(c)));
-        }
-        let base = text.get(..base).map_or(0, |b| b.chars().count());
-        let len = i32::try_from(s.text.len()).unwrap_or(i32::MAX);
+        let len = i32::try_from(text.len()).unwrap_or(i32::MAX);
         let mut out = Match {
             score: -(len / LENGTH_DIVISOR),
             positions: Vec::new(),
         };
-        for t in 0..self.terms.len() {
-            let term = self.terms.get(t)?;
-            let (score, at) = best(term, base, s, positions)?;
-            out.score = out.score.saturating_add(score);
-            out.positions.extend(at);
+        let mut add = |found: (i32, Vec<u32>)| {
+            out.score = out.score.saturating_add(found.0);
+            out.positions.extend(found.1);
+        };
+        match &self.ascii {
+            Some(terms) if text.is_ascii() => {
+                // Bytes are characters.
+                let orig = text.as_bytes();
+                s.folded_bytes.clear();
+                s.folded_bytes.extend_from_slice(orig);
+                if !self.case_sensitive {
+                    s.folded_bytes.make_ascii_lowercase();
+                }
+                for term in terms {
+                    add(best(orig, &s.folded_bytes, term, base, &mut s.work, positions)?);
+                }
+            }
+            _ => {
+                s.chars.clear();
+                s.chars.extend(text.chars());
+                s.folded_chars.clear();
+                if self.case_sensitive {
+                    s.folded_chars.extend_from_slice(&s.chars);
+                } else {
+                    s.folded_chars.extend(s.chars.iter().map(|&c| fold(c)));
+                }
+                let base = text.get(..base).map_or(0, |b| b.chars().count());
+                for term in &self.terms {
+                    add(best(&s.chars, &s.folded_chars, term, base, &mut s.work, positions)?);
+                }
+            }
         }
         if positions {
-            // Character indexes to byte offsets.
             out.positions.sort_unstable();
             out.positions.dedup();
             if !text.is_ascii() {
+                // Character indexes to byte offsets.
                 let offsets: Vec<u32> = text
                     .char_indices()
                     .map(|(b, _)| u32::try_from(b).unwrap_or(u32::MAX))
@@ -240,112 +337,116 @@ impl Pattern {
     }
 }
 
-/// The best way `term` matches the text in `s` (base name from character
-/// `base`): its score and, with `positions`, the character indexes.
-fn best(term: &[char], base: usize, s: &mut Scratch, positions: bool) -> Option<(i32, Vec<u32>)> {
+/// The bonus for a match at `i` of `text`.
+fn bonus_at<T: Unit>(text: &[T], i: usize) -> i32 {
+    let prev = match i.checked_sub(1).and_then(|k| text.get(k)) {
+        Some(c) => c.class(),
+        None => Class::White,
+    };
+    bonus(prev, text.get(i).map_or(Class::Other, |c| c.class()))
+}
+
+/// The best way `term` matches `text` (`folded` as compared; base name
+/// from unit `base`): its score and, with `positions`, the indexes.
+///
+/// The dynamic program only has cells where a term character matches:
+/// row `j` holds the places where `term[j]` can end the best match of
+/// `term[..=j]`. A cell continues a run from the cell right before it in
+/// the row above, or follows the best cell further left over a gap (the
+/// gap's cost grows by [`GAP_EXTEND`] per character, so the best one is a
+/// running maximum of `score - GAP_EXTEND * pos`).
+fn best<T: Unit>(
+    text: &[T],
+    folded: &[T],
+    term: &[T],
+    base: usize,
+    w: &mut Work,
+    positions: bool,
+) -> Option<(i32, Vec<u32>)> {
     let (first, last) = (*term.first()?, *term.last()?);
-    let f = &s.folded;
     // The window: from the first place the term can start to the last
-    // place it can end; and it must be a subsequence at all.
-    let lo = f.iter().position(|&c| c == first)?;
-    let mut k = 0;
-    for &c in f.get(lo..)? {
-        if term.get(k) == Some(&c) {
-            k += 1;
-            if k == term.len() {
-                break;
-            }
-        }
-    }
-    if k < term.len() {
-        return None;
-    }
-    let hi = f.iter().rposition(|&c| c == last)?;
-    let w = hi + 1 - lo;
-    s.bonus.clear();
-    s.bonus.extend((lo..=hi).map(|i| {
-        let prev = if i == 0 {
-            Class::White
-        } else {
-            s.text.get(i - 1).map_or(Class::White, |&c| class(c))
-        };
-        bonus(prev, s.text.get(i).map_or(Class::Other, |&c| class(c)))
-    }));
-    s.prev.clear();
-    s.prev.resize(w, (NONE, 0));
-    s.cur.clear();
-    s.cur.resize(w, (NONE, 0));
-    if positions {
-        s.back.clear();
-        s.back.resize(w * term.len(), u32::MAX);
-    }
-    let gain = |i: usize| MATCH + if lo + i >= base { BONUS_BASENAME } else { 0 };
-    for (j, &pc) in term.iter().enumerate() {
-        // The best score arriving at `i` over a gap from the previous row,
-        // and where that came from.
-        let mut gap = (NONE, u32::MAX);
-        for i in 0..w {
-            if j > 0 && i >= 2 {
-                let from = s.prev.get(i - 2).map_or(NONE, |p| p.0);
-                let extended = gap.0.saturating_add(GAP_EXTEND);
-                let opened = from.saturating_add(GAP_START);
-                gap = if opened >= extended {
-                    (opened, u32::try_from(i - 2).unwrap_or(u32::MAX))
-                } else {
-                    (extended, gap.1)
-                };
-            }
-            let cell = &mut s.cur[i];
-            *cell = (NONE, 0);
-            if f.get(lo + i) != Some(&pc) {
-                continue;
-            }
-            let own = s.bonus.get(i).copied().unwrap_or(0);
-            let lone = if own == 0 { SCATTERED } else { own };
-            if j == 0 {
+    // place it can end.
+    let lo = folded.iter().position(|&c| c == first)?;
+    let hi = folded.iter().rposition(|&c| c == last)?;
+    let window = folded.get(lo..=hi)?;
+    let gain = |i: u32| MATCH + if i as usize >= base { BONUS_BASENAME } else { 0 };
+    let Work { found, cells, rows } = w;
+    cells.clear();
+    rows.clear();
+    for (j, &unit) in term.iter().enumerate() {
+        found.clear();
+        T::find(window, unit, found);
+        let start = cells.len();
+        rows.push(start);
+        if j == 0 {
+            for &r in found.iter() {
+                let i = r + lo as u32;
+                let own = bonus_at(text, i as usize);
                 let first = if own == 0 { SCATTERED } else { own * FIRST_MULTIPLIER };
-                *cell = (gain(i) + first, own);
-                continue;
+                cells.push(Cell {
+                    pos: i,
+                    score: gain(i) + first,
+                    run: own,
+                    back: u32::MAX,
+                });
             }
-            // A run: the character after the previous one.
+            continue;
+        }
+        let prev_start = rows.get(j - 1).copied().unwrap_or(0);
+        let mut k = prev_start;
+        // The best cell of the row above at least two places left, as
+        // `score - GAP_EXTEND * pos`, and which it is.
+        let mut gap = (NONE, u32::MAX);
+        for &r in found.iter() {
+            let i = r + lo as u32;
+            while let Some(c) = cells.get(k).filter(|c| k < start && c.pos + 2 <= i) {
+                let v = c.score - GAP_EXTEND * c.pos as i32;
+                if v > gap.0 {
+                    gap = (v, k as u32);
+                }
+                k += 1;
+            }
+            let own = bonus_at(text, i as usize);
             let mut choice = (NONE, 0, u32::MAX);
-            if let Some(&(p, run)) = i.checked_sub(1).and_then(|k| s.prev.get(k))
-                && p > NONE
-            {
-                let run = if own >= BONUS_BOUNDARY { own } else { run };
+            if let Some(c) = cells.get(k).filter(|c| k < start && c.pos + 1 == i) {
+                let run = if own >= BONUS_BOUNDARY { own } else { c.run };
                 let b = own.max(run).max(BONUS_CONSECUTIVE);
-                choice = (p + gain(i) + b, run, u32::try_from(i - 1).unwrap_or(u32::MAX));
+                choice = (c.score + gain(i) + b, run, k as u32);
             }
-            if gap.0 > NONE && gap.0 + gain(i) + lone > choice.0 {
-                choice = (gap.0 + gain(i) + lone, own, gap.1);
+            if gap.0 > NONE {
+                let lone = if own == 0 { SCATTERED } else { own };
+                let g = gap.0 + GAP_START + GAP_EXTEND * (i as i32 - 2) + gain(i) + lone;
+                if g > choice.0 {
+                    choice = (g, own, gap.1);
+                }
             }
-            *cell = (choice.0, choice.1);
-            if positions && let Some(b) = s.back.get_mut(j * w + i) {
-                *b = choice.2;
+            if choice.0 > NONE {
+                cells.push(Cell {
+                    pos: i,
+                    score: choice.0,
+                    run: choice.1,
+                    back: choice.2,
+                });
             }
         }
-        std::mem::swap(&mut s.prev, &mut s.cur);
+        if cells.len() == start {
+            return None;
+        }
     }
-    let (end, score) = s
-        .prev
+    let last_row = *rows.last()?;
+    let (end, cell) = cells
         .iter()
         .enumerate()
-        .max_by_key(|&(i, &(score, _))| (score, std::cmp::Reverse(i)))
-        .map(|(i, &(score, _))| (i, score))?;
-    if score <= NONE {
-        return None;
-    }
-    let prefix = f.get(base..).is_some_and(|b| b.starts_with(term));
-    let score = score + if prefix { BONUS_PREFIX } else { 0 };
+        .skip(last_row)
+        .max_by_key(|&(_, c)| (c.score, std::cmp::Reverse(c.pos)))?;
+    let prefix = folded.get(base..).is_some_and(|b| b.starts_with(term));
+    let score = cell.score + if prefix { BONUS_PREFIX } else { 0 };
     let mut at = Vec::new();
     if positions {
-        let mut i = end;
-        for j in (0..term.len()).rev() {
-            at.push(u32::try_from(lo + i).unwrap_or(u32::MAX));
-            let b = s.back.get(j * w + i).copied().unwrap_or(u32::MAX);
-            if j > 0 {
-                i = b as usize;
-            }
+        let mut k = end;
+        while let Some(c) = cells.get(k) {
+            at.push(c.pos);
+            k = c.back as usize;
         }
         at.reverse();
     }

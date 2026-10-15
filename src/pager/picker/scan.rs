@@ -608,3 +608,204 @@ fn path_of(bytes: &[u8]) -> Option<PathBuf> {
         std::str::from_utf8(bytes).ok().map(PathBuf::from)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A fresh directory with these files (a trailing `/` makes a
+    /// directory).
+    fn tree(name: &str, files: &[&str]) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("emde-scan-{}-{name}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        for f in files {
+            let p = dir.join(f);
+            if f.ends_with('/') {
+                fs::create_dir_all(&p).unwrap();
+            } else {
+                fs::create_dir_all(p.parent().unwrap()).unwrap();
+                fs::write(&p, "# x\n").unwrap();
+            }
+        }
+        canonical(&dir)
+    }
+
+    fn setup() -> Setup {
+        Setup {
+            options: PickerOptions::default(),
+            home: None,
+            recent: None,
+            git: false,
+        }
+    }
+
+    /// What a search of `dir` finds: the shown paths, in the order found.
+    fn search_in(dir: &Path, setup: &Setup, all: bool, current: Option<PathBuf>) -> Vec<Candidate> {
+        let mut scanner = Scanner::default();
+        let req = Request {
+            scan: 1,
+            dir: dir.to_path_buf(),
+            current,
+            all,
+        };
+        scanner.start(req, setup);
+        let batches = scanner.wait(Duration::from_secs(20));
+        assert!(!scanner.busy(), "the search ended");
+        assert!(batches.last().is_some_and(|b| b.done));
+        batches.into_iter().flat_map(|b| b.files).collect()
+    }
+
+    fn shown(found: &[Candidate]) -> Vec<&str> {
+        let mut v: Vec<&str> = found.iter().map(|c| &*c.shown).collect();
+        v.sort_unstable();
+        v
+    }
+
+    #[test]
+    fn markdown_is_recognised() {
+        let exts = PickerOptions::default().extensions;
+        for yes in ["a.md", "b.MD", "c.markdown", "d.mdx", "e.mkd", "README", "x/readme"] {
+            assert!(is_markdown(Path::new(yes), &exts), "{yes}");
+        }
+        for no in ["a.txt", "README.txt", "md", "a.md.bak", "Makefile"] {
+            assert!(!is_markdown(Path::new(no), &exts), "{no}");
+        }
+    }
+
+    #[test]
+    fn walks_skip_heavy_and_hidden_directories() {
+        let dir = tree(
+            "walk",
+            &[
+                "top.md",
+                "README",
+                "notes.txt",
+                "a/b/c/deep.md",
+                "a/b/c/d/too-deep.md",
+                "node_modules/x.md",
+                "target/y.md",
+                ".hidden/z.md",
+                ".dot.md",
+                "build/w.md",
+                "docs/guide.md",
+            ],
+        );
+        let found = search_in(&dir, &setup(), false, Some(dir.join("top.md")));
+        assert_eq!(
+            shown(&found),
+            ["README", "a/b/c/deep.md", "docs/guide.md"],
+            "the current document is left out"
+        );
+        let near: Vec<u8> = {
+            let mut v: Vec<_> = found.iter().map(|c| (&*c.shown, c.near)).collect();
+            v.sort_unstable();
+            v.into_iter().map(|(_, n)| n).collect()
+        };
+        assert_eq!(near, [2, 1, 1], "beside the document, below it");
+        // Every file, hidden ones too.
+        let mut s = setup();
+        s.options.show_hidden = true;
+        let found = search_in(&dir, &s, true, None);
+        assert!(shown(&found).contains(&"notes.txt"));
+        assert!(shown(&found).contains(&".hidden/z.md"));
+        assert!(!shown(&found).iter().any(|p| p.starts_with("node_modules")));
+        // At most max_files.
+        let mut s = setup();
+        s.options.max_files = 2;
+        assert_eq!(search_in(&dir, &s, true, None).len(), 2);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn symlinked_directories_are_not_followed() {
+        let dir = tree("links", &["a/one.md", "b/two.md"]);
+        std::os::unix::fs::symlink(&dir, dir.join("a/loop")).unwrap();
+        std::os::unix::fs::symlink(dir.join("b"), dir.join("b/self")).unwrap();
+        std::os::unix::fs::symlink(dir.join("a/one.md"), dir.join("link.md")).unwrap();
+        let mut s = setup();
+        s.options.roots = vec![dir.clone(), dir.join("a")];
+        let found = search_in(&dir, &s, false, None);
+        // `link.md` is `a/one.md`: found once, whichever came first.
+        assert_eq!(found.len(), 2, "{:?}", shown(&found));
+        assert!(shown(&found).contains(&"b/two.md"));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn recent_files_come_first_with_their_frecency() {
+        let dir = tree("recent", &["here.md", "elsewhere/far.md"]);
+        let store = dir.join("state/recent");
+        recent::record(&store, &dir.join("elsewhere/far.md"));
+        recent::record(&store, &dir.join("gone.md"));
+        let mut s = setup();
+        s.recent = Some(store);
+        s.home = Some(dir.clone());
+        let found = search_in(&dir.join("elsewhere"), &s, false, None);
+        assert_eq!(&*found[0].shown, "far.md");
+        assert!(found[0].frecency > 0);
+        assert!(found.iter().all(|c| !c.shown.contains("gone")), "files that are gone");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn git_repositories_are_listed_by_git() {
+        let ok = Command::new("git").arg("--version").output().is_ok_and(|o| o.status.success());
+        if !ok {
+            return; // no git here
+        }
+        let dir = tree(
+            "git",
+            &["docs/guide.md", "README.md", "ignored/x.md", "untracked.md", "code.rs"],
+        );
+        fs::write(dir.join(".gitignore"), "ignored/\n").unwrap();
+        let git = |args: &[&str]| {
+            Command::new("git")
+                .arg("-C")
+                .arg(&dir)
+                .args(args)
+                .env("GIT_CONFIG_GLOBAL", "/dev/null")
+                .env("GIT_CONFIG_NOSYSTEM", "1")
+                .output()
+                .unwrap()
+        };
+        if !git(&["init", "-q"]).status.success() {
+            return;
+        }
+        git(&["add", "docs/guide.md", "README.md", ".gitignore", "code.rs"]);
+        let mut s = setup();
+        s.git = true;
+        let found = search_in(&dir.join("docs"), &s, false, None);
+        assert_eq!(
+            shown(&found),
+            ["README.md", "docs/guide.md", "untracked.md"],
+            "relative to the repository, ignored files left out"
+        );
+        let guide = found.iter().find(|c| &*c.shown == "docs/guide.md").unwrap();
+        assert_eq!(guide.base, 5);
+        assert_eq!(guide.near, 2);
+        // Outside a repository: the directory is walked instead.
+        let plain = tree("no-git", &["a.md"]);
+        assert_eq!(shown(&search_in(&plain, &s, false, None)), ["a.md"]);
+        let _ = fs::remove_dir_all(&dir);
+        let _ = fs::remove_dir_all(&plain);
+    }
+
+    #[test]
+    fn a_stopped_search_ends() {
+        let dir = tree("stop", &["a.md"]);
+        let mut scanner = Scanner::default();
+        let req = Request {
+            scan: 3,
+            dir: dir.clone(),
+            current: None,
+            all: false,
+        };
+        scanner.start(req, &setup());
+        scanner.stop();
+        assert!(!scanner.busy());
+        assert!(scanner.take().is_empty());
+        let _ = fs::remove_dir_all(&dir);
+    }
+}

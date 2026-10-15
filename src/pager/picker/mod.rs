@@ -102,6 +102,10 @@ pub(crate) struct Picker {
     pub(crate) candidates: Vec<Candidate>,
     /// How many candidates match (more than are kept as hits).
     pub(crate) matched: usize,
+    /// The query the candidates were last ranked for, and the indexes of
+    /// those that matched it (a longer query only looks at those).
+    pub(crate) ranked: Option<String>,
+    pub(crate) matching: Vec<u32>,
     /// Path mode's directory.
     pub(crate) listing: Option<Listing>,
     /// Why path mode lists nothing.
@@ -222,6 +226,8 @@ pub(crate) fn open(state: &mut State, query: String) -> Vec<Effect> {
         scanning: false,
         candidates: Vec::new(),
         matched: 0,
+        ranked: None,
+        matching: Vec::new(),
         listing: None,
         problem: None,
         hits: Vec::new(),
@@ -293,6 +299,8 @@ fn refresh(state: &mut State) -> Vec<Effect> {
         p.scanning = false;
         p.scan = 0;
         p.candidates.clear();
+        p.ranked = None;
+        p.matching.clear();
         let (part, _) = paths::split(&p.query);
         match paths::resolve(part, &p.dir, home.as_deref()) {
             Ok(dir) => {
@@ -315,6 +323,8 @@ fn refresh(state: &mut State) -> Vec<Effect> {
         if p.scan == 0 {
             started = true;
             p.candidates.clear();
+            p.ranked = None;
+            p.matching.clear();
             p.scan = next_scan;
             p.scanning = true;
             out.push(job(Job::Scan(scan::Request {
@@ -387,51 +397,98 @@ fn rank_of(c: &Candidate, index: usize, score: i32) -> Rank {
     }
 }
 
-/// The best [`MAX_HITS`] of `kept` (hits already ranked) and the
-/// candidates `fresh` (indexes into `cands`) that match `pattern`, best
-/// first, with the matched positions; and how many of `fresh` matched.
-fn best_of(
-    pattern: &Pattern,
-    cands: &[Candidate],
-    kept: Vec<Hit>,
-    fresh: std::ops::Range<usize>,
-) -> (Vec<Hit>, usize) {
-    let mut scratch = Scratch::default();
-    let empty = pattern.is_empty();
-    let mut heap: BinaryHeap<Reverse<(Rank, Option<Vec<u32>>)>> = BinaryHeap::new();
-    let push = |heap: &mut BinaryHeap<_>, item| {
-        heap.push(Reverse(item));
-        if heap.len() > MAX_HITS {
-            heap.pop();
-        }
-    };
-    for h in kept {
-        if let Some(c) = cands.get(h.index) {
-            push(&mut heap, (rank_of(c, h.index, h.score), Some(h.positions)));
-        }
+/// The best [`MAX_HITS`] of what is pushed (a bounded min-heap).
+struct Top<T: Ord>(BinaryHeap<Reverse<T>>);
+
+impl<T: Ord> Top<T> {
+    fn new() -> Top<T> {
+        Top(BinaryHeap::new())
     }
-    let mut matched = 0;
-    for i in fresh {
-        let Some(c) = cands.get(i) else {
+
+    fn push(&mut self, item: T) {
+        if self.0.len() >= MAX_HITS {
+            // Full: only better ones get in.
+            match self.0.peek() {
+                Some(Reverse(worst)) if item > *worst => {
+                    self.0.pop();
+                }
+                _ => return,
+            }
+        }
+        self.0.push(Reverse(item));
+    }
+
+    /// Best first.
+    fn into_sorted(self) -> impl Iterator<Item = T> {
+        self.0.into_sorted_vec().into_iter().map(|Reverse(t)| t)
+    }
+}
+
+/// Candidates ranked on one thread at a time.
+const CHUNK: usize = 8192;
+
+/// The best ranks among candidates `fresh` (indexes into `cands`) that
+/// match `pattern`, and the indexes of all that match.
+fn score_chunk(pattern: &Pattern, cands: &[Candidate], fresh: &[u32]) -> (Vec<Rank>, Vec<u32>) {
+    let mut scratch = Scratch::default();
+    let mut top = Top::new();
+    let mut matched = Vec::new();
+    for &i in fresh {
+        let Some(c) = cands.get(i as usize) else {
             continue;
         };
-        let score = if empty {
+        let score = if pattern.is_empty() {
             Some(0)
         } else {
             pattern.score(&c.shown, c.mask, c.base as usize, &mut scratch)
         };
         if let Some(score) = score {
-            matched += 1;
-            push(&mut heap, (rank_of(c, i, score), None));
+            matched.push(i);
+            top.push(rank_of(c, i as usize, score));
         }
     }
-    let hits = heap
-        .into_sorted_vec()
-        .into_iter()
-        .map(|Reverse((rank, positions))| {
+    (top.into_sorted().collect(), matched)
+}
+
+/// The best [`MAX_HITS`] of `kept` (hits already ranked) and the
+/// candidates `fresh` (indexes into `cands`, ascending) that match
+/// `pattern`, best first, with the matched positions; and the indexes of
+/// `fresh` that match. Big sets are ranked on several threads.
+fn best_of(
+    pattern: &Pattern,
+    cands: &[Candidate],
+    kept: Vec<Hit>,
+    fresh: &[u32],
+) -> (Vec<Hit>, Vec<u32>) {
+    let chunks: Vec<&[u32]> = fresh.chunks(CHUNK).collect();
+    let scored: Vec<(Vec<Rank>, Vec<u32>)> = if chunks.len() > 1 {
+        crate::parallel::map(&chunks, usize::MAX, |c| score_chunk(pattern, cands, c))
+            .into_iter()
+            .map(Option::unwrap_or_default)
+            .collect()
+    } else {
+        chunks.iter().map(|c| score_chunk(pattern, cands, c)).collect()
+    };
+    let mut top = Top::new();
+    for h in kept {
+        if let Some(c) = cands.get(h.index) {
+            top.push((rank_of(c, h.index, h.score), Some(h.positions)));
+        }
+    }
+    let mut matched = Vec::new();
+    for (ranks, m) in scored {
+        for r in ranks {
+            top.push((r, None));
+        }
+        matched.extend(m);
+    }
+    let mut scratch = Scratch::default();
+    let hits = top
+        .into_sorted()
+        .map(|(rank, positions)| {
             let index = rank.first.0;
             let positions = positions.unwrap_or_else(|| {
-                if empty {
+                if pattern.is_empty() {
                     return Vec::new();
                 }
                 cands
@@ -450,26 +507,43 @@ fn best_of(
     (hits, matched)
 }
 
-/// Fuzzy mode: rank every candidate for the query.
+/// Fuzzy mode: rank the candidates for the query. When it only adds to
+/// the query ranked last, only the candidates that matched that can match
+/// it.
 fn rerank(p: &mut Picker) {
     let pattern = Pattern::new(&p.query);
-    let (hits, matched) = best_of(&pattern, &p.candidates, Vec::new(), 0..p.candidates.len());
+    let narrower = p.ranked.as_ref().is_some_and(|q| p.query.starts_with(q.as_str()));
+    let all: Vec<u32>;
+    let fresh: &[u32] = if narrower {
+        &p.matching
+    } else {
+        all = (0..u32::try_from(p.candidates.len()).unwrap_or(u32::MAX)).collect();
+        &all
+    };
+    let (hits, matching) = best_of(&pattern, &p.candidates, Vec::new(), fresh);
     p.hits = hits;
-    p.matched = matched;
+    p.matched = matching.len();
+    p.matching = matching;
+    p.ranked = Some(p.query.clone());
 }
 
 /// More candidates came in: rank only them against the hits kept.
 fn absorb(p: &mut Picker, files: Vec<Candidate>) {
-    let from = p.candidates.len();
+    let from = u32::try_from(p.candidates.len()).unwrap_or(u32::MAX);
     p.candidates.extend(files);
+    let to = u32::try_from(p.candidates.len()).unwrap_or(u32::MAX);
     let chosen = (p.selected > 0)
         .then(|| p.current().map(|h| h.index))
         .flatten();
     let pattern = Pattern::new(&p.query);
     let kept = std::mem::take(&mut p.hits);
-    let (hits, matched) = best_of(&pattern, &p.candidates, kept, from..p.candidates.len());
+    let fresh: Vec<u32> = (from..to).collect();
+    let (hits, matching) = best_of(&pattern, &p.candidates, kept, &fresh);
     p.hits = hits;
-    p.matched += matched;
+    p.matched += matching.len();
+    if p.ranked.as_deref() == Some(p.query.as_str()) {
+        p.matching.extend(matching);
+    }
     // The reader's choice stays chosen as results come in.
     p.selected = chosen
         .and_then(|c| p.hits.iter().position(|h| h.index == c))
@@ -925,4 +999,94 @@ pub(crate) fn read_preview(path: &Path, exts: &[String], parse: &crate::parse::P
         preview.lines = text.lines().take(200).map(|l| (0, l.to_owned())).collect();
     }
     preview
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `n` made-up paths of a big tree of notes and code.
+    fn paths(n: usize) -> Vec<PathBuf> {
+        let words = [
+            "alpha", "beta", "gamma", "notes", "src", "docs", "results", "protocol", "model",
+            "atom", "encoder", "review", "data", "README", "layout", "pager", "update", "theme",
+        ];
+        let mut seed = 0x2545_f491_4f6c_dd1du64;
+        let mut next = |m: usize| {
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            (seed % m as u64) as usize
+        };
+        (0..n)
+            .map(|i| {
+                let depth = 1 + next(5);
+                let mut p = PathBuf::from("/repo");
+                for _ in 0..depth {
+                    p.push(format!("{}_{}", words[next(words.len())], next(40)));
+                }
+                p.push(format!(
+                    "{}_{}_{i}.{}",
+                    words[next(words.len())],
+                    words[next(words.len())],
+                    ["md", "rs", "txt"][next(3)]
+                ));
+                p
+            })
+            .collect()
+    }
+
+    fn candidates(n: usize) -> Vec<Candidate> {
+        let display = scan::Display {
+            base: PathBuf::from("/repo"),
+            repo: Some(PathBuf::from("/repo")),
+            dir: PathBuf::from("/repo/docs"),
+            home: None,
+        };
+        paths(n)
+            .into_iter()
+            .map(|p| display.candidate(p, 0))
+            .collect()
+    }
+
+    #[test]
+    fn the_best_hits_are_kept_in_order() {
+        let cands = candidates(5_000);
+        let pattern = Pattern::new("notes md");
+        let all: Vec<u32> = (0..5_000).collect();
+        let (hits, matched) = best_of(&pattern, &cands, Vec::new(), &all);
+        assert_eq!(hits.len(), MAX_HITS.min(matched.len()));
+        assert!(hits.windows(2).all(|w| w[0].score >= w[1].score));
+        // Ranking in two halves keeps the same best hits.
+        let (first, m1) = best_of(&pattern, &cands, Vec::new(), &all[..2_500]);
+        let (both, m2) = best_of(&pattern, &cands, first, &all[2_500..]);
+        assert_eq!([m1, m2].concat(), matched);
+        let ids = |h: &[Hit]| h.iter().map(|h| h.index).collect::<Vec<_>>();
+        assert_eq!(ids(&both), ids(&hits));
+        assert!(hits.iter().all(|h| !h.positions.is_empty()));
+    }
+
+    /// `cargo test --release --lib -- --ignored --nocapture picker_speed`
+    #[test]
+    #[ignore = "a benchmark: run in release with --nocapture"]
+    fn picker_speed() {
+        let cands = candidates(100_000);
+        let all: Vec<u32> = (0..100_000).collect();
+        println!("on {} threads at most", crate::parallel::cpus());
+        for q in ["a", "md", "notes", "aamr", "pager upd", "zzzz", "README", "enc rev md"] {
+            let pattern = Pattern::new(q);
+            let runs = 5;
+            let start = std::time::Instant::now();
+            let mut matched = 0;
+            for _ in 0..runs {
+                matched = best_of(&pattern, &cands, Vec::new(), &all).1.len();
+            }
+            let each = start.elapsed() / runs;
+            // One thread, as on a single CPU.
+            let start = std::time::Instant::now();
+            let _ = score_chunk(&pattern, &cands, &all);
+            let one = start.elapsed();
+            println!("{q:>12}: {matched:>6} of 100000 match, ranked in {each:?} ({one:?} on one thread)");
+        }
+    }
 }
