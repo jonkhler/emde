@@ -991,7 +991,8 @@ fn command_listed(
             return Vec::new();
         }
     };
-    let head_len = input.len() - arg.len();
+    // Where the argument starts (it is a part of `input`).
+    let head_len = (arg.as_ptr() as usize).saturating_sub(input.as_ptr() as usize);
     let name = match paths::complete(&entries, leaf, hidden) {
         Completion::Unique(name, dir) => paths::typed_name(&name, dir).into_owned(),
         Completion::Longer(prefix) => prefix,
@@ -1004,7 +1005,8 @@ fn command_listed(
             return Vec::new();
         }
     };
-    let completed = format!("{}{}", &input[..head_len], paths::join(part, &name));
+    let head = input.get(..head_len).unwrap_or_default();
+    let completed = format!("{head}{}", paths::join(part, &name));
     *input = completed;
     Vec::new()
 }

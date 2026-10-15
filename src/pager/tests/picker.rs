@@ -474,6 +474,16 @@ fn colon_e_completes_with_tab() {
     assert!(matches!(&s.mode, Mode::Command(i) if i == "e sub/"));
     listed(&mut s, vec![entry("/virtual", "sub", true)]);
     assert!(matches!(&s.mode, Mode::Command(i) if i == "e sub/"));
+    // Spaces around the path.
+    key(&mut s, Key::ctrl('u'));
+    keys(&mut s, " e  summ ");
+    code(&mut s, KeyCode::Tab);
+    listed(&mut s, vec![entry("/virtual", "summary.md", false)]);
+    assert!(
+        matches!(&s.mode, Mode::Command(i) if i == " e  summary.md"),
+        "{:?}",
+        s.mode
+    );
     // Not an :e command: Tab does nothing.
     key(&mut s, Key::ctrl('u'));
     keys(&mut s, "n");
