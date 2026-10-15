@@ -1,0 +1,10 @@
+---
+source: src/term/doctor.rs
+expression: "Scenario::mosh().report()"
+---
+ terminal  tmux 3.4 → xterm-256color, 214×54, SSH   colour 256 colours (tmux client without RGB, xterm-256color)   background dark (tmux OSC 11)
+ links     OSC 8 ✗ (tmux client without hyperlinks)   underline curly ✗ (tmux client without usstyle)   images blocks(half) — kitty/iterm ✗ passthrough off · sixel ✗ client lacks sixel
+ probe     tmux answered in 2 ms   cell size unknown (client cell 0x0)
+ warn      tmux's client reports no 24-bit colour: images and colours are rounded to 256 (likely mosh or an older terminal); for full colour use SSH, or `set -as terminal-features ',xterm-256color:RGB'` if your terminal supports it
+ warn      images are block characters: tmux's client has no way to show pixels (no RGB for kitty placeholders, no sixel); likely mosh, which carries text only: use SSH for pixels
+ warn      links are not clickable: tmux's client has no hyperlinks feature (likely mosh, which drops them); `set -as terminal-features ',xterm-256color:hyperlinks'` if your terminal shows OSC 8 links

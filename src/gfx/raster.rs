@@ -30,8 +30,8 @@
 //!
 //! At 256 and 16 colours, with `dither` on (`images.dither`), the
 //! sub-pixels are dithered to the palette before the cells are made
-//! (ordered, with an 8×8 Bayer matrix anchored to the image: see
-//! [`super::dither`]), so gradients keep their steps fine and photographs
+//! (ordered, with an 8×8 Bayer matrix anchored to the image, in the
+//! private `gfx::dither` module), so gradients keep their steps fine and photographs
 //! their shading; the two-colour split then works on palette colours. At
 //! 24-bit colour nothing is dithered.
 //!
@@ -975,9 +975,9 @@ mod quality {
         /// Mean OKLab distance once both are blurred over 4×4 sub-pixels
         /// (in linear light): the colour a reader sees from a little away.
         seen: f32,
-        /// Banding: the mean over rows of the largest step between
-        /// neighbouring sub-pixels, less the picture's own, once both are
-        /// blurred over 8×8 (the dither pattern's period, so its texture
+        /// Banding: how unevenly the shading steps from one sub-pixel to
+        /// the next compared with the picture ([`uneven_steps`]), once both
+        /// are blurred over 8×8 (the dither pattern's period, so its texture
         /// averages out and only steps in the shading are left).
         banding: f32,
     }
@@ -1052,24 +1052,31 @@ mod quality {
         (width, out)
     }
 
-    /// A `size × size` box blur (clipped at the edges).
+    /// A `size × size` box blur (clipped at the edges), one axis at a time.
     fn blur(width: usize, px: &[[f32; 3]], size: usize) -> Vec<[f32; 3]> {
         let height = px.len() / width;
         let back = (size - 1) / 2;
+        let window = |i: usize, len: usize| i.saturating_sub(back)..(i + size - back).min(len);
+        let mean = |values: &mut dyn Iterator<Item = [f32; 3]>| {
+            let (mut sum, mut n) = ([0.0f32; 3], 0.0);
+            for v in values {
+                for (s, v) in sum.iter_mut().zip(v) {
+                    *s += v;
+                }
+                n += 1.0;
+            }
+            sum.map(|v| v / n)
+        };
+        let mut across = vec![[0.0; 3]; px.len()];
+        for y in 0..height {
+            for x in 0..width {
+                across[y * width + x] = mean(&mut window(x, width).map(|xx| px[y * width + xx]));
+            }
+        }
         let mut out = vec![[0.0; 3]; px.len()];
         for y in 0..height {
             for x in 0..width {
-                let mut sum = [0.0; 3];
-                let mut n = 0.0;
-                for yy in y.saturating_sub(back)..(y + size - back).min(height) {
-                    for xx in x.saturating_sub(back)..(x + size - back).min(width) {
-                        for (s, v) in sum.iter_mut().zip(px[yy * width + xx]) {
-                            *s += v;
-                        }
-                        n += 1.0;
-                    }
-                }
-                out[y * width + x] = sum.map(|v| v / n);
+                out[y * width + x] = mean(&mut window(y, height).map(|yy| across[yy * width + x]));
             }
         }
         out
@@ -1079,30 +1086,38 @@ mod quality {
         linear_to_oklab(r, g, b)
     }
 
-    fn mean_distance(a: &[[f32; 3]], b: &[[f32; 3]]) -> f32 {
-        let total: f32 = a
-            .iter()
-            .zip(b)
-            .map(|(&x, &y)| lab(x).dist2(lab(y)).sqrt())
-            .sum();
+    fn labs(px: &[[f32; 3]]) -> Vec<Oklab> {
+        px.iter().copied().map(lab).collect()
+    }
+
+    fn mean_distance(a: &[Oklab], b: &[Oklab]) -> f32 {
+        let total: f32 = a.iter().zip(b).map(|(x, y)| x.dist2(*y).sqrt()).sum();
         total / a.len() as f32
     }
 
-    /// The mean over rows of the largest step between neighbours.
-    fn steps(width: usize, px: &[[f32; 3]]) -> f32 {
-        let rows: Vec<f32> = px
-            .chunks(width)
-            .map(|row| {
-                row.windows(2)
-                    .map(|w| lab(w[0]).dist2(lab(w[1])).sqrt())
-                    .fold(0.0, f32::max)
-            })
-            .collect();
-        rows.iter().sum::<f32>() / rows.len() as f32
+    /// How unevenly `got` changes along its rows where `want` changes
+    /// smoothly: the RMS difference between their steps from one sub-pixel
+    /// to the next (OKLab distances). Bands are flat runs and sudden jumps,
+    /// so they score high; following the picture's own steps scores 0.
+    fn uneven_steps(width: usize, got: &[Oklab], want: &[Oklab]) -> f32 {
+        let steps = |px: &[Oklab]| -> Vec<f32> {
+            px.chunks(width)
+                .flat_map(|row| row.windows(2).map(|w| w[0].dist2(w[1]).sqrt()))
+                .collect()
+        };
+        let (got, want) = (steps(got), steps(want));
+        let sum: f32 = got.iter().zip(&want).map(|(g, w)| (g - w) * (g - w)).sum();
+        (sum / got.len().max(1) as f32).sqrt()
     }
 
-    fn quality(img: &Rgba, set: BlockGlyphSet, depth: ColorDepth, dither: bool) -> Quality {
-        let (cols, rows) = (100u16, 40u16);
+    /// The quality of `img` as `cols × rows` cells.
+    fn quality(
+        img: &Rgba,
+        (cols, rows): (u16, u16),
+        set: BlockGlyphSet,
+        depth: ColorDepth,
+        dither: bool,
+    ) -> Quality {
         let (sx, sy) = glyphs::grid(set);
         let grid = resample::resample(
             img,
@@ -1119,12 +1134,12 @@ mod quality {
             .collect();
         let raster = rasterize(img, cols, rows, set, None, depth, dither);
         let (width, got) = subpixels_of(&raster, set);
-        let (seen_ref, seen_got) = (blur(width, &reference, 4), blur(width, &got, 4));
-        let (far_ref, far_got) = (blur(width, &reference, 8), blur(width, &got, 8));
+        let seen = |px: &[[f32; 3]]| labs(&blur(width, px, 4));
+        let far = |px: &[[f32; 3]]| labs(&blur(width, px, 8));
         Quality {
-            pixel: mean_distance(&reference, &got),
-            seen: mean_distance(&seen_ref, &seen_got),
-            banding: steps(width, &far_got) - steps(width, &far_ref),
+            pixel: mean_distance(&labs(&reference), &labs(&got)),
+            seen: mean_distance(&seen(&reference), &seen(&got)),
+            banding: uneven_steps(width, &far(&got), &far(&reference)),
         }
     }
 
@@ -1133,8 +1148,9 @@ mod quality {
         for (name, img) in [("gradient", gradient()), ("photo", photo())] {
             for depth in [ColorDepth::Ansi256, ColorDepth::Ansi16] {
                 for set in [BlockGlyphSet::Half, BlockGlyphSet::Octant] {
-                    let nearest = quality(&img, set, depth, false);
-                    let dithered = quality(&img, set, depth, true);
+                    // Smaller than the report's, for debug builds.
+                    let nearest = quality(&img, (80, 32), set, depth, false);
+                    let dithered = quality(&img, (80, 32), set, depth, true);
                     let what = format!("{name} {depth:?} {set:?}: {nearest:?} → {dithered:?}");
                     assert!(dithered.seen < nearest.seen * 0.7, "{what}");
                     // At 16 colours a gradient still steps where the pair of
@@ -1179,8 +1195,8 @@ mod quality {
                     BlockGlyphSet::Quadrant,
                     BlockGlyphSet::Octant,
                 ] {
-                    let a = quality(&img, set, depth, false);
-                    let b = quality(&img, set, depth, true);
+                    let a = quality(&img, (100, 40), set, depth, false);
+                    let b = quality(&img, (100, 40), set, depth, true);
                     eprintln!(
                         "{name:<9} {depth:<10?} {set:<8?} {:>14.4} {:>6.4} {:>8.4} {:>16.4} {:>6.4} {:>8.4}",
                         a.pixel, a.seen, a.banding, b.pixel, b.seen, b.banding

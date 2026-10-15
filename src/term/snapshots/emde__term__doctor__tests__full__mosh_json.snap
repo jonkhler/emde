@@ -1,0 +1,114 @@
+---
+source: src/term/doctor.rs
+expression: "Scenario::mosh().json()"
+---
+{
+  "terminal": {
+    "identity": null,
+    "tty": true,
+    "tmux": true,
+    "ssh": true,
+    "size": [214, 54],
+    "cell_px": null
+  },
+  "color": "256",
+  "hyperlinks": false,
+  "styled_underline": false,
+  "sync": true,
+  "background": {
+    "rgb": "#1e1e2e",
+    "variant": "dark"
+  },
+  "graphics": "blocks",
+  "block_glyphs": "half",
+  "tmux": {
+    "version": "3.4",
+    "client_termtype": "",
+    "client_termname": "xterm-256color",
+    "features": ["bpaste", "ccolour", "clipboard", "cstyle", "focus", "title"],
+    "cell": null,
+    "passthrough": "off",
+    "set_clipboard": "external"
+  },
+  "probe": {
+    "status": "complete",
+    "elapsed_us": 2000,
+    "wrapped": false,
+    "replies": {
+      "kitty_ok": false,
+      "outer_kitty_ok": false,
+      "xtversion": "tmux 3.4",
+      "cell_px": [16, 32],
+      "text_area_px": [3424, 1728],
+      "size_cells": [214, 54],
+      "background": "#1e1e2e",
+      "da1": [1, 2, 4],
+      "outer_dsr_seen": false,
+      "tmux_own_da1_sixel": true
+    }
+  },
+  "reasons": [
+    {
+      "topic": "color",
+      "detail": "in tmux"
+    },
+    {
+      "topic": "hyperlinks",
+      "detail": "tmux 3.4 ≥ 3.4"
+    },
+    {
+      "topic": "underline",
+      "detail": "in tmux (it adapts them per client)"
+    },
+    {
+      "topic": "tmux",
+      "detail": "tmux 3.4, passthrough off, client cell 0x0"
+    },
+    {
+      "topic": "ssh",
+      "detail": "SSH_CONNECTION"
+    },
+    {
+      "topic": "terminal",
+      "detail": "no client_termtype"
+    },
+    {
+      "topic": "background",
+      "detail": "tmux OSC 11"
+    },
+    {
+      "topic": "cell",
+      "detail": "client cell 0x0"
+    },
+    {
+      "topic": "color",
+      "detail": "tmux client without RGB, xterm-256color"
+    },
+    {
+      "topic": "hyperlinks",
+      "detail": "tmux client without hyperlinks"
+    },
+    {
+      "topic": "underline",
+      "detail": "tmux client without usstyle"
+    },
+    {
+      "topic": "graphics",
+      "detail": "kitty/iterm ✗ passthrough off · sixel ✗ client lacks sixel"
+    },
+    {
+      "topic": "blocks",
+      "detail": "blocks = half"
+    }
+  ],
+  "warnings": ["tmux's client reports no 24-bit colour: images and colours are rounded to 256 (likely mosh or an older terminal); for full colour use SSH, or `set -as terminal-features ',xterm-256color:RGB'` if your terminal supports it", "images are block characters: tmux's client has no way to show pixels (no RGB for kitty placeholders, no sixel); likely mosh, which carries text only: use SSH for pixels", "links are not clickable: tmux's client has no hyperlinks feature (likely mosh, which drops them); `set -as terminal-features ',xterm-256color:hyperlinks'` if your terminal shows OSC 8 links"],
+  "tips": [],
+  "env": {
+    "COLUMNS": "214",
+    "SSH_CONNECTION": "(set)",
+    "TERM": "tmux-256color",
+    "TERM_PROGRAM": "tmux",
+    "TERM_PROGRAM_VERSION": "3.4",
+    "TMUX": "/tmp/tmux-1001/default,443340,2"
+  }
+}

@@ -484,8 +484,12 @@ block images elsewhere. `NO_COLOR` turns colours off (the `mono` theme);
   does not copy it from the terminal you attach from. With
   `TERM=tmux-256color`, programs then think they have 256 colours. emde
   knows that tmux converts colours for each client and uses 24-bit colour
-  inside tmux anyway. If colours look wrong in tmux, tell tmux your
-  terminal has 24-bit colour: `set -as terminal-features ',xterm-256color:RGB'`.
+  inside tmux anyway. For documents with images it also asks tmux what the
+  attached terminal can show: when tmux reports no 24-bit colour for it,
+  images are drawn in the 256 (or 16) colours it has, dithered
+  (`images.dither`). If colours
+  look wrong in tmux, tell tmux your terminal has 24-bit colour:
+  `set -as terminal-features ',xterm-256color:RGB'`.
 - Copying (`y` in the pager) uses OSC 52. With tmux's default
   `set-clipboard external`, tmux ignores OSC 52 from programs, so emde puts
   the URL into a tmux buffer with `tmux load-buffer -w`, which also passes
@@ -493,6 +497,12 @@ block images elsewhere. `NO_COLOR` turns colours off (the `mono` theme);
   through directly. Either way the outer terminal has to allow clipboard
   access (in iTerm2: Settings → General → Selection → *Applications in
   terminal may access clipboard*).
+
+**mosh.** mosh carries text only: images over mosh are block characters,
+never pixels, and their colours depend on how many mosh passes on
+(`mosh-server -c 256` gives 256, which emde dithers). Inside tmux, the
+client then reports no 24-bit colour and no links, and `emde --doctor`
+says so. Use SSH for pixels and full colour.
 
 **iTerm2.** Math uses bracket pieces (`⎛ ⎜ ⎝`, `⌠ ⎮ ⌡`), and sextant and
 octant images use characters from Unicode's legacy computing blocks, which
@@ -515,6 +525,7 @@ more out of the terminal. In iTerm2 → SSH → tmux 3.4 it says:
  terminal  tmux 3.4 → iTerm2 3.6.9, 214×54, SSH   colour truecolor (in tmux)   background dark (tmux OSC 11)
  links     OSC 8 ✓   underline curly ✓   images blocks(half) — kitty/iterm ✗ passthrough off · sixel ✗ client cell 0x0
  probe     tmux answered in 2 ms   cell size unknown (client cell 0x0)
+ warn      images are block characters: tmux's allow-passthrough is off
  tip       `set -g allow-passthrough on` → kitty Unicode placeholders via iTerm2: real pixels that scroll with the text
 ```
 
@@ -524,6 +535,9 @@ more out of the terminal. In iTerm2 → SSH → tmux 3.4 it says:
   answers.
 - emde caches the terminal's answers for a session when asking was slow
   (over SSH); `--reprobe` asks again, for example after changing a setting.
+- Images look posterised, or `warn` says tmux's client has no 24-bit
+  colour: likely mosh (see the mosh tip); with a terminal that has 24-bit
+  colour, tell tmux so with `terminal-features`.
 - Wrong colours or a light theme on a dark background: set
   `theme.background` (`--background dark`), or `--color 256` for terminals
   that claim more colours than they have.

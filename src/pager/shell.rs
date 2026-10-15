@@ -181,6 +181,10 @@ pub(crate) struct Shell<'t, T: Terminal> {
     tmux: Option<TmuxInfo>,
     /// Whether tmux was asked already (it is asked once).
     tmux_asked: bool,
+    /// Why block images have fewer colours than they could (a tmux client
+    /// without `RGB`), said once in the status bar the first time a block
+    /// image is on screen; taken when said.
+    image_note: Option<String>,
     open: OpenCommand,
     ctx: Ctx,
     cfg: RenderConfig,
@@ -317,6 +321,7 @@ impl<'t, T: Terminal> Shell<'t, T> {
         }
         let ctx = Ctx::new(&theme, &caps);
         let cfg = RenderConfig::from_caps(&caps);
+        let image_note = crate::term::doctor::image_colour_note(&caps, tmux.as_ref());
         Shell {
             term: Guard { term },
             state,
@@ -330,6 +335,7 @@ impl<'t, T: Terminal> Shell<'t, T> {
             env,
             tmux_asked: tmux.is_some(),
             tmux,
+            image_note,
             open: pager.open,
             ctx,
             cfg,
@@ -760,7 +766,27 @@ impl<'t, T: Terminal> Shell<'t, T> {
         if let Some(cleanup) = self.images.cleanup() {
             self.term.term.set_cleanup(cleanup);
         }
+        if self.say_image_note() {
+            self.dirty = true;
+            return self.paint();
+        }
         Ok(())
+    }
+
+    /// The first time a block image is on screen, with no other message
+    /// showing: say why it has fewer colours (once); whether it was said.
+    fn say_image_note(&mut self) -> bool {
+        if self.image_note.is_none() || self.state.message().is_some() || !self.images.cells_shown()
+        {
+            return false;
+        }
+        match self.image_note.take() {
+            Some(note) => {
+                self.state.say(note);
+                true
+            }
+            None => false,
+        }
     }
 
     /// Read a document for the state (or switch to it if it is in memory).

@@ -448,12 +448,12 @@ pub fn tmux_client_depth(tmux: &TmuxInfo) -> Option<(ColorDepth, String)> {
         if tmux.has_feature("256") || term.contains("256color") || term.contains("256colour") {
             (
                 ColorDepth::Ansi256,
-                format!("tmux client without RGB ({})", or_unknown(term)),
+                format!("tmux client without RGB, {}", or_unknown(term)),
             )
         } else {
             (
                 ColorDepth::Ansi16,
-                format!("tmux client without RGB or 256 ({})", or_unknown(term)),
+                format!("tmux client without RGB or 256, {}", or_unknown(term)),
             )
         },
     )
@@ -1400,7 +1400,7 @@ mod tests {
         assert_eq!(caps.color, ColorDepth::Ansi256);
         assert_eq!(
             reason(&caps, topic::COLOR),
-            "tmux client without RGB (xterm-256color)"
+            "tmux client without RGB, xterm-256color"
         );
         assert!(!caps.hyperlinks);
         assert_eq!(
@@ -1456,7 +1456,7 @@ mod tests {
         assert_eq!(caps.color, ColorDepth::Ansi16);
         assert_eq!(
             reason(&caps, topic::COLOR),
-            "tmux client without RGB or 256 (xterm)"
+            "tmux client without RGB or 256, xterm"
         );
         // tmux before 3.2 reports no features: nothing is known, nothing changes.
         let old = auto_through_tmux(TMUX_ENV, "3.1c||xterm-256color||0x0||external");

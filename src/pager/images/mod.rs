@@ -811,6 +811,15 @@ impl Images {
         (before, after)
     }
 
+    /// Whether the frame being painted shows a figure as block-glyph cells
+    /// (after [`Images::plan`]).
+    pub(crate) fn cells_shown(&self) -> bool {
+        self.shown
+            .rows
+            .values()
+            .any(|show| *show == RowsShow::Cells)
+    }
+
     /// What the figure rows of the current frame show, for the emitter.
     pub(crate) fn rows(&self) -> FrameRows<'_> {
         FrameRows { images: self }

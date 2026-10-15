@@ -1,13 +1,15 @@
 //! `emde --doctor[=json]`: every terminal decision with its reason.
 //!
 //! [`report`] prints a few labelled lines, each a row of decisions with the
-//! reason in parentheses or after a dash, followed by tips. For the user's
+//! reason in parentheses or after a dash, followed by warnings (what keeps
+//! emde from showing everything, and why: [`warnings`]) and tips. For the user's
 //! iTerm2 → SSH → tmux 3.4 session it reads:
 //!
 //! ```text
 //!  terminal  tmux 3.4 → iTerm2 3.6.9, 214×54, SSH   colour truecolor (in tmux)   background dark (tmux OSC 11)
 //!  links     OSC 8 ✓   underline curly ✓   images blocks(half) — kitty/iterm ✗ passthrough off · sixel ✗ client cell 0x0
 //!  probe     tmux answered in 2 ms   cell size unknown (client cell 0x0)
+//!  warn      images are block characters: tmux's allow-passthrough is off
 //!  tip       `set -g allow-passthrough on` → kitty Unicode placeholders via iTerm2: real pixels that scroll with the text
 //! ```
 //!
@@ -19,7 +21,9 @@
 
 use std::time::Duration;
 
-use super::caps::{Emulator, Identity, IdentitySource, clean, glyph_name};
+use super::caps::{
+    Emulator, Identity, IdentitySource, Version, clean, glyph_name, tmux_client_depth,
+};
 use super::env::Env;
 use super::probe::{LATE_REPLY_GRACE, ProbeOutcome, ProbeReplies, ProbeStatus};
 use super::tmux::TmuxInfo;
@@ -66,6 +70,9 @@ pub fn report(
         "probe",
         &[probe_summary(env, caps, probe), cell_summary(caps)],
     );
+    for warning in warnings(caps, tmux) {
+        push_line(&mut out, "warn", &[warning]);
+    }
     for (i, tip) in tips(env, caps, tmux).iter().enumerate() {
         let label = if i == 0 { "tip" } else { "" };
         push_line(&mut out, label, std::slice::from_ref(tip));
@@ -73,14 +80,129 @@ pub fn report(
     out
 }
 
+/// What keeps emde from showing everything, with the likely cause and the
+/// fix. All come from tmux's report on its client (so only inside tmux,
+/// after the query):
+///
+/// * a client without `RGB`: colours (and block images, dithered) are
+///   rounded to 256 or 16;
+/// * images drawn with blocks because the client has no way to show pixels
+///   (no `RGB` for kitty placeholders, no `sixel` with a known cell size) or
+///   because `allow-passthrough` is off (the tip then says what to set);
+/// * no OSC 8 links through tmux.
+///
+/// mosh carries only text and gives tmux no `RGB`, no XTVERSION answer and
+/// no cell size: a client with no `client_termtype` and no `RGB` is
+/// *likely* mosh (a local terminal without `COLORTERM` looks the same, so
+/// the warnings never say for sure).
+pub fn warnings(caps: &Caps, tmux: Option<&TmuxInfo>) -> Vec<String> {
+    let mut warnings = Vec::new();
+    let Some(t) = tmux.filter(|t| caps.in_tmux && !t.features.is_empty()) else {
+        return warnings;
+    };
+    let term = if t.client_termname.is_empty() {
+        "xterm-256color"
+    } else {
+        t.client_termname.as_str()
+    };
+    let mosh = t.client_termtype.is_empty() && !t.has_feature("RGB");
+    if let Some((depth, _)) = tmux_client_depth(t) {
+        let likely = if mosh {
+            "likely mosh or an older terminal".to_string()
+        } else {
+            format!("{} without 24-bit colour", t.client_termtype)
+        };
+        warnings.push(format!(
+            "tmux's client reports no 24-bit colour: images and colours are rounded to {} \
+             ({likely}); for full colour use SSH, or `set -as terminal-features \
+             ',{term}:RGB'` if your terminal supports it",
+            colour_count(depth)
+        ));
+    }
+    let blocks_chosen =
+        reason(caps, topic::GRAPHICS).is_some_and(|r| r.starts_with("images = blocks"));
+    if caps.graphics == Graphics::Blocks && !blocks_chosen {
+        let outer = Identity::from_xtversion(&t.client_termtype, IdentitySource::ClientTermtype);
+        let placeholders =
+            t.has_feature("RGB") && outer.as_ref().is_some_and(Identity::has_placeholders);
+        let sixel = t.has_feature("sixel") && t.cell.is_some();
+        if placeholders && !t.passthrough.enabled() {
+            warnings.push("images are block characters: tmux's allow-passthrough is off".into());
+        } else if !placeholders && !sixel {
+            let mut missing = Vec::new();
+            if !t.has_feature("RGB") {
+                missing.push("no RGB for kitty placeholders".to_string());
+            } else if let Some(id) = &outer {
+                missing.push(format!("{} has no kitty placeholders", id.emulator.name()));
+            } else {
+                missing.push("the terminal is unknown".to_string());
+            }
+            if !t.has_feature("sixel") {
+                missing.push("no sixel".into());
+            } else {
+                missing.push("client cell size 0x0".into());
+            }
+            let advice = if mosh {
+                "; likely mosh, which carries text only: use SSH for pixels"
+            } else {
+                ""
+            };
+            warnings.push(format!(
+                "images are block characters: tmux's client has no way to show pixels ({}){advice}",
+                missing.join(", ")
+            ));
+        }
+    }
+    if !t.has_feature("hyperlinks") {
+        let version = Version::parse(&t.version);
+        warnings.push(if version.is_known() && !version.at_least(&[3, 4]) {
+            format!(
+                "links are not clickable: tmux {} drops OSC 8 hyperlinks (they need tmux ≥ 3.4)",
+                t.version
+            )
+        } else {
+            let via = if mosh { " (likely mosh, which drops them)" } else { "" };
+            format!(
+                "links are not clickable: tmux's client has no hyperlinks feature{via}; \
+                 `set -as terminal-features ',{term}:hyperlinks'` if your terminal shows OSC 8 links"
+            )
+        });
+    }
+    warnings
+}
+
+/// The status bar note for block images drawn at reduced depth because of
+/// the tmux client (shown once by the pager, the first time one is on
+/// screen), e.g. `images: 256 colours (tmux client without RGB) — see emde
+/// --doctor`.
+pub fn image_colour_note(caps: &Caps, tmux: Option<&TmuxInfo>) -> Option<String> {
+    let t = tmux.filter(|_| caps.in_tmux)?;
+    let (depth, _) = tmux_client_depth(t)?;
+    Some(format!(
+        "images: {} colours (tmux client without RGB) — see emde --doctor",
+        colour_count(depth)
+    ))
+}
+
+fn colour_count(depth: ColorDepth) -> &'static str {
+    match depth {
+        ColorDepth::Ansi16 => "16",
+        _ => "256",
+    }
+}
+
 /// Advice for getting more out of this terminal.
 ///
 /// * Inside tmux with `allow-passthrough` off: `set -g allow-passthrough on`
-///   (kitty placeholders are the best image path through tmux).
+///   (kitty placeholders are the best image path through tmux), unless the
+///   client has no `RGB`, which placeholders need.
 /// * VS Code showing block images: `terminal.integrated.enableImages`.
 pub fn tips(env: &Env, caps: &Caps, tmux: Option<&TmuxInfo>) -> Vec<String> {
     let mut tips = Vec::new();
-    if caps.in_tmux && tmux.is_some_and(|t| !t.passthrough.enabled()) {
+    // Placeholders carry the image id in a 24-bit colour: without `RGB`
+    // (mosh, say) passthrough would not help.
+    let rgb = |t: &TmuxInfo| t.features.is_empty() || t.has_feature("RGB");
+    if caps.in_tmux && tmux.is_some_and(|t| !t.passthrough.enabled() && rgb(t)) {
         let outer = caps
             .terminal
             .as_deref()
@@ -162,6 +284,10 @@ pub fn json(
         ("tmux", tmux.map_or(Json::Null, tmux_json)),
         ("probe", probe.map_or(Json::Null, probe_json)),
         ("reasons", Json::Arr(reasons)),
+        (
+            "warnings",
+            Json::Arr(warnings(caps, tmux).into_iter().map(Json::Str).collect()),
+        ),
         (
             "tips",
             Json::Arr(tips(env, caps, tmux).into_iter().map(Json::Str).collect()),
@@ -678,6 +804,156 @@ mod tests {
         }
     }
 
+    /// The user's tmux session attached through mosh: no `LC_TERMINAL`
+    /// (mosh does not forward it), and what `term::color` decides there.
+    const MOSH_ENV: &[(&str, &str)] = &[
+        ("TERM", "tmux-256color"),
+        ("TERM_PROGRAM", "tmux"),
+        ("TERM_PROGRAM_VERSION", "3.4"),
+        ("TMUX", "/tmp/tmux-1001/default,443340,2"),
+        ("SSH_CONNECTION", "192.0.2.10 50000 192.0.2.20 22"),
+        ("COLUMNS", "214"),
+    ];
+
+    impl Scenario {
+        /// `env` with `term::color`'s own decision as the base.
+        fn detected(env: &[(&str, &str)], tmux_line: &str) -> Scenario {
+            let base = crate::term::color::decide(
+                &Env::from_pairs(env),
+                true,
+                crate::term::color::ColorChoice::Auto,
+                crate::options::When::Auto,
+            );
+            let base = Caps {
+                size: Some((214, 54)),
+                ..base
+            };
+            Scenario::new(env, base, Some(tmux_line), Some((USER_SESSION, false)), 2)
+        }
+
+        fn mosh() -> Scenario {
+            Scenario::detected(MOSH_ENV, tmux_lines::MOSH_CLIENT)
+        }
+
+        fn warnings(&self) -> Vec<String> {
+            warnings(&self.caps, self.tmux.as_ref())
+        }
+    }
+
+    #[test]
+    fn mosh_warnings() {
+        let s = Scenario::mosh();
+        assert_eq!(s.caps.color, ColorDepth::Ansi256);
+        let w = s.warnings();
+        assert_eq!(
+            w.len(),
+            if cfg!(feature = "images") { 3 } else { 2 },
+            "{w:?}"
+        );
+        assert_eq!(
+            w[0],
+            "tmux's client reports no 24-bit colour: images and colours are rounded to 256 \
+             (likely mosh or an older terminal); for full colour use SSH, or `set -as \
+             terminal-features ',xterm-256color:RGB'` if your terminal supports it"
+        );
+        if cfg!(feature = "images") {
+            let blocks = "images are block characters: tmux's client has no way to show pixels \
+                          (no RGB for kitty placeholders, no sixel); likely mosh, which carries \
+                          text only: use SSH for pixels";
+            assert_eq!(w[1], blocks);
+        }
+        assert_eq!(
+            w.last().map(String::as_str),
+            Some(
+                "links are not clickable: tmux's client has no hyperlinks feature (likely \
+                 mosh, which drops them); `set -as terminal-features ',xterm-256color:hyperlinks'` \
+                 if your terminal shows OSC 8 links"
+            )
+        );
+        assert_eq!(
+            image_colour_note(&s.caps, s.tmux.as_ref()).as_deref(),
+            Some("images: 256 colours (tmux client without RGB) — see emde --doctor")
+        );
+    }
+
+    #[test]
+    fn warnings_only_for_what_the_client_lacks() {
+        // iTerm2 with passthrough on: kitty placeholders, everything shown.
+        let on = Scenario::new(
+            USER_ENV,
+            tmux_base(),
+            Some(tmux_lines::USER_SESSION_PASSTHROUGH),
+            Some((ITERM2_VIA_TMUX, true)),
+            41,
+        );
+        assert!(on.warnings().is_empty(), "{:?}", on.warnings());
+        assert_eq!(image_colour_note(&on.caps, on.tmux.as_ref()), None);
+        // Outside tmux nothing is known about a client.
+        let direct = Scenario::new(
+            &[("TERM", "xterm-256color")],
+            Caps::full(),
+            Some(tmux_lines::MOSH_CLIENT),
+            None,
+            0,
+        );
+        assert!(direct.warnings().is_empty());
+        assert_eq!(image_colour_note(&direct.caps, direct.tmux.as_ref()), None);
+        // tmux before 3.2 reports no features: no guesses.
+        let old = Scenario::detected(MOSH_ENV, "3.1c||xterm-256color||0x0||external");
+        assert!(old.warnings().is_empty());
+        // A 16-colour client that named itself; tmux 3.3 drops links.
+        let s = Scenario::detected(MOSH_ENV, "3.3a|SomeTerm 1.0|xterm|title|0x0|off|external");
+        let w = s.warnings();
+        assert!(
+            w[0].contains("rounded to 16 (SomeTerm 1.0 without 24-bit colour)")
+                && w[0].contains("',xterm:RGB'"),
+            "{w:?}"
+        );
+        assert_eq!(
+            w.last().map(String::as_str),
+            Some(
+                "links are not clickable: tmux 3.3a drops OSC 8 hyperlinks (they need tmux ≥ 3.4)"
+            )
+        );
+        assert_eq!(
+            image_colour_note(&s.caps, s.tmux.as_ref()).as_deref(),
+            Some("images: 16 colours (tmux client without RGB) — see emde --doctor")
+        );
+    }
+
+    #[cfg(feature = "images")]
+    #[test]
+    fn block_image_warnings() {
+        // VS Code's xterm.js: RGB, but no placeholders and no cell size.
+        let s = Scenario::detected(MOSH_ENV, tmux_lines::VSCODE_CLIENT);
+        let w = s.warnings();
+        assert_eq!(
+            w,
+            [
+                "images are block characters: tmux's client has no way to show pixels (xterm.js \
+              has no kitty placeholders, client cell size 0x0)"
+            ],
+        );
+        // Blocks the user asked for are no warning.
+        let base = crate::term::color::decide(
+            &Env::from_pairs(MOSH_ENV),
+            true,
+            crate::term::color::ColorChoice::Auto,
+            crate::options::When::Auto,
+        );
+        let env = Env::from_pairs(MOSH_ENV);
+        let tmux = tmux::parse(tmux_lines::MOSH_CLIENT);
+        let opts = ImageOptions {
+            mode: crate::options::ImageMode::Blocks,
+            ..ImageOptions::default()
+        };
+        let caps = decide(&env, base, tmux.as_ref(), None, &opts);
+        assert_eq!(caps.graphics, Graphics::Blocks);
+        let w = warnings(&caps, tmux.as_ref());
+        assert!(w.iter().all(|w| !w.starts_with("images are")), "{w:?}");
+        assert_eq!(w.len(), 2);
+    }
+
     #[test]
     fn passthrough_tip_only_in_tmux_with_passthrough_off() {
         assert_eq!(Scenario::users_session().tips().len(), 1);
@@ -867,6 +1143,17 @@ mod tests {
             insta::assert_snapshot!(Scenario::users_session().json());
         }
 
+        /// The same session attached through mosh (`mosh-server -c 256`).
+        #[test]
+        fn mosh_report() {
+            insta::assert_snapshot!(Scenario::mosh().report());
+        }
+
+        #[test]
+        fn mosh_json() {
+            insta::assert_snapshot!(Scenario::mosh().json());
+        }
+
         #[test]
         fn passthrough_on_report() {
             let s = Scenario::new(
@@ -904,7 +1191,7 @@ mod tests {
         fn report_follows_the_plan_example() {
             let text = Scenario::users_session().report();
             let lines: Vec<&str> = text.lines().collect();
-            assert_eq!(lines.len(), 4, "{text}");
+            assert_eq!(lines.len(), 5, "{text}");
             assert!(lines[0].starts_with(" terminal  tmux 3.4 → iTerm2 3.6.9, 214×54, SSH   "));
             assert!(lines[0].contains("colour truecolor (in tmux)"));
             assert!(lines[0].ends_with("background dark (tmux OSC 11)"));
@@ -916,6 +1203,10 @@ mod tests {
             assert!(lines[2].starts_with(" probe     tmux answered in 2 ms"));
             assert_eq!(
                 lines[3],
+                " warn      images are block characters: tmux's allow-passthrough is off"
+            );
+            assert_eq!(
+                lines[4],
                 " tip       `set -g allow-passthrough on` → kitty Unicode placeholders via iTerm2: \
                  real pixels that scroll with the text"
             );
