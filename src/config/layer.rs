@@ -236,6 +236,7 @@ layered! {
         pub(crate) remote: Option<bool>,
         #[serde(deserialize_with = "named")]
         pub(crate) tmux_passthrough: Option<TmuxPassthrough>,
+        pub(crate) dither: Option<bool>,
         pub(crate) max_pixels: Option<u64>,
     }
 }

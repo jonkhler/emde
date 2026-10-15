@@ -482,6 +482,13 @@ struct Answers {
 /// The tmux query (inside tmux, when graphics matter) and the probe
 /// (unless `terminal.probe = false`), for what `needs` asks. The probe
 /// itself refuses to run unless stdout is a terminal.
+///
+/// The query costs about 3 ms, as much as showing a whole text-only
+/// document, so text-only documents go without it: their 24-bit colours
+/// reach a client without `RGB` rounded by tmux, which suits text. With
+/// images, what it says about the client also sets the colour depth (block
+/// images are dithered for it), the theme and the highlighting, all made
+/// from the decided [`Caps`] (see [`crate::term::tmux`]).
 fn ask_terminal(env: &Env, needs: Needs, config: &Config, reprobe: bool) -> Answers {
     let tmux = if needs.graphics && color::in_tmux(env) {
         tmux::query(env)

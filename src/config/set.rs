@@ -127,6 +127,7 @@ mod tests {
             Some(vec!["-".to_owned(), "*".to_owned()])
         );
         assert_eq!(ok("images.max_pixels=1_000").images.max_pixels, Some(1000));
+        assert_eq!(ok("images.dither=false").images.dither, Some(false));
     }
 
     #[test]

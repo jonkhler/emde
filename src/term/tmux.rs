@@ -15,6 +15,26 @@
 //!   outer terminal, and the `set-clipboard` mode.
 //!
 //! The query only reads; emde never changes a tmux option.
+//!
+//! # Which client
+//!
+//! The `client_*` formats describe one client. A session can have several
+//! attached (a laptop over SSH and a phone over mosh, say); without `-c`,
+//! tmux answers for the client it finds best for the pane emde runs in: the
+//! most recently active client attached to that pane's session. emde draws
+//! for that client, and tmux converts the same output for the others.
+//!
+//! # When it runs
+//!
+//! About 3 ms (measured: 3.2 ms per query with a client attached, tmux
+//! 3.4), the time a whole text-only document takes to show. So it runs
+//! only when a document may have images (and for `--doctor`, and the first
+//! time the pager copies inside tmux): block images are where colour depth
+//! matters, and they are dithered for a client without 24-bit colour. Text
+//! in such a client is written in 24-bit colour, which tmux rounds to the
+//! nearest palette entry; for text that is fine. Nothing from the query is
+//! cached across runs: the probe cache only uses it in its key, so a
+//! different client attaching gets its own entry.
 
 use std::process::Command;
 use std::time::Duration;
@@ -186,6 +206,12 @@ pub(crate) mod fixtures {
 
     /// tmux in VS Code (xterm.js answers XTVERSION), passthrough on.
     pub(crate) const VSCODE_CLIENT: &str = "3.4|xterm.js(6.0.0)|xterm-256color|256,RGB,clipboard,hyperlinks,mouse,sixel,sync|0x0|on|external\n";
+
+    /// Recorded in the user's session: a client attached through mosh
+    /// (`mosh-server -c 256`), which tmux only knows as `xterm-256color`.
+    /// A local `xterm-256color` client without `COLORTERM` reports the same.
+    pub(crate) const MOSH_CLIENT: &str =
+        "3.4||xterm-256color|bpaste,ccolour,clipboard,cstyle,focus,title|0x0|off|external\n";
 
     /// tmux in foot, which reports its cell size: tmux can draw sixel.
     pub(crate) const FOOT_CLIENT: &str = "3.4|foot(1.20.2)|foot|256,RGB,clipboard,hyperlinks,mouse,sixel,sync,usstyle|10x20|off|external\n";

@@ -49,6 +49,7 @@
 pub mod b64;
 #[cfg(feature = "images")]
 pub mod decode;
+mod dither;
 pub mod glyphs;
 pub mod iterm;
 pub mod kitty;

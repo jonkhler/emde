@@ -17,12 +17,19 @@
 //! 6. not a terminal, or `TERM=dumb` → no escape sequences;
 //! 7. `COLORTERM=truecolor|24bit`, or a `TERM` ending in `-direct` → 24-bit;
 //! 8. inside tmux → 24-bit (tmux converts per client) with styled
-//!    underlines; OSC 8 only from tmux 3.4 (`TERM_PROGRAM_VERSION`);
+//!    underlines; OSC 8 only from tmux 3.4 (`TERM_PROGRAM_VERSION`). When
+//!    the tmux query ran, `term::caps` lowers these to what the attached
+//!    client shows (no `RGB` feature: 256 or 16 colours);
 //! 9. a terminal known for 24-bit colour (iTerm2 — also via `LC_TERMINAL`,
 //!    which SSH forwards — WezTerm, Ghostty, VS Code, kitty, Windows
 //!    Terminal) → 24-bit;
 //! 10. `TERM` naming 256 colours → 256;
 //! 11. otherwise 16 colours.
+//!
+//! Rules 1–5 that name a depth (or no colour) are *explicit*
+//! ([`Caps::color_forced`]), as are `--hyperlinks=always|never`
+//! ([`Caps::hyperlinks_forced`]): the tmux client's features never change
+//! what the user asked for.
 
 use super::env::Env;
 use super::{Caps, ColorDepth, Reason, topic};
@@ -50,13 +57,19 @@ pub enum ColorChoice {
 
 /// The base capabilities: colour depth, hyperlinks and styled underlines.
 pub fn decide(env: &Env, is_tty: bool, color: ColorChoice, hyperlinks: When) -> Caps {
-    let (depth, color_why) = color_depth(env, is_tty, color);
+    let Depth {
+        depth,
+        why: color_why,
+        explicit,
+    } = choose_depth(env, is_tty, color);
     let (links, links_why) = hyperlinks_for(env, depth, hyperlinks);
     let (underline, underline_why) = styled_underline(env, depth);
     Caps {
         is_tty,
         color: depth,
+        color_forced: explicit,
         hyperlinks: links,
+        hyperlinks_forced: hyperlinks != When::Auto,
         styled_underline: underline,
         sync: is_tty,
         in_tmux: in_tmux(env),
@@ -81,60 +94,96 @@ pub fn decide(env: &Env, is_tty: bool, color: ColorChoice, hyperlinks: When) -> 
 
 /// The colour depth and why (rules 1–11 in the module docs).
 pub fn color_depth(env: &Env, is_tty: bool, choice: ColorChoice) -> (ColorDepth, String) {
+    let d = choose_depth(env, is_tty, choice);
+    (d.depth, d.why)
+}
+
+/// A colour depth decision.
+struct Depth {
+    depth: ColorDepth,
+    why: String,
+    /// Named by the user (rules 1–5) rather than detected.
+    explicit: bool,
+}
+
+impl Depth {
+    fn explicit(depth: ColorDepth, why: impl Into<String>) -> Depth {
+        Depth {
+            depth,
+            why: why.into(),
+            explicit: true,
+        }
+    }
+
+    fn detected((depth, why): (ColorDepth, String)) -> Depth {
+        Depth {
+            depth,
+            why,
+            explicit: false,
+        }
+    }
+}
+
+/// Rules 1–11.
+fn choose_depth(env: &Env, is_tty: bool, choice: ColorChoice) -> Depth {
     match choice {
-        ColorChoice::Never => (ColorDepth::None, "--color=never".into()),
-        ColorChoice::TrueColor => (ColorDepth::TrueColor, "--color=truecolor".into()),
-        ColorChoice::Ansi256 => (ColorDepth::Ansi256, "--color=256".into()),
-        ColorChoice::Ansi16 => (ColorDepth::Ansi16, "--color=16".into()),
+        ColorChoice::Never => Depth::explicit(ColorDepth::None, "--color=never"),
+        ColorChoice::TrueColor => Depth::explicit(ColorDepth::TrueColor, "--color=truecolor"),
+        ColorChoice::Ansi256 => Depth::explicit(ColorDepth::Ansi256, "--color=256"),
+        ColorChoice::Ansi16 => Depth::explicit(ColorDepth::Ansi16, "--color=16"),
         ColorChoice::Always => {
             let (depth, why) = detect(env);
-            (depth, format!("--color=always, {why}"))
+            Depth::detected((depth, format!("--color=always, {why}")))
         }
         ColorChoice::Auto => auto_depth(env, is_tty),
     }
 }
 
 /// Rules 2–11.
-fn auto_depth(env: &Env, is_tty: bool) -> (ColorDepth, String) {
+fn auto_depth(env: &Env, is_tty: bool) -> Depth {
     let attributes_only = |why: &str| {
         if is_tty {
-            (ColorDepth::Mono, why.to_string())
+            Depth::explicit(ColorDepth::Mono, why)
         } else {
-            (ColorDepth::None, format!("{why}, not a terminal"))
+            Depth::explicit(ColorDepth::None, format!("{why}, not a terminal"))
         }
     };
     if env.is_set("NO_COLOR") {
         return attributes_only("NO_COLOR");
     }
     if let Some(v) = env.get("FORCE_COLOR") {
-        match v.trim().to_ascii_lowercase().as_str() {
-            "0" | "false" | "no" | "off" => return (ColorDepth::None, "FORCE_COLOR=0".into()),
-            "1" => return (ColorDepth::Ansi16, "FORCE_COLOR=1".into()),
-            "2" => return (ColorDepth::Ansi256, "FORCE_COLOR=2".into()),
-            "3" => return (ColorDepth::TrueColor, "FORCE_COLOR=3".into()),
-            _ => {
+        let level = match v.trim().to_ascii_lowercase().as_str() {
+            "0" | "false" | "no" | "off" => Some((ColorDepth::None, "FORCE_COLOR=0")),
+            "1" => Some((ColorDepth::Ansi16, "FORCE_COLOR=1")),
+            "2" => Some((ColorDepth::Ansi256, "FORCE_COLOR=2")),
+            "3" => Some((ColorDepth::TrueColor, "FORCE_COLOR=3")),
+            _ => None,
+        };
+        return match level {
+            Some((depth, why)) => Depth::explicit(depth, why),
+            None => {
                 let (depth, why) = detect(env);
-                return (depth, format!("FORCE_COLOR, {why}"));
+                Depth::detected((depth, format!("FORCE_COLOR, {why}")))
             }
-        }
+        };
     }
     if env
         .non_empty("CLICOLOR_FORCE")
         .is_some_and(|v| v.trim() != "0")
     {
         let (depth, why) = detect(env);
-        return (depth, format!("CLICOLOR_FORCE, {why}"));
+        return Depth::detected((depth, format!("CLICOLOR_FORCE, {why}")));
     }
     if env.get("CLICOLOR").is_some_and(|v| v.trim() == "0") {
         return attributes_only("CLICOLOR=0");
     }
     if !is_tty {
-        return (ColorDepth::None, "not a terminal".into());
+        return Depth::detected((ColorDepth::None, "not a terminal".into()));
     }
     if env.get("TERM") == Some("dumb") {
-        return (ColorDepth::None, "TERM=dumb".into());
+        return Depth::detected((ColorDepth::None, "TERM=dumb".into()));
     }
-    detect(env)
+    Depth::detected(detect(env))
 }
 
 /// Rules 7–11: the depth the terminal supports.

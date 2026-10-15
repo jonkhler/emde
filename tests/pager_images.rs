@@ -57,6 +57,7 @@ fn options(graphics: Graphics) -> StoreOptions {
         graphics,
         glyphs: BlockGlyphSet::Half,
         depth: ColorDepth::TrueColor,
+        dither: true,
         background: Some(Rgb(0, 0, 0)),
         page: Rgb(0, 0, 0),
         cell_px: Some((8, 16)),
@@ -1380,4 +1381,82 @@ fn image_frames_benchmark() {
         );
         let _ = std::io::stdout().write_all(report.as_bytes());
     }
+}
+
+// ---------------------------------------------------------------------------
+// A tmux client without 24-bit colour
+// ---------------------------------------------------------------------------
+
+/// What tmux 3.4 reports for a client attached through mosh.
+const MOSH_CLIENT: &str =
+    "3.4||xterm-256color|bpaste,ccolour,clipboard,cstyle,focus,title|0x0|off|external";
+
+/// A session for `doc` in tmux behind a client without `RGB`: 256-colour
+/// block images.
+fn mosh_session(doc: &Path) -> PagerSession {
+    let opts = StoreOptions {
+        depth: ColorDepth::Ansi256,
+        ..options(Graphics::Blocks)
+    };
+    let mut s = session(doc, opts);
+    s.caps = Caps {
+        color: ColorDepth::Ansi256,
+        in_tmux: true,
+        ..Caps::full()
+    };
+    s.tmux = emde::term::tmux::parse(MOSH_CLIENT);
+    s
+}
+
+const MOSH_NOTE: &str = "images: 256 colours (tmux client without RGB) — see emde --doctor";
+
+#[test]
+fn the_first_block_image_says_why_it_has_256_colours() {
+    let dir = temp_dir("mosh-note");
+    let doc = figure_doc(&dir, "far", &png(64, 64, RED), 20, 1);
+    let term = FakeTerminal::new(90, 12)
+        .wait(ms(300))
+        .mark("top")
+        .keys("G")
+        .wait(ms(300))
+        .mark("figure")
+        .keys("k")
+        .wait(ms(300))
+        .mark("moved")
+        .keys("g")
+        .keys("G")
+        .wait(ms(300))
+        .mark("again")
+        .keys("q");
+    let (term, _) = run(term, mosh_session(&doc));
+    // Not before an image is on screen.
+    assert!(!status(&term, 90, 12, "top").contains("images:"));
+    assert!(status(&term, 90, 12, "figure").contains(MOSH_NOTE));
+    // In 256 colours, not 24-bit.
+    let shown = written(&term, Some("top"), Some("figure"));
+    assert!(count(&shown, b"\x1b[38;2;") == 0 && count(&shown, b"48;5;") > 0);
+    // Once: gone with the next key, and not said again.
+    assert!(!status(&term, 90, 12, "moved").contains("images:"));
+    assert!(!status(&term, 90, 12, "again").contains("images:"));
+}
+
+#[test]
+fn no_note_with_a_24_bit_client() {
+    let dir = temp_dir("rgb-client");
+    let doc = figure_doc(&dir, "near", &png(64, 64, RED), 1, 20);
+    let mut s = session(&doc, options(Graphics::Blocks));
+    s.caps = Caps {
+        in_tmux: true,
+        ..Caps::full()
+    };
+    s.tmux = emde::term::tmux::parse(
+        "3.4|iTerm2 3.6.9|xterm-256color|256,hyperlinks,RGB,usstyle|0x0|off|external",
+    );
+    let term = FakeTerminal::new(40, 12)
+        .wait(ms(300))
+        .mark("shown")
+        .keys("q");
+    let (term, _) = run(term, s);
+    assert!(cells_on(&term, 40, 12, "shown", RED) > 0);
+    assert!(!status(&term, 40, 12, "shown").contains("images:"));
 }

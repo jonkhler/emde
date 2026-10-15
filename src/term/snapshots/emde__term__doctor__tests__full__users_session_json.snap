@@ -85,6 +85,7 @@ expression: "Scenario::users_session().json()"
       "detail": "blocks = half"
     }
   ],
+  "warnings": ["images are block characters: tmux's allow-passthrough is off"],
   "tips": ["`set -g allow-passthrough on` → kitty Unicode placeholders via iTerm2: real pixels that scroll with the text"],
   "env": {
     "COLUMNS": "214",
