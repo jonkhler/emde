@@ -126,7 +126,7 @@ pub fn is_dark(bg: Rgb) -> bool {
 }
 
 /// The six channel levels of the xterm 6×6×6 colour cube (indices 16–231).
-const CUBE: [u8; 6] = [0, 95, 135, 175, 215, 255];
+pub(crate) const CUBE: [u8; 6] = [0, 95, 135, 175, 215, 255];
 
 /// xterm's default colours for indices 0–15.
 const ANSI16: [Rgb; 16] = [
@@ -167,7 +167,8 @@ pub fn xterm_rgb(idx: u8) -> Rgb {
     }
 }
 
-fn palette_lab() -> &'static [Oklab; 256] {
+/// The OKLab colour of every xterm palette index (xterm defaults for 0–15).
+pub(crate) fn palette_lab() -> &'static [Oklab; 256] {
     static LAB: OnceLock<[Oklab; 256]> = OnceLock::new();
     LAB.get_or_init(|| {
         let mut t = [Oklab::default(); 256];

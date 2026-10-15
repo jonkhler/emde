@@ -184,6 +184,9 @@ remote = false
 # Inside tmux: if-enabled (use passthrough only when allow-passthrough is on;
 # emde never changes tmux options) or never.
 tmux_passthrough = "if-enabled"
+# Dither block images on terminals with 256 or 16 colours (smooth shading
+# instead of bands); false maps each colour to its nearest palette entry.
+dither = true
 # Images with more pixels are not decoded (SVG images, which are drawn at
 # the size of their figure, are drawn at most this large).
 max_pixels = 40_000_000

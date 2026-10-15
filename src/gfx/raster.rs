@@ -28,11 +28,19 @@
 //! whose two colours end up equal after mapping to the terminal's palette
 //! becomes a space on that background.
 //!
+//! At 256 and 16 colours, with `dither` on (`images.dither`), the
+//! sub-pixels are dithered to the palette before the cells are made
+//! (ordered, with an 8×8 Bayer matrix anchored to the image: see
+//! [`super::dither`]), so gradients keep their steps fine and photographs
+//! their shading; the two-colour split then works on palette colours. At
+//! 24-bit colour nothing is dithered.
+//!
 //! The output is deterministic: the same input always gives the same cells.
 
 use std::collections::HashMap;
 
 use super::Rgba;
+use super::dither::Dither;
 use super::glyphs;
 use super::resample::{self, Blend, LinearImage};
 use crate::color;
@@ -101,9 +109,10 @@ impl Raster {
 ///
 /// `background` is the terminal's background colour, if known, for
 /// blending partly transparent pixels. `depth` selects the colour encoding:
-/// 24-bit, the nearest xterm 256-colour index, the nearest of the 16 ANSI
-/// colours, or, without colours, a raster of blank cells. An invalid or
-/// empty image also gives blank cells.
+/// 24-bit, the xterm 256-colour palette, the 16 ANSI colours, or, without
+/// colours, a raster of blank cells. With `dither`, 256 and 16 colours are
+/// dithered; without, each colour takes its nearest palette entry. An
+/// invalid or empty image gives blank cells.
 pub fn rasterize(
     img: &Rgba,
     cols: u16,
@@ -111,6 +120,7 @@ pub fn rasterize(
     glyphs: BlockGlyphSet,
     background: Option<Rgb>,
     depth: ColorDepth,
+    dither: bool,
 ) -> Raster {
     if depth < ColorDepth::Ansi16 || cols == 0 || rows == 0 || img.is_empty() {
         return Raster::blank(cols, rows);
@@ -122,9 +132,12 @@ pub fn rasterize(
         None => Blend::Premultiplied,
     };
     let grid = resample::resample(img, usize::from(cols) * sx, usize::from(rows) * sy, blend);
-    let subs = composite(&grid, background.is_some());
-    let mut palette = Palette::new(depth);
+    let mut subs = composite(&grid, background.is_some());
     let width = grid.width;
+    if dither && let Some(d) = Dither::new(depth) {
+        dither_subs(&mut subs, width, &d);
+    }
+    let mut palette = Palette::new(depth);
     let mut cell_subs = Vec::with_capacity(sx * sy);
     let cells = (0..usize::from(rows))
         .map(|row| {
@@ -193,6 +206,18 @@ fn composite(grid: &LinearImage, composited: bool) -> Vec<Sub> {
             }
         })
         .collect()
+}
+
+/// Replace every opaque sub-pixel of a grid `width` wide with the palette
+/// colour `dither` picks for it at its place in the image.
+fn dither_subs(subs: &mut [Sub], width: usize, dither: &Dither) {
+    let width = width.max(1);
+    for (i, sub) in subs.iter_mut().enumerate() {
+        if let Sub::Solid { srgb, lin } = *sub {
+            let Rgb(r, g, b) = color::xterm_rgb(dither.index(srgb, lin, i % width, i / width));
+            *sub = Sub::solid([r, g, b]);
+        }
+    }
 }
 
 /// A cell before palette mapping: colours are sRGB, `None` is transparent.
@@ -437,7 +462,7 @@ mod tests {
     }
 
     fn true_color(img: &Rgba, cols: u16, rows: u16, set: BlockGlyphSet) -> Raster {
-        rasterize(img, cols, rows, set, None, ColorDepth::TrueColor)
+        rasterize(img, cols, rows, set, None, ColorDepth::TrueColor, true)
     }
 
     #[test]
@@ -563,6 +588,7 @@ mod tests {
             BlockGlyphSet::Half,
             Some(Rgb(0, 0, 255)),
             ColorDepth::TrueColor,
+            true,
         );
         assert_eq!(
             r.cells[0][0],
@@ -590,6 +616,7 @@ mod tests {
             BlockGlyphSet::Half,
             black,
             ColorDepth::TrueColor,
+            true,
         );
         let grey = Color::Rgb(Rgb(188, 188, 188));
         assert_eq!(r.cells[0][0], cell('▀', grey, rgb(WHITE)));
@@ -603,6 +630,7 @@ mod tests {
             BlockGlyphSet::Half,
             black,
             ColorDepth::TrueColor,
+            true,
         );
         assert_eq!(r.cells[0][0], cell('▄', grey, Color::Default));
         // The same in a two-colour split: covered sub-pixels are composited,
@@ -619,6 +647,7 @@ mod tests {
             BlockGlyphSet::Quadrant,
             black,
             ColorDepth::TrueColor,
+            true,
         );
         assert_eq!(r.cells[0][0].ch, '▙');
         assert_eq!(r.cells[0][0].bg, Color::Default);
@@ -654,7 +683,7 @@ mod tests {
     #[test]
     fn colour_depths() {
         let img = image(1, 2, &[RED, BLUE]);
-        let at = |depth| rasterize(&img, 1, 1, BlockGlyphSet::Half, None, depth).cells[0][0];
+        let at = |depth| rasterize(&img, 1, 1, BlockGlyphSet::Half, None, depth, false).cells[0][0];
         assert_eq!(at(ColorDepth::TrueColor), cell('▀', rgb(RED), rgb(BLUE)));
         assert_eq!(
             at(ColorDepth::Ansi256),
@@ -668,8 +697,58 @@ mod tests {
         assert_eq!(at(ColorDepth::None), RasterCell::BLANK);
         // Colours that collapse onto one palette entry give a flat space.
         let close = image(1, 2, &[[250, 0, 0, 255], [252, 0, 0, 255]]);
-        let c = rasterize(&close, 1, 1, BlockGlyphSet::Half, None, ColorDepth::Ansi16);
+        let c = rasterize(
+            &close,
+            1,
+            1,
+            BlockGlyphSet::Half,
+            None,
+            ColorDepth::Ansi16,
+            false,
+        );
         assert_eq!(c.cells[0][0], cell(' ', Color::Default, Color::Ansi(9)));
+    }
+
+    #[test]
+    fn dithered_cells_follow_the_image() {
+        // A flat colour between palette entries, 32 × 16 cells of half blocks.
+        let teal = [40, 140, 150, 255];
+        let img = image(4, 4, &[teal; 16]);
+        for (depth, palette_only) in [
+            (
+                ColorDepth::Ansi256,
+                (|c: Color| matches!(c, Color::Indexed(16..))) as fn(Color) -> bool,
+            ),
+            (ColorDepth::Ansi16, |c: Color| {
+                matches!(c, Color::Ansi(0..16))
+            }),
+        ] {
+            let r = rasterize(&img, 32, 16, BlockGlyphSet::Half, None, depth, true);
+            let cells: Vec<RasterCell> = r.cells.iter().flatten().copied().collect();
+            assert!(
+                cells
+                    .iter()
+                    .all(|c| palette_only(c.bg) && (c.ch == ' ' || palette_only(c.fg))),
+                "{depth:?}"
+            );
+            // A mix, not one entry.
+            let colours: std::collections::HashSet<Color> =
+                cells.iter().flat_map(|c| [c.fg, c.bg]).collect();
+            assert!(colours.len() > 2, "{depth:?}: {colours:?}");
+            // The pattern repeats every 8 sub-pixels: 8 columns, 4 rows of
+            // half blocks, from the image's own top-left corner.
+            for row in 0..12 {
+                for col in 0..24 {
+                    assert_eq!(r.cells[row][col], r.cells[row][col + 8], "{depth:?}");
+                    assert_eq!(r.cells[row][col], r.cells[row + 4][col], "{depth:?}");
+                }
+            }
+            // Without dithering the colour takes its nearest entry: flat.
+            let flat = rasterize(&img, 32, 16, BlockGlyphSet::Half, None, depth, false);
+            let first = flat.cells[0][0];
+            assert!(flat.cells.iter().flatten().all(|c| *c == first));
+            assert_eq!(first.ch, ' ');
+        }
     }
 
     #[test]
@@ -724,9 +803,12 @@ mod tests {
                 ColorDepth::Ansi256,
                 ColorDepth::Ansi16,
             ] {
-                let a = rasterize(&img, 9, 4, set, Some(Rgb(30, 30, 46)), depth);
-                let b = rasterize(&img, 9, 4, set, Some(Rgb(30, 30, 46)), depth);
-                assert_eq!(a, b, "{set:?} {depth:?}");
+                for dither in [false, true] {
+                    let bg = Some(Rgb(30, 30, 46));
+                    let a = rasterize(&img, 9, 4, set, bg, depth, dither);
+                    let b = rasterize(&img, 9, 4, set, bg, depth, dither);
+                    assert_eq!(a, b, "{set:?} {depth:?} {dither}");
+                }
             }
         }
     }
@@ -816,7 +898,8 @@ mod tests {
     }
 
     /// 1 MP → 100×40 cells within the plan's 15 ms budget (release build).
-    /// The budget is set for half blocks; the finer sets meet it too.
+    /// The budget is set for half blocks; the finer sets meet it too, and so
+    /// does dithering at 256 and 16 colours.
     #[test]
     #[ignore = "timing; run with --release -- --ignored --nocapture"]
     #[allow(clippy::print_stderr)]
@@ -829,18 +912,281 @@ mod tests {
             }
         }
         let img = Rgba::new(w, h, pixels).unwrap();
-        for (name, set) in SETS {
+        // The first dithered raster of a run also makes the colour bins'
+        // decisions (every bin, for this noise).
+        for depth in [ColorDepth::Ansi16, ColorDepth::Ansi256] {
             let bg = Some(Rgb(30, 30, 46));
-            let run = || rasterize(&img, 100, 40, set, bg, ColorDepth::TrueColor);
-            let _ = run(); // warm the tables
-            let n = 10;
             let start = std::time::Instant::now();
-            for _ in 0..n {
-                std::hint::black_box(run());
+            std::hint::black_box(rasterize(
+                &img,
+                100,
+                40,
+                BlockGlyphSet::Half,
+                bg,
+                depth,
+                true,
+            ));
+            let cold = start.elapsed();
+            eprintln!("rasterize 1 MP → 100×40 half {depth:?}, first of the run: {cold:?}");
+            assert!(
+                cold.as_millis() <= 30,
+                "{depth:?}: {cold:?} for the first raster"
+            );
+        }
+        let depths = [
+            ColorDepth::TrueColor,
+            ColorDepth::Ansi256,
+            ColorDepth::Ansi16,
+        ];
+        for (name, set) in SETS {
+            for depth in depths {
+                let bg = Some(Rgb(30, 30, 46));
+                let run = || rasterize(&img, 100, 40, set, bg, depth, true);
+                let _ = run(); // warm the tables
+                let n = 10;
+                let start = std::time::Instant::now();
+                for _ in 0..n {
+                    std::hint::black_box(run());
+                }
+                let per = start.elapsed() / n;
+                eprintln!("rasterize 1 MP → 100×40 {name} {depth:?}: {per:?}");
+                assert!(
+                    per.as_millis() <= 15,
+                    "{name} {depth:?}: {per:?} per raster"
+                );
             }
-            let per = start.elapsed() / n;
-            eprintln!("rasterize 1 MP → 100×40 {name}: {per:?}");
-            assert!(per.as_millis() <= 15, "{name}: {per:?} per raster");
+        }
+    }
+}
+
+/// How close block images come to the picture at reduced colour depth,
+/// with and without dithering: what the reader sees is compared with the
+/// image resampled to the same sub-pixel grid.
+#[cfg(test)]
+mod quality {
+    use super::*;
+    use crate::color::{Oklab, linear_to_oklab, xterm_rgb};
+
+    /// Picture quality of one raster.
+    #[derive(Clone, Copy, Debug)]
+    struct Quality {
+        /// Mean OKLab distance per sub-pixel.
+        pixel: f32,
+        /// Mean OKLab distance once both are blurred over 4×4 sub-pixels
+        /// (in linear light): the colour a reader sees from a little away.
+        seen: f32,
+        /// Banding: the mean over rows of the largest step between
+        /// neighbouring sub-pixels, less the picture's own, once both are
+        /// blurred over 8×8 (the dither pattern's period, so its texture
+        /// averages out and only steps in the shading are left).
+        banding: f32,
+    }
+
+    /// A smooth horizontal gradient from navy to orange over a grey ramp
+    /// (the bottom half).
+    fn gradient() -> Rgba {
+        let (w, h) = (400u32, 160u32);
+        let mut px = Vec::with_capacity((w * h * 4) as usize);
+        for y in 0..h {
+            for x in 0..w {
+                let t = x as f32 / (w - 1) as f32;
+                let c = if y < h / 2 {
+                    let lerp = |a: f32, b: f32| (a + (b - a) * t).round() as u8;
+                    [lerp(20.0, 250.0), lerp(30.0, 150.0), lerp(90.0, 40.0)]
+                } else {
+                    let v = (t * 255.0).round() as u8;
+                    [v, v, v]
+                };
+                px.extend_from_slice(&[c[0], c[1], c[2], 255]);
+            }
+        }
+        Rgba::new(w, h, px).unwrap()
+    }
+
+    /// Smooth waves of colour, like the shading of a photograph.
+    fn photo() -> Rgba {
+        let (w, h) = (400u32, 320u32);
+        let mut px = Vec::with_capacity((w * h * 4) as usize);
+        for y in 0..h {
+            for x in 0..w {
+                let (fx, fy) = (x as f32, y as f32);
+                let wave = (fx / 37.0).sin() * 60.0 + (fy / 23.0).cos() * 60.0;
+                let r = (wave + 128.0).clamp(0.0, 255.0) as u8;
+                let g = (fx * 0.5 + (fy / 41.0).sin() * 30.0 + 20.0).clamp(0.0, 255.0) as u8;
+                let b = (fy * 0.6 + (fx / 29.0).cos() * 40.0 + 30.0).clamp(0.0, 255.0) as u8;
+                px.extend_from_slice(&[r, g, b, 255]);
+            }
+        }
+        Rgba::new(w, h, px).unwrap()
+    }
+
+    /// The colour a cell colour shows (xterm's defaults for indices).
+    fn shown(c: Color) -> Rgb {
+        match c {
+            Color::Rgb(c) => c,
+            Color::Indexed(i) | Color::Ansi(i) => xterm_rgb(i),
+            _ => Rgb(0, 0, 0),
+        }
+    }
+
+    /// The raster as sub-pixels in linear light, row by row.
+    fn subpixels_of(r: &Raster, set: BlockGlyphSet) -> (usize, Vec<[f32; 3]>) {
+        let (sx, sy) = glyphs::grid(set);
+        let (sx, sy) = (usize::from(sx), usize::from(sy));
+        let masks: HashMap<char, u8> = (0..1u16 << (sx * sy))
+            .map(|m| (glyphs::glyph(set, m as u8), m as u8))
+            .collect();
+        let width = usize::from(r.cols) * sx;
+        let mut out = vec![[0.0; 3]; width * usize::from(r.rows) * sy];
+        for (row, cells) in r.cells.iter().enumerate() {
+            for (col, cell) in cells.iter().enumerate() {
+                let mask = if cell.ch == ' ' { 0 } else { masks[&cell.ch] };
+                for i in 0..sx * sy {
+                    let c = if mask >> i & 1 == 1 { cell.fg } else { cell.bg };
+                    let Rgb(red, green, blue) = shown(c);
+                    let (x, y) = (col * sx + i % sx, row * sy + i / sx);
+                    out[y * width + x] = [red, green, blue].map(resample::srgb_to_linear);
+                }
+            }
+        }
+        (width, out)
+    }
+
+    /// A `size × size` box blur (clipped at the edges).
+    fn blur(width: usize, px: &[[f32; 3]], size: usize) -> Vec<[f32; 3]> {
+        let height = px.len() / width;
+        let back = (size - 1) / 2;
+        let mut out = vec![[0.0; 3]; px.len()];
+        for y in 0..height {
+            for x in 0..width {
+                let mut sum = [0.0; 3];
+                let mut n = 0.0;
+                for yy in y.saturating_sub(back)..(y + size - back).min(height) {
+                    for xx in x.saturating_sub(back)..(x + size - back).min(width) {
+                        for (s, v) in sum.iter_mut().zip(px[yy * width + xx]) {
+                            *s += v;
+                        }
+                        n += 1.0;
+                    }
+                }
+                out[y * width + x] = sum.map(|v| v / n);
+            }
+        }
+        out
+    }
+
+    fn lab([r, g, b]: [f32; 3]) -> Oklab {
+        linear_to_oklab(r, g, b)
+    }
+
+    fn mean_distance(a: &[[f32; 3]], b: &[[f32; 3]]) -> f32 {
+        let total: f32 = a
+            .iter()
+            .zip(b)
+            .map(|(&x, &y)| lab(x).dist2(lab(y)).sqrt())
+            .sum();
+        total / a.len() as f32
+    }
+
+    /// The mean over rows of the largest step between neighbours.
+    fn steps(width: usize, px: &[[f32; 3]]) -> f32 {
+        let rows: Vec<f32> = px
+            .chunks(width)
+            .map(|row| {
+                row.windows(2)
+                    .map(|w| lab(w[0]).dist2(lab(w[1])).sqrt())
+                    .fold(0.0, f32::max)
+            })
+            .collect();
+        rows.iter().sum::<f32>() / rows.len() as f32
+    }
+
+    fn quality(img: &Rgba, set: BlockGlyphSet, depth: ColorDepth, dither: bool) -> Quality {
+        let (cols, rows) = (100u16, 40u16);
+        let (sx, sy) = glyphs::grid(set);
+        let grid = resample::resample(
+            img,
+            usize::from(cols * u16::from(sx)),
+            usize::from(rows * u16::from(sy)),
+            Blend::Premultiplied,
+        );
+        let reference: Vec<[f32; 3]> = composite(&grid, false)
+            .iter()
+            .map(|s| match s {
+                Sub::Solid { lin, .. } => *lin,
+                Sub::Clear => [0.0; 3],
+            })
+            .collect();
+        let raster = rasterize(img, cols, rows, set, None, depth, dither);
+        let (width, got) = subpixels_of(&raster, set);
+        let (seen_ref, seen_got) = (blur(width, &reference, 4), blur(width, &got, 4));
+        let (far_ref, far_got) = (blur(width, &reference, 8), blur(width, &got, 8));
+        Quality {
+            pixel: mean_distance(&reference, &got),
+            seen: mean_distance(&seen_ref, &seen_got),
+            banding: steps(width, &far_got) - steps(width, &far_ref),
+        }
+    }
+
+    #[test]
+    fn dithering_brings_the_picture_closer() {
+        for (name, img) in [("gradient", gradient()), ("photo", photo())] {
+            for depth in [ColorDepth::Ansi256, ColorDepth::Ansi16] {
+                for set in [BlockGlyphSet::Half, BlockGlyphSet::Octant] {
+                    let nearest = quality(&img, set, depth, false);
+                    let dithered = quality(&img, set, depth, true);
+                    let what = format!("{name} {depth:?} {set:?}: {nearest:?} → {dithered:?}");
+                    assert!(dithered.seen < nearest.seen * 0.7, "{what}");
+                    // At 16 colours a gradient still steps where the pair of
+                    // entries it mixes changes; it must not step more.
+                    let banding = match depth {
+                        ColorDepth::Ansi256 => nearest.banding * 0.8,
+                        _ => nearest.banding + 0.005,
+                    };
+                    assert!(dithered.banding < banding, "{what}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn true_colour_is_never_dithered() {
+        let img = photo();
+        for set in [BlockGlyphSet::Half, BlockGlyphSet::Sextant] {
+            let plain = rasterize(&img, 40, 16, set, None, ColorDepth::TrueColor, false);
+            let dithered = rasterize(&img, 40, 16, set, None, ColorDepth::TrueColor, true);
+            assert_eq!(plain, dithered);
+        }
+    }
+
+    /// The numbers behind the defaults: `cargo test --release quality --
+    /// --ignored --nocapture`.
+    #[test]
+    #[ignore = "a report; run with --release -- --ignored --nocapture"]
+    #[allow(clippy::print_stderr)]
+    fn report() {
+        eprintln!(
+            "image     depth      glyphs   nearest: pixel  seen   banding   dithered: pixel  seen   banding"
+        );
+        for (name, img) in [("gradient", gradient()), ("photo", photo())] {
+            for depth in [
+                ColorDepth::TrueColor,
+                ColorDepth::Ansi256,
+                ColorDepth::Ansi16,
+            ] {
+                for set in [
+                    BlockGlyphSet::Half,
+                    BlockGlyphSet::Quadrant,
+                    BlockGlyphSet::Octant,
+                ] {
+                    let a = quality(&img, set, depth, false);
+                    let b = quality(&img, set, depth, true);
+                    eprintln!(
+                        "{name:<9} {depth:<10?} {set:<8?} {:>14.4} {:>6.4} {:>8.4} {:>16.4} {:>6.4} {:>8.4}",
+                        a.pixel, a.seen, a.banding, b.pixel, b.seen, b.banding
+                    );
+                }
+            }
         }
     }
 }
@@ -902,13 +1248,14 @@ mod props {
             set in 0usize..4,
             depth in 0usize..5,
             bg in proptest::option::of(any::<(u8, u8, u8)>()),
+            dither in any::<bool>(),
         ) {
             // `extra` > 0 makes the buffer length inconsistent (invalid image).
             let len = (w * h * 4) as usize + extra;
             let img = Rgba { width: w, height: h, pixels: bytes(seed, len) };
             let (set, depth) = (SETS[set], DEPTHS[depth]);
             let bg = bg.map(|(r, g, b)| Rgb(r, g, b));
-            let r = rasterize(&img, cols, rows, set, bg, depth);
+            let r = rasterize(&img, cols, rows, set, bg, depth, dither);
             prop_assert_eq!((r.cols, r.rows), (cols, rows));
             prop_assert_eq!(r.cells.len(), usize::from(rows));
             let glyphs: Vec<char> = (0..1u16 << glyphs::subpixels(set))

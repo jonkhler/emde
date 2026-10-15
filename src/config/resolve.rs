@@ -294,6 +294,7 @@ fn image_options(l: &ConfigLayer, d: ImageOptions) -> ImageOptions {
         tmux_passthrough: i
             .tmux_passthrough
             .map_or(d.tmux_passthrough, |t| t == TmuxPassthrough::IfEnabled),
+        dither: i.dither.unwrap_or(d.dither),
         max_pixels: i.max_pixels.unwrap_or(d.max_pixels),
     }
 }

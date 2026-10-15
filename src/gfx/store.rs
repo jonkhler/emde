@@ -118,6 +118,8 @@ pub struct StoreOptions {
     pub glyphs: BlockGlyphSet,
     /// Colours of block images ([`Caps::color`]).
     pub depth: ColorDepth,
+    /// Dither block images at 256 and 16 colours (`images.dither`).
+    pub dither: bool,
     /// The terminal's background, if known: transparent pixels are blended
     /// onto it in block images.
     pub background: Option<Rgb>,
@@ -148,6 +150,7 @@ impl StoreOptions {
             graphics: caps.graphics,
             glyphs: caps.block_glyphs,
             depth: caps.color,
+            dither: images.dither,
             background: caps.background,
             page: caps.background.unwrap_or(theme.base),
             cell_px: caps.cell_px,
@@ -1054,8 +1057,17 @@ fn render<'p>(
 
 /// Block glyphs (only with colours to draw them in).
 fn blocks(img: &Rgba, cols: u16, rows: u16, opts: &StoreOptions) -> Option<Raster> {
-    (opts.depth >= ColorDepth::Ansi16)
-        .then(|| raster::rasterize(img, cols, rows, opts.glyphs, opts.background, opts.depth))
+    (opts.depth >= ColorDepth::Ansi16).then(|| {
+        raster::rasterize(
+            img,
+            cols,
+            rows,
+            opts.glyphs,
+            opts.background,
+            opts.depth,
+            opts.dither,
+        )
+    })
 }
 
 /// A PNG for kitty and its size in pixels: the original file when it is a

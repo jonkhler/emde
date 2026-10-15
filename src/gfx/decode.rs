@@ -370,6 +370,7 @@ mod tests {
                 BlockGlyphSet::Half,
                 bg,
                 ColorDepth::TrueColor,
+                true,
             )
         };
         let _ = run(); // warm the tables

@@ -57,6 +57,7 @@ fn options(graphics: Graphics) -> StoreOptions {
         graphics,
         glyphs: BlockGlyphSet::Half,
         depth: ColorDepth::TrueColor,
+        dither: true,
         background: Some(Rgb(0, 0, 0)),
         page: Rgb(0, 0, 0),
         cell_px: Some((8, 16)),

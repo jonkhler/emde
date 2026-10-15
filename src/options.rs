@@ -300,6 +300,8 @@ pub struct ImageOptions {
     pub remote: bool,
     /// Use tmux passthrough only when the user enabled it (never change tmux options).
     pub tmux_passthrough: bool,
+    /// Dither block images at 256 and 16 colours.
+    pub dither: bool,
     /// Refuse to decode larger images (pixels).
     pub max_pixels: u64,
 }
@@ -312,6 +314,7 @@ impl Default for ImageOptions {
             max_height: Height::Percent(60),
             remote: false,
             tmux_passthrough: true,
+            dither: true,
             max_pixels: 40_000_000,
         }
     }
