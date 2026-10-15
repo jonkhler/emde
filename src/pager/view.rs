@@ -578,16 +578,12 @@ fn status_right(state: &State) -> String {
     let mut typed: String = state.count.map(|n| n.to_string()).unwrap_or_default();
     typed.push_str(&keymap::seq_label(&state.keys));
     if let Some(cmd) = state.awaiting {
-        typed.push(if cmd == Command::SetMark {
-            'm'
-        } else {
-            '\''
-        });
+        typed.push(if cmd == Command::SetMark { 'm' } else { '\'' });
     }
     if !typed.is_empty() {
         parts.push(typed);
     }
-    if matches!(state.mode, Mode::Image(_)) {
+    if matches!(state.mode, Mode::Image(_) | Mode::Picker(_)) {
         return parts.join("  ");
     }
     if let Some(s) = &state.search {
@@ -647,7 +643,7 @@ fn status_left<'a>(state: &'a State, ctx: &Ctx, room: usize) -> Vec<(Style, Cow<
         Mode::Prompt(p) => Some((if p.backward { "?" } else { "/" }, p.input.as_str())),
         Mode::Command(input) => Some((":", input.as_str())),
         // Too small a screen for the picker's box: its query here.
-        Mode::Picker(p) if !picker_fits(&boxed_picker) => Some(("open: ", p.query.as_str())),
+        Mode::Picker(p) if !picker_fits(&boxed_picker) => Some(("›", p.query.as_str())),
         _ => None,
     };
     if let Some((sigil, input)) = prompt {
@@ -939,7 +935,7 @@ fn picker_hints(state: &State) -> String {
     [
         (Command::PickerOpen, "opens"),
         (Command::PickerComplete, "completes"),
-        (Command::PickerToggleAll, "every file"),
+        (Command::PickerToggleAll, "all files"),
         (Command::PickerClose, "closes"),
     ]
     .iter()
@@ -985,7 +981,10 @@ fn picker_text<'a>(
     while pos < text.len() {
         let end = next_grapheme_end(text, pos);
         let mut style = if pos >= split { name } else { base };
-        if at.binary_search(&u32::try_from(pos).unwrap_or(u32::MAX)).is_ok() {
+        if at
+            .binary_search(&u32::try_from(pos).unwrap_or(u32::MAX))
+            .is_ok()
+        {
             style = style.patch(matched);
         }
         if run_style != Some(style) {
@@ -1043,7 +1042,10 @@ fn picker_overlay(state: &State, ctx: &Ctx, p: &Picker, rows: &mut [Building]) {
         (st.cursor, Cow::Borrowed(" ")),
     ];
     if used + str_width(&right, amb) <= inner {
-        line.push((st.toc, Cow::Owned(" ".repeat(inner - used - str_width(&right, amb)))));
+        line.push((
+            st.toc,
+            Cow::Owned(" ".repeat(inner - used - str_width(&right, amb))),
+        ));
         line.push((st.muted, Cow::Owned(right)));
     }
     put_segment(rows, y + 1, g.x, boxed(ctx, &g, &line, &st.toc, ascii, amb));
@@ -1066,7 +1068,11 @@ fn picker_overlay(state: &State, ctx: &Ctx, p: &Picker, rows: &mut [Building]) {
                 let styles = if selected {
                     (st.toc_selected, st.toc_selected.with(Attrs::BOLD))
                 } else if path_mode {
-                    let s = if dir { st.toc.with(Attrs::BOLD) } else { st.toc };
+                    let s = if dir {
+                        st.toc.with(Attrs::BOLD)
+                    } else {
+                        st.toc
+                    };
                     (s, s)
                 } else {
                     (dir_style, st.toc.with(Attrs::BOLD))
@@ -1088,7 +1094,12 @@ fn picker_overlay(state: &State, ctx: &Ctx, p: &Picker, rows: &mut [Building]) {
             }
             None => Vec::new(),
         };
-        put_segment(rows, y + 2 + i, g.x, boxed(ctx, &g, &pieces, &fill, ascii, amb));
+        put_segment(
+            rows,
+            y + 2 + i,
+            g.x,
+            boxed(ctx, &g, &pieces, &fill, ascii, amb),
+        );
     }
     let bottom = y + usize::from(g.h) - 1;
     let count = match (&p.problem, p.hits.len()) {
@@ -1101,7 +1112,12 @@ fn picker_overlay(state: &State, ctx: &Ctx, p: &Picker, rows: &mut [Building]) {
             format!("{}/{}{plus}", p.selected + 1, p.matched)
         }
     };
-    put_segment(rows, bottom, g.x, border(ctx, &g, false, &count, ascii, amb));
+    put_segment(
+        rows,
+        bottom,
+        g.x,
+        border(ctx, &g, false, &count, ascii, amb),
+    );
     if let Some(pg) = boxes.preview {
         picker_preview(state, ctx, p, &pg, rows);
     }
@@ -1131,7 +1147,13 @@ fn picker_preview(state: &State, ctx: &Ctx, p: &Picker, g: &BoxGeom, rows: &mut 
     put_segment(rows, y, g.x, border(ctx, g, true, &title, ascii, amb));
     let lines: Vec<(Style, String)> = match preview {
         Some(pv) => {
-            let base = pv.lines.iter().map(|l| l.0).filter(|&l| l > 0).min().unwrap_or(1);
+            let base = pv
+                .lines
+                .iter()
+                .map(|l| l.0)
+                .filter(|&l| l > 0)
+                .min()
+                .unwrap_or(1);
             let mut v: Vec<(Style, String)> = pv
                 .lines
                 .iter()
@@ -1139,7 +1161,11 @@ fn picker_preview(state: &State, ctx: &Ctx, p: &Picker, g: &BoxGeom, rows: &mut 
                     0 => (st.muted, format!(" {}", clean(text))),
                     &l => {
                         let pad = usize::from(l.saturating_sub(base)) * 2;
-                        let style = if l == base { st.toc.with(Attrs::BOLD) } else { st.toc };
+                        let style = if l == base {
+                            st.toc.with(Attrs::BOLD)
+                        } else {
+                            st.toc
+                        };
                         (style, format!(" {}{}", " ".repeat(pad), clean(text)))
                     }
                 })
@@ -1156,7 +1182,12 @@ fn picker_preview(state: &State, ctx: &Ctx, p: &Picker, g: &BoxGeom, rows: &mut 
             Some((style, text)) => vec![(*style, Cow::Borrowed(text.as_str()))],
             None => Vec::new(),
         };
-        put_segment(rows, y + 1 + i, g.x, boxed(ctx, g, &pieces, &st.toc, ascii, amb));
+        put_segment(
+            rows,
+            y + 1 + i,
+            g.x,
+            boxed(ctx, g, &pieces, &st.toc, ascii, amb),
+        );
     }
     let bottom = y + usize::from(g.h) - 1;
     put_segment(rows, bottom, g.x, border(ctx, g, false, "", ascii, amb));

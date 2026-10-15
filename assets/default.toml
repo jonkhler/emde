@@ -259,11 +259,12 @@ details = "collapsed"
 # hints-follow = ["F"]
 # quit = ["q", "ZZ"]
 
+# The file picker (O) and :e. The picker matches what you type against
+# the files opened lately, the files of the current document's git
+# repository (or of its directory), and the roots below.
 [picker]
-# The file picker (O) and :e. Typed text is matched against the files of
-# the current document's git repository (or its directory), the files
-# opened lately, and these directories (searched in the background, for a
-# couple of seconds at most), e.g. ["~/notes", "~/dev"].
+# More directories to search, e.g. ["~/notes", "~/dev"] (searched in the
+# background, for two seconds at most).
 roots = []
 # The most files the picker collects.
 max_files = 50000

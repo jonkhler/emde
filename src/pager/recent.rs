@@ -104,7 +104,12 @@ pub(crate) fn parse(text: &str, now: u64) -> Vec<Visit> {
 
 /// Most frecent first, then most recent.
 fn sort(visits: &mut [Visit], now: u64) {
-    visits.sort_by_key(|v| (std::cmp::Reverse(frecency(v, now)), std::cmp::Reverse(v.last)));
+    visits.sort_by_key(|v| {
+        (
+            std::cmp::Reverse(frecency(v, now)),
+            std::cmp::Reverse(v.last),
+        )
+    });
 }
 
 /// The text of a store file.
@@ -135,7 +140,10 @@ pub(crate) fn load(store: &Path, now: u64) -> Vec<Visit> {
 
 /// Whether `path` can be written as a line of the store.
 fn storable(path: &Path) -> bool {
-    path.is_absolute() && path.to_str().is_some_and(|s| !s.contains(['\n', '\r', '\t']))
+    path.is_absolute()
+        && path
+            .to_str()
+            .is_some_and(|s| !s.contains(['\n', '\r', '\t']))
 }
 
 /// `visits` with `path` opened at `now`, capped at [`CAP`].
@@ -263,7 +271,11 @@ mod tests {
         }
         assert_eq!(visits.len(), CAP);
         // The newest stayed.
-        assert!(visits.iter().any(|v| v.path == Path::new(&format!("/f{}.md", CAP + 19))));
+        assert!(
+            visits
+                .iter()
+                .any(|v| v.path == Path::new(&format!("/f{}.md", CAP + 19)))
+        );
     }
 
     #[test]
@@ -273,8 +285,11 @@ mod tests {
         let store = dir.join("recent");
         fs::write(&store, b"\xff\xfe garbage \x00\x01").unwrap();
         assert!(load(&store, now()).is_empty());
-        fs::write(&store, "x\ty\t/a.md\n2\t5\t/b.md\nno tabs\n0\t1\t/zero.md\n1\t1\trel\n")
-            .unwrap();
+        fs::write(
+            &store,
+            "x\ty\t/a.md\n2\t5\t/b.md\nno tabs\n0\t1\t/zero.md\n1\t1\trel\n",
+        )
+        .unwrap();
         let got: Vec<_> = load(&store, now()).into_iter().map(|v| v.path).collect();
         assert_eq!(got, [PathBuf::from("/b.md")]);
         // A missing store, and one that cannot be written.
@@ -282,7 +297,9 @@ mod tests {
         let blocked = dir.join("recent/inside");
         record(&blocked, Path::new("/a.md"));
         assert!(
-            take_problems().iter().any(|p| p.contains("could not update")),
+            take_problems()
+                .iter()
+                .any(|p| p.contains("could not update")),
             "noted for -v"
         );
         let _ = fs::remove_dir_all(&dir);

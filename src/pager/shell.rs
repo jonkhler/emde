@@ -711,7 +711,8 @@ impl<'t, T: Terminal> Shell<'t, T> {
     /// an image in the image view; anything else is only named.
     fn open_path(&mut self, path: PathBuf) -> Vec<Effect> {
         let home = self.state.settings.home.clone();
-        let shown = crate::text::sanitize(&picker::paths::tilde(&path, home.as_deref())).into_owned();
+        let shown =
+            crate::text::sanitize(&picker::paths::tilde(&path, home.as_deref())).into_owned();
         let push = |path| LoadRequest {
             path,
             anchor: None,
@@ -726,7 +727,10 @@ impl<'t, T: Terminal> Shell<'t, T> {
                 });
                 return match index {
                     Some(doc) => self.load(push(doc)),
-                    None => update(&mut self.state, Action::Picker(PickerEvent(Event::Browse(path)))),
+                    None => update(
+                        &mut self.state,
+                        Action::Picker(PickerEvent(Event::Browse(path))),
+                    ),
                 };
             }
             Ok(m) if !m.is_file() => format!("not a regular file: {shown}"),

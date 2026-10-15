@@ -64,7 +64,11 @@ impl Unresolved {
 
 /// The path that `typed` (a directory part, or a whole path) names: `~`
 /// is the home directory, and a relative path is relative to `base`.
-pub(crate) fn resolve(typed: &str, base: &Path, home: Option<&Path>) -> Result<PathBuf, Unresolved> {
+pub(crate) fn resolve(
+    typed: &str,
+    base: &Path,
+    home: Option<&Path>,
+) -> Result<PathBuf, Unresolved> {
     if let Some(rest) = typed.strip_prefix('~') {
         let rest = match rest.strip_prefix('/') {
             Some(r) => r,
@@ -271,11 +275,17 @@ mod tests {
     fn resolving() {
         let base = Path::new("/docs/sub");
         let home = Some(Path::new("/home/u"));
-        assert_eq!(resolve("~/dev/", base, home), Ok(PathBuf::from("/home/u/dev/")));
+        assert_eq!(
+            resolve("~/dev/", base, home),
+            Ok(PathBuf::from("/home/u/dev/"))
+        );
         assert_eq!(resolve("~", base, home), Ok(PathBuf::from("/home/u")));
         assert_eq!(resolve("~", base, None), Err(Unresolved::NoHome));
         assert_eq!(resolve("~bob/", base, home), Err(Unresolved::OtherHome));
-        assert_eq!(resolve("../", base, home), Ok(PathBuf::from("/docs/sub/../")));
+        assert_eq!(
+            resolve("../", base, home),
+            Ok(PathBuf::from("/docs/sub/../"))
+        );
         assert_eq!(resolve("", base, home), Ok(PathBuf::from("/docs/sub")));
         assert_eq!(resolve("/etc/", base, home), Ok(PathBuf::from("/etc/")));
         assert_eq!(tilde(Path::new("/home/u/dev"), home), "~/dev");
@@ -288,7 +298,14 @@ mod tests {
     fn listing_and_filtering() {
         let dir = tree(
             "list",
-            &["notes.md", "news/", "Nested/", ".hidden.md", "zebra.md", "new.md"],
+            &[
+                "notes.md",
+                "news/",
+                "Nested/",
+                ".hidden.md",
+                "zebra.md",
+                "new.md",
+            ],
         );
         let entries = list(&dir, 100).unwrap();
         let all = filter(&entries, "", false);
@@ -299,9 +316,15 @@ mod tests {
         );
         let hidden = filter(&entries, "", true);
         assert_eq!(hidden.len(), 6);
-        assert_eq!(names(&entries, &filter(&entries, ".h", false)), [".hidden.md"]);
+        assert_eq!(
+            names(&entries, &filter(&entries, ".h", false)),
+            [".hidden.md"]
+        );
         let ne = filter(&entries, "ne", false);
-        assert_eq!(names(&entries, &ne), ["Nested/", "news/", "new.md", "notes.md"]);
+        assert_eq!(
+            names(&entries, &ne),
+            ["Nested/", "news/", "new.md", "notes.md"]
+        );
         assert!(list(&dir.join("missing"), 100).is_err());
         assert_eq!(list(&dir, 2).unwrap().len(), 2, "capped");
         let _ = fs::remove_dir_all(&dir);
@@ -311,7 +334,13 @@ mod tests {
     fn tab_completes_the_common_prefix() {
         let dir = tree(
             "complete",
-            &["project-alpha/", "project-beta/", "proposal.md", "README.md", "readme-old.md"],
+            &[
+                "project-alpha/",
+                "project-beta/",
+                "proposal.md",
+                "README.md",
+                "readme-old.md",
+            ],
         );
         let entries = list(&dir, 100).unwrap();
         assert_eq!(
@@ -331,7 +360,10 @@ mod tests {
             ])
         );
         // Ignoring case, in the first entry's spelling.
-        assert_eq!(complete(&entries, "read", false), Completion::Longer("README".into()));
+        assert_eq!(
+            complete(&entries, "read", false),
+            Completion::Longer("README".into())
+        );
         assert_eq!(
             complete(&entries, "READ", false),
             Completion::Unique("README.md".into(), false)
@@ -348,7 +380,10 @@ mod tests {
         let (part, leaf) = split("~/de");
         let at = resolve(part, &base, home).unwrap();
         let entries = list(&at, 100).unwrap();
-        assert_eq!(complete(&entries, leaf, false), Completion::Unique("dev".into(), true));
+        assert_eq!(
+            complete(&entries, leaf, false),
+            Completion::Unique("dev".into(), true)
+        );
         let (part, _) = split("../");
         let up = list(&resolve(part, &base, home).unwrap(), 100).unwrap();
         let shown: Vec<_> = up.iter().map(|e| e.name.to_string()).collect();

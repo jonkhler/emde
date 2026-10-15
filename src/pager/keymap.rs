@@ -888,7 +888,9 @@ impl Keymap {
                     Some("other keys type the command: e FILE, n, p, x (first file) or q")
                 }
                 Section::Outline => Some("other keys type a filter"),
-                Section::Picker => Some("other keys type the query: a name, or a path (/ ~ ./ ../)"),
+                Section::Picker => {
+                    Some("other keys type the query: a name, or a path (/ ~ ./ ../)")
+                }
                 Section::Hints => Some("other keys type a label"),
                 _ => None,
             };

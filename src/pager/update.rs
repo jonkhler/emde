@@ -1720,7 +1720,9 @@ fn run_command(state: &mut State) -> Vec<Effect> {
                 return picker::edit(state, arg);
             }
             let shown = crate::text::sanitize(other).into_owned();
-            state.complain(format!("unknown command :{shown} (:e FILE, :n, :p, :x, :q)"));
+            state.complain(format!(
+                "unknown command :{shown} (:e FILE, :n, :p, :x, :q)"
+            ));
             Vec::new()
         }
     }

@@ -416,7 +416,7 @@ fn walk(sink: &mut Sink<'_>, root: &Path, depth: usize, until: Instant) -> Flow 
         };
         for entry in entries {
             visited = visited.wrapping_add(1);
-            if visited % 256 == 0 && Instant::now() >= until {
+            if visited.is_multiple_of(256) && Instant::now() >= until {
                 return Flow::Go;
             }
             if sink.cancelled() || sink.full() {
@@ -585,7 +585,13 @@ fn git_files(sink: &mut Sink<'_>, top: &Path) -> Option<Flow> {
     let scan = sink.req.scan;
     git(
         top,
-        &["ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+        &[
+            "ls-files",
+            "-z",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+        ],
         GIT_LIST_TIME,
         (&live, scan),
         true,
@@ -665,7 +671,15 @@ mod tests {
     #[test]
     fn markdown_is_recognised() {
         let exts = PickerOptions::default().extensions;
-        for yes in ["a.md", "b.MD", "c.markdown", "d.mdx", "e.mkd", "README", "x/readme"] {
+        for yes in [
+            "a.md",
+            "b.MD",
+            "c.markdown",
+            "d.mdx",
+            "e.mkd",
+            "README",
+            "x/readme",
+        ] {
             assert!(is_markdown(Path::new(yes), &exts), "{yes}");
         }
         for no in ["a.txt", "README.txt", "md", "a.md.bak", "Makefile"] {
@@ -745,19 +759,31 @@ mod tests {
         let found = search_in(&dir.join("elsewhere"), &s, false, None);
         assert_eq!(&*found[0].shown, "far.md");
         assert!(found[0].frecency > 0);
-        assert!(found.iter().all(|c| !c.shown.contains("gone")), "files that are gone");
+        assert!(
+            found.iter().all(|c| !c.shown.contains("gone")),
+            "files that are gone"
+        );
         let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
     fn git_repositories_are_listed_by_git() {
-        let ok = Command::new("git").arg("--version").output().is_ok_and(|o| o.status.success());
+        let ok = Command::new("git")
+            .arg("--version")
+            .output()
+            .is_ok_and(|o| o.status.success());
         if !ok {
             return; // no git here
         }
         let dir = tree(
             "git",
-            &["docs/guide.md", "README.md", "ignored/x.md", "untracked.md", "code.rs"],
+            &[
+                "docs/guide.md",
+                "README.md",
+                "ignored/x.md",
+                "untracked.md",
+                "code.rs",
+            ],
         );
         fs::write(dir.join(".gitignore"), "ignored/\n").unwrap();
         let git = |args: &[&str]| {

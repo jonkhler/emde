@@ -378,21 +378,25 @@ fn filter_entries(p: &mut Picker, hidden: bool) {
 }
 
 /// How a candidate ranks: higher is better.
+/// Ties go to the more frecent, the nearer, the shorter, then the first
+/// in alphabetical order.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-struct Rank {
+struct Rank<'a> {
     score: i32,
     frecency: u32,
     near: u8,
     short: Reverse<usize>,
+    name: Reverse<&'a str>,
     first: Reverse<usize>,
 }
 
-fn rank_of(c: &Candidate, index: usize, score: i32) -> Rank {
+fn rank_of(c: &Candidate, index: usize, score: i32) -> Rank<'_> {
     Rank {
         score,
         frecency: c.frecency,
         near: c.near,
         short: Reverse(c.shown.len()),
+        name: Reverse(&c.shown),
         first: Reverse(index),
     }
 }
@@ -429,7 +433,11 @@ const CHUNK: usize = 8192;
 
 /// The best ranks among candidates `fresh` (indexes into `cands`) that
 /// match `pattern`, and the indexes of all that match.
-fn score_chunk(pattern: &Pattern, cands: &[Candidate], fresh: &[u32]) -> (Vec<Rank>, Vec<u32>) {
+fn score_chunk<'a>(
+    pattern: &Pattern,
+    cands: &'a [Candidate],
+    fresh: &[u32],
+) -> (Vec<Rank<'a>>, Vec<u32>) {
     let mut scratch = Scratch::default();
     let mut top = Top::new();
     let mut matched = Vec::new();
@@ -461,13 +469,16 @@ fn best_of(
     fresh: &[u32],
 ) -> (Vec<Hit>, Vec<u32>) {
     let chunks: Vec<&[u32]> = fresh.chunks(CHUNK).collect();
-    let scored: Vec<(Vec<Rank>, Vec<u32>)> = if chunks.len() > 1 {
+    let scored: Vec<(Vec<Rank<'_>>, Vec<u32>)> = if chunks.len() > 1 {
         crate::parallel::map(&chunks, usize::MAX, |c| score_chunk(pattern, cands, c))
             .into_iter()
             .map(Option::unwrap_or_default)
             .collect()
     } else {
-        chunks.iter().map(|c| score_chunk(pattern, cands, c)).collect()
+        chunks
+            .iter()
+            .map(|c| score_chunk(pattern, cands, c))
+            .collect()
     };
     let mut top = Top::new();
     for h in kept {
@@ -512,7 +523,10 @@ fn best_of(
 /// it.
 fn rerank(p: &mut Picker) {
     let pattern = Pattern::new(&p.query);
-    let narrower = p.ranked.as_ref().is_some_and(|q| p.query.starts_with(q.as_str()));
+    let narrower = p
+        .ranked
+        .as_ref()
+        .is_some_and(|q| p.query.starts_with(q.as_str()));
     let all: Vec<u32>;
     let fresh: &[u32] = if narrower {
         &p.matching
@@ -958,7 +972,11 @@ fn command_listed(
 /// The preview of the file at `path`: its first [`PREVIEW_BYTES`],
 /// parsed with `parse` for its headings when it is Markdown (by `exts`),
 /// else its first lines.
-pub(crate) fn read_preview(path: &Path, exts: &[String], parse: &crate::parse::ParseOptions) -> Preview {
+pub(crate) fn read_preview(
+    path: &Path,
+    exts: &[String],
+    parse: &crate::parse::ParseOptions,
+) -> Preview {
     use std::io::Read as _;
     let mut preview = Preview {
         path: path.to_path_buf(),
@@ -968,8 +986,9 @@ pub(crate) fn read_preview(path: &Path, exts: &[String], parse: &crate::parse::P
     let regular = std::fs::metadata(path).map(|m| m.is_file());
     let mut bytes = Vec::new();
     let read = match regular {
-        Ok(true) => std::fs::File::open(path)
-            .and_then(|f| f.take(PREVIEW_BYTES).read_to_end(&mut bytes)),
+        Ok(true) => {
+            std::fs::File::open(path).and_then(|f| f.take(PREVIEW_BYTES).read_to_end(&mut bytes))
+        }
         Ok(false) => {
             preview.note = Some("not a regular file".into());
             return preview;
@@ -1069,11 +1088,21 @@ mod tests {
     /// `cargo test --release --lib -- --ignored --nocapture picker_speed`
     #[test]
     #[ignore = "a benchmark: run in release with --nocapture"]
+    #[allow(clippy::print_stderr)]
     fn picker_speed() {
         let cands = candidates(100_000);
         let all: Vec<u32> = (0..100_000).collect();
-        println!("on {} threads at most", crate::parallel::cpus());
-        for q in ["a", "md", "notes", "aamr", "pager upd", "zzzz", "README", "enc rev md"] {
+        eprintln!("on {} threads at most", crate::parallel::cpus());
+        for q in [
+            "a",
+            "md",
+            "notes",
+            "aamr",
+            "pager upd",
+            "zzzz",
+            "README",
+            "enc rev md",
+        ] {
             let pattern = Pattern::new(q);
             let runs = 5;
             let start = std::time::Instant::now();
@@ -1086,7 +1115,9 @@ mod tests {
             let start = std::time::Instant::now();
             let _ = score_chunk(&pattern, &cands, &all);
             let one = start.elapsed();
-            println!("{q:>12}: {matched:>6} of 100000 match, ranked in {each:?} ({one:?} on one thread)");
+            eprintln!(
+                "{q:>12}: {matched:>6} of 100000 match, ranked in {each:?} ({one:?} on one thread)"
+            );
         }
     }
 }

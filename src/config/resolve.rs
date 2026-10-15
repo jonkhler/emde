@@ -360,7 +360,10 @@ pub(crate) fn picker_options(l: &ConfigLayer) -> PickerOptions {
     let p = &l.picker;
     PickerOptions {
         roots: p.roots.as_ref().map_or(d.roots, |r| {
-            r.iter().filter(|s| !s.is_empty()).map(PathBuf::from).collect()
+            r.iter()
+                .filter(|s| !s.is_empty())
+                .map(PathBuf::from)
+                .collect()
         }),
         max_files: p.max_files.unwrap_or(d.max_files),
         show_hidden: p.show_hidden.unwrap_or(d.show_hidden),

@@ -72,7 +72,8 @@ fn fold(c: char) -> char {
 /// quick rejection.
 pub(crate) fn mask(text: &str) -> u64 {
     if text.is_ascii() {
-        text.bytes().fold(0, |m, b| m | bit(char::from(b.to_ascii_lowercase())))
+        text.bytes()
+            .fold(0, |m, b| m | bit(char::from(b.to_ascii_lowercase())))
     } else {
         text.chars().fold(0, |m, c| m | bit(fold(c)))
     }
@@ -161,9 +162,8 @@ fn bonus(prev: Class, cur: Class) -> i32 {
         (Class::White, _) => BONUS_WHITE,
         (Class::Delimiter, _) => BONUS_DELIMITER,
         (Class::NonWord, _) => BONUS_BOUNDARY,
-        (Class::Lower, Class::Upper) | (Class::Lower | Class::Upper | Class::Other, Class::Digit) => {
-            BONUS_CAMEL
-        }
+        (Class::Lower, Class::Upper)
+        | (Class::Lower | Class::Upper | Class::Other, Class::Digit) => BONUS_CAMEL,
         _ => 0,
     }
 }
@@ -195,7 +195,10 @@ const ASCII_CLASSES: [Class; 128] = {
 
 impl Unit for u8 {
     fn class(self) -> Class {
-        ASCII_CLASSES.get(usize::from(self)).copied().unwrap_or(Class::NonWord)
+        ASCII_CLASSES
+            .get(usize::from(self))
+            .copied()
+            .unwrap_or(Class::NonWord)
     }
 
     fn find(hay: &[u8], needle: u8, out: &mut Vec<u32>) {
@@ -241,10 +244,7 @@ impl Pattern {
                 .map(|t| t.iter().map(|&c| c as u8).collect())
                 .collect()
         });
-        let mask = terms
-            .iter()
-            .flatten()
-            .fold(0, |m, &c| m | bit(fold(c)));
+        let mask = terms.iter().flatten().fold(0, |m, &c| m | bit(fold(c)));
         Pattern {
             terms,
             ascii,
@@ -282,6 +282,9 @@ impl Pattern {
     }
 
     fn run(&self, text: &str, base: usize, s: &mut Scratch, positions: bool) -> Option<Match> {
+        if self.terms.is_empty() {
+            return Some(Match::default());
+        }
         let len = i32::try_from(text.len()).unwrap_or(i32::MAX);
         let mut out = Match {
             score: -(len / LENGTH_DIVISOR),
@@ -301,7 +304,14 @@ impl Pattern {
                     s.folded_bytes.make_ascii_lowercase();
                 }
                 for term in terms {
-                    add(best(orig, &s.folded_bytes, term, base, &mut s.work, positions)?);
+                    add(best(
+                        orig,
+                        &s.folded_bytes,
+                        term,
+                        base,
+                        &mut s.work,
+                        positions,
+                    )?);
                 }
             }
             _ => {
@@ -315,7 +325,14 @@ impl Pattern {
                 }
                 let base = text.get(..base).map_or(0, |b| b.chars().count());
                 for term in &self.terms {
-                    add(best(&s.chars, &s.folded_chars, term, base, &mut s.work, positions)?);
+                    add(best(
+                        &s.chars,
+                        &s.folded_chars,
+                        term,
+                        base,
+                        &mut s.work,
+                        positions,
+                    )?);
                 }
             }
         }
@@ -369,7 +386,14 @@ fn best<T: Unit>(
     let lo = folded.iter().position(|&c| c == first)?;
     let hi = folded.iter().rposition(|&c| c == last)?;
     let window = folded.get(lo..=hi)?;
-    let gain = |i: u32| MATCH + if i as usize >= base { BONUS_BASENAME } else { 0 };
+    let gain = |i: u32| {
+        MATCH
+            + if i as usize >= base {
+                BONUS_BASENAME
+            } else {
+                0
+            }
+    };
     let Work { found, cells, rows } = w;
     cells.clear();
     rows.clear();
@@ -382,7 +406,11 @@ fn best<T: Unit>(
             for &r in found.iter() {
                 let i = r + lo as u32;
                 let own = bonus_at(text, i as usize);
-                let first = if own == 0 { SCATTERED } else { own * FIRST_MULTIPLIER };
+                let first = if own == 0 {
+                    SCATTERED
+                } else {
+                    own * FIRST_MULTIPLIER
+                };
                 cells.push(Cell {
                     pos: i,
                     score: gain(i) + first,
@@ -496,19 +524,22 @@ mod tests {
     fn smart_case() {
         assert!(score("readme", "README.md").is_some());
         assert!(score("README", "README.md").is_some());
-        assert!(score("Readme", "README.md").is_none(), "an uppercase letter: exact case");
+        assert!(
+            score("Readme", "README.md").is_none(),
+            "an uppercase letter: exact case"
+        );
         assert!(score("Readme", "docs/Readme.md").is_some());
     }
 
     #[test]
     fn terms_must_all_match() {
         assert!(score("pager upd", "src/pager/update.rs").is_some());
-        assert!(score("upd pager", "src/pager/update.rs").is_some(), "in any order");
-        assert!(score("pager zzz", "src/pager/update.rs").is_none());
-        assert_eq!(
-            positions("src rs", "src/x.rs"),
-            Some(vec![0, 1, 2, 6, 7])
+        assert!(
+            score("upd pager", "src/pager/update.rs").is_some(),
+            "in any order"
         );
+        assert!(score("pager zzz", "src/pager/update.rs").is_none());
+        assert_eq!(positions("src rs", "src/x.rs"), Some(vec![0, 1, 2, 6, 7]));
     }
 
     #[test]
@@ -516,7 +547,10 @@ mod tests {
         // Word starts: `all`, `atom`, the `m` of `md` (not of `atom`), `results`.
         let p = "ala2_all_atom_md_results.md";
         assert_eq!(positions("aamr", p), Some(vec![5, 9, 14, 17]));
-        assert_eq!(positions("upd", "src/pager/update.rs"), Some(vec![10, 11, 12]));
+        assert_eq!(
+            positions("upd", "src/pager/update.rs"),
+            Some(vec![10, 11, 12])
+        );
         // Byte offsets in text that is not ASCII.
         assert_eq!(positions("nb", "énb.md"), Some(vec![2, 3]));
     }
@@ -564,7 +598,10 @@ mod tests {
         assert_eq!(mask("ab") & mask("BA"), mask("ab"));
         assert_ne!(mask("é") & bit('é'), 0);
         let p = Pattern::new("xyz");
-        assert!(p.score("abc", mask("abc"), 0, &mut Scratch::default()).is_none());
+        assert!(
+            p.score("abc", mask("abc"), 0, &mut Scratch::default())
+                .is_none()
+        );
     }
 
     proptest! {

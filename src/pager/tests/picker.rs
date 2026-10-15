@@ -8,7 +8,11 @@ use crate::pager::picker::scan::{Display, Request};
 use crate::pager::picker::{Event, Job, Picker, PickerEvent, PickerJob, Preview};
 
 fn doc() -> State {
-    let mut s = state_for(pdoc("# Notes\n\ntext\n", Origin::File(file("notes.md"))), 80, 24);
+    let mut s = state_for(
+        pdoc("# Notes\n\ntext\n", Origin::File(file("notes.md"))),
+        80,
+        24,
+    );
     s.settings.home = Some(PathBuf::from("/home/u"));
     s.settings.cwd = PathBuf::from("/work");
     s
@@ -155,7 +159,9 @@ fn results_stream_in_and_are_ranked() {
     assert_eq!(s.mode_name(), "normal");
     assert_eq!(
         out,
-        [Effect::OpenPath(PathBuf::from("/repo/ala2_all_atom_md_results.md"))]
+        [Effect::OpenPath(PathBuf::from(
+            "/repo/ala2_all_atom_md_results.md"
+        ))]
     );
 }
 
@@ -291,7 +297,10 @@ fn listing_problems_show() {
             entries: Err("/root: permission denied".into()),
         },
     );
-    assert_eq!(picker(&s).problem.as_deref(), Some("/root: permission denied"));
+    assert_eq!(
+        picker(&s).problem.as_deref(),
+        Some("/root: permission denied")
+    );
     // Back to fuzzy mode: a new search.
     let out = key(&mut s, Key::ctrl('u'));
     assert_eq!(scan_of(&out).dir, PathBuf::from("/virtual"));
@@ -301,7 +310,13 @@ fn listing_problems_show() {
 #[test]
 fn previews_on_wide_screens() {
     let mut s = doc();
-    drive(&mut s, Action::Resize { cols: 120, rows: 30 });
+    drive(
+        &mut s,
+        Action::Resize {
+            cols: 120,
+            rows: 30,
+        },
+    );
     let req = scan_of(&keys(&mut s, "O"));
     let out = event(
         &mut s,
@@ -380,7 +395,10 @@ fn the_mouse_picks() {
 #[test]
 fn colon_e_opens_paths() {
     let mut s = doc();
-    assert_eq!(colon(&mut s, "e other.md"), [Effect::OpenPath(file("other.md"))]);
+    assert_eq!(
+        colon(&mut s, "e other.md"),
+        [Effect::OpenPath(file("other.md"))]
+    );
     assert_eq!(
         colon(&mut s, "edit ~/notes/x.md"),
         [Effect::OpenPath(PathBuf::from("/home/u/notes/x.md"))]
@@ -429,7 +447,10 @@ fn colon_e_completes_with_tab() {
             entry("/virtual", "suburb.md", false),
         ],
     );
-    assert!(matches!(&s.mode, Mode::Command(i) if i == "e su"), "no common prefix");
+    assert!(
+        matches!(&s.mode, Mode::Command(i) if i == "e su"),
+        "no common prefix"
+    );
     assert_eq!(
         s.completions,
         Some(vec!["sub".into(), "summary.md".into(), "suburb.md".into()])
@@ -439,7 +460,10 @@ fn colon_e_completes_with_tab() {
     code(&mut s, KeyCode::Tab);
     listed(
         &mut s,
-        vec![entry("/virtual", "sub", true), entry("/virtual", "summary.md", false)],
+        vec![
+            entry("/virtual", "sub", true),
+            entry("/virtual", "summary.md", false),
+        ],
     );
     assert!(matches!(&s.mode, Mode::Command(i) if i == "e summary.md"));
     // A directory gets its slash; a stale listing changes nothing.
