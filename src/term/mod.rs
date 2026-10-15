@@ -98,8 +98,13 @@ pub struct Caps {
     /// Output is a terminal (else stream mode without escapes unless forced).
     pub is_tty: bool,
     pub color: ColorDepth,
+    /// The colour depth was set explicitly (`--color=256`, `FORCE_COLOR=3`,
+    /// `NO_COLOR`, …): what the tmux client shows does not lower it.
+    pub color_forced: bool,
     /// OSC 8 hyperlinks.
     pub hyperlinks: bool,
+    /// `--hyperlinks=always` or `never`: the tmux client does not change it.
+    pub hyperlinks_forced: bool,
     /// Styled/coloured underlines (SGR 4:x, 58).
     pub styled_underline: bool,
     /// Synchronized output (mode 2026); harmless where unsupported.
@@ -124,7 +129,9 @@ impl Default for Caps {
         Caps {
             is_tty: false,
             color: ColorDepth::None,
+            color_forced: false,
             hyperlinks: false,
+            hyperlinks_forced: false,
             styled_underline: false,
             sync: false,
             background: None,

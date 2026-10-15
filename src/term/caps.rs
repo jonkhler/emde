@@ -7,6 +7,30 @@
 //! the graphics path and the block glyphs, and records a [`Reason`] for each.
 //! It is pure: all input comes from its arguments.
 //!
+//! # What the tmux client shows
+//!
+//! Inside tmux the base says 24-bit colour, styled underlines and (from
+//! tmux 3.4) OSC 8, since tmux converts for each client. When the tmux
+//! query ran, the attached client's `client_termfeatures` refine that, so
+//! emde draws what the reader will see rather than letting tmux round it
+//! (block images most of all, which [`crate::gfx::raster`] dithers at
+//! reduced depth):
+//!
+//! * no `RGB` → 256 colours, or 16 when the client also lacks `256` and its
+//!   `TERM` does not name 256 colours ([`tmux_client_depth`]); a client
+//!   behind mosh, which tmux reports as plain `xterm-256color`, is the
+//!   common case;
+//! * no `hyperlinks` → no OSC 8 (tmux would drop the links), and the
+//!   feature turns them on where `TERM_PROGRAM_VERSION` was missing;
+//! * no `usstyle` → no styled underlines.
+//!
+//! Only automatic decisions change: an explicit `--color` level,
+//! `FORCE_COLOR=1|2|3` or `--hyperlinks=always|never` stays as asked. A
+//! tmux that reports no features at all (before 3.2) changes nothing. The
+//! features are those of the client tmux answers for (see
+//! [`crate::term::tmux`]); other clients attached to the same session get
+//! the same output, converted by tmux.
+//!
 //! # Graphics for `images = "auto"`
 //!
 //! A kitty `a=q` OK only shows that the protocol exists, not that Unicode
@@ -390,6 +414,12 @@ pub fn decide(
     note(topic::CELL, why);
     caps.size = caps.size.or_else(|| probe.and_then(|p| p.size_cells));
 
+    if let (true, Some(t)) = (facts.in_tmux, tmux) {
+        for reason in refine_for_client(&mut caps, t) {
+            note(reason.topic, reason.detail);
+        }
+    }
+
     let choice = graphics(&facts, &caps, opts);
     caps.graphics = choice.graphics;
     note(topic::GRAPHICS, choice.detail);
@@ -400,6 +430,82 @@ pub fn decide(
 
     caps.reasons.extend(reasons);
     caps
+}
+
+/// The colours a tmux client shows when that is less than 24-bit, and why:
+/// a client without the `RGB` feature gets 256 colours when it has the
+/// `256` feature or a `TERM` naming 256 colours (tmux lists `256` only when
+/// it adds the feature to what terminfo says), else 16.
+///
+/// `None` when the client has `RGB`, and when tmux reports no features at
+/// all: tmux before 3.2 has no `client_termfeatures`, so nothing is known.
+pub fn tmux_client_depth(tmux: &TmuxInfo) -> Option<(ColorDepth, String)> {
+    if tmux.features.is_empty() || tmux.has_feature("RGB") {
+        return None;
+    }
+    let term = tmux.client_termname.as_str();
+    Some(
+        if tmux.has_feature("256") || term.contains("256color") || term.contains("256colour") {
+            (
+                ColorDepth::Ansi256,
+                format!("tmux client without RGB ({})", or_unknown(term)),
+            )
+        } else {
+            (
+                ColorDepth::Ansi16,
+                format!("tmux client without RGB or 256 ({})", or_unknown(term)),
+            )
+        },
+    )
+}
+
+fn or_unknown(term: &str) -> &str {
+    if term.is_empty() {
+        "TERM unknown"
+    } else {
+        term
+    }
+}
+
+/// Lower what the tmux client cannot show (module docs, "What the tmux
+/// client shows"); the reasons for what changed.
+fn refine_for_client(caps: &mut Caps, tmux: &TmuxInfo) -> Vec<Reason> {
+    let mut reasons = Vec::new();
+    if tmux.features.is_empty() {
+        return reasons;
+    }
+    let mut note = |topic: &'static str, detail: &str| {
+        reasons.push(Reason {
+            topic,
+            detail: detail.to_string(),
+        });
+    };
+    if !caps.color_forced
+        && caps.color >= ColorDepth::Ansi16
+        && let Some((depth, why)) = tmux_client_depth(tmux)
+        && depth < caps.color
+    {
+        caps.color = depth;
+        note(topic::COLOR, &why);
+    }
+    if caps.color != ColorDepth::None && !caps.hyperlinks_forced {
+        match (caps.hyperlinks, tmux.has_feature("hyperlinks")) {
+            (true, false) => {
+                caps.hyperlinks = false;
+                note(topic::HYPERLINKS, "tmux client without hyperlinks");
+            }
+            (false, true) => {
+                caps.hyperlinks = true;
+                note(topic::HYPERLINKS, "tmux client has hyperlinks");
+            }
+            _ => {}
+        }
+    }
+    if caps.styled_underline && !tmux.has_feature("usstyle") {
+        caps.styled_underline = false;
+        note(topic::UNDERLINE, "tmux client without usstyle");
+    }
+    reasons
 }
 
 /// Images drawn with block glyphs are refused when East Asian Ambiguous
@@ -1251,6 +1357,206 @@ mod tests {
         // Colour decisions from the base are left alone.
         assert_eq!(caps.color, ColorDepth::TrueColor);
         assert!(caps.hyperlinks && caps.styled_underline);
+    }
+
+    // --- what the tmux client shows ---------------------------------------
+
+    /// The user's environment inside tmux 3.4 (`COLORTERM` unset), for
+    /// whichever client is attached.
+    const TMUX_ENV: &[(&str, &str)] = &[
+        ("TERM", "tmux-256color"),
+        ("TERM_PROGRAM", "tmux"),
+        ("TERM_PROGRAM_VERSION", "3.4"),
+        ("TMUX", "/tmp/tmux-1001/default,443340,2"),
+        SSH,
+    ];
+
+    /// `term::color`'s decision for `env`, then [`decide`] with the tmux
+    /// line and tmux's own probe answers (no wrapped batch).
+    fn through_tmux(
+        env: &[(&str, &str)],
+        line: &str,
+        color: crate::term::color::ColorChoice,
+        links: crate::options::When,
+    ) -> Caps {
+        let base = crate::term::color::decide(&Env::from_pairs(env), true, color, links);
+        Case {
+            env: env.to_vec(),
+            tmux: Some(line),
+            probe: Some((USER_SESSION, false)),
+            mode: ImageMode::Auto,
+        }
+        .decide_with(base, &ImageOptions::default())
+    }
+
+    fn auto_through_tmux(env: &[(&str, &str)], line: &str) -> Caps {
+        use crate::term::color::ColorChoice;
+        through_tmux(env, line, ColorChoice::Auto, crate::options::When::Auto)
+    }
+
+    #[test]
+    fn a_mosh_client_gets_256_colours_and_no_extras() {
+        let caps = auto_through_tmux(TMUX_ENV, tmux::fixtures::MOSH_CLIENT);
+        assert_eq!(caps.color, ColorDepth::Ansi256);
+        assert_eq!(
+            reason(&caps, topic::COLOR),
+            "tmux client without RGB (xterm-256color)"
+        );
+        assert!(!caps.hyperlinks);
+        assert_eq!(
+            reason(&caps, topic::HYPERLINKS),
+            "tmux client without hyperlinks"
+        );
+        assert!(!caps.styled_underline);
+        assert_eq!(
+            reason(&caps, topic::UNDERLINE),
+            "tmux client without usstyle"
+        );
+        if IMAGES_BUILT {
+            assert_eq!(caps.graphics, Graphics::Blocks);
+        }
+        assert!(caps.in_tmux && caps.over_ssh);
+        // tmux knows nothing of the terminal behind mosh.
+        assert_eq!(caps.terminal, None);
+    }
+
+    #[test]
+    fn the_iterm2_client_keeps_everything() {
+        for line in [
+            tmux::fixtures::USER_SESSION,
+            tmux::fixtures::USER_SESSION_PASSTHROUGH,
+        ] {
+            let caps = auto_through_tmux(TMUX_ENV, line);
+            assert_eq!(caps.color, ColorDepth::TrueColor, "{line}");
+            assert_eq!(reason(&caps, topic::COLOR), "in tmux");
+            assert!(caps.hyperlinks && caps.styled_underline, "{line}");
+            assert_eq!(reason(&caps, topic::HYPERLINKS), "tmux 3.4 ≥ 3.4");
+        }
+        // A client with RGB but without the other two features.
+        let caps = auto_through_tmux(TMUX_ENV, tmux::fixtures::VSCODE_CLIENT);
+        assert_eq!(caps.color, ColorDepth::TrueColor);
+        assert!(caps.hyperlinks);
+        assert!(!caps.styled_underline);
+    }
+
+    #[test]
+    fn client_colour_levels() {
+        let depth = |line: &str| auto_through_tmux(TMUX_ENV, line).color;
+        // `256` listed, or a TERM naming 256 colours.
+        assert_eq!(
+            depth("3.4||xterm|256,clipboard|0x0|off|external"),
+            ColorDepth::Ansi256
+        );
+        assert_eq!(
+            depth("3.4||screen-256color|title|0x0|off|external"),
+            ColorDepth::Ansi256
+        );
+        // Neither: 16 colours.
+        let caps = auto_through_tmux(TMUX_ENV, "3.4||xterm|clipboard,title|0x0|off|external");
+        assert_eq!(caps.color, ColorDepth::Ansi16);
+        assert_eq!(
+            reason(&caps, topic::COLOR),
+            "tmux client without RGB or 256 (xterm)"
+        );
+        // tmux before 3.2 reports no features: nothing is known, nothing changes.
+        let old = auto_through_tmux(TMUX_ENV, "3.1c||xterm-256color||0x0||external");
+        assert_eq!(old.color, ColorDepth::TrueColor);
+        assert!(old.hyperlinks && old.styled_underline);
+        let t = tmux::parse("3.1c||xterm-256color||0x0||external").unwrap();
+        assert_eq!(tmux_client_depth(&t), None);
+        // COLORTERM inside tmux describes whoever set it, not the client.
+        let mut env = TMUX_ENV.to_vec();
+        env.push(("COLORTERM", "truecolor"));
+        assert_eq!(
+            auto_through_tmux(&env, tmux::fixtures::MOSH_CLIENT).color,
+            ColorDepth::Ansi256
+        );
+    }
+
+    #[test]
+    fn explicit_choices_are_kept_through_tmux() {
+        use crate::options::When;
+        use crate::term::color::ColorChoice;
+        let mosh = tmux::fixtures::MOSH_CLIENT;
+        let caps = through_tmux(TMUX_ENV, mosh, ColorChoice::TrueColor, When::Always);
+        assert_eq!(caps.color, ColorDepth::TrueColor);
+        assert_eq!(reason(&caps, topic::COLOR), "--color=truecolor");
+        assert!(caps.hyperlinks);
+        let caps = through_tmux(TMUX_ENV, mosh, ColorChoice::Ansi16, When::Auto);
+        assert_eq!(caps.color, ColorDepth::Ansi16);
+        // `--color=always` still detects, so the client counts.
+        let caps = through_tmux(TMUX_ENV, mosh, ColorChoice::Always, When::Auto);
+        assert_eq!(caps.color, ColorDepth::Ansi256);
+        for (var, value, depth) in [
+            ("FORCE_COLOR", "3", ColorDepth::TrueColor),
+            ("FORCE_COLOR", "yes", ColorDepth::Ansi256),
+            ("NO_COLOR", "1", ColorDepth::Mono),
+            ("CLICOLOR_FORCE", "1", ColorDepth::Ansi256),
+        ] {
+            let mut env = TMUX_ENV.to_vec();
+            env.push((var, value));
+            let caps = auto_through_tmux(&env, mosh);
+            assert_eq!(caps.color, depth, "{var}={value}");
+        }
+        // Links the user turned off stay off, also for a client that has them.
+        let caps = through_tmux(
+            TMUX_ENV,
+            tmux::fixtures::USER_SESSION,
+            ColorChoice::Auto,
+            When::Never,
+        );
+        assert!(!caps.hyperlinks);
+    }
+
+    #[test]
+    fn the_hyperlinks_feature_stands_in_for_a_missing_tmux_version() {
+        // `TERM_PROGRAM_VERSION` lost (e.g. `sudo`), but tmux says the client
+        // takes OSC 8: only tmux ≥ 3.4 has that feature.
+        let env = [("TERM", "tmux-256color"), ("TMUX", "/tmp/t,1,0")];
+        let base = crate::term::color::decide(
+            &Env::from_pairs(&env),
+            true,
+            crate::term::color::ColorChoice::Auto,
+            crate::options::When::Auto,
+        );
+        assert!(!base.hyperlinks);
+        let caps = auto_through_tmux(&env, tmux::fixtures::USER_SESSION);
+        assert!(caps.hyperlinks);
+        assert_eq!(
+            reason(&caps, topic::HYPERLINKS),
+            "tmux client has hyperlinks"
+        );
+    }
+
+    #[test]
+    fn the_client_only_counts_inside_tmux() {
+        // Plain SSH, kitty, VS Code and a local terminal: no tmux query, and
+        // a stray one changes nothing outside tmux.
+        for (env, depth) in [
+            (ITERM_SSH, ColorDepth::TrueColor),
+            (&[("TERM", "xterm-kitty")][..], ColorDepth::TrueColor),
+            (
+                &[("TERM_PROGRAM", "vscode"), ("TERM", "xterm-256color")],
+                ColorDepth::TrueColor,
+            ),
+            (&[("TERM", "xterm-256color")], ColorDepth::Ansi256),
+        ] {
+            let base = crate::term::color::decide(
+                &Env::from_pairs(env),
+                true,
+                crate::term::color::ColorChoice::Auto,
+                crate::options::When::Auto,
+            );
+            let mut case = Case::new(env, None);
+            case.tmux = Some(tmux::fixtures::MOSH_CLIENT);
+            let caps = case.decide_with(base.clone(), &ImageOptions::default());
+            assert_eq!(caps.color, depth, "{env:?}");
+            assert_eq!(
+                (caps.hyperlinks, caps.styled_underline),
+                (base.hyperlinks, base.styled_underline),
+                "{env:?}"
+            );
+        }
     }
 
     // --- identities ----------------------------------------------------------
